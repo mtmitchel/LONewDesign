@@ -46,23 +46,49 @@ export function InlineReply({
     >
       <div className="mx-auto w-full max-w-[var(--content-measure)] px-[var(--space-5)] py-[var(--space-4)] space-y-3">
 
-        {/* recipients row (quiet) */}
-        <div className="flex items-start gap-2 text-sm">
-          <div className="text-[var(--text-tertiary)] pt-1">To</div>
-          <div className="flex-1 min-w-0 text-[var(--text-secondary)]">
-            <div className="flex flex-wrap gap-2">
-              {/* collapsed summary: "Sarah Chen +1" */}
+        {/* TO row with segmented toggle */}
+        <div className="flex items-start justify-between text-sm">
+          <div className="flex items-start gap-2 min-w-0">
+            <div className="text-[var(--text-tertiary)] pt-1">To</div>
+            <div className="min-w-0">
               <span className="inline-flex items-center rounded-[var(--radius-pill)] bg-[var(--bg-surface-elevated)]
                                px-2 py-0.5 text-xs text-[var(--text-secondary)]">
                 {to[0]?.name ?? to[0]?.email}{to.length > 1 ? ` +${to.length - 1}` : ""}
               </span>
               {mode === "reply-all" && (
-                <span className="text-xs text-[var(--text-tertiary)]">(replying to all)</span>
+                <span className="text-xs text-[var(--text-tertiary)] ml-2">(replying to all)</span>
               )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pl-2">
+          <div className="flex items-center gap-3">
+            {/* quiet segmented toggle */}
+            <div className="hidden sm:flex items-center bg-[var(--bg-surface-elevated)]
+                            rounded-[var(--segmented-radius)] p-0.5 border
+                            border-[var(--border-subtle)]">
+              <button
+                type="button"
+                aria-pressed={mode === "reply"}
+                onClick={() => setMode("reply")}
+                className={`px-2 h-7 text-xs rounded-[var(--segmented-radius)]
+                           ${mode === "reply"
+                             ? "bg-[var(--bg-surface)] shadow-sm"
+                             : "text-[var(--text-secondary)]"}`}
+              >
+                Reply
+              </button>
+              <button
+                type="button"
+                aria-pressed={mode === "reply-all"}
+                onClick={() => setMode("reply-all")}
+                className={`px-2 h-7 text-xs rounded-[var(--segmented-radius)]
+                           ${mode === "reply-all"
+                             ? "bg-[var(--bg-surface)] shadow-sm"
+                             : "text-[var(--text-secondary)]"}`}
+              >
+                Reply all
+              </button>
+            </div>
             <button className="text-[var(--text-secondary)] hover:underline text-xs" onClick={() => setShowCc(v => !v)}>Cc</button>
             <button className="text-[var(--text-secondary)] hover:underline text-xs" onClick={() => setShowBcc(v => !v)}>Bcc</button>
           </div>
@@ -107,10 +133,10 @@ export function InlineReply({
             }}
           />
 
-          {/* toolbar */}
+          {/* toolbar (clean) */}
           <div className="flex items-center justify-between h-[var(--reply-toolbar-h)]
                           border-t border-[var(--border-subtle)] px-2">
-            {/* left tools (quiet) */}
+            {/* left: formatting tools only */}
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Attach file"><Paperclip className="w-4 h-4"/></Button>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Bold (Cmd/Ctrl+B)"><Bold className="w-4 h-4"/></Button>
@@ -119,26 +145,7 @@ export function InlineReply({
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Bulleted list"><List className="w-4 h-4"/></Button>
             </div>
 
-            {/* middle: reply mode segmented (quiet) */}
-            <div className="hidden sm:flex items-center bg-[var(--bg-surface-elevated)]
-                            rounded-[var(--segmented-radius)] p-0.5">
-              <button
-                type="button"
-                aria-pressed={mode === "reply"}
-                onClick={() => setMode("reply")}
-                className={`px-2 h-7 text-xs rounded-[var(--segmented-radius)]
-                           ${mode === "reply" ? "bg-[var(--bg-surface)] border border-[var(--border-subtle)]" : "text-[var(--text-secondary)]"}`}
-              >Reply</button>
-              <button
-                type="button"
-                aria-pressed={mode === "reply-all"}
-                onClick={() => setMode("reply-all")}
-                className={`px-2 h-7 text-xs rounded-[var(--segmented-radius)]
-                           ${mode === "reply-all" ? "bg-[var(--bg-surface)] border border-[var(--border-subtle)]" : "text-[var(--text-secondary)]"}`}
-              >Reply all</button>
-            </div>
-
-            {/* right: actions */}
+            {/* right: actions only */}
             <div className="flex items-center gap-1.5">
               <Button variant="ghost" size="sm" title="More options"><MoreHorizontal className="w-4 h-4" /></Button>
               <Button
