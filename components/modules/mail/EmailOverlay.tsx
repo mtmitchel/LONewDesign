@@ -234,9 +234,7 @@ export function EmailOverlay({
 
           {showMidZone && (
             <section
-              className="mx-[var(--modal-inner-x)] mt-[var(--space-2)] overflow-hidden
-                rounded-[var(--section-radius)] border border-[var(--section-border)]
-                bg-[var(--section-bg)]"
+              className="mx-[var(--modal-inner-x)] mt-[var(--space-2)]"
             >
               {hasAttachments && (
                 <div className="px-[var(--space-3)] py-[var(--space-2)]">
@@ -246,9 +244,8 @@ export function EmailOverlay({
                         key={attachment.id}
                         type="button"
                         className="group inline-flex max-w-[28ch] items-center gap-[var(--pill-gap)] truncate rounded-[var(--pill-radius)]
-                          border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--pill-pad-x)] py-[var(--pill-pad-y)]
-                          text-left text-sm text-[var(--text-primary)] transition-shadow hover:shadow-[var(--elevation-sm)]
-                          shadow-inset"
+                          border border-[var(--border-subtle)] bg-transparent px-[var(--pill-pad-x)] py-[var(--pill-pad-y)]
+                          text-left text-sm text-[var(--text-primary)] transition-shadow hover:bg-[var(--bg-surface)]"
                         title={`Download ${attachment.filename} (${attachment.size})`}
                       >
                         <Paperclip className="h-4 w-4 text-[var(--text-tertiary)]" />

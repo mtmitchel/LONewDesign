@@ -190,14 +190,13 @@ export function InlineReply({
 
   return (
     <section 
-      className="group
-                 border-t border-border/20
-                 bg-transparent
-                 px-4 pt-3 pb-2"
+      className="group px-[var(--space-4)] pt-[var(--space-3)] pb-[var(--space-2)] border-t border-[var(--reply-divider)] bg-transparent"
       aria-label="Reply composer"
     >
-      <div ref={envelopeRef} className="space-y-2 text-sm">
-        <div className="flex items-start gap-2">
+      {/* address row */}
+      <div className="flex items-center justify-between mb-[var(--space-1)]">
+        <div ref={envelopeRef} className="flex-1 min-w-0 space-y-2 text-sm">
+          <div className="flex items-start gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -313,42 +312,41 @@ export function InlineReply({
             </div>
           </div>
         )}
+        </div>
       </div>
 
-      {/* Editor - writing-first */}
-      <div className="relative focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-0 rounded-md">
+      {/* editor */}
+      <div className="relative rounded-[var(--radius-md)] focus-within:ring-2 focus-within:ring-[var(--primary)]">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="Write your reply…"
-          className="w-full resize-none bg-transparent px-4 py-3 pr-12
-            min-h-[180px] border-0 focus-visible:outline-none"
+          placeholder=""
+          className="w-full resize-none bg-transparent min-h-[var(--editor-min-h)]
+                     px-[var(--editor-pad-x)] py-[var(--editor-pad-y)]
+                     pr-[calc(var(--editor-pad-x)+44px)] border-0 focus-visible:outline-none"
           onKeyDown={handleTextAreaKeyDown}
         />
 
-        {/* Micro ghost toolbar - bottom overlay inside editor */}
+        {/* toolbar INSIDE editor, ghost + compact */}
         <FormattingToolbar 
           onCommand={stubAction} 
-          density="micro" 
+          density="compact" 
           tone="ghost"
-          className="pointer-events-auto
-                     absolute left-4 right-4 bottom-3
-                     h-7 opacity-60
-                     group-focus-within:opacity-100
-                     transition-opacity"
+          className="absolute inset-x-[var(--editor-pad-x)] bottom-[var(--editor-pad-y)]
+                     h-[var(--toolbar-h)] opacity-[.6] group-focus-within:opacity-100
+                     motion-safe:transition-opacity"
         />
       </div>
 
-      {/* Send row - tight */}
-      <div className="flex items-center justify-between mt-2">
+      {/* send row */}
+      <div className="mt-[var(--space-2)] flex items-center justify-between">
         <SendButton 
-          size="sm" 
+          className="h-8"
+          size="sm"
           variant="solid" 
           disabled={!canSend}
-          onClick={() => onSend({ mode: replyMode, text })}
-          aria-keyshortcuts="Meta+Enter,Control+Enter" 
-          title="Send (⌘/Ctrl+Enter)" 
+          onClick={handleSend}
         />
         <div className="flex items-center gap-3">
           <Button 

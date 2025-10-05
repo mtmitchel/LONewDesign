@@ -1,6 +1,8 @@
 import * as React from "react";
 import { X, Minus, ExternalLink, Paperclip, MoreHorizontal, Trash2 } from "lucide-react";
 import { Button } from "../../ui/button";
+import { FormattingToolbar } from "./FormattingToolbar";
+import { SendButton } from "./SendButton";
 
 type Chip = { id: string; label: string; email: string };
 type ComposeMode = "new" | "reply" | "reply-all" | "forward";
@@ -91,7 +93,7 @@ export default function ComposeModal({
                    rounded-[var(--radius-lg)] shadow-[var(--elevation-xl)] flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="h-12 px-[var(--modal-inner-x)] border-b border-[var(--border-subtle)]
+        <div className="h-12 px-[var(--space-4)] pt-[var(--space-3)] pb-[var(--space-2)] border-b border-[var(--border-subtle)]
                         bg-[var(--bg-surface-elevated)] flex items-center justify-between">
           <h2 id="compose-title" className="text-sm font-medium text-[var(--text-secondary)] truncate">
             {subject.trim() ? subject : "New message"}
@@ -144,21 +146,31 @@ export default function ComposeModal({
           </div>
         </div>
 
-        {/* Toolbar */}
-        <div className="h-[var(--toolbar-h)] px-[var(--toolbar-pad-x)] py-[var(--toolbar-pad-y)] border-t border-[var(--border-subtle)]
-                        bg-[var(--bg-surface-elevated)] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button variant="solid" size="sm" disabled={!canSend} onClick={doSend} aria-keyshortcuts="Control+Enter Meta+Enter">
-              Send
-            </Button>
+        {/* toolbar row */}
+        <FormattingToolbar
+          density="compact"
+          tone="surface"
+          className="h-[var(--toolbar-h)] gap-[var(--space-2)]"
+          onCommand={(cmd) => console.log('Compose toolbar:', cmd)}
+        />
+
+        {/* send row */}
+        <footer className="px-[var(--space-4)] pt-[var(--space-2)] pb-[var(--space-3)]
+                           flex items-center justify-between">
+          <SendButton 
+            className="h-8" 
+            size="sm" 
+            variant="solid"
+            disabled={!canSend}
+            onClick={doSend}
+            aria-keyshortcuts="Meta+Enter,Control+Enter" 
+            title="Send (⌘/Ctrl+Enter)" 
+          />
+          <div className="flex items-center gap-[var(--space-3)]">
             <Button variant="ghost" size="sm" title="Attach file"><Paperclip className="w-4 h-4"/></Button>
-            {/* add B/I/U/link/list as needed */}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="sm" title="More"><MoreHorizontal className="w-4 h-4"/></Button>
             <Button variant="ghost" size="sm" title="Delete draft"><Trash2 className="w-4 h-4"/></Button>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   );

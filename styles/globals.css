@@ -57,17 +57,15 @@
 
   /* Reply surface */
   --reply-bg: transparent;
-  --reply-divider: var(--border-subtle);
+  --reply-divider: color-mix(in oklab, var(--text-default) 6%, transparent); /* inline reply hairline */
 
   /* Editor */
-  --editor-min-h: 180px;
+  --editor-min-h: 184px;      /* inline reply */
   --editor-pad-x: var(--space-4);
   --editor-pad-y: var(--space-3);
 
   /* Toolbar (micro, ghost) */
-  --toolbar-h: 32px;                   /* was 40px */
-  --toolbar-compact-h: 32px;           /* compact height */
-  --toolbar-micro-h: 28px;
+  --toolbar-h: 32px;          /* both */
   --toolbar-pad-x: var(--space-2);
   --toolbar-gap: var(--space-2);
   --toolbar-icon-size: 14px;
