@@ -265,15 +265,15 @@ export function ComposeToolbar({ canSend, onSend, onDiscard, editorCommands }: C
 
         {/* B) Utility Row (Send + quick actions) */}
         <div className="h-10 flex items-center justify-between">
-          {/* Send split button */}
-          <div className="flex items-center">
+          {/* Send + attachment icons group */}
+          <div className="flex items-center gap-[var(--space-2)]">
             <Button data-compose-send onClick={handleSendClick} disabled={!canSend} className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white px-4" aria-label="Send email (Ctrl+Enter)">
               <Send className="w-4 h-4 mr-2" />
               Send
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="px-1 ml-1 h-9" disabled={!canSend} aria-label="Send options">
+                <Button variant="ghost" size="sm" className="px-1 h-9" disabled={!canSend} aria-label="Send options">
                   <ChevronDown className="w-3 h-3" />
                 </Button>
               </DropdownMenuTrigger>
@@ -287,17 +287,7 @@ export function ComposeToolbar({ canSend, onSend, onDiscard, editorCommands }: C
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-
-          <div className="flex items-center gap-[var(--space-2)]">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="w-8 h-8 p-0" aria-label="Formatting options">
-                  <Type className="w-4 h-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Formatting options</TooltipContent>
-            </Tooltip>
+            
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="w-8 h-8 p-0" aria-label="Attach file" onClick={handleAttachFile}>

@@ -1,6 +1,9 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { ComposeChips } from './ComposeChips';
 import { EmailChip, RecipientField } from './types';
+import { Input } from '../../ui/input';
+import { Button } from '../../ui/button';
 
 interface ComposeEnvelopeProps {
   to: EmailChip[];
@@ -9,10 +12,16 @@ interface ComposeEnvelopeProps {
   subject: string;
   showCc: boolean;
   showBcc: boolean;
+  collapsed: boolean;
+  focusField?: 'to' | 'cc' | 'bcc' | null;
+  onCollapsedChange: (collapsed: boolean) => void;
   onUpdateRecipients: (field: RecipientField, chips: EmailChip[]) => void;
   onUpdateSubject: (subject: string) => void;
   onShowCcBcc: (field: 'cc' | 'bcc') => void;
   onHideCcBcc: (field: 'cc' | 'bcc') => void;
+  toPlaceholder?: string;
+  ccPlaceholder?: string;
+  bccPlaceholder?: string;
 }
 
 export function ComposeEnvelope({
@@ -22,210 +31,186 @@ export function ComposeEnvelope({
   subject,
   showCc,
   showBcc,
+  collapsed,
+  focusField = null,
+  onCollapsedChange,
   onUpdateRecipients,
   onUpdateSubject,
   onShowCcBcc,
-  onHideCcBcc
+  onHideCcBcc,
+  toPlaceholder = '',
+  ccPlaceholder = '',
+  bccPlaceholder = '',
 }: ComposeEnvelopeProps) {
-  const subjectInputRef = useRef<HTMLInputElement>(null);
-  const [focusIn, setFocusIn] = useState<'to'|'cc'|'bcc'|null>(null);
-  
-  // Determine if we should show expanded view
-  const isExpanded = focusIn === 'to' || to.length > 0 || cc.length > 0 || bcc.length > 0 || showCc || showBcc;
+  const envelopeRef = useRef<HTMLElement>(null);
 
-  const handleCcClick = useCallback(() => {
-    onShowCcBcc('cc');
-  }, [onShowCcBcc]);
-
-  const handleBccClick = useCallback(() => {
-    onShowCcBcc('bcc');
-  }, [onShowCcBcc]);
-
-  const handleCcBlur = useCallback(() => {
-    if (cc.length === 0) {
-      onHideCcBcc('cc');
-    }
-  }, [cc.length, onHideCcBcc]);
-
-  const handleBccBlur = useCallback(() => {
-    if (bcc.length === 0) {
-      onHideCcBcc('bcc');
-    }
-  }, [bcc.length, onHideCcBcc]);
-
-  const handleSubjectKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      // Focus editor (will be handled by parent)
-      const editorElement = document.querySelector('[data-compose-editor]') as HTMLElement;
-      editorElement?.focus();
+  const handleSubjectKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const editor = document.querySelector('[data-compose-editor]') as HTMLElement | null;
+      editor?.focus();
     }
   }, []);
 
-  const handleEnterRecipients = useCallback(() => {
-    setFocusIn('to');
-  }, []);
+  // Handle clicking outside to collapse envelope
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        envelopeRef.current &&
+        !envelopeRef.current.contains(event.target as Node) &&
+        !collapsed
+      ) {
+        // Collapse envelope and hide Cc/Bcc fields
+        onCollapsedChange(true);
+        if (showCc) onHideCcBcc('cc');
+        if (showBcc) onHideCcBcc('bcc');
+      }
+    };
 
-  return (
-    <div role="region" aria-label="Message recipients">
-      <section className="px-[var(--space-4)] py-[var(--space-2)] space-y-[var(--space-2)]">
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [collapsed, showCc, showBcc, onCollapsedChange, onHideCcBcc]);
+
+
+
+  const fieldLabelClass = "text-sm text-[var(--text-secondary)] font-normal";
+  const labelWidth = "w-[36px] flex-shrink-0";
+
+  if (collapsed) {
+    return (
+      <section ref={envelopeRef} className="px-4 py-3 space-y-3" role="group" aria-label="Compose envelope">
+        <button
+          type="button"
+          className="flex h-9 w-full items-center text-left text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          onClick={() => onCollapsedChange(false)}
+        >
+          <span className={fieldLabelClass}>Recipients</span>
+        </button>
         
-        {!isExpanded ? (
-          /* Collapsed State - Single "Recipients" line */
-          <>
-            <button 
-              onClick={handleEnterRecipients}
-              className="flex items-center h-9 w-full text-left"
-            >
-              <span className="text-[var(--text-secondary)]">Recipients</span>
-              <span className="ml-auto text-xs text-[var(--text-tertiary)]">
-                <a
-                  onClick={(e) => { e.stopPropagation(); onShowCcBcc('cc'); }}
-                  className="underline hover:text-[var(--text-primary)]"
-                >
-                  Cc
-                </a>
-                <a
-                  onClick={(e) => { e.stopPropagation(); onShowCcBcc('bcc'); }}
-                  className="underline hover:text-[var(--text-primary)] ml-2"
-                >
-                  Bcc
-                </a>
-              </span>
-            </button>
-            <div className="h-px bg-[var(--border-subtle)]" />
-          </>
-        ) : (
-          /* Expanded State - Detailed To/Cc/Bcc fields */
-          <div onBlur={() => {
-            const none = to.length === 0 && cc.length === 0 && bcc.length === 0;
-            if (none && !showCc && !showBcc) setFocusIn(null);
-          }}> 
-            {/* To Field */}
-            <div className="flex items-start gap-2 py-[6px]">
-              <label className="w-16 text-sm text-[var(--text-secondary)] pt-[2px] flex-shrink-0">
-                To
-              </label>
-              <div className="flex-1">
-                <ComposeChips
-                  field="to"
-                  chips={to}
-                  placeholder="Recipients"
-                  onChange={(chips) => onUpdateRecipients('to', chips)}
-                  className="py-1"
-                  autoFocus={focusIn === 'to' && to.length === 0}
-                />
-              </div>
-              
-              {/* Cc/Bcc Links - only show if not already visible */}
-              {(!showCc || !showBcc) && (
-                <div className="ml-auto flex items-center gap-[var(--space-2)] text-xs text-[var(--text-secondary)] flex-shrink-0">
-                  {!showCc && (
-                    <button
-                      type="button"
-                      onClick={handleCcClick}
-                      className="underline hover:text-[var(--text-primary)] transition-colors"
-                    >
-                      Cc
-                    </button>
-                  )}
-                  {!showBcc && (
-                    <button
-                      type="button"
-                      onClick={handleBccClick}
-                      className="underline hover:text-[var(--text-primary)] transition-colors"
-                    >
-                      Bcc
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="h-px bg-[var(--border-default)]" />
-            
-            {/* Cc Field */}
-            {showCc && (
-              <>
-                <div className="flex items-start gap-2 py-[6px]">
-                  <label className="w-16 text-sm text-[var(--text-secondary)] pt-[2px] flex-shrink-0">
-                    Cc
-                  </label>
-                  <div className="flex-1">
-                    <ComposeChips
-                      field="cc"
-                      chips={cc}
-                      placeholder="Cc recipients"
-                      onChange={(chips) => onUpdateRecipients('cc', chips)}
-                      className="py-1"
-                    />
-                  </div>
-                  
-                  {/* Bcc Link - only show if Bcc not visible */}
-                  {!showBcc && (
-                    <div className="ml-auto text-xs text-[var(--text-secondary)] pt-[2px] flex-shrink-0">
-                      <button
-                        type="button"
-                        onClick={handleBccClick}
-                        className="underline hover:text-[var(--text-primary)] transition-colors"
-                      >
-                        Bcc
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="h-px bg-[var(--border-default)]" />
-              </>
-            )}
-            
-            {/* Bcc Field */}
-            {showBcc && (
-              <>
-                <div className="flex items-start gap-2 py-[6px]">
-                  <label className="w-16 text-sm text-[var(--text-secondary)] pt-[2px] flex-shrink-0">
-                    Bcc
-                  </label>
-                  <div className="flex-1">
-                    <ComposeChips
-                      field="bcc"
-                      chips={bcc}
-                      placeholder="Bcc recipients"
-                      onChange={(chips) => onUpdateRecipients('bcc', chips)}
-                      className="py-1"
-                    />
-                  </div>
-                </div>
-                <div className="h-px bg-[var(--border-default)]" />
-              </>
-            )}
-          </div>
-        )}
-        
-        {/* Subject Field - Always Visible */}
-        <div className="flex items-center h-9 gap-[var(--space-2)]">
-          <label className="text-sm text-[var(--text-secondary)] w-[56px] flex-shrink-0 sr-only">
-            Subject
-          </label>
-          <input
-            ref={subjectInputRef}
-            type="text"
+        <div className="flex items-center gap-0 min-h-[36px]">
+          <span className={`${fieldLabelClass} ${labelWidth}`}>Subject</span>
+          <Input
             value={subject}
-            onChange={(e) => onUpdateSubject(e.target.value)}
-            onKeyDown={handleSubjectKeyDown}
-            placeholder="Subject"
-            className="
-              w-full bg-transparent outline-none
-              placeholder:text-[var(--text-tertiary)]
-              focus:outline-none focus:ring-0
-              focus:border-b-2 focus:border-[var(--primary)] focus:pb-0
-              border-b-2 border-transparent pb-0 transition-colors
-            "
-            aria-label="Email subject"
+            onChange={(event) => onUpdateSubject(event.target.value)}
+            onFocus={() => onCollapsedChange(false)}
+            placeholder=""
+            className="flex-1 border-none shadow-none bg-transparent px-0 text-sm focus-visible:ring-0 placeholder:text-[var(--text-tertiary)]"
           />
         </div>
         
-        {/* Final Divider */}
         <div className="h-px bg-[var(--border-subtle)]" />
       </section>
-    </div>
+    );
+  }
+
+  return (
+    <section ref={envelopeRef} className="px-4 py-3 space-y-2" role="group" aria-label="Compose envelope">
+      {/* From Field */}
+      <div className="flex items-center gap-0 min-h-[36px]">
+        <span className={`${fieldLabelClass} ${labelWidth}`}>From</span>
+        <Button
+          variant="ghost"
+          className="flex-1 justify-start px-0 h-auto py-1 text-sm font-normal text-[var(--text-primary)] hover:bg-transparent"
+          onClick={() => console.log('From dropdown')}
+        >
+          User Name &lt;user@domain.com&gt;
+          <ChevronDown className="ml-1 h-3 w-3 opacity-60" />
+        </Button>
+      </div>
+
+      {/* To Field */}
+      <div className="flex items-center gap-0 min-h-[36px]">
+        <span className={`${fieldLabelClass} ${labelWidth}`}>To</span>
+        <div className="flex-1 min-w-0">
+          <ComposeChips
+            field="to"
+            chips={to}
+            placeholder={toPlaceholder}
+            onChange={(chips) => onUpdateRecipients('to', chips)}
+            className="py-1"
+            autoFocus={focusField === 'to'}
+          />
+        </div>
+        
+        {/* Cc Bcc Links - Only show when neither is active */}
+        {!showCc && !showBcc && (
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              onClick={() => onShowCcBcc('cc')}
+            >
+              Cc
+            </button>
+            <button
+              type="button"
+              className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              onClick={() => onShowCcBcc('bcc')}
+            >
+              Bcc
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Cc Field */}
+      {showCc && (
+        <div className="flex items-center gap-0 min-h-[36px]">
+          <span className={`${fieldLabelClass} ${labelWidth}`}>Cc</span>
+          <div className="flex-1 min-w-0">
+            <ComposeChips
+              field="cc"
+              chips={cc}
+              placeholder={ccPlaceholder}
+              onChange={(chips) => onUpdateRecipients('cc', chips)}
+              className="py-1"
+              autoFocus={focusField === 'cc'}
+            />
+          </div>
+          
+          {/* Only show Bcc link when Bcc field isn't active */}
+          {!showBcc && (
+            <button
+              type="button"
+              className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] ml-auto"
+              onClick={() => onShowCcBcc('bcc')}
+            >
+              Bcc
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Bcc Field */}
+      {showBcc && (
+        <div className="flex items-center gap-0 min-h-[36px]">
+          <span className={`${fieldLabelClass} ${labelWidth}`}>Bcc</span>
+          <div className="flex-1 min-w-0">
+            <ComposeChips
+              field="bcc"
+              chips={bcc}
+              placeholder={bccPlaceholder}
+              onChange={(chips) => onUpdateRecipients('bcc', chips)}
+              className="py-1"
+              autoFocus={focusField === 'bcc'}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Subject Field */}
+      <div className="flex items-center gap-0 min-h-[36px]">
+        <span className={`${fieldLabelClass} ${labelWidth}`}>Subject</span>
+        <Input
+          value={subject}
+          onChange={(event) => onUpdateSubject(event.target.value)}
+          onKeyDown={handleSubjectKeyDown}
+          placeholder=""
+          className="flex-1 border-none shadow-none bg-transparent px-0 text-sm focus-visible:ring-0 placeholder:text-[var(--text-tertiary)]"
+        />
+      </div>
+      
+      <div className="h-px bg-[var(--border-subtle)]" />
+    </section>
   );
 }

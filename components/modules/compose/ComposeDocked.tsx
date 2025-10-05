@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Minus, ExternalLink, X } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
@@ -6,7 +6,7 @@ import { ComposeEnvelope } from './ComposeEnvelope';
 import { ComposeEditor } from './ComposeEditor';
 import { ComposeToolbar } from './ComposeToolbar';
 import { ComposeState, ComposeDraft, EmailChip, RecipientField } from './types';
-import { hasComposeContent, canSendCompose } from './utils';
+import { hasComposeContent, canSendCompose, createEmailChip } from './utils';
 
 interface ComposeDockedProps {
   open: boolean;
@@ -27,15 +27,44 @@ export function ComposeDocked({
   draftId,
   initialDraft
 }: ComposeDockedProps) {
+  const hydrateChips = useCallback((values?: (EmailChip | string)[]): EmailChip[] =>
+    (values ?? []).map((value) =>
+      typeof value === 'string' ? createEmailChip(value) : value,
+    ),
+  []);
+
   const [state, setState] = useState<ComposeState>({
-    to: initialDraft?.to || [],
-    cc: initialDraft?.cc || [],
-    bcc: initialDraft?.bcc || [],
+    to: hydrateChips(initialDraft?.to as (EmailChip | string)[] | undefined),
+    cc: hydrateChips(initialDraft?.cc as (EmailChip | string)[] | undefined),
+    bcc: hydrateChips(initialDraft?.bcc as (EmailChip | string)[] | undefined),
     subject: initialDraft?.subject || '',
     html: initialDraft?.html || '',
-    showCc: initialDraft?.cc?.length > 0 || false,
-    showBcc: initialDraft?.bcc?.length > 0 || false,
+    showCc: (initialDraft?.cc ?? []).length > 0,
+    showBcc: (initialDraft?.bcc ?? []).length > 0,
   });
+
+  const envelopeRef = useRef<HTMLDivElement | null>(null);
+  const [headerCollapsed, setHeaderCollapsed] = useState(() =>
+    state.to.length === 0 &&
+    state.cc.length === 0 &&
+    state.bcc.length === 0 &&
+    !state.showCc &&
+    !state.showBcc,
+  );
+  const [focusField, setFocusField] = useState<'to' | 'cc' | 'bcc' | null>(null);
+
+  const collapseEligible =
+    state.to.length === 0 &&
+    state.cc.length === 0 &&
+    state.bcc.length === 0 &&
+    !state.showCc &&
+    !state.showBcc;
+
+  useEffect(() => {
+    if (!collapseEligible) {
+      setHeaderCollapsed(false);
+    }
+  }, [collapseEligible]);
 
   // Handle escape key
   useEffect(() => {
@@ -79,17 +108,22 @@ export function ComposeDocked({
         cc: state.cc,
         bcc: state.bcc,
         subject: state.subject,
-        html: state.html
+        html: state.html,
       });
       onClose();
     }
   }, [state, onSend, onClose]);
 
   const updateRecipients = useCallback((field: RecipientField, chips: EmailChip[]) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      [field]: chips
+      [field]: chips,
+      showCc: field === 'cc' ? (prev.showCc || chips.length > 0) : prev.showCc,
+      showBcc: field === 'bcc' ? (prev.showBcc || chips.length > 0) : prev.showBcc,
     }));
+    if (chips.length > 0) {
+      setHeaderCollapsed(false);
+    }
   }, []);
 
   const updateSubject = useCallback((subject: string) => {
@@ -101,19 +135,64 @@ export function ComposeDocked({
   }, []);
 
   const showCcBcc = useCallback((field: 'cc' | 'bcc') => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      [`show${field.charAt(0).toUpperCase()}${field.slice(1)}`]: true
+      [`show${field.charAt(0).toUpperCase()}${field.slice(1)}`]: true,
     }));
+    setHeaderCollapsed(false);
+    setFocusField(field);
   }, []);
 
   const hideCcBcc = useCallback((field: 'cc' | 'bcc') => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       [field]: [],
-      [`show${field.charAt(0).toUpperCase()}${field.slice(1)}`]: false
+      [`show${field.charAt(0).toUpperCase()}${field.slice(1)}`]: false,
     }));
-  }, []);
+    if (collapseEligible) {
+      setHeaderCollapsed(true);
+    }
+  }, [collapseEligible]);
+
+  useEffect(() => {
+    const resetFocus = window.setTimeout(() => setFocusField(null), 120);
+    return () => window.clearTimeout(resetFocus);
+  }, [focusField]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (event: Event) => {
+      if (!envelopeRef.current) return;
+      if (envelopeRef.current.contains(event.target as Node)) return;
+      if (collapseEligible) {
+        setHeaderCollapsed(true);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('focusin', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('focusin', handleOutside);
+    };
+  }, [open, collapseEligible]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return;
+      const key = event.key.toLowerCase();
+      if (key === 'c') {
+        event.preventDefault();
+        showCcBcc('cc');
+      }
+      if (key === 'b') {
+        event.preventDefault();
+        showCcBcc('bcc');
+      }
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [open, showCcBcc]);
 
   if (!open) return null;
 
@@ -197,25 +276,42 @@ export function ComposeDocked({
       </header>
 
       {/* Envelope Section */}
-      <ComposeEnvelope
-        to={state.to}
-        cc={state.cc}
-        bcc={state.bcc}
-        subject={state.subject}
-        showCc={state.showCc}
-        showBcc={state.showBcc}
-        onUpdateRecipients={updateRecipients}
-        onUpdateSubject={updateSubject}
-        onShowCcBcc={showCcBcc}
-        onHideCcBcc={hideCcBcc}
-      />
+      <div ref={envelopeRef}>
+        <ComposeEnvelope
+          to={state.to}
+          cc={state.cc}
+          bcc={state.bcc}
+          subject={state.subject}
+          showCc={state.showCc}
+          showBcc={state.showBcc}
+          collapsed={collapseEligible && headerCollapsed}
+          focusField={focusField}
+          onCollapsedChange={(next) => {
+            if (!collapseEligible) {
+              setHeaderCollapsed(false);
+              return;
+            }
+            setHeaderCollapsed(next);
+            if (!next) {
+              setFocusField('to');
+            }
+          }}
+          onUpdateRecipients={updateRecipients}
+          onUpdateSubject={updateSubject}
+          onShowCcBcc={showCcBcc}
+          onHideCcBcc={hideCcBcc}
+          toPlaceholder=""
+          ccPlaceholder=""
+          bccPlaceholder=""
+        />
+      </div>
 
       {/* Editor Section */}
       <div className="flex-1 flex flex-col min-h-0">
         <ComposeEditor
           html={state.html}
           onUpdateHtml={updateHtml}
-          placeholder="Write your message…"
+          placeholder=""
         />
         
         {/* Toolbar */}

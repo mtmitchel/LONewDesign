@@ -51,9 +51,14 @@
   /* Backdrop */
   --overlay-scrim: rgba(0, 0, 0, 0.35);
   --overlay-blur: 4px;
-  --overlay-gutter: 16px; /* safe edge padding */
+  --overlay-gutter: 12px; /* tighter safe edge padding */
   --modal-inner-x: var(--space-4);
   --modal-inner-y: var(--space-3);
+
+  /* Section grouping for housed mid-zone */
+  --section-bg: var(--bg-surface-elevated);
+  --section-radius: var(--radius-md);
+  --section-border: var(--border-subtle);
 
   /* Toolbars */
   --toolbar-h: 56px; /* header/footer height */
@@ -63,7 +68,13 @@
   --content-measure: 72ch;       /* email body measure */
 
   /* Inline reply */
+  --reply-editor-min-h: 160px;
   --reply-editor-max-h: 360px;
+  --reply-toolbar-h: 36px;
+
+  /* Mail overlay header/footer heights */
+  --email-header-height: 56px;
+  --email-footer-height: 48px;
 
   --font-size: 16px;
   

@@ -103,48 +103,6 @@ export function MasterComponentsGuide() {
         </CardContent>
       </Card>
 
-      {/* ComposeModal Master Component */}
-      <Card className="bg-[var(--bg-surface)]">
-        <CardHeader>
-          <CardTitle>ComposeModal Master Component</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-4 bg-[var(--bg-surface-elevated)] rounded-[var(--radius-md)] border border-[var(--border-default)]">
-            <h3 className="font-[var(--font-weight-semibold)] mb-3">Specifications</h3>
-            <div className="grid grid-cols-2 gap-4 text-[var(--text-sm)]">
-              <div>
-                <strong>Width:</strong> <code>var(--compose-modal-width)</code> (600px)
-              </div>
-              <div>
-                <strong>Height:</strong> <code>var(--compose-modal-height)</code> (500px)
-              </div>
-              <div>
-                <strong>Toolbar Height:</strong> <code>var(--compose-toolbar-height)</code> (48px)
-              </div>
-              <div>
-                <strong>Editor Min Height:</strong> <code>var(--compose-editor-min-height)</code> (200px)
-              </div>
-              <div>
-                <strong>Border Radius:</strong> <code>var(--radius-md)</code> (8px)
-              </div>
-              <div>
-                <strong>Max Height:</strong> 90vh (responsive)</div>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-[var(--font-weight-medium)]">Key Features:</h4>
-            <ul className="list-disc list-inside text-[var(--text-sm)] text-[var(--text-secondary)] space-y-1">
-              <li>Centered modal with backdrop</li>
-              <li>Recipient tag system with validation</li>
-              <li>Rich text formatting toolbar</li>
-              <li>Flexible content area with minimum height</li>
-              <li>Attachment preview and management</li>
-              <li>Send/save draft controls</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Panel Toggle System */}
       <Card className="bg-[var(--bg-surface)]">

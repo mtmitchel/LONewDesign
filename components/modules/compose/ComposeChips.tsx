@@ -12,6 +12,7 @@ interface ComposeChipsProps {
   onChange: (chips: EmailChip[]) => void;
   className?: string;
   autoFocus?: boolean;
+  onBlur?: () => void;
 }
 
 export function ComposeChips({
@@ -21,9 +22,9 @@ export function ComposeChips({
   onChange,
   className = '',
   autoFocus = false,
+  onBlur,
 }: ComposeChipsProps) {
   const [inputValue, setInputValue] = useState('');
-  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -91,10 +92,10 @@ export function ComposeChips({
   }, [inputValue, addChips]);
 
   const handleInputBlur = useCallback(() => {
-    setFocused(false);
     if (inputValue.trim()) {
       addChips(inputValue);
     }
+    onBlur?.();
   }, [inputValue, addChips]);
 
   const handleContainerClick = useCallback(() => {
@@ -160,7 +161,6 @@ export function ComposeChips({
         onChange={(e) => setInputValue(e.target.value)}
         onKeyDown={handleInputKeyDown}
         onPaste={handleInputPaste}
-        onFocus={() => setFocused(true)}
         onBlur={handleInputBlur}
         placeholder={chips.length === 0 ? placeholder : ''}
         className="

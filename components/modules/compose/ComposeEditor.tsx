@@ -12,7 +12,7 @@ interface ComposeEditorProps {
 export function ComposeEditor({
   html,
   onUpdateHtml,
-  placeholder = 'Write your message…',
+  placeholder = '',
   commands
 }: ComposeEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);

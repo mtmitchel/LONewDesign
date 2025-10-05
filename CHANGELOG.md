@@ -12,15 +12,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - components/modules/MailModule.tsx
   - components/modules/MailModuleTriPaneRefactored.tsx
   - components/modules/MailModuleTriPaneWithEdgeHandles.tsx
+- Moved legacy compose components to `archive/`:
+  - components/ComposeModal.tsx (superseded by ComposeDocked as default)
 
 ### Changed
 - Consolidated on `MailModuleTriPane` with bottom toggles only; removed edge-handle variants.
 - Navigation: removed 'TriPane Edge Handles' from sidebar; 'Mail' now routes to TriPane.
-
+- ComposeEnvelope: Complete Gmail-style progressive disclosure implementation
+- ComposeToolbar: Moved attachment icons (paperclip, link, emoji, image) next to Send button for better UX
+- Removed placeholder text from compose editor for cleaner interface
 
 ### Added
 - Compose: v1.0 baseline locked (dock-in-center, Gmail-parity envelope, two-tier toolbar, motion + radius tokens)
 - Visual polish: tokenized hover, hairline dividers, tertiary placeholder text, neutral header tone
+- ComposeEnvelope: Gmail-exact progressive disclosure (Recipients → From/To/Cc/Bcc → Subject)
+- ComposeEnvelope: Click-outside behavior to auto-collapse to minimal state
+- ComposeEnvelope: Perfect field alignment with uniform label widths and tight spacing
 
 ### Stability
 - This Compose baseline is approved for reuse across modules as the design-system reference for email composition

@@ -45,10 +45,10 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | Component | Status | Priority | Notes |
 |-----------|--------|----------|-------|
 | ComposeDocked | ✅ | High | Gmail-style bottom-right positioning |
-| ComposeEnvelope | ✅ | High | To/Cc/Bcc with email chips |
+| ComposeEnvelope | ✅ | High | **UPDATED:** Gmail-exact progressive disclosure (Recipients → From/To/Cc/Bcc → Subject), click-outside collapse, perfect field alignment |
 | ComposeChips | ✅ | High | Email parsing, validation, removal |
-| ComposeEditor | ✅ | High | Rich text with sanitization |
-| ComposeToolbar | ✅ | High | Complete formatting toolbar (two-tier Gmail layout) |
+| ComposeEditor | ✅ | High | Rich text with sanitization (removed placeholder text) |
+| ComposeToolbar | ✅ | High | **UPDATED:** Attachment icons moved next to Send button, two-tier Gmail layout |
 | Keyboard Shortcuts | ✅ | High | Ctrl+B/I/U, Ctrl+K, Ctrl+Enter |
 | Focus Management | ✅ | Medium | Tab order, focus trap, escape |
 | Docking (center pane) | ✅ | High | Absolute bottom-right; unaffected by Context pane |
