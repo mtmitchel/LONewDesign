@@ -7,6 +7,8 @@ export { BulkActionsBar } from './BulkActionsBar';
 export { EmailOverlay } from './EmailOverlay';
 export { InlineReply } from './InlineReply';
 export { default as ComposeModal } from './ComposeModal';
+export { SendButton } from './SendButton';
+export { FormattingToolbar } from './FormattingToolbar';
 export { useMailState } from './useMailState';
 export * from './types';
 export * from './mockData';

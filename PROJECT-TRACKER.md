@@ -42,7 +42,8 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | Search & Filters | ✅ | Medium | Advanced search implemented |
 | Responsive Design | ✅ | Medium | Mobile-friendly layout |
 | **Gmail Compose** | ✅ | High | **NEW: Docked compose with chips** |
-| Inline Reply UX | 🔄 | High | Current inline reply is still poorly designed and requires another iteration before sign-off |
+| **Shared Components** | ✅ | High | **NEW: SendButton.tsx + FormattingToolbar.tsx - True component sharing between ComposeModal and InlineReply** |
+| Inline Reply UX | ✅ | High | **UPDATED: Now uses shared SendButton + FormattingToolbar for pixel-perfect consistency with compose modal** |
 
 #### Compose Module ✅ COMPLETE (Baseline v1.0 Locked)
 

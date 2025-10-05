@@ -7,30 +7,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../ui/dropdown-menu';
-import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  ChevronDown,
-  Image,
-  Italic,
-  Link as LinkIcon,
-  List,
-  ListOrdered,
-  MoreHorizontal,
-  Palette,
-  Paperclip,
-  Quote,
-  Redo,
-  Send,
-  Smile,
-  Type,
-  Underline,
-  Undo,
-} from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { Separator } from '../../ui/separator';
 import { ComposeChips, createEmailChip, EmailChip } from '../compose';
+import { SendButton } from './SendButton';
+import { FormattingToolbar } from './FormattingToolbar';
 
 type ReplyMode = 'reply' | 'reply-all';
 
@@ -56,19 +37,6 @@ export interface InlineReplyProps {
   onOpenCompose?: () => void;
   onForward?: () => void;
 }
-
-const FONT_FAMILIES = [
-  { label: 'Sans Serif', value: 'sans-serif' },
-  { label: 'Serif', value: 'serif' },
-  { label: 'Monospace', value: 'monospace' },
-];
-
-const FONT_SIZES = [
-  { label: 'Small', value: 'small' },
-  { label: 'Normal', value: 'normal' },
-  { label: 'Large', value: 'large' },
-  { label: 'Huge', value: 'huge' },
-];
 
 export function InlineReply({
   to,
@@ -96,9 +64,6 @@ export function InlineReply({
   const [focusField, setFocusField] = useState<'to' | 'cc' | 'bcc' | null>('to');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const envelopeRef = useRef<HTMLDivElement>(null);
-
-  const fontFamilies = FONT_FAMILIES;
-  const fontSizes = FONT_SIZES;
 
   const stubAction = (label: string) => {
     console.log(`Inline reply toolbar action: ${label}`);
@@ -358,39 +323,16 @@ export function InlineReply({
         />
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between
-                        border-t border-[var(--border-subtle)]
-                        h-[var(--reply-toolbar-h)] mt-[var(--reply-gap-y)] px-[var(--reply-pad-x)]">
-          {/* left cluster */}
+        <div className="flex items-center justify-between mt-[var(--space-2)]
+                        border-t border-[var(--border-subtle)] pt-[var(--space-2)]">
           <div className="flex items-center gap-2">
-            <Button variant="solid" size="sm"
-                    onClick={handleSend}
-                    aria-keyshortcuts="Control+Enter Meta+Enter"
-                    disabled={!canSend}>
-              Send
-            </Button>
-            <Button variant="ghost" size="compact" title="Attach file" className="h-7 w-7 p-0">
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="compact" title="Bold" className="h-7 w-7 p-0">
-              <Bold className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="compact" title="Italic" className="h-7 w-7 p-0">
-              <Italic className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="compact" title="Link" className="h-7 w-7 p-0">
-              <LinkIcon className="h-4 w-4" />
-            </Button>
+            <SendButton disabled={!canSend} onClick={() => onSend({ mode: replyMode, text })} />
+            <FormattingToolbar onCommand={stubAction} />
           </div>
 
-          {/* right cluster */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" title="More options">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
             {onOpenCompose && (
-              <button className="text-xs text-[var(--text-secondary)] hover:underline"
-                      onClick={onOpenCompose}>
+              <button className="text-xs text-[var(--text-secondary)] hover:underline" onClick={onOpenCompose}>
                 Open in compose
               </button>
             )}
