@@ -27,7 +27,38 @@ export function FormattingToolbar({ onCommand }: Props) {
 
       <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
 
-      <Button variant="ghost" size="compact" title="Font"><Type className="h-4 w-4"/></Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="compact" title="Font family">
+            <Type className="h-4 w-4"/>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-40">
+          <DropdownMenuItem onClick={() => onCommand("font-arial")}>Arial</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-helvetica")}>Helvetica</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-times")}>Times New Roman</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-georgia")}>Georgia</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-courier")}>Courier New</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-verdana")}>Verdana</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="compact" title="Font size" className="px-2 text-xs">
+            12
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-20">
+          <DropdownMenuItem onClick={() => onCommand("font-size-8")}>8</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-size-10")}>10</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-size-12")}>12</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-size-14")}>14</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-size-16")}>16</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-size-18")}>18</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-size-24")}>24</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Button variant="ghost" size="compact" title="Bold" onClick={() => onCommand("bold")}><Bold className="h-4 w-4"/></Button>
       <Button variant="ghost" size="compact" title="Italic" onClick={() => onCommand("italic")}><Italic className="h-4 w-4"/></Button>
       <Button variant="ghost" size="compact" title="Underline" onClick={() => onCommand("underline")}><Underline className="h-4 w-4"/></Button>
@@ -79,10 +110,6 @@ export function FormattingToolbar({ onCommand }: Props) {
           <DropdownMenuItem onClick={() => onCommand("clear-formatting")}>
             <Eraser className="mr-2 h-4 w-4" />
             Clear Formatting
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onCommand("font-size")}>
-            <Type className="mr-2 h-4 w-4" />
-            Font Size
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

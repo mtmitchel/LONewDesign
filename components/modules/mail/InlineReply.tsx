@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../ui/dropdown-menu';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Trash2 } from 'lucide-react';
 import { Separator } from '../../ui/separator';
 import { ComposeChips, createEmailChip, EmailChip } from '../compose';
 import { SendButton } from './SendButton';
@@ -331,6 +331,15 @@ export function InlineReply({
           </div>
 
           <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onDiscard}
+              title="Discard draft"
+              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
             {onOpenCompose && (
               <button className="text-xs text-[var(--text-secondary)] hover:underline" onClick={onOpenCompose}>
                 Open in compose
