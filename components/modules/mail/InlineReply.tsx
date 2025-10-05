@@ -95,6 +95,7 @@ export function InlineReply({
   const [showBcc, setShowBcc] = useState(Boolean(bcc.length));
   const [focusField, setFocusField] = useState<'to' | 'cc' | 'bcc' | null>('to');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const envelopeRef = useRef<HTMLDivElement>(null);
 
   const fontFamilies = FONT_FAMILIES;
   const fontSizes = FONT_SIZES;
@@ -148,6 +149,24 @@ export function InlineReply({
       setFocusField('bcc');
     }
   }, [showBcc, bccChips.length]);
+
+  // Handle clicking outside to hide Cc/Bcc fields
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        envelopeRef.current &&
+        !envelopeRef.current.contains(event.target as Node) &&
+        (showCc || showBcc)
+      ) {
+        // Hide both Cc and Bcc fields when clicking outside
+        if (showCc) setShowCc(false);
+        if (showBcc) setShowBcc(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showCc, showBcc]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -206,7 +225,7 @@ export function InlineReply({
 
   return (
     <div className="w-full">
-      <div className="space-y-[var(--space-1)] text-sm">
+      <div ref={envelopeRef} className="space-y-[var(--space-1)] text-sm">
         <div className="flex items-start gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -259,8 +278,9 @@ export function InlineReply({
             />
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
-            {!showCc && (
+          {/* Cc Bcc Links - Only show when neither is active */}
+          {!showCc && !showBcc && (
+            <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
               <button
                 type="button"
                 className="underline hover:text-[var(--text-primary)]"
@@ -268,8 +288,6 @@ export function InlineReply({
               >
                 Cc
               </button>
-            )}
-            {!showBcc && (
               <button
                 type="button"
                 className="underline hover:text-[var(--text-primary)]"
@@ -277,8 +295,8 @@ export function InlineReply({
               >
                 Bcc
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {showCc && (
@@ -292,11 +310,20 @@ export function InlineReply({
                 placeholder=""
                 className="py-1"
                 autoFocus={focusField === 'cc'}
-                onBlur={() => {
-                  if (ccChips.length === 0) setShowCc(false);
-                }}
               />
             </div>
+            {/* Only show Bcc link when Bcc field isn't active */}
+            {!showBcc && (
+              <div className="flex items-center pt-[6px]">
+                <button
+                  type="button"
+                  className="text-xs text-[var(--text-secondary)] underline hover:text-[var(--text-primary)]"
+                  onClick={revealBcc}
+                >
+                  Bcc
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -311,9 +338,6 @@ export function InlineReply({
                 placeholder=""
                 className="py-1"
                 autoFocus={focusField === 'bcc'}
-                onBlur={() => {
-                  if (bccChips.length === 0) setShowBcc(false);
-                }}
               />
             </div>
           </div>
