@@ -189,8 +189,11 @@ export function InlineReply({
   };
 
   return (
-    <div className="w-full px-[var(--reply-pad-x)] py-[var(--reply-pad-y)] space-y-[var(--reply-gap-y)]">
-      <div ref={envelopeRef} className="space-y-[var(--reply-gap-y)] text-sm">
+    <section 
+      className="w-full px-[var(--space-4)] py-[var(--space-3)] bg-[var(--bg-surface-elevated)]"
+      aria-label="Reply composer"
+    >
+      <div ref={envelopeRef} className="space-y-[var(--space-2)] text-sm">
         <div className="flex items-start gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -319,13 +322,13 @@ export function InlineReply({
           className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--border-subtle)]
             bg-[var(--bg-surface)] px-[var(--reply-pad-x)] py-[var(--reply-pad-y)]
             min-h-[var(--reply-editor-min-h)] 
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)]"
           onKeyDown={handleTextAreaKeyDown}
         />
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between mt-[var(--space-2)]
-                        border-t border-[var(--border-subtle)] pt-[var(--space-2)]">
+        <div className="flex items-center justify-between mt-[var(--zone-gap-body-toolbar)]
+                        border-t border-[var(--border-subtle)] pt-[var(--zone-gap-body-toolbar)]">
           <div className="flex items-center gap-2">
             <SendButton disabled={!canSend} onClick={() => onSend({ mode: replyMode, text })} />
             <FormattingToolbar onCommand={stubAction} />
@@ -349,6 +352,6 @@ export function InlineReply({
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

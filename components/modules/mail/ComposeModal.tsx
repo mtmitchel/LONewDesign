@@ -104,7 +104,7 @@ export default function ComposeModal({
         </div>
 
         {/* Fields */}
-        <div className="flex-1 px-[var(--modal-inner-x)] py-[var(--modal-inner-y)] space-y-[var(--field-gap-y)]">
+        <div className="flex-1 px-[var(--space-4)] py-[var(--space-3)] space-y-[var(--field-gap-y)]">
           {/* Recipients row (simple input stub; wire to chips/autocomplete) */}
           <div className="flex items-start gap-3">
             <div className="text-[var(--text-tertiary)] pt-2 text-sm w-20 shrink-0">Recipients</div>
@@ -139,13 +139,13 @@ export default function ComposeModal({
               className="w-full min-h-[var(--compose-min-h)] resize-y bg-[var(--bg-surface)]
                          border border-[var(--border-subtle)] rounded-[var(--radius-sm)]
                          px-[var(--space-3)] py-[var(--space-2)] 
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)]"
             />
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="h-[var(--toolbar-h)] px-[var(--modal-inner-x)] border-t border-[var(--border-subtle)]
+        <div className="h-[var(--toolbar-h)] px-[var(--toolbar-pad-x)] py-[var(--toolbar-pad-y)] border-t border-[var(--border-subtle)]
                         bg-[var(--bg-surface-elevated)] flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="solid" size="sm" disabled={!canSend} onClick={doSend} aria-keyshortcuts="Control+Enter Meta+Enter">

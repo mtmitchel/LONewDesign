@@ -138,8 +138,8 @@ export function EmailOverlay({
         ref={modalRef}
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
-        className="flex w-full max-w-[var(--modal-max-w)] max-h-[var(--modal-max-h)] flex-col
-          overflow-hidden rounded-[var(--modal-radius)] border border-[var(--section-border)]
+        className="flex w-full max-w-[var(--modal-max-w-mail)] max-h-[var(--modal-max-h)] flex-col
+          overflow-hidden rounded-[var(--modal-radius)] border border-[var(--border-subtle)]
           bg-[var(--bg-surface)] shadow-[var(--modal-elevation)] duration-[var(--duration-base)]
           ease-[var(--easing-standard)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in
           motion-reduce:animate-none"
@@ -245,8 +245,8 @@ export function EmailOverlay({
                       <button
                         key={attachment.id}
                         type="button"
-                        className="group inline-flex max-w-[240px] items-center gap-2 truncate rounded-[var(--radius-md)]
-                          border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-2)]
+                        className="group inline-flex max-w-[28ch] items-center gap-[var(--pill-gap)] truncate rounded-[var(--pill-radius)]
+                          border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--pill-pad-x)] py-[var(--pill-pad-y)]
                           text-left text-sm text-[var(--text-primary)] transition-shadow hover:shadow-[var(--elevation-sm)]
                           shadow-inset"
                         title={`Download ${attachment.filename} (${attachment.size})`}

@@ -17,7 +17,7 @@ export function SendButton({ disabled, onClick, title = "Send" }: Props) {
       disabled={disabled}
       aria-keyshortcuts="Control+Enter Meta+Enter"
       title={`${title} (⌘/Ctrl+Enter)`}
-      className="min-w-[88px] justify-center focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
+      className="min-w-[88px] justify-center focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)]"
     >
       <Send className="mr-2 h-4 w-4" />
       {title}
