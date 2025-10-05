@@ -2,11 +2,13 @@ import React from 'react';
 import { Mail } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { PaneCaret, PaneFooter } from '../dev/PaneCaret';
 import { EmailOverlay } from './mail';
 import { ComposeDocked, ComposeDraft } from './compose';
 import { MailLeftPane } from './mail/MailLeftPane';
 import { MailCenterPane } from './mail/MailCenterPane';
 import { MailRightPane } from './mail/MailRightPane';
+import { CollapsedSidebarPanel } from './mail/CollapsedSidebarPanel';
 import { useMailState } from './mail/useMailState';
 import { folders, labels, emails } from './mail/mockData';
 
@@ -121,51 +123,9 @@ export function MailModuleTriPane() {
   return (
     <TooltipProvider>
       {/* Custom Tri-Pane Layout with Enhanced Toggle Controls */}
-      <div className="flex h-full bg-[var(--bg-canvas)] relative">
-        {/* Keyboard hint when left pane is collapsed */}
-        {!leftPaneVisible && (
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 z-10 opacity-40 hover:opacity-80 transition-opacity">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setLeftPaneVisible(true)}
-                  className="w-8 h-8 p-0 text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9]"
-                >
-                  <Mail size={16} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>Show mail sidebar (])</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
-        {/* Right pane keyboard hint when collapsed */}
-        {!rightPaneVisible && (
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 z-10 opacity-40 hover:opacity-80 transition-opacity">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setRightPaneVisible(true)}
-                  className="w-8 h-8 p-0 text-[#94A3B8] hover:text-[#64748B] hover:bg-[#F1F5F9]"
-                >
-                  <Mail size={16} />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left">
-                <p>Show context (\)</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
+      <div className="flex h-full bg-[var(--bg-canvas)] relative overflow-hidden">
         {/* Left Pane or Collapsed Bar */}
-        {leftPaneVisible && (
+        {leftPaneVisible ? (
           <div className="w-[var(--tripane-left-width)] border-r border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col">
             <MailLeftPane
               folders={folders}
@@ -175,6 +135,18 @@ export function MailModuleTriPane() {
               onComposeClick={() => setShowCompose(true)}
               onHidePane={() => setLeftPaneVisible(false)}
             />
+          </div>
+        ) : (
+          <div className="w-12 border-r border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col">
+            <div className="flex-1"></div>
+            <PaneFooter>
+              <PaneCaret
+                direction="right"
+                onClick={() => setLeftPaneVisible(true)}
+                tooltipText="Show mail sidebar"
+                shortcut="]"
+              />
+            </PaneFooter>
           </div>
         )}
         
@@ -260,10 +232,22 @@ export function MailModuleTriPane() {
           )}
         </div>
         
-        {/* Right Pane or Slim Toggle Handle */}
-        {rightPaneVisible && (
+        {/* Right Pane or Collapsed Bar */}
+        {rightPaneVisible ? (
           <div className="w-[var(--quick-panel-width)] border-l border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col">
             <MailRightPane onHidePane={() => setRightPaneVisible(false)} />
+          </div>
+        ) : (
+          <div className="w-12 border-l border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col">
+            <div className="flex-1"></div>
+            <PaneFooter>
+              <PaneCaret
+                direction="left"
+                onClick={() => setRightPaneVisible(true)}
+                tooltipText="Show context"
+                shortcut="\\"
+              />
+            </PaneFooter>
           </div>
         )}
       </div>

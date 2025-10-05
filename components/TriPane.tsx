@@ -97,7 +97,7 @@ export function TriPaneHeader({
 }) {
   return (
     <div className={cn(
-      "p-4 flex items-center gap-3 min-h-[60px] bg-[var(--bg-surface)] border-b border-[var(--border-default)]",
+      "p-4 flex items-center gap-3 h-[60px] bg-[var(--bg-surface)] border-b border-[var(--border-default)]",
       className
     )}>
       {children}
