@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
-import { Archive, Paperclip, Star, Trash, X } from 'lucide-react';
+import { Archive, Paperclip, Star, Trash, X, Reply, ReplyAll, Forward } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { InlineReply } from './InlineReply';
 
@@ -304,6 +304,7 @@ export function EmailOverlay({
                   title="Reply (R)"
                   aria-keyshortcuts="R"
                 >
+                  <Reply className="h-4 w-4 mr-2" />
                   Reply
                 </Button>
                 <Button
@@ -313,15 +314,17 @@ export function EmailOverlay({
                   title="Reply all (A)"
                   aria-keyshortcuts="A"
                 >
+                  <ReplyAll className="h-4 w-4 mr-2" />
                   Reply all
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={onForward}
                   title="Forward (F)"
                   aria-keyshortcuts="F"
                 >
+                  <Forward className="h-4 w-4 mr-2" />
                   Forward
                 </Button>
               </div>
