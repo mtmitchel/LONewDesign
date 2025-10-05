@@ -1,0 +1,395 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Compose editor placeholder */
+[data-compose-editor]:empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+/* Hide horizontal scrollbar utility */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+:root {
+  /* Radius & Motion */
+  --radius-full: 9999px;
+  --duration-fast: 150ms;
+  --duration-base: 200ms;
+  --easing-standard: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --easing-emphasized: cubic-bezier(0.2, 0.9, 0.1, 1);
+  --on-primary: var(--primary-foreground);
+  /* Elevation tokens for LibreOllama */
+  --elevation-sm: 0 1px 2px rgba(0,0,0,0.06);
+  --elevation-lg: 0 10px 30px rgba(0,0,0,0.12);
+  --elevation-xl: 0 24px 60px rgba(0,0,0,0.18);
+  /* Subtle border token maps to existing system default if not provided */
+  --border-subtle: var(--border-default);
+  --border-hairline: rgba(0,0,0,0.06);
+  --hover-bg: var(--bg-surface-elevated);
+
+  --font-size: 16px;
+  
+  /* LibreOllama Asana + Sunsama Design Tokens */
+  /* Canvas & Surfaces - Warm Off-White System */
+  --bg-canvas: hsl(60 9% 98%); /* #FAFAF7 - Warm off-white */
+  --bg-surface: hsl(0 0% 100%); /* #FFFFFF - Pure white surfaces */
+  --bg-surface-elevated: hsl(210 20% 95%); /* #F1F5F9 - Subtle elevation */
+  
+  /* Legacy aliases for backward compatibility */
+  --canvas-bg: var(--bg-canvas); /* #FAFAF7 */
+  --surface: var(--bg-surface); /* #FFFFFF */
+  --elevated: var(--bg-surface-elevated); /* #F1F5F9 */
+  
+  /* Primary Colors - Blue-Gray (Asana inspired) */
+  --primary: hsl(214 25% 27%); /* #334155 */
+  --primary-hover: hsl(220 39% 18%); /* #1E293B */
+  --primary-tint-5: hsl(214 25% 27% / 0.05);
+  --primary-tint-10: hsl(214 25% 27% / 0.1);
+  --primary-tint-15: hsl(214 25% 27% / 0.15);
+  --primary-tint-20: hsl(214 25% 27% / 0.2);
+  
+  /* Accent Color - Coral */
+  --accent-coral: hsl(0 85% 71%); /* #F87171 */
+  --accent-coral-hover: hsl(0 84% 50%); /* #DC2626 */
+  --accent-coral-tint-5: hsl(0 85% 71% / 0.05);
+  --accent-coral-tint-10: hsl(0 85% 71% / 0.1);
+  --accent-coral-tint-15: hsl(0 85% 71% / 0.15);
+  --accent-coral-tint-20: hsl(0 85% 71% / 0.2);
+  
+  /* Status Colors - Coral for urgent, Blue-Gray for neutral */
+  --success: hsl(160 50% 60%);
+  --warning: hsl(38 85% 63%);
+  --danger: var(--accent-coral); /* Use coral for urgent states */
+  --info: hsl(200 70% 65%);
+  --error: var(--danger); /* Alias for compatibility */
+  --urgent: var(--accent-coral); /* Explicit urgent state */
+  --neutral: var(--primary); /* Blue-gray for neutral tags */
+  
+  /* Text Colors - Higher contrast */
+  --text-primary: hsl(223 44% 12%); /* #111827 */
+  --text-secondary: hsl(215 25% 27%); /* #374151 */
+  --text-tertiary: hsl(215 16% 46%); /* softer for labels/placeholders */
+  
+  /* Borders - Warm neutral borders */
+  --border-subtle: hsl(220 13% 91%); /* #E5E7EB - Warm neutral */
+  --border-default: hsl(220 13% 91%); /* #E5E7EB - Consistent warm borders */
+  --border-divider: hsl(210 20% 95%); /* #F1F5F9 - Very light dividers for rows */
+  
+  /* Spacing & Layout - Complete Scale */
+  --space-1: 4px;   /* XS - Icon gaps, micro spacing */
+  --space-2: 8px;   /* S - Small gaps between related elements */
+  --space-3: 12px;  /* M - Standard spacing, button padding */
+  --space-4: 16px;  /* L - Panel padding, card spacing */
+  --space-5: 20px;  /* XL - Section spacing */
+  --space-6: 24px;  /* XXL - Large section gaps */
+  --space-8: 32px;  /* XXXL - Major layout spacing */
+  
+  /* Border Radius - Complete Scale */
+  --radius-sm: 6px;    /* Small - Buttons, small elements */
+  --radius-md: 8px;    /* Medium - Cards, panels */
+  --radius-lg: 12px;   /* Large - Modals, major containers */
+  --radius-pill: 9999px; /* Pills, badges */
+  
+  /* Typography Scale - Complete Font Sizes */
+  --text-xs: 0.75rem;   /* 12px - Labels, captions */
+  --text-sm: 0.875rem;  /* 14px - Body text, descriptions */
+  --text-base: 1rem;    /* 16px - Default body text */
+  --text-lg: 1.125rem;  /* 18px - Subheadings */
+  --text-xl: 1.25rem;   /* 20px - Section headings */
+  --text-2xl: 1.5rem;   /* 24px - Page titles */
+  
+  /* Font Weights - Complete Scale */
+  --font-weight-normal: 400;    /* Body text */
+  --font-weight-medium: 500;    /* Labels, buttons */
+  --font-weight-semibold: 600;  /* Subheadings */
+  --font-weight-bold: 700;      /* Main headings */
+  
+  /* Button Variants - Asana + Sunsama System */
+  --btn-primary-bg: var(--primary); /* #334155 */
+  --btn-primary-hover: var(--primary-hover); /* #1E293B */
+  --btn-primary-text: hsl(0 0% 100%);
+  
+  --btn-secondary-bg: var(--accent-coral); /* #F87171 */
+  --btn-secondary-hover: var(--accent-coral-hover); /* #DC2626 */
+  --btn-secondary-text: hsl(0 0% 100%);
+  
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover: var(--bg-surface-elevated); /* #F1F5F9 */
+  --btn-ghost-border: var(--border-default); /* #E5E7EB */
+  --btn-ghost-text: var(--primary); /* #334155 */
+  
+  /* Component-Specific Tokens */
+  
+  /* Standardized Pane Caret Colors */
+  --caret-rest: #94A3B8;           /* slate-400 - Default caret color */
+  --caret-hover: #64748B;          /* slate-500 - Hover state */
+  --caret-active: #334155;         /* primary - Active/pressed state */
+  --caret-disabled: #CBD5E1;       /* slate-300 - Disabled state */
+  --caret-hover-bg: #F1F5F9;       /* Hover background */
+  
+  /* Mail List Rows */
+  --mail-row-height: 60px;          /* Email list item height */
+  --mail-row-padding-y: 8px;        /* Top/bottom row padding */
+  --mail-row-padding-x: 16px;       /* Left/right row padding */
+  --mail-avatar-size: 28px;         /* Email sender avatar */
+  --mail-row-gap: 12px;             /* Gap between row elements */
+  --mail-row-hover-bg: var(--bg-surface-elevated); /* Row hover state */
+  
+  /* Header Strip */
+  --header-height: 60px;            /* TriPane header height */
+  --header-bg: var(--bg-surface);   /* Header background color */
+  --header-border: 1px solid var(--border-default); /* Bottom border */
+  --header-padding-x: 16px;         /* Left/right padding */
+  
+  /* Quick Actions Panel */
+  --quick-panel-width: 320px;       /* Right panel width */
+  --quick-panel-bg: var(--bg-surface); /* Panel background */
+  --quick-panel-border: 1px solid var(--border-default); /* Left border */
+  --quick-tile-size: 80px;          /* Quick action tile height */
+  --quick-tile-gap: 12px;           /* Gap between tiles */
+  --quick-tile-padding: 16px;       /* Internal tile padding */
+  --quick-tile-radius: 8px;         /* Tile border radius */
+  
+  /* Email Modal/Overlay */
+  --email-modal-width: 700px;       /* Email modal width */
+  --email-modal-max-width: 90vw;    /* Responsive max width */
+  --email-modal-padding: 20px;      /* Internal modal padding */
+  --email-header-height: 56px;      /* Modal header height */
+  --email-footer-height: 64px;      /* Modal footer height */
+  
+  /* Compose Modal */
+  --compose-modal-width: 600px;     /* Compose modal width (legacy center modal) */
+  --compose-modal-height: 500px;    /* Compose modal height (legacy center modal) */
+  --compose-toolbar-height: 48px;   /* Formatting toolbar */
+  --compose-editor-min-height: 200px; /* Editor minimum height */
+  
+  /* Compose Docked (Gmail-style) */
+  --compose-docked-width: 720px;    /* Docked compose width */
+  --compose-docked-min-width: 560px; /* Docked compose minimum width */
+  --compose-docked-height: 560px;   /* Docked compose height */
+  --compose-docked-margin: 16px;    /* Bottom/right margin from screen edge */
+  --compose-header-height: 40px;    /* Compact Gmail-style header */
+  --compose-header-bg: var(--color-primary-tint-10); /* Header background tint */
+  --compose-divider: var(--color-border); /* Envelope dividers */
+  --compose-border: 1px solid var(--border-default); /* Border style */
+  --compose-shadow: 0 10px 30px rgba(0,0,0,0.12); /* Drop shadow */
+  
+  /* Compose Toolbar */
+  --compose-toolbar-height: 48px;   /* Toolbar height */
+  --compose-toolbar-bg: var(--bg-surface-elevated); /* Toolbar background */
+  --compose-toolbar-border: var(--border-default); /* Toolbar border */
+  --compose-toolbar-gap: var(--space-2); /* Gap between toolbar items */
+  
+  /* Button System - Complete Sizing */
+  --btn-primary-height: 40px;       /* Standard button height */
+  --btn-primary-padding-x: 16px;    /* Left/right padding */
+  --btn-primary-radius: 6px;        /* Button corner radius */
+  
+  /* Layout System */
+  --sidebar-width: 280px;           /* Expanded sidebar width */
+  --sidebar-collapsed-width: 60px;  /* Collapsed sidebar width */
+  --sidebar-bg: var(--bg-surface);  /* Sidebar background */
+  --sidebar-border: 1px solid var(--border-default); /* Right border */
+  
+  /* TriPane Layout */
+  --tripane-left-width: 280px;      /* Left panel width */
+  --tripane-right-width: 320px;     /* Right panel width */
+  --tripane-center-min: 400px;      /* Center panel minimum */
+  --tripane-gap: 0px;               /* Gap between panels */
+  --tripane-border: 1px solid var(--border-default); /* Panel separators */
+  
+  /* Semantic mappings for shadcn compatibility - Blue-Gray & Coral system */
+  --background: var(--bg-canvas);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-surface);
+  --popover-foreground: var(--text-primary);
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: var(--accent-coral); /* Coral for secondary actions */
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: var(--bg-surface-elevated);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--primary-tint-10);
+  --accent-foreground: var(--primary);
+  --destructive: var(--accent-coral); /* Coral for destructive actions */
+  --destructive-foreground: hsl(0 0% 100%);
+  --border: var(--border-default);
+  --input: transparent;
+  --input-background: var(--bg-surface);
+  --switch-background: var(--border-default);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: var(--primary);
+  --chart-1: var(--primary);
+  --chart-2: var(--accent-coral);
+  --chart-3: var(--success);
+  --chart-4: var(--warning);
+  --chart-5: var(--info);
+  --radius: 0.5rem;
+  --sidebar: var(--bg-surface);
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: hsl(0 0% 100%);
+  --sidebar-accent: var(--primary-tint-10);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--primary);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      line-height: 1.6;
+    }
+
+    h2 {
+      font-size: var(--text-xl);
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    h3 {
+      font-size: var(--text-lg);
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    h4 {
+      font-size: var(--text-base);
+      font-weight: 600;
+      line-height: 1.6;
+    }
+
+    p {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.6;
+    }
+
+    label {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.6;
+    }
+
+    button {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.6;
+    }
+
+    input {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.6;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
