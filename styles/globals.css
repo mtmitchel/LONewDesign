@@ -55,8 +55,12 @@
   --compose-min-h: 360px;
   --compose-max-h: 88dvh;
 
+  /* Reply surface */
+  --reply-bg: transparent;
+  --reply-divider: var(--border-subtle);
+
   /* Editor */
-  --editor-min-h: 160px;              /* ↑ more room to write */
+  --editor-min-h: 168px;               /* more room to write */
   --editor-pad-x: var(--space-4);
   --editor-pad-y: var(--space-3);
 
@@ -70,14 +74,17 @@
   --modal-inner-y: var(--space-3);  /* 12 */
   --field-gap-y: var(--space-3);
 
-  /* Toolbar + controls */
+  /* Toolbar (compact, ghost) */
   --toolbar-h: 32px;                   /* was 40px */
+  --toolbar-compact-h: 32px;           /* compact height */
   --toolbar-pad-x: var(--space-2);     /* was space-3 */
   --toolbar-pad-y: var(--space-1);     /* was space-2 */
   --toolbar-gap: var(--space-2);       /* tighter cluster */
   --toolbar-icon-size: 16px;           /* was 18–20 visually */
   --toolbar-btn-pad-x: var(--space-2); /* small click targets but WCAG-safe */
   --toolbar-btn-pad-y: var(--space-1);
+  --toolbar-dim: 0.64;                 /* idle opacity */
+  --toolbar-hover: 1;
 
   /* Compact spacing rhythm for inline composer */
   --reply-pad-x: var(--space-3);      /* 12px */

@@ -190,7 +190,8 @@ export function InlineReply({
 
   return (
     <section 
-      className="w-full px-[var(--space-4)] py-[var(--space-3)] bg-[var(--bg-surface-elevated)]"
+      className="group w-full px-[var(--space-4)] pt-[var(--space-3)] pb-[var(--space-2)]
+                 border-t border-[var(--reply-divider)] bg-[var(--reply-bg)]"
       aria-label="Reply composer"
     >
       <div ref={envelopeRef} className="space-y-[var(--space-2)] text-sm">
@@ -312,22 +313,31 @@ export function InlineReply({
         )}
       </div>
 
-      {/* Editor container */}
-      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)]
+      {/* Editor - transparent, ring only on focus */}
+      <div className="relative overflow-hidden
                       focus-within:ring-2 focus-within:ring-[var(--focus-ring)]
-                      focus-within:ring-offset-[var(--focus-offset)] overflow-hidden">
+                      focus-within:ring-offset-[var(--focus-offset)]
+                      rounded-[var(--radius-md)]">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="Write your reply..."
-          className="w-full resize-none bg-[var(--bg-surface)] px-[var(--editor-pad-x)] py-[var(--editor-pad-y)]
+          className="w-full resize-none bg-transparent px-[var(--editor-pad-x)] py-[var(--editor-pad-y)]
             min-h-[var(--editor-min-h)] border-0 focus-visible:outline-none"
           onKeyDown={handleTextAreaKeyDown}
         />
 
-        {/* Compact toolbar */}
-        <FormattingToolbar onCommand={stubAction} density="compact" />
+        {/* Toolbar - compact, ghost, dims until focus */}
+        <FormattingToolbar 
+          onCommand={stubAction} 
+          density="compact" 
+          tone="ghost"
+          className="mt-[var(--zone-gap-body-toolbar)]
+                     opacity-[var(--toolbar-dim)]
+                     group-focus-within:opacity-[var(--toolbar-hover)]
+                     motion-safe:transition-opacity"
+        />
       </div>
 
       {/* Send row - tight spacing */}

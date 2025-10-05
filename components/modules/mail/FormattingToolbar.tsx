@@ -14,23 +14,29 @@ import {
 } from '../../ui/dropdown-menu';
 
 type Density = "comfortable" | "compact";
+type Tone = "surface" | "ghost"; // ghost = transparent chrome
 
 type Props = {
   onCommand: (cmd: string) => void; // wire this to your editor
   density?: Density;
+  tone?: Tone;
   className?: string;
 };
 
-export function FormattingToolbar({ onCommand, density = "comfortable", className }: Props) {
+export function FormattingToolbar({ onCommand, density = "comfortable", tone = "surface", className }: Props) {
   const isCompact = density === "compact";
+  const isGhost = tone === "ghost";
   const iconSize = isCompact ? 16 : 18;
   const buttonSize = isCompact ? "compact" : "compact";
   
   return (
     <div className={[
-      "flex items-center overflow-x-auto bg-[var(--bg-surface-elevated)]",
+      "flex items-center overflow-x-auto",
+      isGhost 
+        ? "bg-transparent border-0" 
+        : "bg-[var(--bg-surface-elevated)] border-t border-[var(--border-subtle)]",
       isCompact
-        ? "h-[var(--toolbar-h)] px-[var(--toolbar-pad-x)] py-[var(--toolbar-pad-y)] gap-[var(--toolbar-gap)]"
+        ? "h-[var(--toolbar-compact-h)] px-[var(--toolbar-pad-x)] py-[var(--toolbar-pad-y)] gap-[var(--toolbar-gap)]"
         : "h-[40px] px-[var(--space-3)] py-[var(--space-2)] gap-[var(--space-3)] rounded-[var(--radius-full)]",
       className,
     ].filter(Boolean).join(" ")}
@@ -43,7 +49,7 @@ export function FormattingToolbar({ onCommand, density = "comfortable", classNam
         <Redo2 style={{ width: iconSize, height: iconSize }} />
       </Button>
 
-      <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
+      <div className={`w-px h-4 mx-1 ${isGhost ? 'bg-[var(--border-subtle)]/60' : 'bg-[var(--border-subtle)]'}`} />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -93,7 +99,7 @@ export function FormattingToolbar({ onCommand, density = "comfortable", classNam
         <Highlighter style={{ width: iconSize, height: iconSize }} />
       </Button>
 
-      <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
+      <div className={`w-px h-4 mx-1 ${isGhost ? 'bg-[var(--border-subtle)]/60' : 'bg-[var(--border-subtle)]'}`} />
 
       <Button variant="ghost" size={buttonSize} title="Align left" onClick={() => onCommand("align-left")}>
         <AlignLeft style={{ width: iconSize, height: iconSize }} />
@@ -105,7 +111,7 @@ export function FormattingToolbar({ onCommand, density = "comfortable", classNam
         <AlignRight style={{ width: iconSize, height: iconSize }} />
       </Button>
 
-      <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
+      <div className={`w-px h-4 mx-1 ${isGhost ? 'bg-[var(--border-subtle)]/60' : 'bg-[var(--border-subtle)]'}`} />
 
       <Button variant="ghost" size={buttonSize} title="Bulleted list" onClick={() => onCommand("ul")}>
         <List style={{ width: iconSize, height: iconSize }} />
@@ -126,7 +132,7 @@ export function FormattingToolbar({ onCommand, density = "comfortable", classNam
         <Image style={{ width: iconSize, height: iconSize }} />
       </Button>
 
-      <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
+      <div className={`w-px h-4 mx-1 ${isGhost ? 'bg-[var(--border-subtle)]/60' : 'bg-[var(--border-subtle)]'}`} />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
