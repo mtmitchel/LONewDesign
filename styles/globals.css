@@ -60,31 +60,30 @@
   --reply-divider: var(--border-subtle);
 
   /* Editor */
-  --editor-min-h: 168px;               /* more room to write */
+  --editor-min-h: 180px;
   --editor-pad-x: var(--space-4);
   --editor-pad-y: var(--space-3);
 
+  /* Toolbar (micro, ghost) */
+  --toolbar-h: 32px;                   /* was 40px */
+  --toolbar-compact-h: 32px;           /* compact height */
+  --toolbar-micro-h: 28px;
+  --toolbar-pad-x: var(--space-2);
+  --toolbar-gap: var(--space-2);
+  --toolbar-icon-size: 14px;
+  --toolbar-btn-pad-x: var(--space-2);
+  --toolbar-btn-pad-y: var(--space-1);
+  --toolbar-dim: 0.56;                 /* idle */
+  --toolbar-hover: 1;                  /* focus */
+
   /* Rhythm zones */
-  --zone-gap-header-body: var(--space-2);     /* tighter */
-  --zone-gap-body-toolbar: var(--space-2);
-  --zone-gap-toolbar-bottom: var(--space-2);  /* tighter send row spacing */
+  --gap-body-toolbar: var(--space-2);
+  --gap-toolbar-bottom: var(--space-2);
 
   /* Padding rhythm */
   --modal-inner-x: var(--space-4);  /* 16 */
   --modal-inner-y: var(--space-3);  /* 12 */
   --field-gap-y: var(--space-3);
-
-  /* Toolbar (compact, ghost) */
-  --toolbar-h: 32px;                   /* was 40px */
-  --toolbar-compact-h: 32px;           /* compact height */
-  --toolbar-pad-x: var(--space-2);     /* was space-3 */
-  --toolbar-pad-y: var(--space-1);     /* was space-2 */
-  --toolbar-gap: var(--space-2);       /* tighter cluster */
-  --toolbar-icon-size: 16px;           /* was 18–20 visually */
-  --toolbar-btn-pad-x: var(--space-2); /* small click targets but WCAG-safe */
-  --toolbar-btn-pad-y: var(--space-1);
-  --toolbar-dim: 0.64;                 /* idle opacity */
-  --toolbar-hover: 1;
 
   /* Compact spacing rhythm for inline composer */
   --reply-pad-x: var(--space-3);      /* 12px */

@@ -190,11 +190,13 @@ export function InlineReply({
 
   return (
     <section 
-      className="group w-full px-[var(--space-4)] pt-[var(--space-3)] pb-[var(--space-2)]
-                 border-t border-[var(--reply-divider)] bg-[var(--reply-bg)]"
+      className="group
+                 border-t border-border/20
+                 bg-transparent
+                 px-4 pt-3 pb-2"
       aria-label="Reply composer"
     >
-      <div ref={envelopeRef} className="space-y-[var(--space-2)] text-sm">
+      <div ref={envelopeRef} className="space-y-2 text-sm">
         <div className="flex items-start gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -313,40 +315,42 @@ export function InlineReply({
         )}
       </div>
 
-      {/* Editor - transparent, ring only on focus */}
-      <div className="relative overflow-hidden
-                      focus-within:ring-2 focus-within:ring-[var(--focus-ring)]
-                      focus-within:ring-offset-[var(--focus-offset)]
-                      rounded-[var(--radius-md)]">
+      {/* Editor - writing-first */}
+      <div className="relative focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-0 rounded-md">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="Write your reply..."
-          className="w-full resize-none bg-transparent px-[var(--editor-pad-x)] py-[var(--editor-pad-y)]
-            min-h-[var(--editor-min-h)] border-0 focus-visible:outline-none"
+          placeholder="Write your reply…"
+          className="w-full resize-none bg-transparent px-4 py-3 pr-12
+            min-h-[180px] border-0 focus-visible:outline-none"
           onKeyDown={handleTextAreaKeyDown}
         />
 
-        {/* Toolbar - compact, ghost, dims until focus */}
+        {/* Micro ghost toolbar - bottom overlay inside editor */}
         <FormattingToolbar 
           onCommand={stubAction} 
-          density="compact" 
+          density="micro" 
           tone="ghost"
-          className="mt-[var(--zone-gap-body-toolbar)]
-                     opacity-[var(--toolbar-dim)]
-                     group-focus-within:opacity-[var(--toolbar-hover)]
-                     motion-safe:transition-opacity"
+          className="pointer-events-auto
+                     absolute left-4 right-4 bottom-3
+                     h-7 opacity-60
+                     group-focus-within:opacity-100
+                     transition-opacity"
         />
       </div>
 
-      {/* Send row - tight spacing */}
-      <div className="flex items-center justify-between mt-[var(--zone-gap-toolbar-bottom)]">
-        <div className="flex items-center gap-2">
-          <SendButton disabled={!canSend} onClick={() => onSend({ mode: replyMode, text })} />
-        </div>
-
-        <div className="flex items-center gap-2">
+      {/* Send row - tight */}
+      <div className="flex items-center justify-between mt-2">
+        <SendButton 
+          size="sm" 
+          variant="solid" 
+          disabled={!canSend}
+          onClick={() => onSend({ mode: replyMode, text })}
+          aria-keyshortcuts="Meta+Enter,Control+Enter" 
+          title="Send (⌘/Ctrl+Enter)" 
+        />
+        <div className="flex items-center gap-3">
           <Button 
             variant="ghost" 
             size="sm" 

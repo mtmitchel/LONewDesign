@@ -260,27 +260,17 @@ export function EmailOverlay({
                 </div>
               )}
 
-              <div
-                className={
-                  hasAttachments
-                    ? 'border-t border-[var(--section-border)] bg-[var(--section-bg)]'
-                    : 'bg-[var(--section-bg)]'
-                }
-              >
-                {isComposing && (
-                  <div className="border-t border-[var(--border-subtle)] px-[var(--space-3)] py-[var(--space-2)]">
-                    <InlineReply
-                      to={[email.from]}
-                      mode={replyMode}
-                      onChangeMode={setReplyMode}
-                      onSend={handleSendInline}
-                      onDiscard={handleDiscardInline}
-                      onOpenCompose={onOpenCompose}
-                      onForward={onForward}
-                    />
-                  </div>
-                )}
-              </div>
+              {isComposing && (
+                <InlineReply
+                  to={[email.from]}
+                  mode={replyMode}
+                  onChangeMode={setReplyMode}
+                  onSend={handleSendInline}
+                  onDiscard={handleDiscardInline}
+                  onOpenCompose={onOpenCompose}
+                  onForward={onForward}
+                />
+              )}
             </section>
           )}
         </div>
