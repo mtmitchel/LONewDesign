@@ -356,7 +356,6 @@ export function InlineReply({
             min-h-[var(--reply-editor-min-h)] focus-visible:outline-none"
           onKeyDown={handleTextAreaKeyDown}
         />
-        </div>
 
         {/* Toolbar */}
         <div className="flex items-center justify-between
