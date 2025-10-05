@@ -48,6 +48,21 @@
   --modal-radius: var(--radius-lg);
   --modal-elevation: var(--elevation-xl);
 
+  /* Compose tokens */
+  --compose-min-w: 560px;
+  --compose-max-w: 920px;
+  --compose-min-h: 360px;
+  --compose-max-h: 88dvh;
+
+  /* Padding rhythm */
+  --modal-inner-x: var(--space-4);  /* 16 */
+  --modal-inner-y: var(--space-3);  /* 12 */
+  --field-gap-y: var(--space-3);
+
+  /* UI elements */
+  --chip-h: 28px;
+  --toolbar-h: 40px;
+
   /* Backdrop */
   --overlay-scrim: rgba(0, 0, 0, 0.35);
   --overlay-blur: 4px;

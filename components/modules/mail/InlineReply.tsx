@@ -225,7 +225,7 @@ export function InlineReply({
 
   return (
     <div className="w-full">
-      <div ref={envelopeRef} className="space-y-[var(--space-1)] text-sm">
+      <div ref={envelopeRef} className="space-y-[var(--field-gap-y)] text-sm">
         <div className="flex items-start gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -344,39 +344,63 @@ export function InlineReply({
         )}
       </div>
 
-      <div className="relative mt-[var(--space-1)]">
-        <textarea
-          ref={textareaRef}
-          rows={6}
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="Write your reply..."
-          className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--section-border)]
-            bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-3)]
-            min-h-[var(--reply-editor-min-h)] max-h-[var(--reply-editor-max-h)]
-            focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--primary-tint-20)]"
-          onKeyDown={handleTextAreaKeyDown}
-        />
-        <button
-          type="button"
-          className="absolute bottom-[var(--space-2)] text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
-          title="Show quoted content"
-          aria-label="Show quoted content"
-          style={{ left: 'calc(var(--space-3) + 4px)' }}
-          onClick={() => console.log('Show quoted content')}
-        >
-          ...
-        </button>
-      </div>
+      {/* Editor */}
+      <div className="mx-auto w-full max-w-[var(--content-measure)] mt-[var(--field-gap-y)]">
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Write your reply..."
+            className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--border-subtle)]
+              bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-3)]
+              min-h-[240px] max-h-[400px]
+              focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--primary-tint-20)]"
+            onKeyDown={handleTextAreaKeyDown}
+          />
+        </div>
 
-      <div className="mt-[var(--space-1)] flex flex-col gap-[var(--space-3)]">
-        <div
-          className="flex h-9 w-full items-center gap-1 overflow-x-auto rounded-[var(--radius-full)]
-            border border-[var(--section-border)] bg-[var(--bg-surface)] px-[var(--space-2)] hide-scrollbar"
-        >
-          <Button variant="ghost" size="compact" className="h-7 w-7 p-0" title="Undo" onClick={() => stubAction('undo')}>
-            <Undo className="h-3.5 w-3.5" />
-          </Button>
+        {/* Toolbar */}
+        <div className="h-[var(--toolbar-h)] flex items-center justify-between mt-[var(--space-2)]">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="solid" 
+              size="sm"
+              onClick={handleSend}
+              aria-keyshortcuts="Control+Enter Meta+Enter"
+              disabled={!canSend}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Send
+            </Button>
+            <Button variant="ghost" size="sm" title="Attach file">
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" title="Insert link">
+              <LinkIcon className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" title="Insert emoji">
+              <Smile className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            {onOpenCompose && (
+              <Button
+                variant="ghost" 
+                size="sm"
+                onClick={onOpenCompose}
+                className="text-xs"
+              >
+                Open in compose
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
           <Button variant="ghost" size="compact" className="h-7 w-7 p-0" title="Redo" onClick={() => stubAction('redo')}>
             <Redo className="h-3.5 w-3.5" />
           </Button>
