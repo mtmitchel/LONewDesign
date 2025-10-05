@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '../ui/button';
+import { Button } from '../../ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../ui/dropdown-menu';
+} from '../../ui/dropdown-menu';
 import {
   AlignCenter,
   AlignLeft,
@@ -29,8 +29,8 @@ import {
   Underline,
   Undo,
 } from 'lucide-react';
-import { Separator } from '../ui/separator';
-import { ComposeChips, createEmailChip, EmailChip } from '../modules/compose';
+import { Separator } from '../../ui/separator';
+import { ComposeChips, createEmailChip, EmailChip } from '../compose';
 
 type ReplyMode = 'reply' | 'reply-all';
 

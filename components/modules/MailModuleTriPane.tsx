@@ -2,7 +2,7 @@ import React from 'react';
 import { Mail } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { EmailOverlay } from '../mail';
+import { EmailOverlay } from './mail';
 import { ComposeDocked, ComposeDraft } from './compose';
 import { MailLeftPane } from './mail/MailLeftPane';
 import { MailCenterPane } from './mail/MailCenterPane';

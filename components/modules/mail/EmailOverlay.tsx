@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import DOMPurify from 'dompurify';
 import { Archive, Paperclip, Star, Trash, X } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Button } from '../../ui/button';
 import { InlineReply } from './InlineReply';
 
 export interface EmailOverlayProps {

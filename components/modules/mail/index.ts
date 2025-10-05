@@ -4,6 +4,8 @@ export { MailRightPane } from './MailRightPane';
 export { MailSearch } from './MailSearch';
 export { EmailListItem } from './EmailListItem';
 export { BulkActionsBar } from './BulkActionsBar';
+export { EmailOverlay } from './EmailOverlay';
+export { InlineReply } from './InlineReply';
 export { useMailState } from './useMailState';
 export * from './types';
 export * from './mockData';
