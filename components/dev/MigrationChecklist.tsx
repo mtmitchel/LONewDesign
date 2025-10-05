@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Checkbox } from './ui/checkbox';
-import { Progress } from './ui/progress';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import { Progress } from '../ui/progress';
 import { 
   CheckCircle, 
   Circle, 

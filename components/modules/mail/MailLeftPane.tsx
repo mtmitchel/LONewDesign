@@ -3,7 +3,7 @@ import { Plus, Settings, ChevronRight, ChevronDown } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import { TriPaneHeader, TriPaneContent } from '../../TriPane';
-import { PaneCaret, PaneFooter } from '../../PaneCaret';
+import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
 import { Folder, Label } from './types';
 
 interface MailLeftPaneProps {

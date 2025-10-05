@@ -2,7 +2,7 @@ import React from 'react';
 import { FileText, Calendar, Tag, CheckSquare } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { TriPaneHeader, TriPaneContent } from '../../TriPane';
-import { PaneCaret, PaneFooter } from '../../PaneCaret';
+import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
 
 interface MailRightPaneProps {
   onHidePane: () => void;

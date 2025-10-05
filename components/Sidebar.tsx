@@ -15,7 +15,7 @@ import {
   Layers
 } from 'lucide-react';
 import { Button } from './ui/button';
-import { PaneCaret, PaneFooter } from './PaneCaret';
+import { PaneCaret, PaneFooter } from './dev/PaneCaret';
 
 interface SidebarProps {
   activeModule: string;

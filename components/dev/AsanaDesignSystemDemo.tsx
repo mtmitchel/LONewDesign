@@ -3,11 +3,11 @@ import {
   Star, Heart, Settings, User, Calendar, Mail, 
   CheckCircle, AlertCircle, Info, Zap, Plus
 } from 'lucide-react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
-import { Avatar, AvatarFallback } from './ui/avatar';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Input } from '../ui/input';
+import { Avatar, AvatarFallback } from '../ui/avatar';
 
 export function AsanaDesignSystemDemo() {
   return (

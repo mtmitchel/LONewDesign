@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Badge } from './ui/badge';
-import { Separator } from './ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Alert, AlertDescription } from './ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Badge } from '../ui/badge';
+import { Separator } from '../ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Alert, AlertDescription } from '../ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { 
   Search, 
   Plus, 

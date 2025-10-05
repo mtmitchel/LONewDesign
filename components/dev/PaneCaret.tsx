@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from './ui/button';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 interface PaneCaretProps {
   /** Direction the caret points - affects visual direction and collapse behavior */
