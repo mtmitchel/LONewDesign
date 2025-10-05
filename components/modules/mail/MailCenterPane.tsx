@@ -52,7 +52,7 @@ export function MailCenterPane({
   onBulkClear
 }: MailCenterPaneProps) {
   return (
-    <>
+    <div id="mail-viewport-root" className="relative isolate h-full"  >
       <TriPaneHeader>
         <div className="flex items-center gap-[var(--space-3)] flex-1">        
           {/* Centered search field */}
@@ -105,6 +105,6 @@ export function MailCenterPane({
           )}
         </div>
       </TriPaneContent>
-    </>
+    </div>
   );
 }
