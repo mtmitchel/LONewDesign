@@ -1,7 +1,6 @@
 import React from 'react';
 import { Star, Paperclip, Mail, Reply, Forward, Archive, Trash, Tag } from 'lucide-react';
 import { Checkbox } from '../../ui/checkbox';
-import { Avatar, AvatarFallback } from '../../ui/avatar';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '../../ui/context-menu';
 import { Email, Label } from './types';
 
@@ -45,11 +44,6 @@ export function EmailListItem({
               onChange={(e) => onCheckboxToggle(e as any)}
               onClick={(e) => e.stopPropagation()}
             />
-            <Avatar className="w-7 h-7">
-              <AvatarFallback className="bg-[var(--primary-tint-15)] text-[var(--primary)] text-sm">
-                {email.sender.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-0.5">
                 <span className={`text-sm ${email.unread ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-primary)]'}`}>

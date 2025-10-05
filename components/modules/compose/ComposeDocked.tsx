@@ -214,7 +214,7 @@ export function ComposeDocked({
           absolute bottom-[var(--space-5)] right-[var(--space-5)]
           w-[400px] h-[52px]
           bg-[var(--bg-surface)]
-          rounded-[var(--radius-lg)] shadow-[var(--elevation-lg)] border border-[var(--border-subtle)]
+          rounded-[var(--radius-lg)] shadow-[var(--elevation-lg)] border border-[hsl(220,13%,91%)]
           flex items-center justify-between px-[var(--space-4)] z-[60]
           cursor-pointer hover:shadow-[var(--elevation-xl)]
           transition-shadow duration-200
@@ -263,7 +263,7 @@ export function ComposeDocked({
         w-[var(--compose-docked-width)] min-w-[var(--compose-docked-min-width)]
        h-[calc(var(--compose-docked-height)-2rem)]
         bg-[var(--bg-surface)]
-        rounded-[var(--radius-lg)] shadow-[var(--elevation-xl)] border border-[var(--border-subtle)]
+        rounded-[var(--radius-lg)] shadow-[var(--elevation-xl)] border border-[hsl(220,13%,91%)]
         overflow-hidden flex flex-col min-w-0 z-[60]
         [transition-timing-function:var(--easing-standard)] [transition-duration:var(--duration-fast)]
         data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:slide-out-to-bottom-2

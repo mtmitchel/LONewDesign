@@ -154,10 +154,11 @@ export function EmailOverlay({
         onClick={(event) => event.stopPropagation()}
         className="flex w-full max-w-[var(--modal-max-w-mail)] max-h-[var(--modal-max-h)] flex-col
           overflow-hidden rounded-[var(--modal-radius)]
-          bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] border border-[var(--border-subtle)]
+          bg-[var(--bg-surface)] shadow-[var(--elevation-xl)]
           duration-[var(--duration-base)]
           ease-[var(--easing-standard)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in
-          motion-reduce:animate-none"
+          motion-reduce:animate-none
+          !border-0 !outline-none !ring-0"
       >
         <header
           className="flex h-[var(--email-header-height)] items-center justify-between
@@ -222,11 +223,6 @@ export function EmailOverlay({
           className="flex items-start gap-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]
             px-[var(--modal-inner-x)] py-[var(--modal-inner-y)]"
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)]
-            bg-[var(--primary)] text-sm font-medium text-white"
-          >
-            {email.from.name.charAt(0).toUpperCase()}
-          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-sm">
               <span className="truncate font-medium text-[var(--text-primary)]">{email.from.name}</span>

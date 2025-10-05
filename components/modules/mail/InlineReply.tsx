@@ -197,7 +197,7 @@ export function InlineReply({
   return (
     <section
       className="mt-[var(--space-4)] rounded-[var(--radius-lg)]
-        bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] border border-[var(--border-subtle)]
+        bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] border border-[hsl(220,13%,91%)]
         overflow-hidden flex flex-col max-h-[70vh]"
       aria-label="Reply composer"
     >
