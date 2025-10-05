@@ -316,7 +316,7 @@ export function InlineReply({
       </div>
 
       {/* editor */}
-      <div className="relative rounded-[var(--radius-md)] focus-within:ring-2 focus-within:ring-[var(--primary)]">
+      <div className="relative rounded-[var(--radius-md)] focus-within:ring-2 focus-within:ring-[var(--primary)] focus-within:ring-offset-0">
         <textarea
           ref={textareaRef}
           value={text}
@@ -324,7 +324,7 @@ export function InlineReply({
           placeholder=""
           className="w-full resize-none bg-transparent min-h-[var(--editor-min-h)]
                      px-[var(--editor-pad-x)] py-[var(--editor-pad-y)]
-                     pr-[calc(var(--editor-pad-x)+44px)] border-0 focus-visible:outline-none"
+                     pr-[calc(var(--editor-pad-x)+44px)] focus-visible:outline-none"
           onKeyDown={handleTextAreaKeyDown}
         />
 
@@ -347,6 +347,8 @@ export function InlineReply({
           variant="solid" 
           disabled={!canSend}
           onClick={handleSend}
+          aria-keyshortcuts="Meta+Enter,Control+Enter"
+          title="Send (⌘/Ctrl+Enter)"
         />
         <div className="flex items-center gap-3">
           <Button 

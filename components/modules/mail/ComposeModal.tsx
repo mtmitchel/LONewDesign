@@ -155,8 +155,7 @@ export default function ComposeModal({
         />
 
         {/* send row */}
-        <footer className="px-[var(--space-4)] pt-[var(--space-2)] pb-[var(--space-3)]
-                           flex items-center justify-between">
+        <footer className="flex items-center justify-between px-[var(--space-4)] pt-[var(--space-2)] pb-[var(--space-3)]">
           <SendButton 
             className="h-8" 
             size="sm" 
