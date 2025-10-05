@@ -10,20 +10,24 @@ import { hasComposeContent, canSendCompose, createEmailChip } from './utils';
 
 interface ComposeDockedProps {
   open: boolean;
+  minimized?: boolean;
   onClose: () => void;
   onSend: (draft: ComposeDraft) => void;
   onPopout?: () => void;
   onMinimize?: () => void;
+  onRestore?: () => void;
   draftId?: string;
   initialDraft?: Partial<ComposeDraft>;
 }
 
 export function ComposeDocked({
   open,
+  minimized = false,
   onClose,
   onSend,
   onPopout,
   onMinimize,
+  onRestore,
   draftId,
   initialDraft
 }: ComposeDockedProps) {
@@ -196,6 +200,61 @@ export function ComposeDocked({
 
   if (!open) return null;
 
+  // Minimized bar
+  if (minimized) {
+    const recipientSummary = state.to.length > 0 
+      ? state.to[0].email 
+      : 'New Message';
+    const subjectText = state.subject || '(no subject)';
+
+    return (
+      <div
+        data-compose-minimized
+        className="
+          absolute bottom-[var(--space-5)] right-[var(--space-5)]
+          w-[400px] h-[52px]
+          bg-[var(--bg-surface)]
+          rounded-[var(--radius-lg)] shadow-[var(--elevation-lg)] border border-[var(--border-subtle)]
+          flex items-center justify-between px-[var(--space-4)] z-[60]
+          cursor-pointer hover:shadow-[var(--elevation-xl)]
+          transition-shadow duration-200
+        "
+        role="button"
+        aria-label="Restore compose window"
+        onClick={() => onRestore?.()}
+      >
+        <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium text-[var(--text-primary)] truncate">
+              {recipientSummary}
+            </div>
+            <div className="text-xs text-[var(--text-secondary)] truncate">
+              {subjectText}
+            </div>
+        </div>
+        <div className="flex items-center gap-1 ml-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-6 h-6 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClose();
+                  }}
+                  aria-label="Close"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Close</TooltipContent>
+            </Tooltip>
+        </div>
+      </div>
+    );
+  }
+
+  // Full compose window
   return (
     <div
       data-compose-docked
@@ -203,8 +262,8 @@ export function ComposeDocked({
         absolute bottom-[var(--space-5)] right-[var(--space-5)]
         w-[var(--compose-docked-width)] min-w-[var(--compose-docked-min-width)]
        h-[calc(var(--compose-docked-height)-2rem)]
-        bg-[var(--bg-surface)] border border-[var(--border-subtle)]
-        rounded-[var(--radius-lg)] shadow-[var(--elevation-lg)]
+        bg-[var(--bg-surface)]
+        rounded-[var(--radius-lg)] shadow-[var(--elevation-xl)] border border-[var(--border-subtle)]
         overflow-hidden flex flex-col min-w-0 z-[60]
         [transition-timing-function:var(--easing-standard)] [transition-duration:var(--duration-fast)]
         data-[state=closed]:animate-out data-[state=closed]:fade-out data-[state=closed]:slide-out-to-bottom-2

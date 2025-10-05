@@ -44,9 +44,23 @@ export function EmailOverlay({
 
   useEffect(() => {
     const previousOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const mailViewport = document.getElementById('mail-viewport-root');
+    const previousMailViewportOverflow = mailViewport?.style.overflow;
+    
+    // Lock scrolling on all container elements
     document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    if (mailViewport) {
+      mailViewport.style.overflow = 'hidden';
+    }
+    
     return () => {
       document.documentElement.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+      if (mailViewport && previousMailViewportOverflow !== undefined) {
+        mailViewport.style.overflow = previousMailViewportOverflow;
+      }
     };
   }, []);
 
@@ -139,8 +153,9 @@ export function EmailOverlay({
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
         className="flex w-full max-w-[var(--modal-max-w-mail)] max-h-[var(--modal-max-h)] flex-col
-          overflow-hidden rounded-[var(--modal-radius)] border border-[var(--border-subtle)]
-          bg-[var(--bg-surface)] shadow-[var(--modal-elevation)] duration-[var(--duration-base)]
+          overflow-hidden rounded-[var(--modal-radius)]
+          bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] border border-[var(--border-subtle)]
+          duration-[var(--duration-base)]
           ease-[var(--easing-standard)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in
           motion-reduce:animate-none"
       >
@@ -260,6 +275,7 @@ export function EmailOverlay({
               {isComposing && (
                 <InlineReply
                   to={[email.from]}
+                  subject={email.subject}
                   mode={replyMode}
                   onChangeMode={setReplyMode}
                   onSend={handleSendInline}

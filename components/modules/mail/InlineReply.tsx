@@ -7,8 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../../ui/dropdown-menu';
-import { ChevronDown, Trash2 } from 'lucide-react';
+import { ChevronDown, Trash2, X, Minus, Paperclip, Link as LinkIcon, Smile, Image as ImageIcon, MoreHorizontal, Send, Reply, ReplyAll, Forward } from 'lucide-react';
 import { Separator } from '../../ui/separator';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import { ComposeChips, createEmailChip, EmailChip } from '../compose';
 import { SendButton } from './SendButton';
 import { FormattingToolbar } from './FormattingToolbar';
@@ -24,6 +25,7 @@ export interface InlineReplyProps {
   to: Person[];
   cc?: Person[];
   bcc?: Person[];
+  subject?: string;
   mode?: ReplyMode;
   onChangeMode?: (mode: ReplyMode) => void;
   onSend: (payload: {
@@ -42,6 +44,7 @@ export function InlineReply({
   to,
   cc = [],
   bcc = [],
+  subject,
   mode = 'reply',
   onChangeMode,
   onSend,
@@ -50,7 +53,10 @@ export function InlineReply({
   onForward,
 }: InlineReplyProps) {
   const [replyMode, setReplyMode] = useState<ReplyMode>(mode);
+  const [actionType, setActionType] = useState<'reply' | 'reply-all' | 'forward'>('reply');
   const [text, setText] = useState('');
+  const [showSubjectEditor, setShowSubjectEditor] = useState(false);
+  const [editableSubject, setEditableSubject] = useState(subject ? `Re: ${subject}` : '');
   const chipFromPerson = (person: Person) =>
     createEmailChip(person.name ? `${person.name} <${person.email}>` : person.email);
   const toSignature = useMemo(() => to.map((person) => `${person.name ?? ''}|${person.email}`).join(','), [to]);
@@ -189,105 +195,135 @@ export function InlineReply({
   };
 
   return (
-    <section 
-      className="group px-[var(--space-4)] pt-[var(--space-3)] pb-[var(--space-2)] border-t border-[var(--reply-divider)] bg-transparent"
+    <section
+      className="mt-[var(--space-4)] rounded-[var(--radius-lg)]
+        bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] border border-[var(--border-subtle)]
+        overflow-hidden flex flex-col max-h-[70vh]"
       aria-label="Reply composer"
     >
-      {/* address row */}
-      <div className="flex items-center justify-between mb-[var(--space-1)]">
-        <div ref={envelopeRef} className="flex-1 min-w-0 space-y-2 text-sm">
-          <div className="flex items-start gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+      {/* Header with subject context - matches ComposeDocked */}
+      <header className="h-[40px] flex items-center justify-between bg-[var(--bg-surface-elevated)]
+        border-b border-[var(--border-subtle)] px-[var(--space-4)] flex-shrink-0">
+        <span className="text-sm font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+          {subject ? `Replying to: ${subject}` : 'Reply'}
+        </span>
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button
-                type="button"
                 variant="ghost"
-                size="compact"
-                className="h-7 px-2 mt-[2px]"
-                title="Change reply mode"
-                aria-haspopup="menu"
+                size="sm"
+                className="w-6 h-6 p-0"
+                onClick={onDiscard}
+                aria-label="Minimize"
               >
-                {replyMode === 'reply-all' ? 'Reply all' : 'Reply'}
-                <ChevronDown className="ml-1 h-3 w-3" aria-hidden />
+                <Minus className="w-3 h-3" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="min-w-[160px] p-1">
-              <DropdownMenuItem onSelect={() => setReplyMode('reply')}>Reply</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setReplyMode('reply-all')}>Reply all</DropdownMenuItem>
-              {onForward && (
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    onForward();
-                  }}
-                >
-                  Forward
-                </DropdownMenuItem>
-              )}
-              {onOpenCompose && (
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    onOpenCompose();
-                  }}
-                >
-                  Open in compose
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <div className="flex-1 min-w-0">
-            <ComposeChips
-              field="to"
-              chips={toChips}
-              onChange={setToChips}
-              placeholder="Add recipients"
-              className="py-1"
-              autoFocus={focusField === 'to'}
-            />
-          </div>
-
-          {/* Cc Bcc Links - Only show when neither is active */}
-          {!showCc && !showBcc && (
-            <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
-              <button
-                type="button"
-                className="underline hover:text-[var(--text-primary)]"
-                onClick={revealCc}
+            </TooltipTrigger>
+            <TooltipContent>Minimize</TooltipContent>
+          </Tooltip>
+          
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-6 h-6 p-0"
+                onClick={onDiscard}
+                aria-label="Close"
               >
-                Cc
-              </button>
-              <button
-                type="button"
-                className="underline hover:text-[var(--text-primary)]"
-                onClick={revealBcc}
-              >
-                Bcc
-              </button>
-            </div>
-          )}
+                <X className="w-3 h-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Close (Esc)</TooltipContent>
+          </Tooltip>
         </div>
+      </header>
 
-        {showCc && (
-          <div className="flex items-start gap-2">
-            <span className="w-[36px] pt-[6px] text-xs text-[var(--text-secondary)]">Cc</span>
+      {/* Envelope section - increased vertical padding */}
+      <div ref={envelopeRef} className="px-[var(--space-4)] pt-[var(--space-4)] pb-[var(--space-3)] flex-shrink-0">
+        <div className="space-y-3 text-sm">
+          {/* Action dropdown + recipient chips inline */}
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-8 px-2 gap-1 hover:bg-[var(--bg-subtle)]"
+                >
+                  {actionType === 'reply' && <Reply className="w-4 h-4" />}
+                  {actionType === 'reply-all' && <ReplyAll className="w-4 h-4" />}
+                  {actionType === 'forward' && <Forward className="w-4 h-4" />}
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[200px]">
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setActionType('reply');
+                    setReplyMode('reply');
+                  }}
+                >
+                  <Reply className="w-4 h-4 mr-2" />
+                  Reply
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => {
+                    setActionType('reply-all');
+                    setReplyMode('reply-all');
+                  }}
+                >
+                  <ReplyAll className="w-4 h-4 mr-2" />
+                  Reply all
+                </DropdownMenuItem>
+                {onForward && (
+                  <DropdownMenuItem 
+                    onClick={() => {
+                      setActionType('forward');
+                      onForward();
+                    }}
+                  >
+                    <Forward className="w-4 h-4 mr-2" />
+                    Forward
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowSubjectEditor(!showSubjectEditor)}>
+                  Edit subject
+                </DropdownMenuItem>
+                {onOpenCompose && (
+                  <DropdownMenuItem onClick={onOpenCompose}>
+                    Pop out reply
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            {/* Recipient chips inline */}
             <div className="flex-1 min-w-0">
               <ComposeChips
-                field="cc"
-                chips={ccChips}
-                onChange={setCcChips}
-                placeholder=""
+                field="to"
+                chips={toChips}
+                onChange={setToChips}
+                placeholder="Recipients"
                 className="py-1"
-                autoFocus={focusField === 'cc'}
+                autoFocus={focusField === 'to'}
               />
             </div>
-            {/* Only show Bcc link when Bcc field isn't active */}
-            {!showBcc && (
-              <div className="flex items-center pt-[6px]">
+
+            {/* Cc Bcc Links */}
+            {!showCc && !showBcc && (
+              <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
                 <button
                   type="button"
-                  className="text-xs text-[var(--text-secondary)] underline hover:text-[var(--text-primary)]"
+                  className="underline hover:text-[var(--text-primary)]"
+                  onClick={revealCc}
+                >
+                  Cc
+                </button>
+                <button
+                  type="button"
+                  className="underline hover:text-[var(--text-primary)]"
                   onClick={revealBcc}
                 >
                   Bcc
@@ -295,78 +331,184 @@ export function InlineReply({
               </div>
             )}
           </div>
-        )}
 
-        {showBcc && (
-          <div className="flex items-start gap-2">
-            <span className="w-[36px] pt-[6px] text-xs text-[var(--text-secondary)]">Bcc</span>
-            <div className="flex-1 min-w-0">
-              <ComposeChips
-                field="bcc"
-                chips={bccChips}
-                onChange={setBccChips}
-                placeholder=""
-                className="py-1"
-                autoFocus={focusField === 'bcc'}
+          {/* Subject editor (conditional) */}
+          {showSubjectEditor && (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={editableSubject}
+                onChange={(e) => setEditableSubject(e.target.value)}
+                placeholder="Subject"
+                className="flex-1 px-3 py-2 text-sm bg-transparent border border-[var(--border-subtle)] 
+                  rounded-[var(--radius-md)] focus-visible:outline-none focus-visible:ring-2 
+                  focus-visible:ring-[var(--primary)]"
               />
             </div>
-          </div>
-        )}
+          )}
+
+          {showCc && (
+            <div className="flex items-start gap-2">
+              <span className="w-[36px] pt-[6px] text-xs text-[var(--text-secondary)]">Cc</span>
+              <div className="flex-1 min-w-0">
+                <ComposeChips
+                  field="cc"
+                  chips={ccChips}
+                  onChange={setCcChips}
+                  placeholder=""
+                  className="py-1"
+                  autoFocus={focusField === 'cc'}
+                />
+              </div>
+              {!showBcc && (
+                <div className="flex items-center pt-[6px]">
+                  <button
+                    type="button"
+                    className="text-xs text-[var(--text-secondary)] underline hover:text-[var(--text-primary)]"
+                    onClick={revealBcc}
+                  >
+                    Bcc
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {showBcc && (
+            <div className="flex items-start gap-2">
+              <span className="w-[36px] pt-[6px] text-xs text-[var(--text-secondary)]">Bcc</span>
+              <div className="flex-1 min-w-0">
+                <ComposeChips
+                  field="bcc"
+                  chips={bccChips}
+                  onChange={setBccChips}
+                  placeholder=""
+                  className="py-1"
+                  autoFocus={focusField === 'bcc'}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* editor */}
-      <div className="relative rounded-[var(--radius-md)] focus-within:ring-2 focus-within:ring-[var(--primary)] focus-within:ring-offset-0">
+      {/* Editor section - scrollable with controlled height */}
+      <div className="flex-1 overflow-y-auto overscroll-contain" style={{ minHeight: '120px', maxHeight: '350px' }}>
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder=""
-          className="w-full resize-none bg-transparent min-h-[var(--editor-min-h)]
-                     px-[var(--editor-pad-x)] py-[var(--editor-pad-y)]
-                     pr-[calc(var(--editor-pad-x)+44px)] focus-visible:outline-none"
+          className="w-full resize-none bg-transparent min-h-[120px]
+            px-[var(--editor-pad-x)] py-[var(--editor-pad-y)]
+            focus-visible:outline-none border-none block"
           onKeyDown={handleTextAreaKeyDown}
         />
+      </div>
 
-        {/* toolbar INSIDE editor, ghost + compact */}
-        <FormattingToolbar 
-          onCommand={stubAction} 
-          density="compact" 
-          tone="ghost"
-          className="absolute inset-x-[var(--editor-pad-x)] bottom-[var(--editor-pad-y)]
-                     h-[var(--toolbar-h)] opacity-[.6] group-focus-within:opacity-100
-                     motion-safe:transition-opacity"
+      {/* Formatting toolbar - fixed at bottom */}
+      <div className="px-[var(--space-4)] pb-[var(--space-4)] pt-[var(--space-2)] flex-shrink-0 bg-[var(--bg-surface)]">
+        <FormattingToolbar
+          onCommand={stubAction}
+          density="compact"
+          tone="surface"
+          className="h-9"
         />
       </div>
 
-      {/* send row */}
-      <div className="mt-[var(--space-2)] flex items-center justify-between">
-        <SendButton 
-          className="h-8"
-          size="sm"
-          variant="solid" 
-          disabled={!canSend}
-          onClick={handleSend}
-          aria-keyshortcuts="Meta+Enter,Control+Enter"
-          title="Send (⌘/Ctrl+Enter)"
-        />
-        <div className="flex items-center gap-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={onDiscard}
-            title="Discard draft"
-            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          {onOpenCompose && (
-            <button className="text-xs text-[var(--text-secondary)] hover:underline" onClick={onOpenCompose}>
-              Open in compose
-            </button>
-          )}
+      {/* Bottom utility row - fixed at bottom */}
+      <footer className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)]
+        px-[var(--space-3)] py-[var(--space-3)] flex-shrink-0">
+        <div className="h-10 flex items-center justify-between">
+          {/* Send + attachment icons group - left side */}
+          <div className="flex items-center gap-[var(--space-2)]">
+            <Button 
+              onClick={handleSend} 
+              disabled={!canSend} 
+              className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white px-4 rounded-md" 
+              aria-label="Send email (Ctrl+Enter)"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              <span className="text-sm font-medium">Send</span>
+            </Button>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-8 h-8 p-0" aria-label="Attach file">
+                  <Paperclip className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Attach file</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-8 h-8 p-0" aria-label="Insert link">
+                  <LinkIcon className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Insert link</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-8 h-8 p-0" aria-label="Insert emoji">
+                  <Smile className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Insert emoji</TooltipContent>
+            </Tooltip>
+            
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-8 h-8 p-0" aria-label="Insert image">
+                  <ImageIcon className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Insert image</TooltipContent>
+            </Tooltip>
+          </div>
+
+          {/* Trash + more - right side */}
+          <div className="flex items-center gap-[var(--space-2)]">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-8 h-8 p-0 text-[var(--text-secondary)] hover:text-[var(--danger)]"
+                  onClick={onDiscard}
+                  aria-label="Discard"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Discard</TooltipContent>
+            </Tooltip>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-8 h-8 p-0" aria-label="More options">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>More options</TooltipContent>
+                </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onOpenCompose && (
+                  <DropdownMenuItem onClick={onOpenCompose}>Open in compose</DropdownMenuItem>
+                )}
+                <DropdownMenuItem>Save draft</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem>Print</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
+      </footer>
     </section>
   );
 }

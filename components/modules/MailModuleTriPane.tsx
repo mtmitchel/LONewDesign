@@ -34,6 +34,8 @@ export function MailModuleTriPane() {
     applyFilters
   } = useMailState();
 
+  const [composeMinimized, setComposeMinimized] = React.useState(false);
+
   // Keyboard shortcut handlers
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -205,18 +207,25 @@ export function MailModuleTriPane() {
           {/* Compose Modal - Mounted inside center pane */}
           <ComposeDocked
             open={showCompose}
-            onClose={() => setShowCompose(false)}
+            minimized={composeMinimized}
+            onClose={() => {
+              setShowCompose(false);
+              setComposeMinimized(false);
+            }}
             onSend={(draft) => {
               console.log('Send email:', draft);
               setShowCompose(false);
+              setComposeMinimized(false);
             }}
             onPopout={() => {
               console.log('Pop out compose');
               // Could open the old center modal or new window
             }}
             onMinimize={() => {
-              console.log('Minimize compose');
-              // Could minimize to bottom bar
+              setComposeMinimized(true);
+            }}
+            onRestore={() => {
+              setComposeMinimized(false);
             }}
           />
 
