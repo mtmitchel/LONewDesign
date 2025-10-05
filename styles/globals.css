@@ -63,6 +63,13 @@
   --chip-h: 28px;
   --toolbar-h: 40px;
 
+  /* Compact spacing rhythm for inline composer */
+  --reply-pad-x: var(--space-3);      /* 12px */
+  --reply-pad-y: var(--space-2);      /* 8px */
+  --reply-gap-y: var(--space-2);      /* 8px stack gap */
+  --reply-editor-min-h: 140px;        /* was 160–200 */
+  --reply-toolbar-h: 36px;            /* compact toolbar */
+
   /* Backdrop */
   --overlay-scrim: rgba(0, 0, 0, 0.35);
   --overlay-blur: 4px;

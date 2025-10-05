@@ -224,8 +224,8 @@ export function InlineReply({
   };
 
   return (
-    <div className="w-full">
-      <div ref={envelopeRef} className="space-y-[var(--field-gap-y)] text-sm">
+    <div className="w-full px-[var(--reply-pad-x)] py-[var(--reply-pad-y)] space-y-[var(--reply-gap-y)]">
+      <div ref={envelopeRef} className="space-y-[var(--reply-gap-y)] text-sm">
         <div className="flex items-start gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -345,54 +345,55 @@ export function InlineReply({
       </div>
 
       {/* Editor */}
-      <div className="mx-auto w-full max-w-[var(--content-measure)] mt-[var(--field-gap-y)]">
-        <div className="relative">
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="Write your reply..."
-            className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--border-subtle)]
-              bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-3)]
-              min-h-[240px] max-h-[400px]
-              focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--primary-tint-20)]"
-            onKeyDown={handleTextAreaKeyDown}
-          />
+      <div className="w-full">
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder="Write your reply..."
+          className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--border-subtle)]
+            bg-[var(--bg-surface)] px-[var(--reply-pad-x)] py-[var(--reply-pad-y)]
+            min-h-[var(--reply-editor-min-h)] focus-visible:outline-none"
+          onKeyDown={handleTextAreaKeyDown}
+        />
         </div>
 
         {/* Toolbar */}
-        <div className="h-[var(--toolbar-h)] flex items-center justify-between mt-[var(--space-2)]">
+        <div className="flex items-center justify-between
+                        border-t border-[var(--border-subtle)]
+                        h-[var(--reply-toolbar-h)] mt-[var(--reply-gap-y)] px-[var(--reply-pad-x)]">
+          {/* left cluster */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="solid" 
-              size="sm"
-              onClick={handleSend}
-              aria-keyshortcuts="Control+Enter Meta+Enter"
-              disabled={!canSend}
-            >
-              <Send className="h-4 w-4 mr-2" />
+            <Button variant="solid" size="sm"
+                    onClick={handleSend}
+                    aria-keyshortcuts="Control+Enter Meta+Enter"
+                    disabled={!canSend}>
               Send
             </Button>
-            <Button variant="ghost" size="sm" title="Attach file">
+            <Button variant="ghost" size="compact" title="Attach file" className="h-7 w-7 p-0">
               <Paperclip className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" title="Insert link">
+            <Button variant="ghost" size="compact" title="Bold" className="h-7 w-7 p-0">
+              <Bold className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="compact" title="Italic" className="h-7 w-7 p-0">
+              <Italic className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="compact" title="Link" className="h-7 w-7 p-0">
               <LinkIcon className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" title="Insert emoji">
-              <Smile className="h-4 w-4" />
-            </Button>
           </div>
+
+          {/* right cluster */}
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" title="More options">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
             {onOpenCompose && (
-              <Button
-                variant="ghost" 
-                size="sm"
-                onClick={onOpenCompose}
-                className="text-xs"
-              >
+              <button className="text-xs text-[var(--text-secondary)] hover:underline"
+                      onClick={onOpenCompose}>
                 Open in compose
-              </Button>
+              </button>
             )}
           </div>
         </div>
