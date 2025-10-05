@@ -312,44 +312,45 @@ export function InlineReply({
         )}
       </div>
 
-      {/* Editor */}
-      <div className="w-full">
+      {/* Editor container */}
+      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)]
+                      focus-within:ring-2 focus-within:ring-[var(--focus-ring)]
+                      focus-within:ring-offset-[var(--focus-offset)] overflow-hidden">
         <textarea
           ref={textareaRef}
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="Write your reply..."
-          className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--border-subtle)]
-            bg-[var(--bg-surface)] px-[var(--reply-pad-x)] py-[var(--reply-pad-y)]
-            min-h-[var(--reply-editor-min-h)] 
-            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)]"
+          className="w-full resize-none bg-[var(--bg-surface)] px-[var(--editor-pad-x)] py-[var(--editor-pad-y)]
+            min-h-[var(--editor-min-h)] border-0 focus-visible:outline-none"
           onKeyDown={handleTextAreaKeyDown}
         />
 
-        {/* Toolbar */}
-        <div className="flex items-center justify-between mt-[var(--zone-gap-body-toolbar)]
-                        border-t border-[var(--border-subtle)] pt-[var(--zone-gap-body-toolbar)]">
-          <div className="flex items-center gap-2">
-            <SendButton disabled={!canSend} onClick={() => onSend({ mode: replyMode, text })} />
-            <FormattingToolbar onCommand={stubAction} />
-          </div>
+        {/* Compact toolbar */}
+        <FormattingToolbar onCommand={stubAction} density="compact" />
+      </div>
 
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onDiscard}
-              title="Discard draft"
-              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-            {onOpenCompose && (
-              <button className="text-xs text-[var(--text-secondary)] hover:underline" onClick={onOpenCompose}>
-                Open in compose
-              </button>
-            )}
-          </div>
+      {/* Send row - tight spacing */}
+      <div className="flex items-center justify-between mt-[var(--zone-gap-toolbar-bottom)]">
+        <div className="flex items-center gap-2">
+          <SendButton disabled={!canSend} onClick={() => onSend({ mode: replyMode, text })} />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onDiscard}
+            title="Discard draft"
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          {onOpenCompose && (
+            <button className="text-xs text-[var(--text-secondary)] hover:underline" onClick={onOpenCompose}>
+              Open in compose
+            </button>
+          )}
         </div>
       </div>
     </section>

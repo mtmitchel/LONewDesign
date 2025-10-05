@@ -13,24 +13,42 @@ import {
   DropdownMenuTrigger,
 } from '../../ui/dropdown-menu';
 
+type Density = "comfortable" | "compact";
+
 type Props = {
   onCommand: (cmd: string) => void; // wire this to your editor
+  density?: Density;
+  className?: string;
 };
 
-export function FormattingToolbar({ onCommand }: Props) {
+export function FormattingToolbar({ onCommand, density = "comfortable", className }: Props) {
+  const isCompact = density === "compact";
+  const iconSize = isCompact ? 16 : 18;
+  const buttonSize = isCompact ? "compact" : "compact";
+  
   return (
-    <div className="flex items-center gap-1 overflow-x-auto py-1 px-2
-                    h-[var(--toolbar-h)] bg-[var(--bg-surface-elevated)]
-                    rounded-[var(--radius-full)]">
-      <Button variant="ghost" size="compact" title="Undo" onClick={() => onCommand("undo")}><Undo2 className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Redo" onClick={() => onCommand("redo")}><Redo2 className="h-4 w-4"/></Button>
+    <div className={[
+      "flex items-center overflow-x-auto bg-[var(--bg-surface-elevated)]",
+      isCompact
+        ? "h-[var(--toolbar-h)] px-[var(--toolbar-pad-x)] py-[var(--toolbar-pad-y)] gap-[var(--toolbar-gap)]"
+        : "h-[40px] px-[var(--space-3)] py-[var(--space-2)] gap-[var(--space-3)] rounded-[var(--radius-full)]",
+      className,
+    ].filter(Boolean).join(" ")}
+    role="toolbar"
+    >
+      <Button variant="ghost" size={buttonSize} title="Undo" onClick={() => onCommand("undo")}>
+        <Undo2 style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Redo" onClick={() => onCommand("redo")}>
+        <Redo2 style={{ width: iconSize, height: iconSize }} />
+      </Button>
 
       <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="compact" title="Font family">
-            <Type className="h-4 w-4"/>
+          <Button variant="ghost" size={buttonSize} title="Font family">
+            <Type style={{ width: iconSize, height: iconSize }} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-40">
@@ -59,33 +77,61 @@ export function FormattingToolbar({ onCommand }: Props) {
           <DropdownMenuItem onClick={() => onCommand("font-size-24")}>24</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Button variant="ghost" size="compact" title="Bold" onClick={() => onCommand("bold")}><Bold className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Italic" onClick={() => onCommand("italic")}><Italic className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Underline" onClick={() => onCommand("underline")}><Underline className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Strikethrough" onClick={() => onCommand("strike")}><Strikethrough className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Text color"><Highlighter className="h-4 w-4"/></Button>
+      <Button variant="ghost" size={buttonSize} title="Bold" onClick={() => onCommand("bold")}>
+        <Bold style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Italic" onClick={() => onCommand("italic")}>
+        <Italic style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Underline" onClick={() => onCommand("underline")}>
+        <Underline style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Strikethrough" onClick={() => onCommand("strike")}>
+        <Strikethrough style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Text color">
+        <Highlighter style={{ width: iconSize, height: iconSize }} />
+      </Button>
 
       <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
 
-      <Button variant="ghost" size="compact" title="Align left" onClick={() => onCommand("align-left")}><AlignLeft className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Align center" onClick={() => onCommand("align-center")}><AlignCenter className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Align right" onClick={() => onCommand("align-right")}><AlignRight className="h-4 w-4"/></Button>
+      <Button variant="ghost" size={buttonSize} title="Align left" onClick={() => onCommand("align-left")}>
+        <AlignLeft style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Align center" onClick={() => onCommand("align-center")}>
+        <AlignCenter style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Align right" onClick={() => onCommand("align-right")}>
+        <AlignRight style={{ width: iconSize, height: iconSize }} />
+      </Button>
 
       <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
 
-      <Button variant="ghost" size="compact" title="Bulleted list" onClick={() => onCommand("ul")}><List className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Numbered list" onClick={() => onCommand("ol")}><ListOrdered className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Quote" onClick={() => onCommand("quote")}><Quote className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Insert link" onClick={() => onCommand("link")}><Link className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Attach file"><Paperclip className="h-4 w-4"/></Button>
-      <Button variant="ghost" size="compact" title="Insert image"><Image className="h-4 w-4"/></Button>
+      <Button variant="ghost" size={buttonSize} title="Bulleted list" onClick={() => onCommand("ul")}>
+        <List style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Numbered list" onClick={() => onCommand("ol")}>
+        <ListOrdered style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Quote" onClick={() => onCommand("quote")}>
+        <Quote style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Insert link" onClick={() => onCommand("link")}>
+        <Link style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Attach file">
+        <Paperclip style={{ width: iconSize, height: iconSize }} />
+      </Button>
+      <Button variant="ghost" size={buttonSize} title="Insert image">
+        <Image style={{ width: iconSize, height: iconSize }} />
+      </Button>
 
       <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="compact" title="More formatting options">
-            <MoreHorizontal className="h-4 w-4"/>
+          <Button variant="ghost" size={buttonSize} title="More formatting options">
+            <MoreHorizontal style={{ width: iconSize, height: iconSize }} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
