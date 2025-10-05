@@ -245,9 +245,10 @@ export function EmailOverlay({
                       <button
                         key={attachment.id}
                         type="button"
-                        className="group inline-flex max-w-[240px] items-center gap-2 truncate rounded-[var(--radius-sm)]
-                          border border-[var(--section-border)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-2)]
-                          text-left text-sm text-[var(--text-primary)] transition-shadow hover:shadow-[var(--elevation-sm)]"
+                        className="group inline-flex max-w-[240px] items-center gap-2 truncate rounded-[var(--radius-md)]
+                          border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-2)]
+                          text-left text-sm text-[var(--text-primary)] transition-shadow hover:shadow-[var(--elevation-sm)]
+                          shadow-inset"
                         title={`Download ${attachment.filename} (${attachment.size})`}
                       >
                         <Paperclip className="h-4 w-4 text-[var(--text-tertiary)]" />
@@ -267,7 +268,7 @@ export function EmailOverlay({
                 }
               >
                 {isComposing && (
-                  <div className="px-[var(--space-3)] py-[var(--space-1)]">
+                  <div className="border-t border-[var(--border-subtle)] px-[var(--space-3)] py-[var(--space-2)]">
                     <InlineReply
                       to={[email.from]}
                       mode={replyMode}

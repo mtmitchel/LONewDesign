@@ -318,7 +318,8 @@ export function InlineReply({
           placeholder="Write your reply..."
           className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--border-subtle)]
             bg-[var(--bg-surface)] px-[var(--reply-pad-x)] py-[var(--reply-pad-y)]
-            min-h-[var(--reply-editor-min-h)] focus-visible:outline-none"
+            min-h-[var(--reply-editor-min-h)] 
+            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
           onKeyDown={handleTextAreaKeyDown}
         />
 

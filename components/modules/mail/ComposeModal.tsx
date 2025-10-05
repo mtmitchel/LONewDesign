@@ -87,7 +87,7 @@ export default function ComposeModal({
         className="pointer-events-auto absolute right-[var(--overlay-gutter)] bottom-[var(--overlay-gutter)]
                    w-[min(var(--compose-max-w),calc(100vw-2*var(--overlay-gutter)))]
                    min-w-[var(--compose-min-w)] max-w-[var(--compose-max-w)]
-                   bg-[var(--bg-surface)] border border-[var(--border-subtle)]
+                   bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)]
                    rounded-[var(--radius-lg)] shadow-[var(--elevation-xl)] flex flex-col overflow-hidden"
       >
         {/* Header */}
@@ -138,7 +138,8 @@ export default function ComposeModal({
               placeholder="Write your message…"
               className="w-full min-h-[var(--compose-min-h)] resize-y bg-[var(--bg-surface)]
                          border border-[var(--border-subtle)] rounded-[var(--radius-sm)]
-                         px-[var(--space-3)] py-[var(--space-2)] focus-visible:outline-none"
+                         px-[var(--space-3)] py-[var(--space-2)] 
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
             />
           </div>
         </div>
