@@ -126,6 +126,7 @@ export function EmailOverlay({
 
   // Purify HTML content
   const sanitizedHtml = DOMPurify.sanitize(email.content, { USE_PROFILES: { html: true } });
+  const hasAttachments = !!(email.attachments && email.attachments.length > 0);
 
   // Clean handlers for inline reply
   function handleOpenReply(defaultMode: 'reply' | 'reply-all' = 'reply') {
@@ -173,7 +174,7 @@ export function EmailOverlay({
                    duration-[var(--duration-base)] ease-[var(--easing-standard)]"
       >
         {/* Header */}
-        <header className="flex items-center justify-between h-[var(--toolbar-h)] px-[var(--space-5)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+        <header className="flex items-center justify-between h-12 px-[var(--modal-inner-x)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
           {/* Left: subject + label chip (balanced, single row) */}
           <div className="min-w-0 flex items-center gap-2 flex-1">
             <h1 id="email-subject" className="text-lg font-semibold text-[var(--text-primary)] truncate">
@@ -235,7 +236,7 @@ export function EmailOverlay({
         </header>
 
         {/* Sender metadata */}
-        <section className="flex items-start gap-3 px-[var(--space-5)] py-[10px] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+        <section className="flex items-start gap-3 px-[var(--modal-inner-x)] py-[var(--modal-inner-y)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
           <div className="w-8 h-8 bg-[var(--primary)] rounded-[var(--modal-radius)] flex items-center justify-center text-white text-sm font-medium shrink-0">
             {email.from.name.charAt(0).toUpperCase()}
           </div>
@@ -255,63 +256,73 @@ export function EmailOverlay({
           </span>
         </section>
 
-        {/* Body */}
-        <section className="flex-1 overflow-auto px-[var(--space-5)] py-[var(--space-4)]">
-          <div className="mx-auto max-w-[var(--content-measure)]">
-            <div
-              className="prose prose-sm max-w-none text-[var(--text-primary)] leading-relaxed
-                         [--tw-prose-bullets:var(--text-secondary)]
-                         prose-p:my-3 prose-ul:my-2 prose-li:my-1"
-              style={{ fontSize: 'var(--text-base)', lineHeight: '1.6' }}
-              dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-            />
+        {/* Body + Attachments */}
+        <section className="flex-1 overflow-auto">
+          <div className="px-[var(--modal-inner-x)] py-[var(--modal-inner-y)]">
+            <div className="mx-auto max-w-[var(--content-measure)]">
+              <div
+                className="prose prose-sm max-w-none text-[var(--text-primary)] leading-relaxed
+                           [--tw-prose-bullets:var(--text-secondary)]
+                           prose-p:my-3 prose-ul:my-2 prose-li:my-1"
+                style={{ fontSize: 'var(--text-base)', lineHeight: '1.6' }}
+                dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+              />
+            </div>
           </div>
+          
+          {/* Attachments - part of message body flow */}
+          {hasAttachments && (
+            <div className="px-[var(--modal-inner-x)] pb-[var(--space-3)]">
+              <div className="mx-auto max-w-[var(--content-measure)]">
+                <div className="flex flex-wrap gap-2">
+                  {email.attachments!.map((attachment) => (
+                    <button
+                      key={attachment.id}
+                      className="inline-flex items-center gap-2 px-3 py-1.5
+                                 bg-[var(--bg-surface-elevated)] 
+                                 border border-[var(--border-subtle)]
+                                 rounded-[var(--radius-sm)] text-sm
+                                 hover:shadow-[var(--elevation-sm)] transition-shadow"
+                      title={`Download ${attachment.filename} (${attachment.size})`}
+                    >
+                      <Paperclip className="w-4 h-4 text-[var(--text-tertiary)]" />
+                      <span className="font-medium text-[var(--text-primary)] max-w-[200px] truncate">
+                        {attachment.filename}
+                      </span>
+                      <span className="text-[var(--text-tertiary)] text-xs">
+                        {attachment.size}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
-        {/* Attachments */}
-        {email.attachments && email.attachments.length > 0 && (
-          <section className="px-[var(--space-5)] py-[var(--space-3)] border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)]">
-            <h4 className="text-sm font-medium text-[var(--text-secondary)] mb-2">
-              Attachments ({email.attachments.length})
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {email.attachments.map((attachment) => (
-                <button
-                  key={attachment.id}
-                  className="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)]
-                           rounded-[var(--radius-md)] px-[var(--space-3)] py-[var(--space-2)]
-                           text-sm hover:bg-[var(--hover-bg)]
-                           hover:shadow-[var(--elevation-sm)] transition-all"
-                  title={`Download ${attachment.filename} (${attachment.size})`}
-                >
-                  <Paperclip className="w-4 h-4 text-[var(--text-tertiary)] shrink-0" />
-                  <span className="font-medium text-[var(--text-primary)] max-w-[240px] truncate">
-                    {attachment.filename}
-                  </span>
-                  <span className="text-[var(--text-tertiary)] shrink-0">({attachment.size})</span>
-                </button>
-              ))}
+        {/* Inline Reply - flat continuation of message */}
+        {isComposing && (
+          <section className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)]
+                             px-[var(--modal-inner-x)] pt-[var(--space-3)] pb-[var(--space-4)]">
+            <div className="mx-auto max-w-[var(--content-measure)]">
+              <InlineReply
+                to={[email.from]}
+                mode={replyMode}
+                onChangeMode={setReplyMode}
+                onSend={handleSendInline}
+                onDiscard={handleDiscardInline}
+                onForward={onForward}
+                onOpenCompose={() => {
+                  // TODO: open ComposeModal with current draft
+                  console.log('Opening full compose modal');
+                }}
+              />
             </div>
           </section>
         )}
 
-        {/* Inline Reply - New Clean Implementation */}
-        {isComposing && (
-          <InlineReply
-            to={[email.from]}
-            mode={replyMode}
-            onChangeMode={setReplyMode}
-            onSend={handleSendInline}
-            onDiscard={handleDiscardInline}
-            onOpenCompose={() => {
-              // TODO: open ComposeModal with current draft
-              console.log('Opening full compose modal');
-            }}
-          />
-        )}
-
         {/* Footer - Conditional based on reply state */}
-        <footer className="flex items-center justify-between h-[var(--toolbar-h)] px-[var(--space-5)] border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)]">
+        <footer className="h-12 px-[var(--modal-inner-x)] bg-[var(--bg-surface)] flex items-center justify-between">
           {isComposing ? (
             // When reply editor is open, only show Print/Export (no competing primaries)
             <div className="flex items-center gap-2 ml-auto">

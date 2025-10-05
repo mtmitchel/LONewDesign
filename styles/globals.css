@@ -52,6 +52,8 @@
   --overlay-scrim: rgba(0, 0, 0, 0.35);
   --overlay-blur: 4px;
   --overlay-gutter: 16px; /* safe edge padding */
+  --modal-inner-x: var(--space-4);
+  --modal-inner-y: var(--space-3);
 
   /* Toolbars */
   --toolbar-h: 56px; /* header/footer height */
@@ -61,10 +63,7 @@
   --content-measure: 72ch;       /* email body measure */
 
   /* Inline reply */
-  --reply-editor-min-h: 180px;
   --reply-editor-max-h: 360px;
-  --reply-toolbar-h: 40px;
-  --segmented-radius: var(--radius-sm);
 
   --font-size: 16px;
   

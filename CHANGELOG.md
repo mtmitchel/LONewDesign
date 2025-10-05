@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - This Compose baseline is approved for reuse across modules as the design-system reference for email composition
 
 
+### Known Issues
+- Email overlay inline reply remains a stopgap; it is still poorly designed and needs dedicated UX work before release.
+
+
 ### Added
 - Initial Tauri + React + TypeScript foundation
 - Dynamic port selection for development (`dev:smart` and `tauri:dev:smart` scripts)

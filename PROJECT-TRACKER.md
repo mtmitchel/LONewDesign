@@ -30,6 +30,7 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | Search & Filters | ✅ | Medium | Advanced search implemented |
 | Responsive Design | ✅ | Medium | Mobile-friendly layout |
 | **Gmail Compose** | ✅ | High | **NEW: Docked compose with chips** |
+| Inline Reply UX | 🔄 | High | Current inline reply is still poorly designed and requires another iteration before sign-off |
 
 #### Compose Module ✅ COMPLETE (Baseline v1.0 Locked)
 
@@ -122,9 +123,10 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 ## 🚀 Next Sprint Goals
 
 ### Immediate (Next 2 weeks)
-1. **Dashboard Module**: Complete grid system and widget library
-2. **Performance**: Optimize bundle size and loading times
-3. **Testing**: Add basic test coverage for mail module
+1. **Inline Reply Redesign**: Resolve current poor UX and bring overlay reply in line with Gmail-quality flow
+2. **Dashboard Module**: Complete grid system and widget library
+3. **Performance**: Optimize bundle size and loading times
+4. **Testing**: Add basic test coverage for mail module
 
 ### Short-term (Next month)
 1. **Chat Module**: Basic messaging interface
