@@ -2,9 +2,16 @@ import * as React from "react";
 import {
   Undo2, Redo2, Type, Bold, Italic, Underline, Link, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Quote, Strikethrough, Highlighter,
-  Image, Paperclip, MoreHorizontal
+  Image, Paperclip, MoreHorizontal, Palette, Eraser, Subscript, Superscript
 } from "lucide-react";
 import { Button } from "../../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../../ui/dropdown-menu';
 
 type Props = {
   onCommand: (cmd: string) => void; // wire this to your editor
@@ -44,7 +51,41 @@ export function FormattingToolbar({ onCommand }: Props) {
 
       <div className="w-px h-4 bg-[var(--border-subtle)] mx-1" />
 
-      <Button variant="ghost" size="compact" title="More"><MoreHorizontal className="h-4 w-4"/></Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="compact" title="More formatting options">
+            <MoreHorizontal className="h-4 w-4"/>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => onCommand("subscript")}>
+            <Subscript className="mr-2 h-4 w-4" />
+            Subscript
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("superscript")}>
+            <Superscript className="mr-2 h-4 w-4" />
+            Superscript
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onCommand("text-color")}>
+            <Palette className="mr-2 h-4 w-4" />
+            Text Color
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("background-color")}>
+            <Highlighter className="mr-2 h-4 w-4" />
+            Highlight Color
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onCommand("clear-formatting")}>
+            <Eraser className="mr-2 h-4 w-4" />
+            Clear Formatting
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCommand("font-size")}>
+            <Type className="mr-2 h-4 w-4" />
+            Font Size
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

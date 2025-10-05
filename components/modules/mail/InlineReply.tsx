@@ -266,7 +266,7 @@ export function InlineReply({
 
         {showCc && (
           <div className="flex items-start gap-2">
-            <span className="w-10 pt-[6px] text-xs text-[var(--text-secondary)]">Cc</span>
+            <span className="w-[36px] pt-[6px] text-xs text-[var(--text-secondary)]">Cc</span>
             <div className="flex-1 min-w-0">
               <ComposeChips
                 field="cc"
@@ -294,7 +294,7 @@ export function InlineReply({
 
         {showBcc && (
           <div className="flex items-start gap-2">
-            <span className="w-10 pt-[6px] text-xs text-[var(--text-secondary)]">Bcc</span>
+            <span className="w-[36px] pt-[6px] text-xs text-[var(--text-secondary)]">Bcc</span>
             <div className="flex-1 min-w-0">
               <ComposeChips
                 field="bcc"
