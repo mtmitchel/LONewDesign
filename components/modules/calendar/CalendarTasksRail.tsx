@@ -48,9 +48,10 @@ import { Calendar as DatePicker } from '../../ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { cn } from '../../ui/utils';
 import { useTaskStore, TaskInput } from '../tasks/taskStore';
+import { TASK_LISTS } from '../tasks/constants';
 import type { Task } from '../tasks/types';
 
-type TaskFilterKey = 'all' | 'today' | 'this-week' | 'completed';
+type TaskFilterKey = 'all' | 'today' | 'this-week' | 'completed' | string;
 
 type CalendarTasksRailProps = {
   tasks?: Task[];
@@ -64,11 +65,9 @@ type CalendarTasksRailProps = {
   onRefresh?: () => void;
 };
 
-const FILTER_OPTIONS: { value: TaskFilterKey; label: string }[] = [
-  { value: 'all', label: 'All tasks' },
-  { value: 'today', label: 'Due today' },
-  { value: 'this-week', label: 'This week' },
-  { value: 'completed', label: 'Completed' }
+// Base filter options - list-based filters will be added dynamically
+const BASE_FILTER_OPTIONS: { value: TaskFilterKey; label: string }[] = [
+  { value: 'all', label: 'All tasks' }
 ];
 
 const BUFFER_ROWS = 4;
@@ -230,8 +229,25 @@ export function CalendarTasksRail({
   const now = useMemo(() => startOfDay(new Date()), []);
   const weekEnd = useMemo(() => endOfWeek(now, { weekStartsOn: 0 }), [now]);
 
+  // Generate dynamic filter options including lists from tasks
+  const filterOptions = useMemo(() => {
+    // Create list filter options from TASK_LISTS constant
+    const listOptions = TASK_LISTS.map(list => ({
+      value: `list:${list.id}`,
+      label: list.title
+    }));
+    
+    return [...BASE_FILTER_OPTIONS, ...listOptions];
+  }, []);
+
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
+      // Handle list-based filtering
+      if (filter.startsWith('list:')) {
+        const listId = filter.replace('list:', '');
+        return task.listId === listId;
+      }
+      
       if (filter === 'completed') {
         return task.isCompleted;
       }
@@ -482,7 +498,7 @@ export function CalendarTasksRail({
           <SelectValue placeholder="Filter tasks" />
         </SelectTrigger>
         <SelectContent align="end">
-          {FILTER_OPTIONS.map((option) => (
+          {filterOptions.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}
             </SelectItem>

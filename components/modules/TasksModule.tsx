@@ -35,6 +35,7 @@ import { TaskCard } from './tasks/TaskCard';
 import { TaskComposer } from './tasks/TaskComposer';
 import { TaskSidePanel } from './tasks/TaskSidePanel';
 import { QuickTaskModal } from '../extended/QuickTaskModal';
+import { TASK_LISTS } from './tasks/constants';
 
 interface Task {
   id: string;
@@ -60,11 +61,7 @@ const mockTasks: Task[] = [
   { id: '9', title: 'tretre', dueDate: 'Oct 29', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-09' },
 ];
 
-const columns = [
-  { id: 'todo', title: 'To Do' },
-  { id: 'in-progress', title: 'Doing' },
-  { id: 'done', title: 'Done' },
-];
+const columns = TASK_LISTS;
 
 export function TasksModule() {
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
