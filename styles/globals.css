@@ -204,6 +204,16 @@
   --due-default: var(--text-muted);
   --due-today: var(--primary);
   --due-overdue: var(--danger);
+  
+  /* Calendar Event Colors */
+  --event-blue-bg: var(--primary-tint-10);
+  --event-blue-text: var(--primary);
+  --event-teal-bg: rgba(20, 184, 166, 0.1);
+  --event-teal-text: rgb(20, 184, 166);
+  --event-green-bg: rgba(34, 197, 94, 0.1);
+  --event-green-text: rgb(34, 197, 94);
+  --event-orange-bg: rgba(251, 146, 60, 0.1);
+  --event-orange-text: rgb(251, 146, 60);
 
   /* Inline reply */
   --reply-editor-min-h: 160px;

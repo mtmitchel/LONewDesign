@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Search, LayoutList, Calendar as Calend
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { CalendarTasksRail } from './calendar/CalendarTasksRail';
+import { cn } from '../ui/utils';
 
 interface LegacyCalendarEvent {
   id: string;
@@ -188,7 +189,7 @@ export function CalendarModule() {
           </div>
           <Button
             size="sm"
-            className="h-8 gap-[var(--space-2)] bg-[var(--primary)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-white hover:bg-[var(--primary-hover)]"
+            className="h-8 gap-[var(--space-2)] bg-[var(--primary)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-white hover:bg-[var(--primary-hover)] shadow-sm"
           >
             <Plus className="h-4 w-4" />
             New event
@@ -209,30 +210,53 @@ export function CalendarModule() {
           </div>
           
           {/* Calendar Days */}
-          <div className="grid grid-cols-7 gap-1 h-[calc(100%-60px)]">
+          <div className="grid grid-cols-7 gap-0 border border-[var(--border-divider)]">
             {calendarDays.map((day, index) => (
               <div
                 key={index}
-                className={`min-h-[120px] p-3 border border-[var(--border-subtle)] rounded-lg cursor-pointer transition-colors hover:bg-[var(--primary-tint-10)]/30 ${
-                  day.isToday ? 'bg-[var(--primary-tint-10)] border-[var(--primary)]' : 'bg-[var(--surface)]'
-                } ${
-                  !day.isCurrentMonth ? 'opacity-40' : ''
-                }`}
+                className={cn(
+                  'min-h-[120px] p-[var(--space-2)] border-b border-r border-[var(--border-divider)] cursor-pointer transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors',
+                  'hover:bg-[var(--bg-surface-elevated)]',
+                  day.isToday ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-surface)]',
+                  !day.isCurrentMonth && 'opacity-40'
+                )}
                 onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date))}
               >
-                <div className={`text-sm font-medium mb-2 ${
-                  day.isToday ? 'text-[var(--primary)]' : day.isCurrentMonth ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
-                }`}>
-                  {day.date}
+                <div className="mb-[var(--space-2)]">
+                  {day.isToday ? (
+                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-[length:var(--text-sm)] font-[var(--font-weight-bold)] text-white">
+                      {day.date}
+                    </span>
+                  ) : (
+                    <span className={cn(
+                      'text-[length:var(--text-sm)] font-[var(--font-weight-semibold)]',
+                      day.isCurrentMonth ? 'text-[color:var(--text-secondary)]' : 'text-[color:var(--text-tertiary)]'
+                    )}>
+                      {day.date}
+                    </span>
+                  )}
                 </div>
                 
                 {/* Events */}
-                <div className="space-y-1">
+                <div className="space-y-[var(--space-1)]">
                   {day.events.map((event) => (
                     <div
                       key={event.id}
-                      className="p-1.5 text-xs rounded text-white truncate"
-                      style={{ backgroundColor: event.color }}
+                      className={cn(
+                        'group p-[var(--space-1)] px-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] rounded-[var(--radius-sm)] truncate cursor-pointer',
+                        'transition-all duration-[var(--duration-fast)] motion-safe:transition-all',
+                        'hover:shadow-[var(--elevation-sm)] hover:-translate-y-px'
+                      )}
+                      style={{
+                        backgroundColor: event.color === 'var(--primary)' ? 'var(--primary-tint-10)' :
+                                       event.color === 'var(--info)' ? 'rgba(20, 184, 166, 0.1)' :
+                                       event.color === 'var(--success)' ? 'rgba(34, 197, 94, 0.1)' :
+                                       'rgba(251, 146, 60, 0.1)',
+                        color: event.color === 'var(--primary)' ? 'var(--primary)' :
+                              event.color === 'var(--info)' ? 'rgb(20, 184, 166)' :
+                              event.color === 'var(--success)' ? 'rgb(34, 197, 94)' :
+                              'rgb(251, 146, 60)'
+                      }}
                       title={`${event.title} - ${event.time}`}
                     >
                       {event.title}
