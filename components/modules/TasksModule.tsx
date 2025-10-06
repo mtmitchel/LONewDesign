@@ -33,6 +33,7 @@ import { TaskColumnHeader } from './tasks/TaskColumnHeader';
 import { TaskAddButton } from './tasks/TaskAddButton';
 import { TaskCard } from './tasks/TaskCard';
 import { TaskComposer } from './tasks/TaskComposer';
+import { TaskSidePanel } from './tasks/TaskSidePanel';
 
 interface Task {
   id: string;
@@ -65,8 +66,6 @@ const columns = [
 export function TasksModule() {
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showCreateTask, setShowCreateTask] = useState(false);
-  const [showTaskSidePanel, setShowTaskSidePanel] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [tasks, setTasks] = useState(mockTasks);
   const [sortOption, setSortOption] = useState<{[key: string]: string}>({});
@@ -126,7 +125,18 @@ export function TasksModule() {
 
   const handleEditTask = (task: Task) => console.log("Edit task", task);
   const handleDuplicateTask = (task: Task) => console.log("Duplicate task", task);
-  const handleDeleteTask = (taskId: string) => setTasks(tasks.filter(t => t.id !== taskId));
+  
+  const handleUpdateTask = (updatedTask: Task) => {
+    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+    setSelectedTask(null); // Close side panel after update
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    setTasks(tasks.filter(t => t.id !== taskId));
+    if (selectedTask?.id === taskId) {
+      setSelectedTask(null); // Close side panel if the deleted task was open
+    }
+  };
 
   const BoardView = () => (
     <div className="flex-1 overflow-x-auto p-4">
@@ -159,7 +169,6 @@ export function TasksModule() {
                   onToggleCompletion={() => toggleTaskCompletion(task.id)}
                   onClick={() => {
                     setSelectedTask(task);
-                    setShowTaskSidePanel(true);
                   }}
                   onEdit={() => handleEditTask(task)}
                   onDuplicate={() => handleDuplicateTask(task)}
@@ -218,7 +227,8 @@ export function TasksModule() {
                     {getTasksByStatus(column.id).map(task => (
                         <ContextMenu key={task.id}>
                             <ContextMenuTrigger>
-                                <div className="grid grid-cols-[1fr_120px_120px_120px] items-center px-4 h-12 border-b border-[var(--border-subtle)] hover:bg-[var(--bg-surface-hover)]">
+                                <div className="grid grid-cols-[1fr_120px_120px_120px] items-center px-4 h-12 border-b border-[var(--border-subtle)] hover:bg-[var(--bg-surface-hover)]"
+                                    onClick={() => setSelectedTask(task)}>
                                     <div className="flex items-center gap-3">
                                         <Checkbox checked={task.isCompleted} onCheckedChange={() => toggleTaskCompletion(task.id)} />
                                         <div className={`truncate ${task.isCompleted ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>{task.title}</div>
@@ -360,7 +370,12 @@ export function TasksModule() {
 
       {viewMode === 'board' ? <BoardView /> : <ListView />}
 
-      {/* Side panel and dialogs would go here, but are excluded as per instructions */}
+      <TaskSidePanel 
+        task={selectedTask}
+        onClose={() => setSelectedTask(null)}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
+      />
     </div>
   );
 }
