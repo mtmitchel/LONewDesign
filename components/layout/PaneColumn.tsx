@@ -16,20 +16,20 @@ export function PaneColumn({
   return (
     <section
       {...rest}
-      className={cn('relative flex min-h-0 min-w-0 flex-col bg-[var(--bg-surface)]', className)}
+      className={cn('relative flex min-h-0 min-w-0 flex-col bg-[var(--bg-surface)] overflow-hidden', className)}
       data-pane-column=""
     >
       {children}
       {showLeftDivider && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-[var(--pane-divider-w)] bg-[var(--pane-divider-color)]"
+          className="pointer-events-none absolute inset-y-0 left-0 z-[50] w-[var(--pane-divider-w)] bg-[var(--pane-divider-color)]"
         />
       )}
       {showRightDivider && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-[var(--pane-divider-w)] bg-[var(--pane-divider-color)]"
+          className="pointer-events-none absolute inset-y-0 right-0 z-[50] w-[var(--pane-divider-w)] bg-[var(--pane-divider-color)]"
         />
       )}
     </section>

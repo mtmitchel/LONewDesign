@@ -8,8 +8,9 @@ export function PaneHeader({ className, role = 'toolbar', ...props }: PaneHeader
     <div
       role={role}
       className={cn(
-        'sticky top-0 z-[var(--pane-sticky-z)] flex h-[var(--pane-header-h)] items-center gap-[var(--space-3)]',
+        'relative flex h-[var(--pane-header-h)] items-center gap-[var(--space-3)]',
         'border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--pane-header-px)]',
+        'flex-shrink-0',
         className
       )}
       data-pane-header=""
