@@ -32,6 +32,7 @@ import { Switch } from '../ui/switch';
 import { TaskColumnHeader } from './tasks/TaskColumnHeader';
 import { TaskAddButton } from './tasks/TaskAddButton';
 import { TaskCard } from './tasks/TaskCard';
+import { TaskComposer } from './tasks/TaskComposer';
 
 interface Task {
   id: string;
@@ -69,10 +70,25 @@ export function TasksModule() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [tasks, setTasks] = useState(mockTasks);
   const [sortOption, setSortOption] = useState<{[key: string]: string}>({});
+  const [activeComposerSection, setActiveComposerSection] = useState<string | null>(null);
 
   const filteredTasks = tasks.filter(task => 
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleAddTask = (title: string, status: string) => {
+    const newTask: Task = {
+      id: `task-${Date.now()}`,
+      title,
+      status: status as any,
+      priority: 'none',
+      labels: [],
+      isCompleted: false,
+      dateCreated: new Date().toISOString(),
+    };
+    setTasks(prevTasks => [newTask, ...prevTasks]);
+    setActiveComposerSection(null);
+  };
 
   const getTasksByStatus = (status: string) => {
     const tasks = filteredTasks.filter(task => task.status === status);
@@ -125,7 +141,14 @@ export function TasksModule() {
               onRenameList={handleRenameList}
               onDeleteList={handleDeleteList}
             />
-            <TaskAddButton onClick={() => setShowCreateTask(true)} />
+            {activeComposerSection === column.id ? (
+              <TaskComposer 
+                onAddTask={(title) => handleAddTask(title, column.id)}
+                onCancel={() => setActiveComposerSection(null)}
+              />
+            ) : (
+              <TaskAddButton onClick={() => setActiveComposerSection(column.id)} />
+            )}
             <div className="space-y-2">
               {getTasksByStatus(column.id).map((task) => (
                 <TaskCard
@@ -228,10 +251,22 @@ export function TasksModule() {
                             </ContextMenuContent>
                         </ContextMenu>
                     ))}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-4 h-12 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-                        <Plus size={16} />
-                        <span className="text-sm font-medium">Add task...</span>
-                    </div>
+                    {activeComposerSection === column.id ? (
+                        <div className="px-4 py-2">
+                            <TaskComposer 
+                                onAddTask={(title) => handleAddTask(title, column.id)}
+                                onCancel={() => setActiveComposerSection(null)}
+                            />
+                        </div>
+                    ) : (
+                        <div 
+                            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-4 h-12 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            onClick={() => setActiveComposerSection(column.id)}
+                        >
+                            <Plus size={16} />
+                            <span className="text-sm font-medium">Add task...</span>
+                        </div>
+                    )}
                 </div>
             )}
           </div>
