@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Mail Module UX Refinements (2024-12)
+- **Quick Modal Polish**: Eliminated field overflow and popover friction
+  - Added flexing label spans with extra right padding so calendar/clock icons stay inside fields
+  - Switched date/time popovers to non-modal mode to respect parent scroll lock
+  - Slimmed time option list spacing, enabled wheel scrolling, and constrained height
 - **Inline Reply to Gmail-Parity Modal**: Complete refactor of inline reply interface
   - Transformed to elevated modal matching ComposeDocked design
   - Added Gmail-style action dropdown (Reply/Reply All/Forward/Edit subject/Pop out)

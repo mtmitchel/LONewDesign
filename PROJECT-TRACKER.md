@@ -44,6 +44,7 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | **Gmail Compose** | ✅ | High | **Docked compose with minimize/restore, action dropdown** |
 | **Shared Components** | ✅ | High | **SendButton.tsx + FormattingToolbar.tsx - True component sharing** |
 | Inline Reply UX | ✅ | High | **Gmail-parity modal with action dropdown, scroll lock, flexbox layout** |
+| Quick Modal UX Polish | ✅ | Medium | **Calendar/time fields keep icons contained and popovers support wheel scrolling** |
 | Avatar Removal | ✅ | Medium | **Removed circle avatars from email list and overlay for clean aesthetic** |
 | Collapsed Pane Bars | ✅ | Medium | **48px vertical bars with PaneCaret chevron toggles at bottom** |
 | TriPane Header Fix | ✅ | Low | **Fixed to h-[60px] for perfect border alignment** |

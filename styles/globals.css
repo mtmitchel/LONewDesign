@@ -40,7 +40,7 @@
   --hover-bg: var(--bg-surface-elevated);
 
   /* Layers */
-  --z-overlay: 70;
+  --z-overlay: 50;
 
   /* Modal sizing */
   --modal-max-w: 920px;
@@ -48,6 +48,24 @@
   --modal-max-h: 88dvh;
   --modal-radius: var(--radius-lg);
   --modal-elevation: var(--elevation-xl);
+  --quick-modal-max-w: 480px;         /* quick action modals */
+  --modal-footer-h: 56px;             /* modal footer height */
+
+  /* Overlay */
+  --overlay-gutter: 24px;             /* safe edge padding */
+  --overlay-scrim: rgba(10, 12, 14, 0.28); /* backdrop color - softened */
+  --overlay-blur: 6px;                /* backdrop blur */
+  --popover-elevation: var(--elevation-lg); /* calendar/time popovers */
+
+  /* Form fields */
+  --field-height: 44px;               /* standard input height */
+  --field-pad-y: var(--space-2);      /* textarea vertical padding */
+  --focus-ring: var(--primary);       /* focus ring color - calm */
+  --time-field-gap: var(--space-2);   /* gap between time text and icon */
+  --time-field-width: 144px;          /* prevents wrap with '9:00 AM' */
+  
+  /* Icons */
+  --icon-size-md: 20px;               /* up from 18 -> clearer */
 
   /* Compose tokens */
   --compose-min-w: 560px;
@@ -79,9 +97,9 @@
   --gap-toolbar-bottom: var(--space-2);
 
   /* Padding rhythm */
-  --modal-inner-x: var(--space-4);  /* 16 */
-  --modal-inner-y: var(--space-3);  /* 12 */
-  --field-gap-y: var(--space-3);
+  --modal-inner-x: var(--space-6);  /* 24 */
+  --modal-inner-y: var(--space-5);  /* 20 */
+  --field-gap-y: var(--space-4);
 
   /* Compact spacing rhythm for inline composer */
   --reply-pad-x: var(--space-3);      /* 12px */
@@ -104,8 +122,8 @@
   --overlay-scrim: rgba(0, 0, 0, 0.35);
   --overlay-blur: 4px;
   --overlay-gutter: var(--space-6);   /* safe edge breathing room */
-  --modal-inner-x: var(--space-4);
-  --modal-inner-y: var(--space-3);
+  --modal-inner-x: var(--space-6);
+  --modal-inner-y: var(--space-5);
 
   /* Responsive rules */
   @media (max-width: 768px) {

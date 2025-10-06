@@ -24,3 +24,13 @@ export type { SearchInputProps, SearchFilter } from './search-input';
 
 export { DataTable } from './data-table';
 export type { DataTableColumn, DataTableProps } from './data-table';
+
+export { QuickModal } from './QuickModal';
+export { QuickModalFooter } from './QuickModalFooter';
+export { QuickTaskModal } from './QuickTaskModal';
+export { QuickNoteModal } from './QuickNoteModal';
+export { QuickEventModal } from './QuickEventModal';
+export { AddLabelModal } from './AddLabelModal';
+export { DatePopoverField } from './DatePopoverField';
+export { TimePopoverField } from './TimePopoverField';
+export { fieldCls } from './fieldCls';
