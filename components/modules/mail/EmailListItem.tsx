@@ -3,6 +3,7 @@ import {
   AlarmClock,
   Archive,
   BellOff,
+  Check,
   ExternalLink,
   Forward,
   Paperclip,
@@ -16,7 +17,6 @@ import {
   MailOpen,
   Folder
 } from 'lucide-react';
-import { Checkbox } from '../../ui/checkbox';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -27,6 +27,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuSubContent
 } from '../../ui/context-menu';
+import { cn } from '../../ui/utils';
 import { Email, Label } from './types';
 
 interface EmailListItemProps {
@@ -66,54 +67,98 @@ export function EmailListItem({
 
   return (
     <ContextMenu>
-      <ContextMenuTrigger>
+      <ContextMenuTrigger asChild>
         <div
+          role="row"
+          aria-selected={isSelected}
           onClick={onClick}
           onDoubleClick={onDoubleClick}
-          className={`w-full py-2 px-[var(--space-4)] text-left hover:bg-[var(--border-divider)] transition-colors cursor-pointer ${
-            isChecked ? 'bg-[var(--primary-tint-5)]' : ''
-          } ${
-            isSelected ? 'ring-1 ring-[var(--primary)] bg-[var(--primary-tint-10)]' : ''
-          }`}
-          style={{ minHeight: '60px' }}
+          className={cn(
+            'flex h-[var(--mail-row-height)] w-full items-center border-b border-[var(--border-divider)]',
+            'bg-[var(--bg-surface)] px-[var(--mail-row-padding-x)] text-left transition-colors cursor-pointer',
+            'hover:bg-[var(--mail-row-hover-bg)]',
+            isChecked && 'bg-[var(--primary-tint-5)]',
+            isSelected && 'ring-1 ring-[var(--primary)] bg-[var(--primary-tint-10)]'
+          )}
         >
-          <div className="flex items-start gap-[var(--space-3)] py-1">
-            <Checkbox 
-              checked={isChecked}
-              onChange={(e) => onCheckboxToggle(e as any)}
-              onClick={(e) => e.stopPropagation()}
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className={`text-sm ${email.unread ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-primary)]'}`}>
-                  {email.sender}
-                </span>
-                <div className="flex items-center gap-[var(--space-2)]">
-                  {email.hasAttachment && <Paperclip className="w-3 h-3 text-[var(--text-secondary)]" />}
-                  {email.starred && <Star className="w-3 h-3 fill-[var(--accent-coral)] text-[var(--accent-coral)]" />}
-                  <span className="text-xs text-[var(--text-secondary)]">{email.time}</span>
-                </div>
-              </div>
-              <div className={`text-sm mb-0.5 ${email.unread ? 'font-medium text-[var(--text-primary)]' : 'text-[var(--text-primary)]'}`}>
+          <div
+            className="flex h-full w-[52px] shrink-0 items-center justify-start"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCheckboxToggle(e);
+            }}
+          >
+            <span
+              className={cn(
+                'flex h-[var(--checkbox-size)] w-[var(--checkbox-size)] items-center justify-center rounded-sm border',
+                'border-[var(--border-default)] bg-[var(--bg-surface)] transition-all',
+                isChecked && 'border-[var(--primary)] bg-[var(--primary)]'
+              )}
+            >
+              {isChecked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+            </span>
+          </div>
+
+          <div className="flex min-w-0 flex-1 items-center gap-3 pr-[var(--mail-row-padding-x)]">
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] transition-colors hover:bg-[var(--bg-surface-elevated)]"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              aria-label={email.starred ? 'Unstar' : 'Star'}
+            >
+              <Star
+                className={cn(
+                  'h-4 w-4 transition-colors',
+                  email.starred
+                    ? 'fill-[var(--accent-coral)] text-[var(--accent-coral)]'
+                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                )}
+              />
+            </button>
+
+            <div className="w-[180px] shrink-0 truncate text-[length:var(--text-sm)] text-[var(--text-primary)]">
+              {email.sender}
+            </div>
+
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span
+                className={cn(
+                  'truncate text-[length:var(--text-sm)]',
+                  email.unread
+                    ? 'font-[var(--font-weight-medium)] text-[var(--text-primary)]'
+                    : 'text-[var(--text-secondary)]'
+                )}
+              >
                 {email.subject}
-              </div>
-              <div className="text-sm text-[var(--text-secondary)] truncate">
+              </span>
+              <span className="truncate text-[length:var(--text-sm)] text-[var(--text-tertiary)]">
                 {email.preview}
-              </div>
+              </span>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              {email.hasAttachment && (
+                <Paperclip className="h-4 w-4 text-[var(--text-tertiary)]" />
+              )}
               {email.labels.length > 0 && (
-                <div className="flex gap-1 mt-2">
-                  {email.labels.slice(0, 2).map(labelId => {
-                    const label = labels.find(l => l.id === labelId);
+                <div className="flex items-center gap-1">
+                  {email.labels.slice(0, 2).map((labelId) => {
+                    const label = labels.find((l) => l.id === labelId);
                     return label ? (
-                      <div
-                        key={labelId}
-                        className="w-2 h-2 rounded-full"
+                      <span
+                        key={label.id}
+                        className="h-2.5 w-2.5 rounded-full"
                         style={{ backgroundColor: label.color }}
                       />
                     ) : null;
                   })}
                 </div>
               )}
+              <span className="min-w-[64px] text-right text-[length:var(--text-xs)] text-[var(--text-tertiary)]">
+                {email.time}
+              </span>
             </div>
           </div>
         </div>

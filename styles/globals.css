@@ -175,6 +175,35 @@
   --email-header-height: 56px;
   --email-footer-height: 48px;
 
+  /* Toolbar & checkbox alignment */
+  --toolbar-height: 44px;
+  --toolbar-padding-x: var(--space-4);
+  --toolbar-gap: var(--space-2);
+  --toolbar-icon-size: 18px;
+  --checkbox-size: 18px;
+  --checkbox-offset-left: var(--space-4);
+  --mail-row-checkbox-offset: var(--space-4);
+
+  /* Mail toolbar & pagination */
+  --mail-toolbar-height: var(--toolbar-height);
+  --mail-toolbar-padding-x: var(--toolbar-padding-x);
+  --mail-toolbar-gap: var(--toolbar-gap);
+  --mail-toolbar-icon-size: var(--toolbar-icon-size);
+  --mail-toolbar-checkbox-size: var(--checkbox-size);
+  --mail-toolbar-checkbox-border: var(--border-default);
+  --mail-toolbar-checkbox-bg: var(--primary);
+  --mail-toolbar-checkbox-border-active: var(--primary);
+  --mail-dropdown-min-w: 160px;
+  --mail-dropdown-bg: var(--bg-surface);
+  --mail-dropdown-border: var(--border-subtle);
+  --mail-dropdown-radius: var(--radius-md);
+  --mail-dropdown-elevation: var(--elevation-lg);
+  --mail-dropdown-item-height: 36px;
+  --mail-dropdown-item-padding-x: var(--space-3);
+  --mail-pagination-text: var(--text-secondary);
+  --mail-pagination-arrow-size: 20px;
+  --mail-pagination-gap: var(--space-3);
+
   --font-size: 16px;
   
   /* LibreOllama Asana + Sunsama Design Tokens */

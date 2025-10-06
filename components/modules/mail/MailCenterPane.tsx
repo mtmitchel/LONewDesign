@@ -1,8 +1,9 @@
 import React from 'react';
 import { TriPaneHeader, TriPaneContent } from '../../TriPane';
 import { MailSearch } from './MailSearch';
-import { BulkActionsBar } from './BulkActionsBar';
+import { BulkActionToolbar } from './BulkActionToolbar';
 import { EmailListItem } from './EmailListItem';
+import { cn } from '../../ui/utils';
 import { Email, Label, SearchFilters } from './types';
 
 interface MailCenterPaneProps {
@@ -24,10 +25,29 @@ interface MailCenterPaneProps {
   onEmailSelect: (emailId: number, event: React.MouseEvent) => void;
   onEmailDoubleClick: (emailId: number, event: React.MouseEvent) => void;
   onCheckboxToggle: (emailId: number, event: React.MouseEvent) => void;
-  onBulkArchive: () => void;
-  onBulkDelete: () => void;
-  onBulkLabel: () => void;
-  onBulkClear: () => void;
+  onSelectAll: () => void;
+  onSelectNone: () => void;
+  onSelectRead: () => void;
+  onSelectUnread: () => void;
+  onSelectStarred: () => void;
+  onSelectUnstarred: () => void;
+  onRefresh?: () => void;
+  onMarkRead?: () => void;
+  onMarkUnread?: () => void;
+  onArchive?: () => void;
+  onDelete?: () => void;
+  onMove?: () => void;
+  onSnooze?: () => void;
+  onStar?: () => void;
+  totalCount: number;
+  rangeStart: number;
+  rangeEnd: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+  onPreviousPage: () => void;
+  onNextPage: () => void;
+  currentPage: number;
+  totalPages: number;
 }
 
 export function MailCenterPane({
@@ -46,13 +66,32 @@ export function MailCenterPane({
   onEmailSelect,
   onEmailDoubleClick,
   onCheckboxToggle,
-  onBulkArchive,
-  onBulkDelete,
-  onBulkLabel,
-  onBulkClear
+  onSelectAll,
+  onSelectNone,
+  onSelectRead,
+  onSelectUnread,
+  onSelectStarred,
+  onSelectUnstarred,
+  onRefresh,
+  onMarkRead,
+  onMarkUnread,
+  onArchive,
+  onDelete,
+  onMove,
+  onSnooze,
+  onStar,
+  totalCount,
+  rangeStart,
+  rangeEnd,
+  hasPreviousPage,
+  hasNextPage,
+  onPreviousPage,
+  onNextPage,
+  currentPage,
+  totalPages
 }: MailCenterPaneProps) {
   return (
-    <div id="mail-viewport" className="relative isolate h-full"  >
+    <div id="mail-viewport" className="relative isolate flex h-full flex-col">
       <TriPaneHeader>
         <div className="flex items-center gap-[var(--space-3)] flex-1">        
           {/* Centered search field */}
@@ -72,37 +111,90 @@ export function MailCenterPane({
       </TriPaneHeader>
 
       {/* Email List View - Full height white background */}
-      <TriPaneContent padding={false} className="bg-[var(--bg-surface)] h-full">
-        {/* Bulk Actions Bar */}
-        <BulkActionsBar
-          selectedCount={selectedEmails.length}
-          onArchive={onBulkArchive}
-          onDelete={onBulkDelete}
-          onLabel={onBulkLabel}
-          onClear={onBulkClear}
-        />
+      <TriPaneContent padding={false} className="flex-1 bg-[var(--bg-surface)] h-full">
+        <div className="flex h-full flex-col">
+          <BulkActionToolbar
+            selectedCount={selectedEmails.length}
+            totalCount={totalCount}
+            currentStart={rangeStart}
+            currentEnd={rangeEnd}
+            onSelectAll={onSelectAll}
+            onSelectNone={onSelectNone}
+            onSelectRead={onSelectRead}
+            onSelectUnread={onSelectUnread}
+            onSelectStarred={onSelectStarred}
+            onSelectUnstarred={onSelectUnstarred}
+            onPrevious={onPreviousPage}
+            onNext={onNextPage}
+            hasPrevious={hasPreviousPage}
+            hasNext={hasNextPage}
+            onRefresh={onRefresh}
+            onMarkRead={onMarkRead}
+            onMarkUnread={onMarkUnread}
+            onArchive={onArchive}
+            onDelete={onDelete}
+            onMove={onMove}
+            onSnooze={onSnooze}
+            onStar={onStar}
+          />
 
-        {/* Email List with White Surface and Light Dividers */}
-        <div className="bg-[var(--bg-surface)] divide-y divide-[var(--border-divider)]">
-          {emails.map((email) => (
-            <EmailListItem
-              key={email.id}
-              email={email}
-              labels={labels}
-              isSelected={selectedEmail === email.id}
-              isChecked={selectedEmails.includes(email.id)}
-              onClick={(e) => onEmailSelect(email.id, e)}
-              onDoubleClick={(e) => onEmailDoubleClick(email.id, e)}
-              onCheckboxToggle={(e) => onCheckboxToggle(email.id, e)}
-              onOpenEmail={() => onEmailSelect(email.id, {} as React.MouseEvent)}
-            />
-          ))}
+          <div className="flex-1 min-h-0 overflow-y-auto border-t border-[var(--border-default)]">
+            {emails.map((email) => (
+              <EmailListItem
+                key={email.id}
+                email={email}
+                labels={labels}
+                isSelected={selectedEmail === email.id}
+                isChecked={selectedEmails.includes(email.id)}
+                onClick={(e) => onEmailSelect(email.id, e)}
+                onDoubleClick={(e) => onEmailDoubleClick(email.id, e)}
+                onCheckboxToggle={(e) => onCheckboxToggle(email.id, e)}
+                onOpenEmail={() => onEmailSelect(email.id, {} as React.MouseEvent)}
+              />
+            ))}
 
-          {emails.length === 0 && (
-            <div className="p-[var(--space-8)] text-center text-[var(--text-secondary)]">
-              {searchQuery ? 'No emails found matching your search.' : 'No emails in this folder.'}
-            </div>
-          )}
+            {emails.length === 0 && (
+              <div className="p-[var(--space-8)] text-center text-[var(--text-secondary)]">
+                {searchQuery ? 'No emails found matching your search.' : 'No emails in this folder.'}
+              </div>
+            )}
+          </div>
+
+          <div className="flex h-[var(--toolbar-height)] shrink-0 items-center justify-between border-t border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--toolbar-padding-x)]">
+            <button
+              type="button"
+              onClick={onPreviousPage}
+              disabled={!hasPreviousPage}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2',
+                hasPreviousPage
+                  ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)]'
+                  : 'text-[var(--text-tertiary)] opacity-60 cursor-not-allowed'
+              )}
+              aria-label="Previous page"
+            >
+              Previous
+            </button>
+
+            <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)] font-[var(--font-weight-normal)]">
+              Page {Math.min(Math.max(currentPage, 1), Math.max(totalPages, 1))}
+            </span>
+
+            <button
+              type="button"
+              onClick={onNextPage}
+              disabled={!hasNextPage}
+              className={cn(
+                'flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2',
+                hasNextPage
+                  ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)]'
+                  : 'text-[var(--text-tertiary)] opacity-60 cursor-not-allowed'
+              )}
+              aria-label="Next page"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </TriPaneContent>
     </div>

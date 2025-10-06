@@ -115,8 +115,8 @@ export default function RightContextSettings({
         <div className="space-y-6">
           {/* Message view - special layout for radios */}
           <div>
-            <div className="text-sm font-medium text-[var(--text-primary)] mb-1">Message view</div>
-            <div className="text-sm text-[var(--text-secondary)] mb-3">
+            <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">Message view</div>
+            <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)] mb-3">
               Choose how messages are grouped.
             </div>
             <RadioGroup
@@ -131,33 +131,33 @@ export default function RightContextSettings({
             >
               <Label
                 htmlFor="mv-threaded"
-                className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--text-secondary)]"
+                className="flex cursor-pointer items-center gap-2 text-sm font-[var(--font-weight-medium)] text-[var(--text-primary)]"
               >
                 <RadioGroupItem
                   id="mv-threaded"
                   value="threaded"
                   className="peer relative size-5 border-2 border-[var(--primary-tint-20)] bg-transparent transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)] data-[state=checked]:border-[var(--primary)] data-[state=checked]:bg-transparent after:hidden after:absolute after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:size-2 after:rounded-full after:bg-[var(--primary)] data-[state=checked]:after:block"
                 />
-                <span className="transition-colors peer-data-[state=checked]:text-[var(--text-primary)]">Threaded</span>
+                <span className="transition-colors text-sm font-[var(--font-weight-medium)] text-[var(--text-primary)] peer-data-[state=checked]:text-[var(--text-primary)]">Threaded</span>
               </Label>
               <Label
                 htmlFor="mv-flat"
-                className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[var(--text-secondary)]"
+                className="flex cursor-pointer items-center gap-2 text-sm font-[var(--font-weight-medium)] text-[var(--text-primary)]"
               >
                 <RadioGroupItem
                   id="mv-flat"
                   value="flat"
                   className="peer relative size-5 border-2 border-[var(--primary-tint-20)] bg-transparent transition-colors focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)] data-[state=checked]:border-[var(--primary)] data-[state=checked]:bg-transparent after:hidden after:absolute after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:size-2 after:rounded-full after:bg-[var(--primary)] data-[state=checked]:after:block"
                 />
-                <span className="transition-colors peer-data-[state=checked]:text-[var(--text-primary)]">Flat</span>
+                <span className="transition-colors text-sm font-[var(--font-weight-medium)] text-[var(--text-primary)] peer-data-[state=checked]:text-[var(--text-primary)]">Flat</span>
               </Label>
             </RadioGroup>
           </div>
 
           {/* List type */}
           <div>
-            <div className="text-sm font-medium text-[var(--text-primary)] mb-1">List type</div>
-            <div className="text-sm text-[var(--text-secondary)] mb-3">
+            <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">List type</div>
+            <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)] mb-3">
               Select layout for the message list.
             </div>
             <Select
@@ -183,8 +183,8 @@ export default function RightContextSettings({
           {/* Compact view */}
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <div className="text-sm font-medium text-[var(--text-primary)] mb-1">Compact view</div>
-              <div className="text-sm text-[var(--text-secondary)]">
+              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">Compact view</div>
+              <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
                 Show more messages in less space.
               </div>
             </div>
@@ -204,8 +204,8 @@ export default function RightContextSettings({
           {/* Show message preview */}
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <div className="text-sm font-medium text-[var(--text-primary)] mb-1">Show message preview</div>
-              <div className="text-sm text-[var(--text-secondary)]">
+              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">Show message preview</div>
+              <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
                 Display snippet of message content.
               </div>
             </div>
@@ -235,8 +235,8 @@ export default function RightContextSettings({
           {/* Auto-mark as read */}
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <div className="text-sm font-medium text-[var(--text-primary)] mb-1">Auto-mark as read</div>
-              <div className="text-sm text-[var(--text-secondary)]">
+              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">Auto-mark as read</div>
+              <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
                 Automatically mark messages as read when opened.
               </div>
             </div>
@@ -254,8 +254,8 @@ export default function RightContextSettings({
           {/* Auto-archive after reply */}
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <div className="text-sm font-medium text-[var(--text-primary)] mb-1">Auto-archive after reply</div>
-              <div className="text-sm text-[var(--text-secondary)]">
+              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">Auto-archive after reply</div>
+              <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
                 Automatically archive conversations after replying.
               </div>
             </div>
@@ -273,8 +273,8 @@ export default function RightContextSettings({
           {/* Always show images */}
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <div className="text-sm font-medium text-[var(--text-primary)] mb-1">Always show images</div>
-              <div className="text-sm text-[var(--text-secondary)]">
+              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">Always show images</div>
+              <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
                 Automatically load images in messages.
               </div>
             </div>
@@ -304,8 +304,8 @@ export default function RightContextSettings({
           {/* Smart icon fallbacks */}
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <div className="text-sm font-medium text-[var(--text-primary)] mb-1">Smart icon fallbacks</div>
-              <div className="text-sm text-[var(--text-secondary)]">
+              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">Smart icon fallbacks</div>
+              <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
                 Replace broken footer icons with design-system icons.
               </div>
             </div>
@@ -325,8 +325,8 @@ export default function RightContextSettings({
           {/* Enhanced email renderer */}
           <div className="flex items-start justify-between">
             <div className="flex-1 pr-4">
-              <div className="text-sm font-medium text-[var(--text-primary)] mb-1">Enhanced email renderer (Beta)</div>
-              <div className="text-sm text-[var(--text-secondary)]">
+              <div className="text-sm font-semibold text-[var(--text-primary)] mb-1">Enhanced email renderer (Beta)</div>
+              <div className="text-xs font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
                 Use advanced rendering for complex emails.
               </div>
             </div>

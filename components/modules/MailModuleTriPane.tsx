@@ -1,15 +1,15 @@
 import React from 'react';
-import { Mail } from 'lucide-react';
-import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { EmailOverlay } from './mail';
-import { ComposeDocked, ComposeDraft } from './compose';
+import { ComposeDocked } from './compose';
 import { MailLeftPane } from './mail/MailLeftPane';
 import { MailCenterPane } from './mail/MailCenterPane';
 import { MailRightPane } from './mail/MailRightPane';
 import { CollapsedSidebarPanel } from './mail/CollapsedSidebarPanel';
 import { useMailState } from './mail/useMailState';
-import { folders, labels, emails } from './mail/mockData';
+import { folders, labels, emails as initialEmails } from './mail/mockData';
+
+const PAGE_SIZE = 25;
 
 export function MailModuleTriPane() {
   const {
@@ -35,7 +35,9 @@ export function MailModuleTriPane() {
     applyFilters
   } = useMailState();
 
+  const [mailItems, setMailItems] = React.useState(initialEmails);
   const [composeMinimized, setComposeMinimized] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   // Keyboard shortcut handlers
   React.useEffect(() => {
@@ -95,14 +97,35 @@ export function MailModuleTriPane() {
   }, [leftPaneVisible, rightPaneVisible, setLeftPaneVisible, setRightPaneVisible]);
 
   // Filter emails based on folder and search
-  const filteredEmails = emails.filter(email => {
-    const matchesSearch = email.subject.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         email.sender.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         email.preview.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // For now, show all emails in inbox (you could add folder filtering logic here)
-    return matchesSearch;
-  });
+  const filteredEmails = React.useMemo(() => {
+    const keyword = searchQuery.toLowerCase();
+    return mailItems.filter(email => {
+      const matchesSearch =
+        email.subject.toLowerCase().includes(keyword) ||
+        email.sender.toLowerCase().includes(keyword) ||
+        email.preview.toLowerCase().includes(keyword);
+
+      // TODO: incorporate folder filtering and advanced filters
+      return matchesSearch;
+    });
+  }, [mailItems, searchQuery]);
+
+  const totalEmails = filteredEmails.length;
+  const totalPages = Math.max(1, Math.ceil(totalEmails / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = totalEmails === 0 ? 0 : (safePage - 1) * PAGE_SIZE;
+  const endIndex = totalEmails === 0 ? 0 : Math.min(startIndex + PAGE_SIZE, totalEmails);
+  const paginatedEmails = filteredEmails.slice(startIndex, endIndex);
+  const rangeStart = totalEmails === 0 ? 0 : startIndex + 1;
+  const rangeEnd = totalEmails === 0 ? 0 : endIndex;
+  const hasPreviousPage = safePage > 1;
+  const hasNextPage = endIndex < totalEmails;
+
+  React.useEffect(() => {
+    if (currentPage !== safePage) {
+      setCurrentPage(safePage);
+    }
+  }, [currentPage, safePage]);
 
   const handleEmailSelect = (emailId: number, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -123,8 +146,104 @@ export function MailModuleTriPane() {
     );
   };
 
+  const handleSelectAll = React.useCallback(() => {
+    setSelectedEmails(filteredEmails.map(email => email.id));
+  }, [filteredEmails, setSelectedEmails]);
+
+  const handleSelectNone = React.useCallback(() => {
+    setSelectedEmails([]);
+  }, [setSelectedEmails]);
+
+  const handleSelectRead = React.useCallback(() => {
+    setSelectedEmails(filteredEmails.filter(email => !email.unread).map(email => email.id));
+  }, [filteredEmails, setSelectedEmails]);
+
+  const handleSelectUnread = React.useCallback(() => {
+    setSelectedEmails(filteredEmails.filter(email => email.unread).map(email => email.id));
+  }, [filteredEmails, setSelectedEmails]);
+
+  const handleSelectStarred = React.useCallback(() => {
+    setSelectedEmails(filteredEmails.filter(email => email.starred).map(email => email.id));
+  }, [filteredEmails, setSelectedEmails]);
+
+  const handleSelectUnstarred = React.useCallback(() => {
+    setSelectedEmails(filteredEmails.filter(email => !email.starred).map(email => email.id));
+  }, [filteredEmails, setSelectedEmails]);
+
+  const handleRefresh = React.useCallback(() => {
+    setMailItems(initialEmails);
+    setSelectedEmails([]);
+  }, [setSelectedEmails]);
+
+  const handleMarkRead = React.useCallback(() => {
+    if (!selectedEmails.length) return;
+    setMailItems(prev =>
+      prev.map(email =>
+        selectedEmails.includes(email.id)
+          ? { ...email, unread: false }
+          : email
+      )
+    );
+  }, [selectedEmails]);
+
+  const handleMarkUnread = React.useCallback(() => {
+    if (!selectedEmails.length) return;
+    setMailItems(prev =>
+      prev.map(email =>
+        selectedEmails.includes(email.id)
+          ? { ...email, unread: true }
+          : email
+      )
+    );
+  }, [selectedEmails]);
+
+  const handleArchive = React.useCallback(() => {
+    if (!selectedEmails.length) return;
+    setMailItems(prev => prev.filter(email => !selectedEmails.includes(email.id)));
+    if (selectedEmail && selectedEmails.includes(selectedEmail)) {
+      setSelectedEmail(null);
+    }
+    setSelectedEmails([]);
+  }, [selectedEmail, selectedEmails, setSelectedEmail, setSelectedEmails]);
+
+  const handleDelete = React.useCallback(() => {
+    if (!selectedEmails.length) return;
+    setMailItems(prev => prev.filter(email => !selectedEmails.includes(email.id)));
+    if (selectedEmail && selectedEmails.includes(selectedEmail)) {
+      setSelectedEmail(null);
+    }
+    setSelectedEmails([]);
+  }, [selectedEmail, selectedEmails, setSelectedEmail, setSelectedEmails]);
+
+  const handleMove = React.useCallback(() => {
+    console.log('Move to folder', selectedEmails);
+  }, [selectedEmails]);
+
+  const handleSnooze = React.useCallback(() => {
+    console.log('Snooze emails', selectedEmails);
+  }, [selectedEmails]);
+
+  const handleStarToggle = React.useCallback(() => {
+    if (!selectedEmails.length) return;
+    setMailItems(prev =>
+      prev.map(email =>
+        selectedEmails.includes(email.id)
+          ? { ...email, starred: !email.starred }
+          : email
+      )
+    );
+  }, [selectedEmails]);
+
+  const handlePreviousPage = React.useCallback(() => {
+    setCurrentPage(prev => Math.max(1, prev - 1));
+  }, []);
+
+  const handleNextPage = React.useCallback(() => {
+    setCurrentPage(prev => (prev < totalPages ? prev + 1 : prev));
+  }, [totalPages]);
+
   // Email Detail Modal
-  const selectedEmailData = emails.find(e => e.id === selectedEmail);
+  const selectedEmailData = mailItems.find(e => e.id === selectedEmail);
 
   const overlayEmail = selectedEmailData
     ? {
@@ -147,7 +266,7 @@ export function MailModuleTriPane() {
           ? [
               {
                 id: `${selectedEmailData.id}-attachment`,
-                filename: `${selectedEmailData.subject.replace(/[^a-z0-9]+/gi, '-')}\.pdf`,
+                filename: `${selectedEmailData.subject.replace(/[^a-z0-9]+/gi, '-')}.pdf`,
                 size: '1.2 MB'
               }
             ]
@@ -191,29 +310,46 @@ export function MailModuleTriPane() {
         
         {/* Center Pane */}
         <div className="flex-1 flex flex-col min-w-0 relative overflow-visible" id="center-pane">
-          <div className="flex-1 overflow-y-auto">
-            <MailCenterPane
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              showAdvancedSearch={showAdvancedSearch}
-              onAdvancedSearchToggle={setShowAdvancedSearch}
-              searchFilters={searchFilters}
-              onFiltersChange={setSearchFilters}
-              onApplyFilters={applyFilters}
-              onClearFilters={clearFilters}
-              emails={filteredEmails}
-              labels={labels}
-              selectedEmail={selectedEmail}
-              selectedEmails={selectedEmails}
-              onEmailSelect={handleEmailSelect}
-              onEmailDoubleClick={handleEmailDoubleClick}
-              onCheckboxToggle={handleCheckboxToggle}
-              onBulkArchive={() => console.log('Bulk archive')}
-              onBulkDelete={() => console.log('Bulk delete')}
-              onBulkLabel={() => console.log('Bulk label')}
-              onBulkClear={() => setSelectedEmails([])}
-            />
-          </div>
+          <MailCenterPane
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            showAdvancedSearch={showAdvancedSearch}
+            onAdvancedSearchToggle={setShowAdvancedSearch}
+            searchFilters={searchFilters}
+            onFiltersChange={setSearchFilters}
+            onApplyFilters={applyFilters}
+            onClearFilters={clearFilters}
+            emails={paginatedEmails}
+            labels={labels}
+            selectedEmail={selectedEmail}
+            selectedEmails={selectedEmails}
+            onEmailSelect={handleEmailSelect}
+            onEmailDoubleClick={handleEmailDoubleClick}
+            onCheckboxToggle={handleCheckboxToggle}
+            onSelectAll={handleSelectAll}
+            onSelectNone={handleSelectNone}
+            onSelectRead={handleSelectRead}
+            onSelectUnread={handleSelectUnread}
+            onSelectStarred={handleSelectStarred}
+            onSelectUnstarred={handleSelectUnstarred}
+            onRefresh={handleRefresh}
+            onMarkRead={handleMarkRead}
+            onMarkUnread={handleMarkUnread}
+            onArchive={handleArchive}
+            onDelete={handleDelete}
+            onMove={handleMove}
+            onSnooze={handleSnooze}
+            onStar={handleStarToggle}
+            totalCount={totalEmails}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            hasPreviousPage={hasPreviousPage}
+            hasNextPage={hasNextPage}
+            onPreviousPage={handlePreviousPage}
+            onNextPage={handleNextPage}
+            currentPage={safePage}
+            totalPages={totalPages}
+          />
           
           {/* Compose Modal - Mounted inside center pane */}
           <ComposeDocked
