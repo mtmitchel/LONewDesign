@@ -46,7 +46,7 @@ export function TaskComposer({ onAddTask, onCancel }: TaskComposerProps) {
   };
 
   return (
-    <div className="mb-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-sm)] p-[var(--space-2)]">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-sm)] p-[var(--space-2)]">
       <div className="flex flex-col gap-[var(--space-2)]">
         <div className="flex items-center gap-[var(--space-2)]">
           <div className="w-5 h-5 border-2 border-gray-300 rounded-full flex-shrink-0" />
@@ -110,8 +110,8 @@ export function TaskComposer({ onAddTask, onCancel }: TaskComposerProps) {
                 <Flag className="w-4 h-4" />
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-2" align="end">
-              <div className="flex flex-col gap-1">
+            <PopoverContent className="w-48 p-1.5" align="end">
+              <div className="flex flex-col gap-0.5">
                 {['high', 'medium', 'low', 'none'].map((p) => (
                   <button
                     key={p}
@@ -119,12 +119,12 @@ export function TaskComposer({ onAddTask, onCancel }: TaskComposerProps) {
                       setPriority(p as any);
                       setShowPriorityPicker(false);
                     }}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] capitalize hover:bg-[var(--bg-surface-elevated)] text-left ${
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] capitalize hover:bg-[var(--bg-surface-elevated)] text-left ${
                       priority === p ? 'bg-[var(--bg-surface-elevated)]' : ''
                     }`}
                   >
                     {p !== 'none' && (
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] ${priorityColors[p]}`}>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] ${priorityColors[p]}`}>
                         {p}
                       </span>
                     )}
