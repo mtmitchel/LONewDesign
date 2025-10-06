@@ -55,6 +55,8 @@ const mockTasks: Task[] = [
   { id: '5', title: 'asdfasdfasdfsa', dueDate: 'Aug 28', status: 'todo', priority: 'low', labels: [], isCompleted: true, dateCreated: '2025-10-05' },
   { id: '6', title: 'Blah', status: 'in-progress', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-06' },
   { id: '7', title: 'Buy bread', dueDate: 'Oct 1', status: 'in-progress', priority: 'medium', labels: ['errands'], isCompleted: false, dateCreated: '2025-10-07' },
+  { id: '8', title: 'Task 1', dueDate: 'Oct 2 – 3', status: 'todo', priority: 'low', labels: [], isCompleted: false, dateCreated: '2025-10-08' },
+  { id: '9', title: 'tretre', dueDate: 'Oct 29', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-09' },
 ];
 
 const columns = [
@@ -70,17 +72,19 @@ export function TasksModule() {
   const [tasks, setTasks] = useState(mockTasks);
   const [sortOption, setSortOption] = useState<{[key: string]: string}>({});
   const [activeComposerSection, setActiveComposerSection] = useState<string | null>(null);
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
   const filteredTasks = tasks.filter(task => 
     task.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddTask = (title: string, status: string) => {
+  const handleAddTask = (title: string, status: string, dueDate?: string, priority?: 'low' | 'medium' | 'high' | 'none') => {
     const newTask: Task = {
       id: `task-${Date.now()}`,
       title,
       status: status as any,
-      priority: 'none',
+      priority: priority || 'none',
+      dueDate,
       labels: [],
       isCompleted: false,
       dateCreated: new Date().toISOString(),
@@ -153,18 +157,20 @@ export function TasksModule() {
             />
             {activeComposerSection === column.id ? (
               <TaskComposer 
-                onAddTask={(title) => handleAddTask(title, column.id)}
+                onAddTask={(title, dueDate, priority) => handleAddTask(title, column.id, dueDate, priority)}
                 onCancel={() => setActiveComposerSection(null)}
               />
             ) : (
               <TaskAddButton onClick={() => setActiveComposerSection(column.id)} />
             )}
-            <div className="flex flex-col gap-[var(--space-6)]">
+            <div className="flex flex-col gap-[var(--space-2)]">
               {getTasksByStatus(column.id).map((task) => (
                 <TaskCard
                   key={task.id}
                   taskTitle={task.title}
                   dueDate={task.dueDate}
+                  priority={task.priority}
+                  labels={task.labels}
                   isCompleted={task.isCompleted}
                   onToggleCompletion={() => toggleTaskCompletion(task.id)}
                   onClick={() => {
@@ -230,7 +236,7 @@ export function TasksModule() {
                                         <div className={`truncate ${task.isCompleted ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>{task.title}</div>
                                     </div>
                                     <div className={`text-sm ${task.dueDate ? 'text-red-500' : 'text-[var(--text-tertiary)]'}`}>{task.dueDate || '-'}</div>
-                                    <div className={`inline-flex items-center px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-pill)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] capitalize ${priorityColors[task.priority]}`}>{task.priority !== 'none' ? task.priority : '-'}</div>
+                                    <div className={`inline-flex items-center px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] capitalize ${priorityColors[task.priority]}`}>{task.priority !== 'none' ? task.priority : '-'}</div>
                                     <div className="flex gap-1">
                                         {task.labels.map(label => <Badge key={label} variant="secondary">{label}</Badge>)}
                                     </div>
@@ -250,7 +256,7 @@ export function TasksModule() {
                                     Duplicate
                                 </ContextMenuItem>
                                 <ContextMenuSeparator />
-                                <ContextMenuItem onClick={() => handleDeleteTask(task.id)} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer text-[var(--danger)]">
+                                <ContextMenuItem onClick={() => handleDeleteTask(task.id)} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--danger)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
                                     <Trash className="w-4 h-4 mr-2" />
                                     Delete
                                 </ContextMenuItem>
@@ -260,17 +266,17 @@ export function TasksModule() {
                     {activeComposerSection === column.id ? (
                         <div className="px-4 py-2">
                             <TaskComposer 
-                                onAddTask={(title) => handleAddTask(title, column.id)}
+                                onAddTask={(title, dueDate, priority) => handleAddTask(title, column.id, dueDate, priority)}
                                 onCancel={() => setActiveComposerSection(null)}
                             />
                         </div>
                     ) : (
                         <div 
-                            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-md)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] bg-[var(--btn-ghost-bg)] text-[var(--btn-ghost-text)] border border-[var(--btn-ghost-border)] hover:bg-[var(--btn-ghost-hover)] motion-safe:transition-colors duration-[var(--duration-fast)]"
+                            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
                             onClick={() => setActiveComposerSection(column.id)}
                         >
                             <Plus size={16} />
-                            <span className="text-sm font-medium">Add task...</span>
+                            <span>Add task...</span>
                         </div>
                     )}
                 </div>

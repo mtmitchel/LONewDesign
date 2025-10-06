@@ -42,12 +42,13 @@ export function TaskColumnHeader({
   }
 
   return (
-    <div className="flex items-center justify-between px-1 mb-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-[length:var(--text-base)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] px-[var(--space-3)] py-[var(--space-2)] mb-[var(--space-2)]">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <h3 className="text-[length:var(--text-sm)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">
             {columnTitle}
           </h3>
-          <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)] bg-[var(--primary-tint-5)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-sm)]">
+          <span className="text-[length:var(--text-xs)] text-[var(--text-secondary)] bg-[var(--bg-surface-elevated)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-sm)] ml-[var(--space-2)]">
             {taskCount}
           </span>
         </div>
@@ -82,5 +83,6 @@ export function TaskColumnHeader({
             </DropdownMenu>
         </div>
       </div>
+    </div>
   );
 }

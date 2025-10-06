@@ -45,6 +45,26 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
   const [editedTask, setEditedTask] = React.useState<Task>(task);
   const [newSubtaskTitle, setNewSubtaskTitle] = React.useState('');
   const [newSubtaskDueDate, setNewSubtaskDueDate] = React.useState<string | undefined>(undefined);
+  const [newLabel, setNewLabel] = React.useState('');
+
+  // Helper function to parse formatted date strings like "Oct 30" or "2025-10-30" back to Date
+  const parseDisplayDate = (dateStr: string): Date | undefined => {
+    if (!dateStr) return undefined;
+    
+    // If it's already in ISO format (yyyy-MM-dd), parse it directly
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return new Date(dateStr);
+    }
+    
+    // If it's in display format (MMM d), assume current year
+    const currentYear = new Date().getFullYear();
+    try {
+      const date = new Date(`${dateStr}, ${currentYear}`);
+      return isNaN(date.getTime()) ? undefined : date;
+    } catch {
+      return undefined;
+    }
+  };
 
   const handleFieldChange = (field: keyof Task, value: any) => {
     setEditedTask(prev => ({ ...prev!, [field]: value }));
@@ -98,6 +118,29 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
     }));
   };
 
+  const handleAddLabel = () => {
+    if (newLabel.trim() && !editedTask.labels.includes(newLabel.trim())) {
+      setEditedTask(prev => ({
+        ...prev!,
+        labels: [...prev!.labels, newLabel.trim()],
+      }));
+      setNewLabel('');
+    }
+  };
+
+  const handleRemoveLabel = (labelToRemove: string) => {
+    setEditedTask(prev => ({
+      ...prev!,
+      labels: prev!.labels.filter(label => label !== labelToRemove),
+    }));
+  };
+
+  const handleKeyDownLabel = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleAddLabel();
+    }
+  };
+
   const handleSaveChanges = () => {
     onUpdateTask(editedTask);
     onClose();
@@ -134,14 +177,14 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                             className="w-full justify-start text-left font-normal"
                         >
                             <Calendar className="mr-2 h-4 w-4" />
-                            {editedTask.dueDate ? format(new Date(editedTask.dueDate), "PPP") : "Pick a date"}
+                            {editedTask.dueDate || "Pick a date"}
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                         <CalendarComponent
                             mode="single"
-                            selected={editedTask.dueDate ? new Date(editedTask.dueDate) : undefined}
-                            onSelect={(date) => handleFieldChange('dueDate', date ? format(date, "yyyy-MM-dd") : undefined)}
+                            selected={parseDisplayDate(editedTask.dueDate || '')}
+                            onSelect={(date) => handleFieldChange('dueDate', date ? format(date, "MMM d") : undefined)}
                             initialFocus
                         />
                     </PopoverContent>
@@ -172,10 +215,41 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                     <Tag className="w-4 h-4" />
                     Labels
                 </Label>
+                {editedTask.labels.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {editedTask.labels.map((label) => (
+                      <div
+                        key={label}
+                        className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-normal)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]"
+                      >
+                        <span>{label}</span>
+                        <button
+                          onClick={() => handleRemoveLabel(label)}
+                          className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="flex gap-2">
-                    <Input id="labels" placeholder="Add a label" className="h-10 px-[var(--space-3)]" />
-                    <Button variant="outline" size="icon"><ChevronDown className="w-4 h-4" /></Button>
-                    <Button variant="outline" size="icon"><Plus className="w-4 h-4" /></Button>
+                    <Input 
+                      id="labels" 
+                      placeholder="Add a label" 
+                      value={newLabel}
+                      onChange={(e) => setNewLabel(e.target.value)}
+                      onKeyDown={handleKeyDownLabel}
+                      className="h-10 px-[var(--space-3)]" 
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={handleAddLabel}
+                      disabled={!newLabel.trim()}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
                 </div>
             </div>
 
