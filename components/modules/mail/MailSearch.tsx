@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { Input } from '../../ui/input';
 import { Button } from '../../ui/button';
 import { Checkbox } from '../../ui/checkbox';
@@ -28,6 +28,11 @@ export function MailSearch({
   onApplyFilters,
   onClearFilters
 }: MailSearchProps) {
+  const handleSearch = () => {
+    onApplyFilters();
+    onAdvancedSearchToggle(false);
+  };
+
   return (
     <div className="relative max-w-md w-full">
       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
@@ -45,73 +50,152 @@ export function MailSearch({
             <SlidersHorizontal className="w-4 h-4" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-80" align="end">
-          <div className="space-y-4">
-            <h4 className="font-medium text-[var(--text-primary)]">Advanced Search</h4>
-            
-            <div className="space-y-3">
+        <PopoverContent className="w-[480px] p-0" align="end">
+          <div className="p-[var(--space-6)]">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-[var(--space-5)]">
+              <h3 className="text-[var(--text-lg)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">
+                Advanced search
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-6 h-6 p-0"
+                onClick={() => onAdvancedSearchToggle(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-[var(--space-4)]">
               <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)]">From</label>
-                <Input 
-                  placeholder="sender@email.com"
+                <label className="block text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] mb-2">
+                  From
+                </label>
+                <Input
+                  placeholder="sender@example.com"
                   value={searchFilters.from}
                   onChange={(e) => onFiltersChange({ ...searchFilters, from: e.target.value })}
+                  className="h-10 px-[var(--space-3)] text-[var(--text-base)] border-[var(--border-default)] rounded-[var(--radius-sm)]"
                 />
               </div>
-              
+
               <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)]">Subject</label>
-                <Input 
-                  placeholder="Email subject..."
+                <label className="block text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] mb-2">
+                  To
+                </label>
+                <Input
+                  placeholder="recipient@example.com"
+                  value={searchFilters.to}
+                  onChange={(e) => onFiltersChange({ ...searchFilters, to: e.target.value })}
+                  className="h-10 px-[var(--space-3)] text-[var(--text-base)] border-[var(--border-default)] rounded-[var(--radius-sm)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] mb-2">
+                  Subject
+                </label>
+                <Input
+                  placeholder="Enter subject"
                   value={searchFilters.subject}
                   onChange={(e) => onFiltersChange({ ...searchFilters, subject: e.target.value })}
+                  className="h-10 px-[var(--space-3)] text-[var(--text-base)] border-[var(--border-default)] rounded-[var(--radius-sm)]"
                 />
               </div>
-              
+
               <div>
-                <label className="text-xs font-medium text-[var(--text-secondary)]">Date Range</label>
-                <Select 
-                  value={searchFilters.dateRange} 
+                <label className="block text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] mb-2">
+                  Has the words
+                </label>
+                <Input
+                  placeholder="Enter words to search for"
+                  value={searchFilters.hasWords}
+                  onChange={(e) => onFiltersChange({ ...searchFilters, hasWords: e.target.value })}
+                  className="h-10 px-[var(--space-3)] text-[var(--text-base)] border-[var(--border-default)] rounded-[var(--radius-sm)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] mb-2">
+                  Date within
+                </label>
+                <Select
+                  value={searchFilters.dateRange}
                   onValueChange={(value) => onFiltersChange({ ...searchFilters, dateRange: value })}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="h-10 px-[var(--space-3)] text-[var(--text-base)] border-[var(--border-default)] rounded-[var(--radius-sm)]">
+                    <SelectValue placeholder="Any time" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="any">Any time</SelectItem>
                     <SelectItem value="today">Today</SelectItem>
-                    <SelectItem value="week">This week</SelectItem>
-                    <SelectItem value="month">This month</SelectItem>
+                    <SelectItem value="week">Past week</SelectItem>
+                    <SelectItem value="month">Past month</SelectItem>
+                    <SelectItem value="year">Past year</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <Checkbox 
+
+              <div>
+                <label className="block text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] mb-2">
+                  Search in
+                </label>
+                <Select
+                  value={searchFilters.folder}
+                  onValueChange={(value) => onFiltersChange({ ...searchFilters, folder: value })}
+                >
+                  <SelectTrigger className="h-10 px-[var(--space-3)] text-[var(--text-base)] border-[var(--border-default)] rounded-[var(--radius-sm)]">
+                    <SelectValue placeholder="All Mail" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Mail</SelectItem>
+                    <SelectItem value="inbox">Inbox</SelectItem>
+                    <SelectItem value="sent">Sent</SelectItem>
+                    <SelectItem value="drafts">Drafts</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-[var(--space-2)] pt-1">
+                <Checkbox
                   id="hasAttachment"
                   checked={searchFilters.hasAttachment}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked) =>
                     onFiltersChange({ ...searchFilters, hasAttachment: !!checked })
                   }
+                  className="w-4 h-4"
                 />
-                <label htmlFor="hasAttachment" className="text-sm">Has attachments</label>
+                <label htmlFor="hasAttachment" className="text-[var(--text-sm)] text-[var(--text-primary)] cursor-pointer">
+                  Has attachment
+                </label>
               </div>
             </div>
-            
-            <div className="flex gap-2 pt-2">
-              <Button 
-                size="sm" 
-                variant="tonal"
-                onClick={onApplyFilters}
-              >
-                Apply Filters
-              </Button>
-              <Button 
-                size="sm" 
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-end gap-[var(--space-2)] mt-[var(--space-5)]">
+              <Button
                 variant="ghost"
                 onClick={onClearFilters}
+                className="h-9"
               >
-                Clear
+                Reset
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => onAdvancedSearchToggle(false)}
+                className="h-9"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="solid"
+                onClick={handleSearch}
+                className="gap-2 h-9"
+              >
+                <Search className="w-4 h-4" />
+                Search
               </Button>
             </div>
           </div>

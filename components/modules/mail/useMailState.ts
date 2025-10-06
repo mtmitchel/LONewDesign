@@ -17,9 +17,12 @@ export function useMailState() {
     from: '',
     to: '',
     subject: '',
+    hasWords: '',
+    doesntHave: '',
+    size: 'any',
     hasAttachment: false,
     dateRange: 'any',
-    folder: 'any'
+    folder: 'all'
   });
 
   // Compose modal state - for legacy compose modal

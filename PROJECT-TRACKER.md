@@ -39,11 +39,15 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | MailRightPane | ✅ | High | Context panel, quick actions |
 | Email Rendering | ✅ | High | Sanitized HTML content |
 | Keyboard Shortcuts | ✅ | High | `[` `]` `\` for pane toggles |
-| Search & Filters | ✅ | Medium | Advanced search implemented |
+| Search & Filters | ✅ | Medium | **UPDATED: Redesigned with uniform 40px field heights, clean Gmail-style form** |
 | Responsive Design | ✅ | Medium | Mobile-friendly layout |
-| **Gmail Compose** | ✅ | High | **NEW: Docked compose with chips** |
-| **Shared Components** | ✅ | High | **NEW: SendButton.tsx + FormattingToolbar.tsx - True component sharing between ComposeModal and InlineReply** |
-| Inline Reply UX | ✅ | High | **UPDATED: Now uses shared SendButton + FormattingToolbar for pixel-perfect consistency with compose modal** |
+| **Gmail Compose** | ✅ | High | **Docked compose with minimize/restore, action dropdown** |
+| **Shared Components** | ✅ | High | **SendButton.tsx + FormattingToolbar.tsx - True component sharing** |
+| Inline Reply UX | ✅ | High | **Gmail-parity modal with action dropdown, scroll lock, flexbox layout** |
+| Avatar Removal | ✅ | Medium | **Removed circle avatars from email list and overlay for clean aesthetic** |
+| Collapsed Pane Bars | ✅ | Medium | **48px vertical bars with PaneCaret chevron toggles at bottom** |
+| TriPane Header Fix | ✅ | Low | **Fixed to h-[60px] for perfect border alignment** |
+| Design Tokens Docs | ✅ | Low | **Created docs/technical/design-tokens-reference.md** |
 
 #### Compose Module ✅ COMPLETE (Baseline v1.0 Locked)
 

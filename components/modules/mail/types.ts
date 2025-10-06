@@ -45,6 +45,9 @@ export interface SearchFilters {
   from: string;
   to: string;
   subject: string;
+  hasWords: string;
+  doesntHave: string;
+  size: string;
   hasAttachment: boolean;
   dateRange: string;
   folder: string;

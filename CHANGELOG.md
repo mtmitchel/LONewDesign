@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Mail Module UX Refinements (2024-12)
+- **Inline Reply to Gmail-Parity Modal**: Complete refactor of inline reply interface
+  - Transformed to elevated modal matching ComposeDocked design
+  - Added Gmail-style action dropdown (Reply/Reply All/Forward/Edit subject/Pop out)
+  - Recipient chips display inline with action selector
+  - Flexbox layout ensures toolbar and Send button always visible (max 70vh)
+  - Modal scroll lock on underlying mail pane when active
+  
+- **Compose Modal Minimize Functionality**: Minimize/restore capability
+  - Minimize button collapses compose to 400px × 52px bar at bottom-right
+  - Shows recipient and subject in minimized state
+  - Click anywhere on minimized bar to restore full compose
+  - State persists during compose session
+  
+- **Visual Hierarchy Cleanup**: Consistent modal elevation system
+  - Removed avatar circles from email list and email overlay
+  - All compose modals use `--elevation-xl` shadow for depth
+  - Fixed blue border issue on email overlay with forced removal
+  - Clean, modern aesthetic focused on content
+
+- **Collapsed Pane Navigation**: Sidebar collapse improvements
+  - Added thin 48px vertical bars when mail panes are collapsed
+  - PaneCaret chevron buttons at bottom of collapsed bars to reopen
+  - Left pane shows right-pointing chevron (→), right pane shows left (←)
+  - Matches main app sidebar collapse pattern
+  - Fixed TriPaneHeader to use `h-[60px]` instead of `min-h-[60px]` for perfect border alignment
+  - Removed horizontal scrollbar with overflow-hidden
+
+- **Advanced Search Redesign**: Clean, uniform form interface
+  - Simplified from cluttered multi-section form to compact modal (480px)
+  - All input fields and dropdowns now uniformly sized (40px height)
+  - Consistent padding, borders, radius across all form controls
+  - Gmail-inspired layout: From, To, Subject, Has words, Date within, Search in
+  - Checkbox for attachments with proper sizing
+  - Right-aligned button group: Reset, Cancel, Search
+
+- **Design Documentation**: Created markdown reference for design tokens
+  - Added `docs/technical/design-tokens-reference.md` 
+  - Complete table-formatted reference of all CSS custom properties
+  - Easier for outsiders to understand design system without parsing CSS
+
 ### Shared Component System - True Design Consistency
 - **SendButton.tsx**: Shared Send button component with consistent styling
   - Paper-plane icon, min-width constraint, proper keyboard shortcuts
