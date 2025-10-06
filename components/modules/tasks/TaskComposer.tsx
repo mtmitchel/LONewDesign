@@ -21,7 +21,7 @@ export function TaskComposer({ onAddTask, onCancel }: TaskComposerProps) {
     if (title.trim()) {
       onAddTask(
         title.trim(),
-        dueDate ? format(dueDate, 'MMM d') : undefined,
+        dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined,
         priority !== 'none' ? priority : undefined
       );
       setTitle('');

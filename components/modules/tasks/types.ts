@@ -8,6 +8,7 @@ export interface Task {
   priority: Priority;
   dueDate?: string;
   createdAt: string;
+  dateCreated?: string;
   updatedAt?: string;
   assignee?: string;
   labels: string[];
@@ -15,6 +16,7 @@ export interface Task {
   notes?: string;
   isCompleted: boolean;
   checklist?: ChecklistItem[];
+  isPinned?: boolean;
 }
 
 export interface ChecklistItem {

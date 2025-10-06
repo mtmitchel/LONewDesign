@@ -25,9 +25,10 @@
 :root {
   /* Radius & Motion */
   --radius-full: 9999px;
-  --duration-fast: 150ms;
+  --duration-fast: 120ms;
   --duration-base: 200ms;
-  --easing-standard: cubic-bezier(0.2, 0.8, 0.3, 1);
+  --duration-med: 200ms;
+  --easing-standard: cubic-bezier(0.2, 0.0, 0.2, 1);
   --easing-emphasized: cubic-bezier(0.2, 0.9, 0.1, 1);
   --on-primary: var(--primary-foreground);
   /* Elevation tokens for LibreOllama */
@@ -161,10 +162,48 @@
 
   /* Toolbars */
   --toolbar-h: 56px; /* header/footer height */
+  --calendar-header-h: 60px; /* calendar module header */
 
   /* Content & Typography */
   --chip-height: 22px;           /* keep pills consistent project-wide */
   --content-measure: 72ch;       /* email body measure */
+  --calendar-gutter: var(--space-6);
+  --calendar-cell-min-h: 112px;
+  --calendar-hour-row-h: 56px;
+  --calendar-rail-w: 340px;
+  --calendar-cell-border: var(--border-subtle);
+  --calendar-event-radius: var(--radius-md);
+  --calendar-rail-shadow: var(--elevation-sm);
+  
+  /* Tasks Rail - Compact spacing system */
+  --tasks-rail-padding: var(--space-4);   /* 16px outer padding */
+  --tasks-rail-gap: var(--space-4);       /* 16px between sections */
+  --tasks-rail-card-bg: var(--bg-surface);
+  --tasks-rail-border: var(--border-subtle);
+  --tasks-rail-radius: var(--radius-lg);
+  --tasks-rail-shadow: var(--elevation-sm);
+  
+  /* Controls & Type - Baseline Alignment */
+  --control-sm: 18px;                /* checkbox/kebab icon */
+  --icon-sm: 16px;                   /* calendar icon & small glyphs */
+  --text-sm-line: 20px;              /* line-height for row text */
+  
+  /* Task Rows - Fixed heights */
+  --task-row-h-1: 40px;              /* single-line row */
+  --task-row-h-2: 56px;              /* with meta (future use) */
+  --task-row-pad-y: var(--space-2);  /* 8px vertical padding */
+  --task-row-gap: var(--space-2);    /* 8px gap between elements */
+  --task-row-hover: var(--bg-muted);
+  
+  /* Task Badges */
+  --task-badge-gap: var(--space-2);   /* 8px between badges */
+  --task-badge-radius: var(--radius-sm);
+  --task-badge-text: var(--text-muted);
+  
+  /* Due Date States */
+  --due-default: var(--text-muted);
+  --due-today: var(--primary);
+  --due-overdue: var(--danger);
 
   /* Inline reply */
   --reply-editor-min-h: 160px;
@@ -237,7 +276,12 @@
   --success: hsl(160 50% 60%);
   --warning: hsl(38 85% 63%);
   --danger: var(--accent-coral); /* Use coral for urgent states */
+  --danger-600: var(--danger);
   --info: hsl(200 70% 65%);
+  --event-blue: var(--info);
+  --event-green: var(--success);
+  --event-orange: var(--warning);
+  --event-purple: hsl(275 70% 60%);
   --error: var(--danger); /* Alias for compatibility */
   --success-tint-20: hsl(160 50% 60% / 0.2);
   --warning-tint-20: hsl(38 85% 63% / 0.2);

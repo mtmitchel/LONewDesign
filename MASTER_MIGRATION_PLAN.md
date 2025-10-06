@@ -1,6 +1,6 @@
 # Module Migration Master Plan
 
-The current module inventory mirrors the structure in `App.tsx`; legacy variants are safely parked under `archive/` (e.g., `MailModule.tsx`, `NotesModuleBasic.tsx`). No conflicting production modules were found. The plan below accepts the prior audit with one addition: the Notes module also requires token and accessibility alignment.
+The current module inventory mirrors the structure in `App.tsx`; legacy variants are safely parked under `archive/` (e.g., `MailModule.tsx`, `NotesModuleBasic.tsx`). No conflicting production modules were found. The plan below accepts the prior audit with one addition: the Notes module also requires token and accessibility alignment. Only mail-style flows will adopt the shared `TriPane` scaffold—Tasks, Calendar, Canvas, Spaces, Agents, and Settings continue to use bespoke layouts.
 
 ```json
 {
@@ -302,51 +302,6 @@ The current module inventory mirrors the structure in `App.tsx`; legacy variants
       "rollback_procedure": "git checkout -- components/modules/TasksModule.tsx"
     },
     {
-      "task_id": "tasks-tri-pane-refactor",
-      "description": "Refactor Tasks module into the shared TriPane layout with a persistent detail inspector, mirroring Mail's IA",
-      "target_files": [
-        {
-          "path": "components/modules/TasksModule.tsx",
-          "line_range": "180-620",
-          "function_name": "TasksModule"
-        }
-      ],
-      "code_changes": [
-        {
-          "operation": "insert",
-          "find_pattern": "import React, { useState } from 'react';",
-          "replace_with": "import React, { useState } from 'react';\nimport { TriPane, TriPaneHeader, TriPaneContent } from '../../TriPane';",
-          "line_number": "1"
-        },
-        {
-          "operation": "replace",
-          "find_pattern": "return (\n    <div className=\"h-full bg-[var(--surface)] flex flex-col\">",
-          "replace_with": "return (\n    <TriPane\n      leftWidth=\"18rem\"\n      rightWidth=\"24rem\"\n      left={renderListSidebar()}\n      leftHeader={renderSidebarHeader()}\n      center={renderBoardOrList()}\n      centerHeader={renderTasksHeader()}\n      right={selectedTask ? renderTaskDetails(selectedTask) : renderEmptyDetails()}\n      rightHeader={selectedTask ? renderDetailsHeader(selectedTask) : null}\n    >",
-          "line_number": "200"
-        },
-        {
-          "operation": "insert",
-          "find_pattern": "const getTasksByList = (listId: string) => {",
-          "replace_with": "const renderListSidebar = () => { /* existing sidebar JSX extracted */ };\n  const renderTasksHeader = () => { /* board/list toggle header */ };\n  const renderBoardOrList = () => { /* reuse existing render logic */ };\n  const renderTaskDetails = (task: Task) => { /* convert dialog content into persistent pane */ };\n  const renderEmptyDetails = () => (/* placeholder state */);\n  const getTasksByList = (listId: string) => {",
-          "line_number": "144"
-        },
-        {
-          "operation": "replace",
-          "find_pattern": "{showTaskSidePanel && (",
-          "replace_with": "{/* Dialog is no longer needed once right pane renders details */}\n      {false && showTaskSidePanel && (",
-          "line_number": "520"
-        }
-      ],
-      "validation_steps": [
-        "npm run type-check",
-        "manual test: select task, confirm details remain open in right pane while switching board/list",
-        "manual test: resize window to ensure panes remain responsive"
-      ],
-      "success_criteria": "Tasks module adopts TriPane with persistent detail inspector, no longer relying on modal dialogs for core flows.",
-      "dependencies": ["tasks-token-alignment"],
-      "rollback_procedure": "git checkout -- components/modules/TasksModule.tsx"
-    },
-    {
       "task_id": "dashboard-persistence",
       "description": "Persist dashboard widgets/layout via Tauri filesystem APIs so edits survive app restarts like stored mail filters",
       "target_files": [
@@ -433,7 +388,6 @@ The current module inventory mirrors the structure in `App.tsx`; legacy variants
   ],
   "execution_order": [
     "tasks-token-alignment",
-    "tasks-tri-pane-refactor",
     "chat-a11y-roving-focus",
     "calendar-event-modal",
     "calendar-grid-a11y",
@@ -445,7 +399,7 @@ The current module inventory mirrors the structure in `App.tsx`; legacy variants
   ],
   "critical_warnings": [
     "Tauri plugin additions in canvas-tauri-export require enabling matching plugins in tauri.conf.json if not already present; missing setup will cause runtime errors.",
-    "tasks-tri-pane-refactor touches large JSX blocks—merge conflicts likely if other branches modify TasksModule simultaneously.",
+    "TriPane is reserved for mail-style modules; attempting to retrofit it into Tasks, Calendar, Canvas, Spaces, Agents, or Settings will break intended layouts.",
     "dashboard-persistence assumes write access to appDataDir; sandboxed environments must grant filesystem permission before deployment."
   ]
 }

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search, LayoutList, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { CalendarTasksRail } from './calendar/CalendarTasksRail';
 
-interface CalendarEvent {
+interface LegacyCalendarEvent {
   id: string;
   title: string;
   time: string;
@@ -15,10 +17,10 @@ interface CalendarDay {
   date: number;
   isCurrentMonth: boolean;
   isToday: boolean;
-  events: CalendarEvent[];
+  events: LegacyCalendarEvent[];
 }
 
-const mockEvents: CalendarEvent[] = [
+const legacyEvents: LegacyCalendarEvent[] = [
   {
     id: '1',
     title: 'Team Standup',
@@ -56,6 +58,8 @@ const mockEvents: CalendarEvent[] = [
 export function CalendarModule() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -81,8 +85,8 @@ export function CalendarModule() {
     for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
       const isCurrentMonth = date.getMonth() === month;
       const isToday = date.toDateString() === today.toDateString();
-      const dayEvents = date.getDate() === 15 && isCurrentMonth ? mockEvents.slice(0, 2) : 
-                       date.getDate() === 22 && isCurrentMonth ? mockEvents.slice(2, 4) : [];
+  const dayEvents = date.getDate() === 15 && isCurrentMonth ? legacyEvents.slice(0, 2) : 
+           date.getDate() === 22 && isCurrentMonth ? legacyEvents.slice(2, 4) : [];
       
       days.push({
         date: date.getDate(),
@@ -105,47 +109,94 @@ export function CalendarModule() {
     });
   };
 
-  const todaysEvents = mockEvents;
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
 
   return (
-    <div className="h-full bg-[var(--surface)] flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-[var(--border-subtle)] bg-[var(--elevated)] sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Calendar</h1>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => navigateMonth('prev')}>
-                <ChevronLeft size={16} />
-              </Button>
-              <h2 className="text-lg font-medium text-[var(--text-primary)] min-w-[140px] text-center">
-                {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
-              </h2>
-              <Button variant="ghost" size="sm" onClick={() => navigateMonth('next')}>
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+    <div className="flex h-full flex-col bg-[var(--bg-surface)]">
+      {/* Streamlined Header */}
+      <header className="flex h-[var(--calendar-header-h)] items-center justify-between gap-[var(--space-4)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-6)] shadow-[var(--elevation-sm)]">
+        {/* Left: Date Navigation */}
+        <div className="flex items-center gap-[var(--space-3)]">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goToToday}
+            className="h-8 px-[var(--space-3)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)]"
+          >
+            Today
+          </Button>
+          <div className="flex items-center gap-[var(--space-1)]">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigateMonth('prev')}
+              className="h-8 w-8"
+              title="Previous month"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigateMonth('next')}
+              className="h-8 w-8"
+              title="Next month"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-          <Button className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white">
-            <Plus size={16} className="mr-2" />
-            New Event
+          <h2 className="text-[length:var(--text-lg)] font-[var(--font-weight-semibold)] text-[color:var(--text-primary)]">
+            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+          </h2>
+        </div>
+
+        {/* Center: Search */}
+        <div className="relative hidden md:flex md:flex-1 md:max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--text-muted)]" />
+          <Input
+            type="search"
+            placeholder="Search events"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 w-full pl-9 text-[length:var(--text-sm)]"
+          />
+        </div>
+
+        {/* Right: View Toggle + New Event */}
+        <div className="flex items-center gap-[var(--space-2)]">
+          <div className="hidden items-center gap-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[calc(var(--space-1)/2)] lg:flex">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewMode('month')}
+              className={`h-7 w-7 ${viewMode === 'month' ? 'bg-[var(--bg-muted)]' : ''}`}
+              title="Month view"
+            >
+              <CalendarIcon className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewMode('week')}
+              className={`h-7 w-7 ${viewMode === 'week' ? 'bg-[var(--bg-muted)]' : ''}`}
+              title="Week view"
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            className="h-8 gap-[var(--space-2)] bg-[var(--primary)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-white hover:bg-[var(--primary-hover)]"
+          >
+            <Plus className="h-4 w-4" />
+            New event
           </Button>
         </div>
-        
-        {/* Today's Overview */}
-        <div className="flex items-center gap-6 text-sm">
-          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-            <CalendarIcon size={16} />
-            <span>Today: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-          </div>
-          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-            <Clock size={16} />
-            <span>{todaysEvents.length} events scheduled</span>
-          </div>
-        </div>
-      </div>
+      </header>
 
-      <div className="flex-1 flex">
+      <div className="flex flex-1 flex-col lg:flex-row">
         {/* Calendar Grid */}
         <div className="flex-1 p-6">
           {/* Day Headers */}
@@ -193,45 +244,10 @@ export function CalendarModule() {
           </div>
         </div>
 
-        {/* Today's Events Sidebar */}
-        <div className="w-80 border-l border-[var(--border-subtle)] bg-[var(--elevated)] flex flex-col">
-          <div className="p-6 border-b border-[var(--border-subtle)]">
-            <h3 className="text-lg font-semibold text-[var(--text-primary)]">Today's Schedule</h3>
-            <p className="text-sm text-[var(--text-secondary)] mt-1">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-6">
-            {todaysEvents.length > 0 ? (
-              <div className="space-y-4">
-                {todaysEvents.map((event) => (
-                  <div key={event.id} className="p-4 bg-[var(--surface)] rounded-lg border border-[var(--border-subtle)]">
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-medium text-[var(--text-primary)]">{event.title}</h4>
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: event.color }}
-                      ></div>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-[var(--text-secondary)] mb-2">
-                      <span>{event.time}</span>
-                      <span>{event.duration}</span>
-                    </div>
-                    {event.description && (
-                      <p className="text-sm text-[var(--text-secondary)]">{event.description}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CalendarIcon size={48} className="mx-auto text-[var(--text-secondary)] mb-4" />
-                <p className="text-[var(--text-secondary)]">No events scheduled for today</p>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Tasks Rail */}
+        <aside className="flex w-full flex-col border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] lg:w-[var(--calendar-rail-w)] lg:flex-none lg:border-t-0 lg:border-l">
+          <CalendarTasksRail className="w-full" />
+        </aside>
       </div>
     </div>
   );
