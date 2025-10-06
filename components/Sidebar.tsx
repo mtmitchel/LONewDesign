@@ -7,12 +7,7 @@ import {
   FileText, 
   Palette, 
   Settings,
-  LayoutDashboard,
-  Eye,
-  Sparkles,
-  Code,
-  List,
-  Layers
+  LayoutDashboard
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { PaneCaret, PaneFooter } from './dev/PaneCaret';
@@ -35,16 +30,6 @@ const modules = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-const designSystemModules = [
-  { id: 'design-system', label: 'Design System', icon: Sparkles },
-  { id: 'master-components', label: 'Master Components', icon: Layers },
-  { id: 'design-demo', label: 'Design Showcase', icon: Eye },
-  { id: 'usage-guide', label: 'Usage Guide', icon: Code },
-  { id: 'migration-checklist', label: 'Migration Checklist', icon: List },
-  { id: 'pane-caret-spec', label: 'Pane Caret Spec', icon: Eye },
-  { id: 'mail-tripane', label: 'TriPane Bottom Toggles', icon: Mail },
-];
-
 export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleCollapse }: SidebarProps) {
   return (
     <div className={`${collapsed ? 'w-16' : 'w-72'} bg-[var(--bg-surface)] border-r border-[var(--border-default)] flex flex-col transition-all duration-200`}>
@@ -56,70 +41,30 @@ export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleColla
       </div>
       
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-6">
-        {/* Design System Section */}
-        <div>
-          {!collapsed && (
-            <h3 className="text-xs uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-4">
-              Design System
-            </h3>
-          )}
-          <ul className="space-y-1">
-            {designSystemModules.map((module) => {
-              const Icon = module.icon;
-              const isActive = activeModule === module.id;
-              
-              return (
-                <li key={module.id}>
-                  <button
-                    onClick={() => onModuleChange(module.id)}
-                    className={`w-full flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-3 py-2 rounded-md transition-colors text-sm ${
-                      isActive
-                        ? 'bg-[var(--primary-tint-10)] text-[var(--primary)] font-medium'
-                        : 'text-[var(--text-secondary)] hover:bg-[var(--primary-tint-5)] hover:text-[var(--text-primary)]'
-                    }`}
-                    title={collapsed ? module.label : undefined}
-                  >
-                    <Icon size={16} />
-                    {!collapsed && <span>{module.label}</span>}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        {/* Main Modules Section */}
-        <div>
-          {!collapsed && (
-            <h3 className="text-xs uppercase tracking-wide text-[var(--text-secondary)] mb-3 px-4">
-              Modules
-            </h3>
-          )}
-          <ul className="space-y-1">
-            {modules.map((module) => {
-              const Icon = module.icon;
-              const isActive = activeModule === module.id;
-              
-              return (
-                <li key={module.id}>
-                  <button
-                    onClick={() => onModuleChange(module.id)}
-                    className={`w-full flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-3 py-2 rounded-md transition-colors ${
-                      isActive
-                        ? 'bg-[var(--primary-tint-10)] text-[var(--primary)] font-medium'
-                        : 'text-[var(--text-secondary)] hover:bg-[var(--primary-tint-5)] hover:text-[var(--text-primary)]'
-                    }`}
-                    title={collapsed ? module.label : undefined}
-                  >
-                    <Icon size={18} />
-                    {!collapsed && <span>{module.label}</span>}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      <nav className="flex-1 p-4">
+        <ul className="space-y-1">
+          {modules.map((module) => {
+            const Icon = module.icon;
+            const isActive = activeModule === module.id;
+            
+            return (
+              <li key={module.id}>
+                <button
+                  onClick={() => onModuleChange(module.id)}
+                  className={`w-full flex items-center ${collapsed ? 'justify-center' : 'gap-3'} px-3 py-2 rounded-md transition-colors ${
+                    isActive
+                      ? 'bg-[var(--primary-tint-10)] text-[var(--primary)] font-medium'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--primary-tint-5)] hover:text-[var(--text-primary)]'
+                  }`}
+                  title={collapsed ? module.label : undefined}
+                >
+                  <Icon size={18} />
+                  {!collapsed && <span>{module.label}</span>}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </nav>
       
       {/* Standardized Pane Caret - Bottom placement */}

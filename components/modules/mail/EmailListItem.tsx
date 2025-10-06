@@ -1,7 +1,32 @@
 import React from 'react';
-import { Star, Paperclip, Mail, Reply, Forward, Archive, Trash, Tag } from 'lucide-react';
+import {
+  AlarmClock,
+  Archive,
+  BellOff,
+  ExternalLink,
+  Forward,
+  Paperclip,
+  Reply,
+  ReplyAll,
+  Search,
+  SquareCheck,
+  Star,
+  Tag,
+  Trash,
+  MailOpen,
+  Folder
+} from 'lucide-react';
 import { Checkbox } from '../../ui/checkbox';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from '../../ui/context-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent
+} from '../../ui/context-menu';
 import { Email, Label } from './types';
 
 interface EmailListItemProps {
@@ -25,6 +50,20 @@ export function EmailListItem({
   onCheckboxToggle,
   onOpenEmail
 }: EmailListItemProps) {
+  const menuItemClass = 'gap-[var(--space-3)]';
+
+  const moveDestinations = React.useMemo(
+    () => [
+      { id: 'inbox', name: 'Inbox' },
+      { id: 'starred', name: 'Starred' },
+      { id: 'snoozed', name: 'Snoozed' },
+      { id: 'important', name: 'Important' },
+      { id: 'archive', name: 'Archive' },
+      { id: 'trash', name: 'Trash' }
+    ],
+    []
+  );
+
   return (
     <ContextMenu>
       <ContextMenuTrigger>
@@ -79,36 +118,94 @@ export function EmailListItem({
           </div>
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent>
-        <ContextMenuItem onClick={onOpenEmail}>
-          <Mail className="w-4 h-4" />
-          Open Email
-        </ContextMenuItem>
-        <ContextMenuItem>
+      <ContextMenuContent className="w-64">
+        <ContextMenuItem className={menuItemClass}>
           <Reply className="w-4 h-4" />
           Reply
         </ContextMenuItem>
-        <ContextMenuItem>
+        <ContextMenuItem className={menuItemClass}>
+          <ReplyAll className="w-4 h-4" />
+          Reply all
+        </ContextMenuItem>
+        <ContextMenuItem className={menuItemClass}>
           <Forward className="w-4 h-4" />
           Forward
         </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem>
-          <Star className="w-4 h-4" />
-          {email.starred ? 'Remove Star' : 'Add Star'}
-        </ContextMenuItem>
-        <ContextMenuItem>
-          <Tag className="w-4 h-4" />
-          Add Label
+        <ContextMenuItem disabled className={menuItemClass}>
+          <Forward className="w-4 h-4" />
+          Forward as attachment
         </ContextMenuItem>
         <ContextMenuSeparator />
-        <ContextMenuItem>
+        <ContextMenuItem className={menuItemClass}>
           <Archive className="w-4 h-4" />
           Archive
         </ContextMenuItem>
-        <ContextMenuItem className="text-[var(--danger)]">
+        <ContextMenuItem variant="destructive" className={menuItemClass}>
           <Trash className="w-4 h-4" />
           Delete
+        </ContextMenuItem>
+        <ContextMenuItem className={menuItemClass}>
+          <MailOpen className="w-4 h-4" />
+          Mark as read
+        </ContextMenuItem>
+        <ContextMenuItem className={menuItemClass}>
+          <AlarmClock className="w-4 h-4" />
+          Snooze
+        </ContextMenuItem>
+        <ContextMenuItem className={menuItemClass}>
+          <SquareCheck className="w-4 h-4" />
+          Add to Tasks
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className={menuItemClass}>
+            <Folder className="w-4 h-4" />
+            Move to
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="w-48">
+            {moveDestinations.map((destination) => (
+              <ContextMenuItem key={destination.id} className={menuItemClass}>
+                {destination.name}
+              </ContextMenuItem>
+            ))}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuSub>
+          <ContextMenuSubTrigger className={menuItemClass}>
+            <Tag className="w-4 h-4" />
+            Label as
+          </ContextMenuSubTrigger>
+          <ContextMenuSubContent className="w-48">
+            {labels.length ? (
+              labels.map((label) => (
+                <ContextMenuItem key={label.id} className={menuItemClass}>
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: label.color }}
+                  />
+                  {label.name}
+                </ContextMenuItem>
+              ))
+            ) : (
+              <ContextMenuItem disabled className={menuItemClass}>
+                No labels
+              </ContextMenuItem>
+            )}
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+        <ContextMenuItem className={menuItemClass}>
+          <BellOff className="w-4 h-4" />
+          Mute
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem className={menuItemClass}>
+          <Search className="w-4 h-4" />
+          {`Find emails from ${email.sender}`}
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onClick={onOpenEmail} className={menuItemClass}>
+          <ExternalLink className="w-4 h-4" />
+          Open in new window
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

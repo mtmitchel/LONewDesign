@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Pane Controls & Layout Polish (2024-12)
+- **Pane Caret Refinement**: Applied design token hover/active states with circular hover surfaces and eased transitions, plus tooltip offsets to avoid clipping on collapsed panes.
+- **Collapsed Bar Treatment**: Rebuilt collapsed pane affordances with 8px elevated rails, subtle edge shadows, and glyph feedback aligned to LibreOllama tokens.
+- **Context Pane Balance**: Softened empty-state icon emphasis and ensured Mail quick actions retain premium calm aesthetics.
+- **Responsive Safeguards**: Added runtime guard that auto-hides side panes when viewport width cannot satisfy `--tripane-center-min` center requirements.
+
 ### Mail Module UX Refinements (2024-12)
 - **Quick Modal Polish**: Eliminated field overflow and popover friction
   - Added flexing label spans with extra right padding so calendar/clock icons stay inside fields

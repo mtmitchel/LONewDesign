@@ -98,6 +98,30 @@
 
   /* Padding rhythm */
   --modal-inner-x: var(--space-6);  /* 24 */
+
+  /* Settings design tokens */
+  --settings-surface-bg: var(--bg-surface);
+  --settings-surface-border: var(--border-subtle);
+  --settings-surface-radius: var(--radius-lg);
+  --settings-surface-elevation: var(--elevation-sm);
+
+  /* Settings rhythm */
+  --settings-pad-x: var(--space-4);
+  --settings-pad-y: var(--space-4);
+  --settings-section-gap: var(--space-6);
+  --settings-row-gap: var(--space-3);
+  --settings-col-gap: var(--space-4);
+
+  /* Layout guards - readable, never a word-rail */
+  --settings-left-min: 232px;    /* tweak if your panel is narrower */
+  --settings-left-max: 56ch;     /* comfortable reading measure */
+  --settings-divider: var(--border-divider);
+
+  /* Settings icons & controls */
+  --icon-sm: 16px;
+  --settings-section-icon: var(--accent);
+  --control-accent: var(--primary);
+  --field-bg-filled: var(--bg-muted);
   --modal-inner-y: var(--space-5);  /* 20 */
   --field-gap-y: var(--space-4);
 
@@ -273,6 +297,24 @@
   --quick-tile-gap: 12px;           /* Gap between tiles */
   --quick-tile-padding: 16px;       /* Internal tile padding */
   --quick-tile-radius: 8px;         /* Tile border radius */
+
+  /* Context settings panel */
+  --panel-pad-x: var(--space-5);
+  --panel-pad-y: var(--space-5);
+  --panel-radius: var(--radius-lg);
+  --section-gap: var(--space-6);
+  --row-min-h: 44px;
+  --row-gap: var(--space-2);
+  --bg-panel: var(--bg-surface);
+
+  /* Mail settings panel */
+  --settings-pad-x: var(--space-4);
+  --settings-pad-y: var(--space-4);
+  --settings-row-gap: var(--space-3);
+  --settings-sec-gap: var(--space-6);
+  --settings-row-min-h: 44px;
+  --settings-col-gap: var(--space-4);
+  --settings-divider: var(--border-divider);
   
   /* Email Modal/Overlay */
   --email-modal-width: 700px;       /* Email modal width */

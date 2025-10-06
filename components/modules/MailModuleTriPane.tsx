@@ -2,7 +2,6 @@ import React from 'react';
 import { Mail } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { PaneCaret, PaneFooter } from '../dev/PaneCaret';
 import { EmailOverlay } from './mail';
 import { ComposeDocked, ComposeDraft } from './compose';
 import { MailLeftPane } from './mail/MailLeftPane';
@@ -58,6 +57,42 @@ export function MailModuleTriPane() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [rightPaneVisible, setLeftPaneVisible, setRightPaneVisible]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const root = document.documentElement;
+    const parseVar = (value: string, fallback: number) => {
+      const numeric = parseFloat(value.trim().replace('px', ''));
+      return Number.isFinite(numeric) ? numeric : fallback;
+    };
+
+    const enforceMinimumCenterWidth = () => {
+      const leftWidth = leftPaneVisible
+        ? parseVar(getComputedStyle(root).getPropertyValue('--tripane-left-width'), 280)
+        : 0;
+      const rightWidth = rightPaneVisible
+        ? parseVar(getComputedStyle(root).getPropertyValue('--quick-panel-width'), 320)
+        : 0;
+      const centerMin = parseVar(getComputedStyle(root).getPropertyValue('--tripane-center-min'), 400);
+      const requiredWidth = leftWidth + rightWidth + centerMin;
+
+      if (window.innerWidth < requiredWidth) {
+        if (rightPaneVisible) {
+          setRightPaneVisible(false);
+          return;
+        }
+
+        if (leftPaneVisible) {
+          setLeftPaneVisible(false);
+        }
+      }
+    };
+
+    enforceMinimumCenterWidth();
+    window.addEventListener('resize', enforceMinimumCenterWidth);
+    return () => window.removeEventListener('resize', enforceMinimumCenterWidth);
+  }, [leftPaneVisible, rightPaneVisible, setLeftPaneVisible, setRightPaneVisible]);
 
   // Filter emails based on folder and search
   const filteredEmails = emails.filter(email => {
@@ -137,17 +172,21 @@ export function MailModuleTriPane() {
             />
           </div>
         ) : (
-          <div className="w-12 border-r border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col">
-            <div className="flex-1"></div>
-            <PaneFooter>
-              <PaneCaret
-                direction="right"
-                onClick={() => setLeftPaneVisible(true)}
-                tooltipText="Show mail sidebar"
-                shortcut="]"
-              />
-            </PaneFooter>
-          </div>
+          <button
+            type="button"
+            onClick={() => setLeftPaneVisible(true)}
+            aria-label="Show mail sidebar"
+            title="Show mail sidebar (])"
+            aria-keyshortcuts="]"
+            className="group h-full w-2 min-w-[8px] max-w-[8px] bg-[var(--bg-surface-elevated)] shadow-[1px_0_0_var(--border-subtle)] flex items-center justify-center cursor-pointer motion-safe:transition-all duration-[var(--duration-base)] ease-[var(--easing-standard)] hover:bg-[var(--primary-tint-5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(51,65,85,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]"
+          >
+            <span
+              aria-hidden="true"
+              className="text-[var(--caret-rest)] text-base leading-none transition-all duration-[var(--duration-base)] ease-[var(--easing-standard)] motion-safe:transition-all group-hover:text-[var(--caret-hover)] group-hover:scale-110"
+            >
+              ›
+            </span>
+          </button>
         )}
         
         {/* Center Pane */}
@@ -238,17 +277,21 @@ export function MailModuleTriPane() {
             <MailRightPane onHidePane={() => setRightPaneVisible(false)} />
           </div>
         ) : (
-          <div className="w-12 border-l border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col">
-            <div className="flex-1"></div>
-            <PaneFooter>
-              <PaneCaret
-                direction="left"
-                onClick={() => setRightPaneVisible(true)}
-                tooltipText="Show context"
-                shortcut="\\"
-              />
-            </PaneFooter>
-          </div>
+          <button
+            type="button"
+            onClick={() => setRightPaneVisible(true)}
+            aria-label="Show context"
+            title="Show context (\\)"
+            aria-keyshortcuts="\\"
+            className="group h-full w-2 min-w-[8px] max-w-[8px] bg-[var(--bg-surface-elevated)] shadow-[-1px_0_0_var(--border-subtle)] flex items-center justify-center cursor-pointer motion-safe:transition-all duration-[var(--duration-base)] ease-[var(--easing-standard)] hover:bg-[var(--primary-tint-5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(51,65,85,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]"
+          >
+            <span
+              aria-hidden="true"
+              className="text-[var(--caret-rest)] text-base leading-none transition-all duration-[var(--duration-base)] ease-[var(--easing-standard)] motion-safe:transition-all group-hover:text-[var(--caret-hover)] group-hover:scale-110"
+            >
+              ‹
+            </span>
+          </button>
         )}
       </div>
 

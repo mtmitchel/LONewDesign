@@ -49,6 +49,7 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | Collapsed Pane Bars | ✅ | Medium | **48px vertical bars with PaneCaret chevron toggles at bottom** |
 | TriPane Header Fix | ✅ | Low | **Fixed to h-[60px] for perfect border alignment** |
 | Design Tokens Docs | ✅ | Low | **Created docs/technical/design-tokens-reference.md** |
+| Pane Controls Polish | ✅ | Medium | **Caret hover states, elevated collapsed rails, and center-width guard for responsive safety** |
 
 #### Compose Module ✅ COMPLETE (Baseline v1.0 Locked)
 
@@ -170,5 +171,5 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 - ❌ **Cancelled** - No longer needed
 
 ---
-*Last Updated: October 2025*
+*Last Updated: December 2024*
 *Next Review: Weekly sprint planning*
