@@ -280,7 +280,7 @@ export function MailModuleTriPane() {
       <div className="flex h-full bg-[var(--bg-canvas)] relative overflow-hidden">
         {/* Left Pane or Collapsed Bar */}
         {leftPaneVisible ? (
-          <div className="w-[var(--tripane-left-width)] border-r border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col">
+          <div className="flex h-full w-[var(--tripane-left-width)]">
             <MailLeftPane
               folders={folders}
               labels={labels}
@@ -311,6 +311,8 @@ export function MailModuleTriPane() {
         {/* Center Pane */}
         <div className="flex-1 flex flex-col min-w-0 relative overflow-visible" id="center-pane">
           <MailCenterPane
+            showLeftDivider={leftPaneVisible}
+            showRightDivider={rightPaneVisible}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             showAdvancedSearch={showAdvancedSearch}
@@ -409,7 +411,7 @@ export function MailModuleTriPane() {
         
         {/* Right Pane or Collapsed Bar */}
         {rightPaneVisible ? (
-          <div className="w-[var(--quick-panel-width)] border-l border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col">
+          <div className="flex h-full w-[var(--quick-panel-width)]">
             <MailRightPane onHidePane={() => setRightPaneVisible(false)} />
           </div>
         ) : (

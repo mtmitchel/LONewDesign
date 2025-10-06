@@ -1,12 +1,15 @@
 import React from 'react';
-import { TriPaneHeader, TriPaneContent } from '../../TriPane';
 import { MailSearch } from './MailSearch';
 import { BulkActionToolbar } from './BulkActionToolbar';
 import { EmailListItem } from './EmailListItem';
 import { MailListFooter } from './MailListFooter';
+import { PaneColumn } from '../../layout/PaneColumn';
+import { PaneHeader } from '../../layout/PaneHeader';
 import { Email, Label, SearchFilters } from './types';
 
 interface MailCenterPaneProps {
+  showLeftDivider?: boolean;
+  showRightDivider?: boolean;
   // Search props
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -51,6 +54,8 @@ interface MailCenterPaneProps {
 }
 
 export function MailCenterPane({
+  showLeftDivider = true,
+  showRightDivider = true,
   searchQuery,
   onSearchChange,
   showAdvancedSearch,
@@ -91,11 +96,15 @@ export function MailCenterPane({
   totalPages
 }: MailCenterPaneProps) {
   return (
-    <div id="mail-viewport" className="relative isolate flex h-full flex-col">
-      <TriPaneHeader>
-        <div className="flex items-center gap-[var(--space-3)] flex-1">        
-          {/* Centered search field */}
-          <div className="flex-1 flex justify-center">
+    <PaneColumn
+      id="mail-viewport"
+      className="relative isolate h-full"
+      showLeftDivider={showLeftDivider}
+      showRightDivider={showRightDivider}
+    >
+      <PaneHeader>
+        <div className="flex flex-1 items-center gap-[var(--space-3)]">
+          <div className="flex flex-1 justify-center">
             <MailSearch
               searchQuery={searchQuery}
               onSearchChange={onSearchChange}
@@ -108,71 +117,68 @@ export function MailCenterPane({
             />
           </div>
         </div>
-      </TriPaneHeader>
+      </PaneHeader>
 
-      {/* Email List View - Full height white background */}
-      <TriPaneContent padding={false} className="flex-1 bg-[var(--bg-surface)] h-full">
-        <div className="flex h-full flex-col">
-          <BulkActionToolbar
-            selectedCount={selectedEmails.length}
-            totalCount={totalCount}
-            currentStart={rangeStart}
-            currentEnd={rangeEnd}
-            onSelectAll={onSelectAll}
-            onSelectNone={onSelectNone}
-            onSelectRead={onSelectRead}
-            onSelectUnread={onSelectUnread}
-            onSelectStarred={onSelectStarred}
-            onSelectUnstarred={onSelectUnstarred}
-            onPrevious={onPreviousPage}
-            onNext={onNextPage}
-            hasPrevious={hasPreviousPage}
-            hasNext={hasNextPage}
-            onRefresh={onRefresh}
-            onMarkRead={onMarkRead}
-            onMarkUnread={onMarkUnread}
-            onArchive={onArchive}
-            onDelete={onDelete}
-            onMove={onMove}
-            onSnooze={onSnooze}
-            onStar={onStar}
-          />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <BulkActionToolbar
+          selectedCount={selectedEmails.length}
+          totalCount={totalCount}
+          currentStart={rangeStart}
+          currentEnd={rangeEnd}
+          onSelectAll={onSelectAll}
+          onSelectNone={onSelectNone}
+          onSelectRead={onSelectRead}
+          onSelectUnread={onSelectUnread}
+          onSelectStarred={onSelectStarred}
+          onSelectUnstarred={onSelectUnstarred}
+          onPrevious={onPreviousPage}
+          onNext={onNextPage}
+          hasPrevious={hasPreviousPage}
+          hasNext={hasNextPage}
+          onRefresh={onRefresh}
+          onMarkRead={onMarkRead}
+          onMarkUnread={onMarkUnread}
+          onArchive={onArchive}
+          onDelete={onDelete}
+          onMove={onMove}
+          onSnooze={onSnooze}
+          onStar={onStar}
+        />
 
-          <div className="flex-1 min-h-0 overflow-y-auto border-t border-[var(--border-default)]">
-            {emails.map((email) => (
-              <EmailListItem
-                key={email.id}
-                email={email}
-                labels={labels}
-                isSelected={selectedEmail === email.id}
-                isChecked={selectedEmails.includes(email.id)}
-                onClick={(e) => onEmailSelect(email.id, e)}
-                onDoubleClick={(e) => onEmailDoubleClick(email.id, e)}
-                onCheckboxToggle={(e) => onCheckboxToggle(email.id, e)}
-                onOpenEmail={() => onEmailSelect(email.id, {} as React.MouseEvent)}
-              />
-            ))}
+        <div className="flex-1 min-h-0 overflow-y-auto border-t border-[var(--border-default)]">
+          {emails.map((email) => (
+            <EmailListItem
+              key={email.id}
+              email={email}
+              labels={labels}
+              isSelected={selectedEmail === email.id}
+              isChecked={selectedEmails.includes(email.id)}
+              onClick={(e) => onEmailSelect(email.id, e)}
+              onDoubleClick={(e) => onEmailDoubleClick(email.id, e)}
+              onCheckboxToggle={(e) => onCheckboxToggle(email.id, e)}
+              onOpenEmail={() => onEmailSelect(email.id, {} as React.MouseEvent)}
+            />
+          ))}
 
-            {emails.length === 0 && (
-              <div className="p-[var(--space-8)] text-center text-[var(--text-secondary)]">
-                {searchQuery ? 'No emails found matching your search.' : 'No emails in this folder.'}
-              </div>
-            )}
-          </div>
-
-          <MailListFooter
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalCount={totalCount}
-            rangeStart={rangeStart}
-            rangeEnd={rangeEnd}
-            hasPreviousPage={hasPreviousPage}
-            hasNextPage={hasNextPage}
-            onPreviousPage={onPreviousPage}
-            onNextPage={onNextPage}
-          />
+          {emails.length === 0 && (
+            <div className="p-[var(--space-8)] text-center text-[var(--text-secondary)]">
+              {searchQuery ? 'No emails found matching your search.' : 'No emails in this folder.'}
+            </div>
+          )}
         </div>
-      </TriPaneContent>
-    </div>
+
+        <MailListFooter
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          hasPreviousPage={hasPreviousPage}
+          hasNextPage={hasNextPage}
+          onPreviousPage={onPreviousPage}
+          onNextPage={onNextPage}
+        />
+      </div>
+    </PaneColumn>
   );
 }

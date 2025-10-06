@@ -11,8 +11,9 @@ import {
   DialogHeader,
   DialogTitle
 } from '../../ui/dialog';
-import { TriPaneHeader, TriPaneContent } from '../../TriPane';
 import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
+import { PaneColumn } from '../../layout/PaneColumn';
+import { PaneHeader } from '../../layout/PaneHeader';
 import { Folder, Label } from './types';
 
 interface MailLeftPaneProps {
@@ -95,15 +96,13 @@ export function MailLeftPane({
   };
   
   return (
-    <div className="h-full flex flex-col">
-      {/* Header - Fixed */}
-      <TriPaneHeader>
-        <h2 className="font-semibold text-[var(--text-primary)]">Mail</h2>
-      </TriPaneHeader>
+    <PaneColumn className="h-full" showRightDivider>
+      <PaneHeader role="presentation">
+        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Mail</h2>
+      </PaneHeader>
 
-      {/* Content - Scrollable */}
-      <TriPaneContent className="flex-1 overflow-y-auto">
-        <div className="space-y-[var(--space-6)] flex flex-col items-center">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4">
+        <div className="flex flex-col items-center space-y-[var(--space-6)]">
           {/* Compose Button */}
           <Button
             variant="solid"
@@ -212,9 +211,8 @@ export function MailLeftPane({
             )}
           </div>
         </div>
-      </TriPaneContent>
+      </div>
 
-      {/* Footer - Fixed with Caret */}
       <PaneFooter>
         <PaneCaret
           direction="left"
@@ -333,6 +331,6 @@ export function MailLeftPane({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PaneColumn>
   );
 }

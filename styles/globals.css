@@ -392,6 +392,13 @@
   --tripane-center-min: 400px;      /* Center panel minimum */
   --tripane-gap: 0px;               /* Gap between panels */
   --tripane-border: 1px solid var(--border-default); /* Panel separators */
+
+  /* Pane layout chrome */
+  --pane-header-h: 48px;
+  --pane-header-px: var(--space-4);
+  --pane-divider-color: var(--border-subtle);
+  --pane-divider-w: 1px;
+  --pane-sticky-z: var(--z-overlay);
   
   /* Semantic mappings for shadcn compatibility - Blue-Gray & Coral system */
   --background: var(--bg-canvas);

@@ -2,8 +2,9 @@ import React from 'react';
 import { FileText, Tag, CheckSquare, FilePenLine, CalendarPlus } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { cn } from '../../ui/utils';
-import { TriPaneHeader, TriPaneContent } from '../../TriPane';
 import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
+import { PaneColumn } from '../../layout/PaneColumn';
+import { PaneHeader } from '../../layout/PaneHeader';
 import { QuickTaskModal } from '../../extended/QuickTaskModal';
 import { QuickNoteModal } from '../../extended/QuickNoteModal';
 import { QuickEventModal } from '../../extended/QuickEventModal';
@@ -32,8 +33,8 @@ export function MailRightPane({ onHidePane }: MailRightPaneProps) {
   // Get today's date for defaults
   const today = new Date().toISOString().slice(0, 10);
   return (
-    <div className="h-full flex flex-col">
-      <TriPaneHeader className="gap-[var(--space-6)] px-[var(--panel-pad-x)] py-[var(--panel-pad-y)]">
+    <PaneColumn className="h-full" showLeftDivider showRightDivider={false}>
+      <PaneHeader role="tablist" className="gap-[var(--space-6)] px-[var(--panel-pad-x)]">
         <PaneTabButton
           label="Context"
           active={activeTab === 'context'}
@@ -44,10 +45,10 @@ export function MailRightPane({ onHidePane }: MailRightPaneProps) {
           active={activeTab === 'settings'}
           onClick={() => setActiveTab('settings')}
         />
-      </TriPaneHeader>
+      </PaneHeader>
 
       {activeTab === 'context' ? (
-        <TriPaneContent className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4">
           <div className="space-y-[var(--space-6)]">
             <div>
               <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
@@ -118,9 +119,9 @@ export function MailRightPane({ onHidePane }: MailRightPaneProps) {
               </p>
             </div>
           </div>
-        </TriPaneContent>
+        </div>
       ) : (
-        <TriPaneContent className="flex-1 overflow-y-auto" padding={false}>
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <RightContextSettings
             value={settings}
             onChange={setSettings}
@@ -128,10 +129,9 @@ export function MailRightPane({ onHidePane }: MailRightPaneProps) {
             onRestoreRecommended={() => setSettings({ ...RECOMMENDED_MAIL_SETTINGS })}
             className="pb-[var(--space-8)]"
           />
-        </TriPaneContent>
+        </div>
       )}
 
-      {/* Footer - Fixed with Caret */}
       <PaneFooter>
         <PaneCaret
           direction="right"
@@ -185,7 +185,7 @@ export function MailRightPane({ onHidePane }: MailRightPaneProps) {
           // TODO: dispatch addLabel action
         }}
       />
-    </div>
+    </PaneColumn>
   );
 }
 
