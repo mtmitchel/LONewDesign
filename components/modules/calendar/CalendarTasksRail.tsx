@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   CalendarDays,
   Calendar as CalendarIcon,
+  Check,
   CheckCircle2,
   Copy,
   EllipsisVertical,
@@ -34,6 +35,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '../../ui/dropdown-menu';
 import {
@@ -174,6 +176,7 @@ export function CalendarTasksRail({
 
   const tasks = tasksProp ?? storeTasks;
   const [filter, setFilter] = useState<TaskFilterKey>(externalFilter);
+  const [sortBy, setSortBy] = useState<'date-created' | 'due-date' | 'title' | 'priority'>('date-created');
   const [composerActive, setComposerActive] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftDueDate, setDraftDueDate] = useState<Date | undefined>(undefined);
@@ -241,7 +244,7 @@ export function CalendarTasksRail({
   }, []);
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    const filtered = tasks.filter((task) => {
       // Handle list-based filtering
       if (filter.startsWith('list:')) {
         const listId = filter.replace('list:', '');
@@ -263,7 +266,35 @@ export function CalendarTasksRail({
 
       return true;
     });
-  }, [tasks, filter, now, weekEnd]);
+    
+    // Apply sorting
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'due-date': {
+          const dateA = parseDueDate(a.dueDate);
+          const dateB = parseDueDate(b.dueDate);
+          if (!dateA && !dateB) return 0;
+          if (!dateA) return 1;
+          if (!dateB) return -1;
+          return dateA.getTime() - dateB.getTime();
+        }
+        case 'title':
+          return a.title.localeCompare(b.title);
+        case 'priority': {
+          const priorityOrder = { high: 0, medium: 1, low: 2, none: 3 };
+          const orderA = priorityOrder[a.priority] ?? 3;
+          const orderB = priorityOrder[b.priority] ?? 3;
+          return orderA - orderB;
+        }
+        case 'date-created':
+        default: {
+          const dateA = new Date(a.createdAt || a.dateCreated || 0);
+          const dateB = new Date(b.createdAt || b.dateCreated || 0);
+          return dateB.getTime() - dateA.getTime(); // Newest first
+        }
+      }
+    });
+  }, [tasks, filter, sortBy, now, weekEnd]);
 
   const completedCount = useMemo(() => tasks.filter((task) => task.isCompleted).length, [tasks]);
 
@@ -468,27 +499,74 @@ export function CalendarTasksRail({
           <h2 id="tasks-rail-heading" className="text-[length:var(--text-base)] font-[var(--font-weight-semibold)] text-[color:var(--text-primary)]">
             Tasks
           </h2>
-          <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--bg-muted)] px-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
+          <span className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)]">
             {tasks.length}
           </span>
         </div>
-        <div className="flex items-center gap-[var(--space-1)]">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            title="Sort tasks"
-          >
-            <ArrowUpDown className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            title="More options"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+        <div className="flex items-center gap-1">
+          {/* Sort Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Sort tasks">
+                <ArrowUpDown className="h-4 w-4 text-[color:var(--text-tertiary)]" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                className="flex items-center gap-2"
+                onClick={() => setSortBy('date-created')}
+              >
+                {sortBy === 'date-created' && <Check className="h-4 w-4" />}
+                {sortBy !== 'date-created' && <span className="h-4 w-4"></span>}
+                <span>Date created</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-2"
+                onClick={() => setSortBy('due-date')}
+              >
+                {sortBy === 'due-date' && <Check className="h-4 w-4" />}
+                {sortBy !== 'due-date' && <span className="h-4 w-4"></span>}
+                <span>Due date</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-2"
+                onClick={() => setSortBy('title')}
+              >
+                {sortBy === 'title' && <Check className="h-4 w-4" />}
+                {sortBy !== 'title' && <span className="h-4 w-4"></span>}
+                <span>Title</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-2"
+                onClick={() => setSortBy('priority')}
+              >
+                {sortBy === 'priority' && <Check className="h-4 w-4" />}
+                {sortBy !== 'priority' && <span className="h-4 w-4"></span>}
+                <span>Priority</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          {/* More Options Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="More options">
+                <MoreHorizontal className="h-4 w-4 text-[color:var(--text-tertiary)]" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => console.log('Toggle completed tasks')}>
+                Hide completed tasks
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => console.log('Rename list')}>
+                Rename list
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('Delete list')} className="text-[color:var(--accent-coral)]">
+                Delete list
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

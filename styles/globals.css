@@ -41,13 +41,17 @@
   --hover-bg: var(--bg-surface-elevated);
 
   /* Layers */
-  --z-overlay: 50;
+  --z-overlay: 70;
 
-  /* Modal sizing */
+  /* Modal & Overlay */
   --modal-max-w: 920px;
   --modal-max-w-mail: 880px;          /* tighter read width */
   --modal-max-h: 88dvh;
   --modal-radius: var(--radius-lg);
+  --modal-elevation: var(--elevation-xl);
+  --overlay-gutter: 24px;
+  --overlay-scrim: rgba(0, 0, 0, 0.35);
+  --overlay-blur: 4px;
   --modal-elevation: var(--elevation-xl);
   --quick-modal-max-w: 480px;         /* quick action modals */
   --modal-footer-h: 56px;             /* modal footer height */

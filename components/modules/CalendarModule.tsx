@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Search, LayoutList, Calendar as Calend
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { CalendarTasksRail } from './calendar/CalendarTasksRail';
+import { EditEventModal } from './calendar/EditEventModal';
 import { cn } from '../ui/utils';
 
 interface LegacyCalendarEvent {
@@ -61,6 +62,8 @@ export function CalendarModule() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -258,6 +261,11 @@ export function CalendarModule() {
                               'rgb(251, 146, 60)'
                       }}
                       title={`${event.title} - ${event.time}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEvent(event);
+                        setIsEditModalOpen(true);
+                      }}
                     >
                       {event.title}
                     </div>
@@ -273,6 +281,24 @@ export function CalendarModule() {
           <CalendarTasksRail className="w-full" />
         </aside>
       </div>
+
+      {/* Edit Event Modal */}
+      <EditEventModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedEvent(null);
+        }}
+        event={selectedEvent}
+        onSave={(eventData) => {
+          console.log('Save event:', eventData);
+          // Handle event save logic here
+        }}
+        onDelete={() => {
+          console.log('Delete event:', selectedEvent);
+          // Handle event delete logic here
+        }}
+      />
     </div>
   );
 }
