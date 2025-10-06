@@ -3,7 +3,7 @@ import { TriPaneHeader, TriPaneContent } from '../../TriPane';
 import { MailSearch } from './MailSearch';
 import { BulkActionToolbar } from './BulkActionToolbar';
 import { EmailListItem } from './EmailListItem';
-import { cn } from '../../ui/utils';
+import { MailListFooter } from './MailListFooter';
 import { Email, Label, SearchFilters } from './types';
 
 interface MailCenterPaneProps {
@@ -160,41 +160,17 @@ export function MailCenterPane({
             )}
           </div>
 
-          <div className="flex h-[var(--toolbar-height)] shrink-0 items-center justify-between border-t border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--toolbar-padding-x)]">
-            <button
-              type="button"
-              onClick={onPreviousPage}
-              disabled={!hasPreviousPage}
-              className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2',
-                hasPreviousPage
-                  ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)]'
-                  : 'text-[var(--text-tertiary)] opacity-60 cursor-not-allowed'
-              )}
-              aria-label="Previous page"
-            >
-              Previous
-            </button>
-
-            <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)] font-[var(--font-weight-normal)]">
-              Page {Math.min(Math.max(currentPage, 1), Math.max(totalPages, 1))}
-            </span>
-
-            <button
-              type="button"
-              onClick={onNextPage}
-              disabled={!hasNextPage}
-              className={cn(
-                'flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2',
-                hasNextPage
-                  ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)]'
-                  : 'text-[var(--text-tertiary)] opacity-60 cursor-not-allowed'
-              )}
-              aria-label="Next page"
-            >
-              Next
-            </button>
-          </div>
+          <MailListFooter
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalCount={totalCount}
+            rangeStart={rangeStart}
+            rangeEnd={rangeEnd}
+            hasPreviousPage={hasPreviousPage}
+            hasNextPage={hasNextPage}
+            onPreviousPage={onPreviousPage}
+            onNextPage={onNextPage}
+          />
         </div>
       </TriPaneContent>
     </div>

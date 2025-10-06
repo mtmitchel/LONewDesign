@@ -5,6 +5,7 @@ export { MailSearch } from './MailSearch';
 export { EmailListItem } from './EmailListItem';
 export { BulkActionToolbar } from './BulkActionToolbar';
 export { PaginationControl } from './PaginationControl';
+export { MailListFooter } from './MailListFooter';
 export { EmailOverlay } from './EmailOverlay';
 export { InlineReply } from './InlineReply';
 export { default as ComposeModal } from './ComposeModal';
