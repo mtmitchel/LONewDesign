@@ -141,7 +141,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
   };
 
   return (
-    <div className={`fixed inset-y-0 right-0 w-[480px] bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] flex flex-col z-50 ${task ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300`}>
+    <div className={`fixed top-[var(--pane-header-h)] bottom-0 right-0 w-[480px] bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] flex flex-col z-50 ${task ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300`}>
       
       {/* Header - Fixed */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
