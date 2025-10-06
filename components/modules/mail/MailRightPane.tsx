@@ -17,11 +17,12 @@ import RightContextSettings, {
 
 interface MailRightPaneProps {
   onHidePane: () => void;
+  className?: string;
 }
 
 type WhichModal = null | "task" | "note" | "event" | "label";
 
-export function MailRightPane({ onHidePane }: MailRightPaneProps) {
+export function MailRightPane({ onHidePane, className }: MailRightPaneProps) {
   const [activeTab, setActiveTab] = React.useState<'context' | 'settings'>('context');
   const [settings, setSettings] = React.useState<MailSettings>(DEFAULT_MAIL_SETTINGS);
   const [whichModal, setWhichModal] = React.useState<WhichModal>(null);
@@ -33,7 +34,7 @@ export function MailRightPane({ onHidePane }: MailRightPaneProps) {
   // Get today's date for defaults
   const today = new Date().toISOString().slice(0, 10);
   return (
-    <PaneColumn className="h-full" showLeftDivider showRightDivider={false}>
+    <PaneColumn className={`h-full ${className || ''}`} showLeftDivider showRightDivider={false}>
       <PaneHeader role="tablist" className="gap-[var(--space-6)] px-[var(--panel-pad-x)]">
         <PaneTabButton
           label="Context"

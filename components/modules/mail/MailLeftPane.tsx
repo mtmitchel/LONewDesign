@@ -23,6 +23,7 @@ interface MailLeftPaneProps {
   onFolderSelect: (folderId: string) => void;
   onComposeClick: () => void;
   onHidePane: () => void;
+  className?: string;
 }
 
 export function MailLeftPane({
@@ -31,7 +32,8 @@ export function MailLeftPane({
   selectedFolder,
   onFolderSelect,
   onComposeClick,
-  onHidePane
+  onHidePane,
+  className
 }: MailLeftPaneProps) {
   const [foldersExpanded, setFoldersExpanded] = useState(true);
   const [labelsExpanded, setLabelsExpanded] = useState(true);
@@ -96,7 +98,7 @@ export function MailLeftPane({
   };
   
   return (
-    <PaneColumn className="h-full" showRightDivider>
+    <PaneColumn className={`h-full ${className || ''}`} showRightDivider>
       <PaneHeader role="presentation">
         <h2 className="text-sm font-semibold text-[var(--text-primary)]">Mail</h2>
       </PaneHeader>

@@ -394,7 +394,7 @@
   --tripane-border: 1px solid var(--border-default); /* Panel separators */
 
   /* Pane layout chrome */
-  --pane-header-h: 48px;
+  --pane-header-h: 60px;
   --pane-header-px: var(--space-4);
   --pane-divider-color: var(--border-subtle);
   --pane-divider-w: 1px;

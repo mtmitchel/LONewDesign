@@ -280,16 +280,15 @@ export function MailModuleTriPane() {
       <div className="flex h-full bg-[var(--bg-canvas)] relative overflow-hidden">
         {/* Left Pane or Collapsed Bar */}
         {leftPaneVisible ? (
-          <div className="flex h-full w-[var(--tripane-left-width)]">
-            <MailLeftPane
-              folders={folders}
-              labels={labels}
-              selectedFolder={selectedFolder}
-              onFolderSelect={setSelectedFolder}
-              onComposeClick={() => setShowCompose(true)}
-              onHidePane={() => setLeftPaneVisible(false)}
-            />
-          </div>
+          <MailLeftPane
+            folders={folders}
+            labels={labels}
+            selectedFolder={selectedFolder}
+            onFolderSelect={setSelectedFolder}
+            onComposeClick={() => setShowCompose(true)}
+            onHidePane={() => setLeftPaneVisible(false)}
+            className="w-[var(--tripane-left-width)]"
+          />
         ) : (
           <button
             type="button"
@@ -411,9 +410,10 @@ export function MailModuleTriPane() {
         
         {/* Right Pane or Collapsed Bar */}
         {rightPaneVisible ? (
-          <div className="flex h-full w-[var(--quick-panel-width)]">
-            <MailRightPane onHidePane={() => setRightPaneVisible(false)} />
-          </div>
+          <MailRightPane 
+            onHidePane={() => setRightPaneVisible(false)} 
+            className="w-[var(--quick-panel-width)]" 
+          />
         ) : (
           <button
             type="button"
