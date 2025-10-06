@@ -31,6 +31,22 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 
 ### Phase 2: Core Modules
 
+#### Tasks Module 🚧 IN PROGRESS
+| Component | Status | Priority | Notes |
+|-----------|--------|----------|-------|
+| Board View | ✅ | High | Kanban-style columns with drag support |
+| List View | ✅ | High | Table view with collapsible sections |
+| Task Cards | ✅ | High | Circular checkboxes, metadata, strikethrough completion |
+| Filtering System | ✅ | High | Search, labels, list selection with dropdown |
+| Sorting System | ✅ | High | Per-column (board) and global (list) sorting |
+| Quick Task Modal | ✅ | Medium | Header "Add task" button integration |
+| Task Side Panel | ✅ | Medium | Full CRUD with label management |
+| Inline Task Creation | ✅ | Medium | TaskComposer with date/priority pickers |
+| **Inline List Creation** | ✅ | Medium | **Compact Asana-style forms (~55-60px) in both views** |
+| **Auto-Height Columns** | ✅ | Medium | **Columns size naturally to content (min 160px)** |
+| List Creation Logic | 🚧 | Low | UI complete, backend integration pending |
+| Drag & Drop | ⏳ | Low | Planned for future iteration |
+
 #### TriPane Mail Module ✅ COMPLETE
 | Component | Status | Priority | Notes |
 |-----------|--------|----------|-------|

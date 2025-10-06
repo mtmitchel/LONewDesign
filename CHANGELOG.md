@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Tasks Module Enhancements (2025-10)
+- **Inline List Creation**: Asana-style compact inline forms for creating new lists/sections
+  - Board view: Minimal 160px panel with 32px input, 28px buttons
+  - List view: 256px inline input with horizontal button layout
+  - Placeholder text "New section" matches Asana terminology
+  - Enter to submit, Escape to cancel keyboard shortcuts
+  - Total form height reduced to ~55-60px for subtle, natural appearance
+  
+- **Auto-Height Column Swim Lanes**: Dynamic column sizing based on content
+  - Columns use natural height instead of fixed dimensions
+  - Empty columns (0 tasks) display minimal 160px height
+  - Columns with many tasks expand naturally
+  - Board container uses `items-start` alignment for top-aligned columns
+  - Eliminates wasted vertical space, creates cleaner board layout
+  - Matches Asana's organic, space-efficient design
+
 ### Pane Controls & Layout Polish (2024-12)
 - **Pane Caret Refinement**: Applied design token hover/active states with circular hover surfaces and eased transitions, plus tooltip offsets to avoid clipping on collapsed panes.
 - **Collapsed Bar Treatment**: Rebuilt collapsed pane affordances with 8px elevated rails, subtle edge shadows, and glyph feedback aligned to LibreOllama tokens.
