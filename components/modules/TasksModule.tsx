@@ -159,7 +159,7 @@ export function TasksModule() {
             ) : (
               <TaskAddButton onClick={() => setActiveComposerSection(column.id)} />
             )}
-            <div className="space-y-2">
+            <div className="flex flex-col gap-[var(--space-6)]">
               {getTasksByStatus(column.id).map((task) => (
                 <TaskCard
                   key={task.id}
@@ -178,10 +178,6 @@ export function TasksModule() {
             </div>
           </div>
         ))}
-        <Button variant="ghost" className="w-72 justify-start items-center gap-2 h-10 px-2 text-[var(--text-secondary)]">
-          <Plus className="w-4 h-4" />
-          <span className="text-sm font-medium">Add list</span>
-        </Button>
       </div>
     </div>
   );
@@ -227,34 +223,34 @@ export function TasksModule() {
                     {getTasksByStatus(column.id).map(task => (
                         <ContextMenu key={task.id}>
                             <ContextMenuTrigger>
-                                <div className="grid grid-cols-[1fr_120px_120px_120px] items-center px-4 h-12 border-b border-[var(--border-subtle)] hover:bg-[var(--bg-surface-hover)]"
+                                <div className="grid grid-cols-[1fr_120px_120px_120px] items-center px-[var(--space-4)] py-[var(--space-3)] border-b border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)]"
                                     onClick={() => setSelectedTask(task)}>
                                     <div className="flex items-center gap-3">
-                                        <Checkbox checked={task.isCompleted} onCheckedChange={() => toggleTaskCompletion(task.id)} />
+                                        <Checkbox checked={task.isCompleted} onCheckedChange={() => toggleTaskCompletion(task.id)} className="w-5 h-5" />
                                         <div className={`truncate ${task.isCompleted ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>{task.title}</div>
                                     </div>
                                     <div className={`text-sm ${task.dueDate ? 'text-red-500' : 'text-[var(--text-tertiary)]'}`}>{task.dueDate || '-'}</div>
-                                    <div className={`text-sm capitalize ${priorityColors[task.priority]}`}>{task.priority !== 'none' ? task.priority : '-'}</div>
+                                    <div className={`inline-flex items-center px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-pill)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] capitalize ${priorityColors[task.priority]}`}>{task.priority !== 'none' ? task.priority : '-'}</div>
                                     <div className="flex gap-1">
                                         {task.labels.map(label => <Badge key={label} variant="secondary">{label}</Badge>)}
                                     </div>
                                 </div>
                             </ContextMenuTrigger>
-                            <ContextMenuContent>
-                                <ContextMenuItem onClick={() => toggleTaskCompletion(task.id)}>
+                            <ContextMenuContent className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] p-[var(--space-2)]">
+                                <ContextMenuItem onClick={() => toggleTaskCompletion(task.id)} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
                                     <CheckSquare className="w-4 h-4 mr-2" />
                                     {task.isCompleted ? 'Mark as not completed' : 'Mark completed'}
                                 </ContextMenuItem>
-                                <ContextMenuItem onClick={() => handleEditTask(task)}>
+                                <ContextMenuItem onClick={() => handleEditTask(task)} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
                                     <Edit className="w-4 h-4 mr-2" />
                                     Edit
                                 </ContextMenuItem>
-                                <ContextMenuItem onClick={() => handleDuplicateTask(task)}>
+                                <ContextMenuItem onClick={() => handleDuplicateTask(task)} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
                                     <Copy className="w-4 h-4 mr-2" />
                                     Duplicate
                                 </ContextMenuItem>
                                 <ContextMenuSeparator />
-                                <ContextMenuItem onClick={() => handleDeleteTask(task.id)} className="text-[var(--danger)]">
+                                <ContextMenuItem onClick={() => handleDeleteTask(task.id)} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer text-[var(--danger)]">
                                     <Trash className="w-4 h-4 mr-2" />
                                     Delete
                                 </ContextMenuItem>
@@ -270,7 +266,7 @@ export function TasksModule() {
                         </div>
                     ) : (
                         <div 
-                            className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 px-4 h-12 cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-md)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] bg-[var(--btn-ghost-bg)] text-[var(--btn-ghost-text)] border border-[var(--btn-ghost-border)] hover:bg-[var(--btn-ghost-hover)] motion-safe:transition-colors duration-[var(--duration-fast)]"
                             onClick={() => setActiveComposerSection(column.id)}
                         >
                             <Plus size={16} />
@@ -338,8 +334,8 @@ export function TasksModule() {
                             <ChevronDown size={14} className="ml-2" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuItem>All lists</DropdownMenuItem>
+                <DropdownMenuContent align="end" className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] p-[var(--space-2)]">
+                        <DropdownMenuItem className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">All lists</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             )}
@@ -356,6 +352,13 @@ export function TasksModule() {
             <Button variant="ghost" size="sm" className="h-9 text-[var(--text-secondary)]">
               <RefreshCw size={14} className="mr-2" />
               Refresh
+            </Button>
+            <Button 
+              variant="ghost" 
+              className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] rounded-[var(--radius-md)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] bg-[var(--btn-ghost-bg)] text-[var(--btn-ghost-text)] border border-[var(--btn-ghost-border)] hover:bg-[var(--btn-ghost-hover)] motion-safe:transition-colors duration-[var(--duration-fast)] h-9"
+            >
+              <Plus size={16} className="mr-2" />
+              Add list
             </Button>
             <Button 
               onClick={() => setShowCreateTask(true)}

@@ -9,8 +9,7 @@ interface TaskAddButtonProps {
 export function TaskAddButton({ onClick }: TaskAddButtonProps) {
   return (
     <Button 
-      variant="ghost"
-      className="w-full justify-start items-center gap-2 h-8 px-2 border border-dashed border-[var(--border-subtle)] hover:border-[var(--primary)] hover:bg-[var(--primary-tint-5)] text-[var(--text-secondary)] hover:text-[var(--primary)] mb-3"
+      className="w-full inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-md)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] bg-[var(--btn-ghost-bg)] text-[var(--btn-ghost-text)] border border-[var(--btn-ghost-border)] hover:bg-[var(--btn-ghost-hover)] motion-safe:transition-colors duration-[var(--duration-fast)] mb-3"
       onClick={onClick}
     >
       <Plus className="w-4 h-4" />

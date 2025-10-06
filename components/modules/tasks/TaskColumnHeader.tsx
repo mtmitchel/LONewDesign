@@ -44,10 +44,10 @@ export function TaskColumnHeader({
   return (
     <div className="flex items-center justify-between px-1 mb-3">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium text-sm text-[var(--text-secondary)]">
+          <h3 className="text-[length:var(--text-base)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">
             {columnTitle}
           </h3>
-          <span className="text-sm text-[var(--text-tertiary)]">
+          <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)] bg-[var(--primary-tint-5)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-sm)]">
             {taskCount}
           </span>
         </div>

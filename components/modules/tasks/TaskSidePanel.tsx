@@ -112,13 +112,13 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
             <X className="w-4 h-4" />
           </Button>
         </SheetHeader>
-        <div className="py-6 px-1 space-y-6">
+        <div className="p-[var(--space-4)] flex flex-col gap-[var(--space-3)]">
             <div>
                 <Input 
                     id="task-title"
                     value={editedTask.title}
                     onChange={(e) => handleFieldChange('title', e.target.value)}
-                    className="text-lg font-semibold border-none focus:ring-0 px-0"
+                    className="text-lg font-semibold border-none focus:ring-0 px-0 h-10"
                 />
             </div>
 
@@ -159,7 +159,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                             key={p} 
                             variant={editedTask.priority === p ? 'secondary' : 'outline'} 
                             onClick={() => handleFieldChange('priority', p)}
-                            className="capitalize"
+                            className="inline-flex items-center px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-pill)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] capitalize"
                         >
                             {p}
                         </Button>
@@ -173,7 +173,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                     Labels
                 </Label>
                 <div className="flex gap-2">
-                    <Input id="labels" placeholder="Add a label" />
+                    <Input id="labels" placeholder="Add a label" className="h-10 px-[var(--space-3)]" />
                     <Button variant="outline" size="icon"><ChevronDown className="w-4 h-4" /></Button>
                     <Button variant="outline" size="icon"><Plus className="w-4 h-4" /></Button>
                 </div>
@@ -187,11 +187,12 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                             <Checkbox 
                                 checked={subtask.isCompleted}
                                 onCheckedChange={(checked) => handleToggleSubtaskCompletion(subtask.id, !!checked)}
+                                className="w-5 h-5"
                             />
                             <Input 
                                 value={subtask.title}
                                 onChange={(e) => handleUpdateSubtaskTitle(subtask.id, e.target.value)}
-                                className={`flex-1 ${subtask.isCompleted ? 'line-through text-[var(--text-tertiary)]' : ''}`}
+                                className={`flex-1 h-10 px-[var(--space-3)] ${subtask.isCompleted ? 'line-through text-[var(--text-tertiary)]' : ''}`}
                             />
                             <Popover>
                                 <PopoverTrigger asChild>
@@ -214,7 +215,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                         </div>
                     ))}
                     <div className="flex items-center gap-2">
-                        <Checkbox disabled />
+                        <Checkbox disabled className="w-5 h-5" />
                         <Input 
                             placeholder="Add a subtask"
                             value={newSubtaskTitle}
@@ -224,7 +225,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                                     handleAddSubtask();
                                 }
                             }}
-                            className="flex-1"
+                            className="flex-1 h-10 px-[var(--space-3)]"
                         />
                         <Popover>
                             <PopoverTrigger asChild>
@@ -255,7 +256,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                     placeholder="Add notes..." 
                     value={editedTask.description || ''}
                     onChange={(e) => handleFieldChange('description', e.target.value)}
-                    className="min-h-[100px]"
+                    className="min-h-[100px] h-10 px-[var(--space-3)]"
                 />
             </div>
         </div>

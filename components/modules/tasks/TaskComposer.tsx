@@ -21,8 +21,8 @@ export function TaskComposer({ onAddTask, onCancel }: TaskComposerProps) {
   };
 
   return (
-    <Card className="mb-2 bg-[var(--bg-surface)] border border-dashed border-[var(--border-subtle)] shadow-sm">
-      <CardContent className="p-3">
+    <Card className="mb-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-sm)] p-[var(--space-3)]">
+      <CardContent className="">
         <div className="flex items-start gap-3">
           <div className="w-5 h-5 border-2 border-gray-300 rounded-full mt-1" />
           <Input
