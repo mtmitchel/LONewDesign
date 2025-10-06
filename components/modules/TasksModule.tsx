@@ -189,7 +189,7 @@ export function TasksModule() {
   };
 
   const BoardView = () => (
-    <div className="flex-1 overflow-x-auto p-4 bg-[var(--bg-canvas)]">
+    <div className="flex-1 overflow-x-auto px-6 py-4 bg-[var(--bg-canvas)]">
       <div className="flex items-start gap-[var(--space-4)] min-w-max">
         {columns.map((column) => (
           <div key={column.id} className="min-w-[280px] min-h-[160px] bg-[var(--bg-surface-elevated)] rounded-[var(--radius-lg)] p-[var(--space-3)] flex flex-col">
@@ -446,45 +446,44 @@ export function TasksModule() {
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg-default)] text-[var(--text-primary)]">
-      <header className="p-3 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex bg-[var(--bg-surface-elevated)] rounded-md p-1 border border-[var(--border-default)]">
-              <Button
-                variant={viewMode === 'board' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('board')}
-                className="h-8 w-20"
-              >
-                <KanbanSquare size={16} className="mr-2" />
-                Board
-              </Button>
-              <Button
-                variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('list')}
-                className="h-8 w-20"
-              >
-                <List size={16} className="mr-2" />
-                List
-              </Button>
-            </div>
-            <h1 className="text-lg font-semibold">Tasks</h1>
+      <header className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="flex bg-[var(--bg-surface-elevated)] rounded-md p-1 border border-[var(--border-default)]">
+            <Button
+              variant={viewMode === 'board' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('board')}
+              className="h-8 w-20"
+            >
+              <KanbanSquare size={16} className="mr-2" />
+              Board
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+              className="h-8 w-20"
+            >
+              <List size={16} className="mr-2" />
+              List
+            </Button>
           </div>
+          <h1 className="text-lg font-semibold">Tasks</h1>
+        </div>
 
-          <div className="flex-1 flex justify-center px-8">
-            <div className="w-full max-w-lg relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
-                <Input
-                  placeholder="Search tasks..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 pl-9 bg-[var(--bg-surface-elevated)]"
-                />
-            </div>
+        <div className="flex-1 flex justify-center px-8">
+          <div className="w-full max-w-lg relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
+            <Input
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-9 pl-9 bg-[var(--bg-surface-elevated)]"
+            />
           </div>
+        </div>
 
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             {viewMode === 'list' && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -618,7 +617,6 @@ export function TasksModule() {
               <Plus size={16} className="mr-2" />
               Add task
             </Button>
-          </div>
         </div>
       </header>
 

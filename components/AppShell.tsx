@@ -18,7 +18,7 @@ export function AppShell({ children, activeModule, onModuleChange }: AppShellPro
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 flex flex-col overflow-hidden">
         {children}
       </main>
     </div>

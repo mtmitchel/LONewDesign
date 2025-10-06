@@ -1,13 +1,7 @@
 
 import React from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '../../ui/sheet';
-import { Button } from '../../ui/button';
-import { Input } from '../../ui/input';
-import { Textarea } from '../../ui/textarea';
-import { Label } from '../../ui/label';
 import { Checkbox } from '../../ui/checkbox';
-import { Separator } from '../../ui/separator';
-import { Calendar, Flag, Tag, Trash2, X, ChevronDown, Plus } from 'lucide-react';
+import { Calendar, Flag, Tag, Trash2, X, Plus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Calendar as CalendarComponent } from '../../ui/calendar';
 import { format } from 'date-fns';
@@ -147,203 +141,240 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
   };
 
   return (
-    <Sheet open={!!task} onOpenChange={onClose}>
-      <SheetContent className="fixed inset-y-0 right-0 w-[400px] sm:w-[540px] top-[66px] h-[calc(100vh-64px)] flex flex-col">
-        <SheetHeader>
-          <SheetTitle>Task details</SheetTitle>
-          <Button variant="ghost" size="icon" onClick={onClose} className="absolute top-3 right-3">
-            <X className="w-4 h-4" />
-          </Button>
-        </SheetHeader>
-        <div className="p-[var(--space-4)] flex flex-col gap-[var(--space-3)]">
-            <div>
-                <Input 
-                    id="task-title"
-                    value={editedTask.title}
-                    onChange={(e) => handleFieldChange('title', e.target.value)}
-                    className="text-lg font-semibold border-none focus:ring-0 px-0 h-10"
-                />
-            </div>
+    <div className={`fixed inset-y-0 right-0 w-[480px] bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] flex flex-col z-50 ${task ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300`}>
+      
+      {/* Header - Fixed */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Task details</h2>
+        <button 
+          onClick={onClose}
+          className="flex items-center justify-center w-8 h-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      
+      {/* Content - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex flex-col gap-6">
+          
+          {/* POLISH TASK 1: Task Title - Prominent */}
+          <div>
+            <input
+              type="text"
+              value={editedTask.title}
+              onChange={(e) => handleFieldChange('title', e.target.value)}
+              className="w-full text-2xl font-semibold text-[var(--text-primary)] bg-transparent border-0 focus:outline-none focus:ring-0 px-0 py-2"
+              placeholder="Task name"
+            />
+          </div>
 
-            <div className="space-y-2">
-                <Label htmlFor="due-date" className="flex items-center gap-2 text-[var(--text-secondary)]">
-                    <Calendar className="w-4 h-4" />
-                    Due date
-                </Label>
-                <Popover>
+          {/* POLISH TASK 2 & 3: Due Date Section */}
+          <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-6">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+              <Calendar className="w-4 h-4" />
+              <span>Due date</span>
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-tertiary)] hover:border-[var(--border-hover)] transition-colors">
+                  <Calendar className="w-4 h-4" />
+                  <span>{editedTask.dueDate || "Pick a date"}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <CalendarComponent
+                  mode="single"
+                  selected={parseDisplayDate(editedTask.dueDate || '')}
+                  onSelect={(date) => handleFieldChange('dueDate', date ? format(date, "MMM d") : undefined)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* POLISH TASK 4: Priority Section */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+              <Flag className="w-4 h-4" />
+              <span>Priority</span>
+            </div>
+            <div className="flex gap-2">
+              {['high', 'medium', 'low', 'none'].map(p => (
+                <button 
+                  key={p}
+                  onClick={() => handleFieldChange('priority', p)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium border-2 capitalize transition-colors ${
+                    editedTask.priority === p
+                      ? 'border-[var(--primary)] bg-[var(--primary-tint-10)] text-[var(--primary)]'
+                      : 'border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-tint-5)]'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* POLISH TASK 5: Labels Section */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+              <Tag className="w-4 h-4" />
+              <span>Labels</span>
+            </div>
+            {editedTask.labels.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {editedTask.labels.map((label) => (
+                  <div
+                    key={label}
+                    className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-normal)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]"
+                  >
+                    <span>{label}</span>
+                    <button
+                      onClick={() => handleRemoveLabel(label)}
+                      className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Add a label"
+                value={newLabel}
+                onChange={(e) => setNewLabel(e.target.value)}
+                onKeyDown={handleKeyDownLabel}
+                className="flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] focus:ring-offset-0"
+              />
+              <button 
+                onClick={handleAddLabel}
+                disabled={!newLabel.trim()}
+                className="flex items-center justify-center w-9 h-9 rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* POLISH TASK 6: Subtasks Section */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+              <span>Subtasks</span>
+            </div>
+            <div className="flex flex-col gap-2">
+              {(editedTask.subtasks || []).map(subtask => (
+                <div key={subtask.id} className="flex items-center gap-2">
+                  <Checkbox 
+                    checked={subtask.isCompleted}
+                    onCheckedChange={(checked) => handleToggleSubtaskCompletion(subtask.id, !!checked)}
+                    className="w-5 h-5 shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={subtask.title}
+                    onChange={(e) => handleUpdateSubtaskTitle(subtask.id, e.target.value)}
+                    className={`flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] ${subtask.isCompleted ? 'line-through text-[var(--text-tertiary)]' : ''}`}
+                  />
+                  <Popover>
                     <PopoverTrigger asChild>
-                        <Button
-                            variant="outline"
-                            className="w-full justify-start text-left font-normal"
-                        >
-                            <Calendar className="mr-2 h-4 w-4" />
-                            {editedTask.dueDate || "Pick a date"}
-                        </Button>
+                      <button className="flex items-center justify-center w-9 h-9 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                        <Calendar className="w-4 h-4" />
+                      </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                        <CalendarComponent
-                            mode="single"
-                            selected={parseDisplayDate(editedTask.dueDate || '')}
-                            onSelect={(date) => handleFieldChange('dueDate', date ? format(date, "MMM d") : undefined)}
-                            initialFocus
-                        />
+                      <CalendarComponent
+                        mode="single"
+                        selected={subtask.dueDate ? new Date(subtask.dueDate) : undefined}
+                        onSelect={(date) => handleUpdateSubtaskDueDate(subtask.id, date ? format(date, "yyyy-MM-dd") : undefined)}
+                        initialFocus
+                      />
                     </PopoverContent>
-                </Popover>
-            </div>
-
-            <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-[var(--text-secondary)]">
-                    <Flag className="w-4 h-4" />
-                    Priority
-                </Label>
-                <div className="flex gap-2">
-                    {['high', 'medium', 'low', 'none'].map(p => (
-                        <Button 
-                            key={p} 
-                            variant={editedTask.priority === p ? 'secondary' : 'outline'} 
-                            onClick={() => handleFieldChange('priority', p)}
-                            className="inline-flex items-center px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-pill)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] capitalize"
-                        >
-                            {p}
-                        </Button>
-                    ))}
+                  </Popover>
+                  <button 
+                    onClick={() => handleDeleteSubtask(subtask.id)}
+                    className="flex items-center justify-center w-9 h-9 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="labels" className="flex items-center gap-2 text-[var(--text-secondary)]">
-                    <Tag className="w-4 h-4" />
-                    Labels
-                </Label>
-                {editedTask.labels.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {editedTask.labels.map((label) => (
-                      <div
-                        key={label}
-                        className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-normal)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]"
-                      >
-                        <span>{label}</span>
-                        <button
-                          onClick={() => handleRemoveLabel(label)}
-                          className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2">
-                    <Input 
-                      id="labels" 
-                      placeholder="Add a label" 
-                      value={newLabel}
-                      onChange={(e) => setNewLabel(e.target.value)}
-                      onKeyDown={handleKeyDownLabel}
-                      className="h-10 px-[var(--space-3)]" 
-                    />
-                    <Button 
-                      variant="outline" 
-                      size="icon"
-                      onClick={handleAddLabel}
-                      disabled={!newLabel.trim()}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="subtasks" className="text-[var(--text-secondary)]">Subtasks</Label>
-                <div className="space-y-2">
-                    {(editedTask.subtasks || []).map(subtask => (
-                        <div key={subtask.id} className="flex items-center gap-2">
-                            <Checkbox 
-                                checked={subtask.isCompleted}
-                                onCheckedChange={(checked) => handleToggleSubtaskCompletion(subtask.id, !!checked)}
-                                className="w-5 h-5"
-                            />
-                            <Input 
-                                value={subtask.title}
-                                onChange={(e) => handleUpdateSubtaskTitle(subtask.id, e.target.value)}
-                                className={`flex-1 h-10 px-[var(--space-3)] ${subtask.isCompleted ? 'line-through text-[var(--text-tertiary)]' : ''}`}
-                            />
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                        <Calendar className="w-4 h-4" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <CalendarComponent
-                                        mode="single"
-                                        selected={subtask.dueDate ? new Date(subtask.dueDate) : undefined}
-                                        onSelect={(date) => handleUpdateSubtaskDueDate(subtask.id, date ? format(date, "yyyy-MM-dd") : undefined)}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                            <Button variant="ghost" size="icon" onClick={() => handleDeleteSubtask(subtask.id)}>
-                                <Trash2 className="w-4 h-4" />
-                            </Button>
-                        </div>
-                    ))}
-                    <div className="flex items-center gap-2">
-                        <Checkbox disabled className="w-5 h-5" />
-                        <Input 
-                            placeholder="Add a subtask"
-                            value={newSubtaskTitle}
-                            onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    handleAddSubtask();
-                                }
-                            }}
-                            className="flex-1 h-10 px-[var(--space-3)]"
-                        />
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <Calendar className="w-4 h-4" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <CalendarComponent
-                                    mode="single"
-                                    selected={newSubtaskDueDate ? new Date(newSubtaskDueDate) : undefined}
-                                    onSelect={(date) => setNewSubtaskDueDate(date ? format(date, "yyyy-MM-dd") : undefined)}
-                                    initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
-                        <Button variant="ghost" size="icon" onClick={handleAddSubtask} disabled={!newSubtaskTitle.trim()}>
-                            <Plus className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="description" className="text-[var(--text-secondary)]">Description</Label>
-                <Textarea 
-                    id="description" 
-                    placeholder="Add notes..." 
-                    value={editedTask.description || ''}
-                    onChange={(e) => handleFieldChange('description', e.target.value)}
-                    className="min-h-[100px] h-10 px-[var(--space-3)]"
+              ))}
+              <div className="flex items-center gap-2">
+                <Checkbox disabled className="w-5 h-5 shrink-0 opacity-30" />
+                <input
+                  type="text"
+                  placeholder="Add a subtask"
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleAddSubtask();
+                    }
+                  }}
+                  className="flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)]"
                 />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="flex items-center justify-center w-9 h-9 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                      <Calendar className="w-4 h-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={newSubtaskDueDate ? new Date(newSubtaskDueDate) : undefined}
+                      onSelect={(date) => setNewSubtaskDueDate(date ? format(date, "yyyy-MM-dd") : undefined)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <button 
+                  onClick={handleAddSubtask}
+                  disabled={!newSubtaskTitle.trim()}
+                  className="flex items-center justify-center w-9 h-9 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+          </div>
+
+          {/* POLISH TASK 7: Description Section */}
+          <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-6">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+              <span>Description</span>
+            </div>
+            <textarea
+              placeholder="Add notes..."
+              value={editedTask.description || ''}
+              onChange={(e) => handleFieldChange('description', e.target.value)}
+              className="w-full min-h-[120px] px-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] focus:ring-offset-0 resize-y"
+            />
+          </div>
+
         </div>
-        <SheetFooter className="mt-auto">
-            <div className="flex justify-between w-full">
-                <Button variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => onDeleteTask(task.id)}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Task
-                </Button>
-                <Button onClick={handleSaveChanges}>Done</Button>
-            </div>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+      </div>
+      
+      {/* POLISH TASK 8: Footer - Sticky */}
+      <div className="sticky bottom-0 left-0 right-0 flex items-center justify-between px-6 py-4 bg-[var(--bg-surface)] border-t border-[var(--border-subtle)]">
+        <button 
+          onClick={() => onDeleteTask(task.id)}
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete task
+        </button>
+        
+        <button 
+          onClick={handleSaveChanges}
+          className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-[var(--btn-primary-bg)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+        >
+          Done
+        </button>
+      </div>
+      
+    </div>
   );
 }

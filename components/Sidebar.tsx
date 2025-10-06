@@ -33,9 +33,9 @@ const modules = [
 
 export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleCollapse }: SidebarProps) {
   return (
-    <div className={`${collapsed ? 'w-16' : 'w-72'} bg-[var(--bg-surface)] border-r border-[var(--border-default)] flex flex-col transition-all duration-200`}>
+    <div className={`${collapsed ? 'w-16' : 'w-72'} bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col transition-all duration-200`}>
       {/* Header */}
-      <div className="h-[var(--pane-header-h)] px-4 border-b border-[var(--border-subtle)] flex items-center flex-shrink-0">
+      <div className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center flex-shrink-0">
         {!collapsed && (
           <h1 className="text-lg font-semibold text-[var(--text-primary)]">LibreOllama</h1>
         )}
