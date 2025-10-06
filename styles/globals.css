@@ -239,6 +239,9 @@
   --danger: var(--accent-coral); /* Use coral for urgent states */
   --info: hsl(200 70% 65%);
   --error: var(--danger); /* Alias for compatibility */
+  --success-tint-20: hsl(160 50% 60% / 0.2);
+  --warning-tint-20: hsl(38 85% 63% / 0.2);
+  --danger-tint-20: hsl(0 85% 71% / 0.2);
   --urgent: var(--accent-coral); /* Explicit urgent state */
   --neutral: var(--primary); /* Blue-gray for neutral tags */
   
