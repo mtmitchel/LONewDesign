@@ -45,6 +45,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
   const [newSubtaskDueDate, setNewSubtaskDueDate] = React.useState<string | undefined>(undefined);
   const [newLabel, setNewLabel] = React.useState('');
   const [selectedLabelColor, setSelectedLabelColor] = React.useState('var(--label-blue)');
+  const [editingLabelIndex, setEditingLabelIndex] = React.useState<number | null>(null);
 
   // Helper function to parse formatted date strings like "Oct 30" or "2025-10-30" back to Date
   const parseDisplayDate = (dateStr: string): Date | undefined => {
@@ -233,23 +234,66 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                 {editedTask.labels.map((label, idx) => {
                   const labelName = getTaskLabelName(label);
                   const labelColor = typeof label === 'string' ? 'var(--label-gray)' : label.color;
+                  
                   return (
-                  <div
-                      key={`${labelName}-${idx}`}
-                      className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)]"
-                      style={{
-                        backgroundColor: `color-mix(in oklab, ${labelColor} 18%, transparent)`,
-                        color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
-                        boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`
-                      }}
-                    >
-                      <span>{labelName}</span>
-                      <button
-                        onClick={() => handleRemoveLabel(labelName)}
-                        className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[color-mix(in_oklab,currentColor_15%,transparent)] text-current opacity-70 hover:opacity-100"
+                    <div key={`${labelName}-${idx}`} className="relative inline-flex">
+                      <div
+                        className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] cursor-pointer"
+                        style={{
+                          backgroundColor: `color-mix(in oklab, ${labelColor} 18%, transparent)`,
+                          color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
+                          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`
+                        }}
+                        onClick={() => setEditingLabelIndex(editingLabelIndex === idx ? null : idx)}
                       >
-                        <X className="w-3 h-3" />
-                      </button>
+                        <span>{labelName}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveLabel(labelName);
+                          }}
+                          className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[color-mix(in_oklab,currentColor_15%,transparent)] text-current opacity-70 hover:opacity-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      {editingLabelIndex === idx && (
+                        <div className="absolute top-full left-0 mt-1 p-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] z-10">
+                          <div className="flex gap-1">
+                            {[
+                              { name: 'Blue', value: 'var(--label-blue)' },
+                              { name: 'Purple', value: 'var(--label-purple)' },
+                              { name: 'Pink', value: 'var(--label-pink)' },
+                              { name: 'Red', value: 'var(--label-red)' },
+                              { name: 'Orange', value: 'var(--label-orange)' },
+                              { name: 'Yellow', value: 'var(--label-yellow)' },
+                              { name: 'Green', value: 'var(--label-green)' },
+                              { name: 'Teal', value: 'var(--label-teal)' },
+                              { name: 'Gray', value: 'var(--label-gray)' },
+                            ].map(color => (
+                              <button
+                                key={color.value}
+                                onClick={() => {
+                                  setEditedTask(prev => ({
+                                    ...prev!,
+                                    labels: prev!.labels.map((l, i) => 
+                                      i === idx ? { name: labelName, color: color.value } : l
+                                    )
+                                  }));
+                                  setEditingLabelIndex(null);
+                                }}
+                                className={`w-5 h-5 rounded-full border transition-all hover:scale-110`}
+                                style={{ 
+                                  backgroundColor: `color-mix(in oklab, ${color.value} 18%, transparent)`,
+                                  borderColor: `color-mix(in oklab, ${color.value} 35%, transparent)`,
+                                  borderWidth: '1px'
+                                }}
+                                title={color.name}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
