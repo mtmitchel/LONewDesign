@@ -7,6 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Calendar & Tasks UI Overhaul (2025-01-17)
+
+#### Event Pill System Implementation
+- **Complete Event Pill Component Rewrite**: 
+  - Implemented with class-variance-authority (CVA) for variant management
+  - Tone variants: neutral (green), low (blue), medium (yellow), high (coral) - aligned with design system
+  - Density variants: default and dense for space-efficient layouts
+  - Multiline support: one-line (truncate) and two-line (line-clamp-2) modes
+  - Added full accessibility: role="button", tabIndex, aria-label, aria-keyshortcuts
+  - Support for prefix/suffix content and optional accent bars
+  - **ONGOING ISSUE**: Event pills not expanding to full width in month view despite w-full class (changed from inline-flex to flex)
+  - **ONGOING ISSUE**: Font size reduced to 12px (0.75rem) but changes not reflecting in browser
+
+#### Calendar Color System
+- **Gmail-Style Calendar Colors**:
+  - Implemented 9 calendar colors: blue (default), coral, yellow, green, purple, orange, teal, pink
+  - All colors use design system tokens with color-mix for consistent theming
+  - Removed gray color - personal events now use green instead
+  - Category mapping: work→blue, meeting→yellow, travel→coral, personal→green
+  - Colors adjusted to 18-22% mix ratios for better visibility
+  - **ISSUE**: Gray events still appearing despite neutral tone mapped to green
+
+#### Calendar View Improvements
+- **Month View**:
+  - Fixed event positioning with calc(var(--space-2)+1.5rem) to clear day numbers
+  - Events stack vertically with proper gap spacing
+  - Added overflow-hidden to prevent event overflow
+  - Grid fills available height with flex-1
+  
+- **Week/Day Views**:
+  - Events contained within day columns with overflow-hidden
+  - Full-width events with w-full className
+  - Multiline logic based on event height (≥48px allows 2 lines)
+  - Restored scrolling with overflow-y-auto containers
+  - Removed double borders between rail and grid
+
+#### Tasks Module Enhancements
+- **List View Density System**:
+  - Implemented three presets: comfortable (default), cozy, and compact
+  - Token-based spacing system for consistent density
+  - Segmented toggle control for density switching
+  - Grid layout with elastic columns and fixed checkbox width
+
+- **Chip Contrast Improvements**:
+  - Low-ink chip system with hue-matched outlines
+  - Adjusted opacity levels: 14-30% background, 56-90% foreground
+  - Added stroke system for better edge definition
+  - Vertical dividers between chip groups
+
+- **Label Color System**:
+  - 9 preset colors with inline color picker UI
+  - Dynamic chip rendering with selected colors
+  - Clickable labels that open color picker
+  - Color persistence across filter dropdown and task cards
+
+- **Calendar Tasks Rail**:
+  - Unified TaskRow component matching Tasks module design
+  - Fixed "Add task" button styling consistency
+  - Proper alignment and spacing tokens
+
+#### Design Token Updates
+- **Event Pill Tokens**:
+  - Typography: --event-pill-fs (12px), --event-pill-lh (1.2)
+  - Spacing: --event-pill-px, --event-pill-py, --event-pill-gap
+  - Density variants: --event-dense-px, --event-dense-py
+  - States: hover, focus-ring, selected-ring
+
+- **Calendar Layout Tokens**:
+  - Frame: --cal-frame-radius, --cal-frame-border
+  - Grid: --cal-gridline, --cal-ring
+  - Events: --event-gap, --event-overlap-gap
+  - Now indicator: --cal-now-line, --cal-now-dot
+
+#### State Management
+- Added events array with useState in CalendarModule
+- Implemented handleAddEvent function for new event creation
+- Fixed date/time parsing for proper event display
+- Wired NewEventModal to event creation flow
+- Fixed references to removed unifiedEvents variable
+
+#### Known Issues & Ongoing Work
+1. **CSS Not Updating**: Changes to globals.css (font size, colors) not reflecting despite file modifications
+2. **Event Pill Width**: Month view pills not expanding to full width even with flex and w-full
+3. **Color Persistence**: Some events still showing gray despite removal of gray color option
+4. **Vite HMR**: Hot module replacement not picking up CSS token changes consistently
+5. **Type Errors**: Multiple TypeScript errors in various modules (unrelated to calendar work)
+
 ### Calendar: Unified Views + Token-Driven Event Pills (2025-10)
 - Swapped legacy calendar rendering to unified MonthGrid/WeekGrid/DayView backed by `useCalendarEngine`.
 - Replaced per-view `EventBlock`/inline markup with a single strict `CalendarEvent` pill:
