@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 
 interface EmptyStateProps {
   icon?: React.ComponentType<{ size?: number; className?: string }>;
-  title: string;
+  title?: string;
   description?: string;
   action?: {
     label: string;
@@ -43,9 +43,11 @@ export function EmptyState({
         </div>
       )}
       
-      <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
-        {title}
-      </h3>
+      {title && (
+        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+          {title}
+        </h3>
+      )}
       
       {description && (
         <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-sm">

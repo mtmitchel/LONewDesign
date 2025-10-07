@@ -1,11 +1,12 @@
 "use client";
 
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, FileText, FolderPlus } from 'lucide-react';
 import { TriPane } from '../TriPane';
 import { PaneHeader } from '../layout/PaneHeader';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import {
   NotesLeftPane,
   NotesCenterPane,
@@ -21,10 +22,9 @@ import { NotesRightPane } from './notes/NotesRightPane';
 
 export function NotesModule() {
   // State management for folders, notes, selections, search, and settings
-  const [folders] = React.useState<NoteFolder[]>(() => mockFolders);
+  const [folders, setFolders] = React.useState<NoteFolder[]>(() => mockFolders);
   const [notes, setNotes] = React.useState<Note[]>(() => mockNotes);
-  const [selectedFolderId, setSelectedFolderId] = React.useState<string | null>(mockFolders[0]?.id ?? null);
-  const [selectedNoteId, setSelectedNoteId] = React.useState<string | null>(mockNotes[0]?.id ?? null);
+  const [selectedItem, setSelectedItem] = React.useState<{id: string, type: 'folder' | 'note'} | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [settings, setSettings] = React.useState<NotesSettings>(DEFAULT_NOTES_SETTINGS);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -32,6 +32,9 @@ export function NotesModule() {
   const [rightPaneVisible, setRightPaneVisible] = React.useState(true);
   const [leftPaneVisible, setLeftPaneVisible] = React.useState(true);
 
+  // Derived state from new selection model
+  const selectedFolderId = selectedItem?.type === 'folder' ? selectedItem.id : null;
+  const selectedNoteId = selectedItem?.type === 'note' ? selectedItem.id : null;
   const selectedNote = React.useMemo(() => notes.find(n => n.id === selectedNoteId) ?? null, [notes, selectedNoteId]);
 
   const applySort = React.useCallback((arr: Note[]): Note[] => {
@@ -56,24 +59,92 @@ export function NotesModule() {
   }, [settings]);
 
   const filteredNotes = React.useMemo(() => {
-    const base = notes.filter(n =>
-      (selectedFolderId ? n.folderId === selectedFolderId : true) &&
-      (
+    const base = notes.filter(n => {
+      // Show notes based on folder selection: if folder selected, show only its notes; if no folder selected, show root notes
+      const folderMatch = selectedFolderId ? n.folderId === selectedFolderId : n.folderId === null;
+      const searchMatch = 
         n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         n.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        n.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    );
+        n.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      return folderMatch && searchMatch;
+    });
     return applySort(base);
   }, [notes, selectedFolderId, searchQuery, applySort]);
 
   const currentFolderName = React.useMemo(
-    () => folders.find(f => f.id === selectedFolderId)?.name ?? 'Notes',
+    () => selectedFolderId ? folders.find(f => f.id === selectedFolderId)?.name ?? 'Notes' : 'Notes',
     [folders, selectedFolderId]
   );
 
+  // Helper functions
+  const generateId = () => String(Date.now() + Math.random());
+  const getFolderName = (folderId: string) => folders.find(f => f.id === folderId)?.name ?? 'Unknown Folder';
+
+  // Create folder function
+  const createFolder = (parentFolderId?: string | null) => {
+    const id = generateId();
+    const newFolder: NoteFolder = {
+      id,
+      name: 'New Folder',
+      parentId: parentFolderId || null,
+      noteCount: 0,
+    };
+    setFolders(prev => [...prev, newFolder]);
+    setSelectedItem({id: newFolder.id, type: 'folder'});
+  };
+
+  // Handle folder moving
+  const handleMoveFolder = (folderId: string, newParentId: string | null, newIndex: number) => {
+    setFolders(prev => {
+      // Don't allow moving a folder into itself or its descendants
+      const isDescendant = (parentId: string | null | undefined, targetId: string): boolean => {
+        if (!parentId) return false;
+        if (parentId === targetId) return true;
+        const parent = prev.find(f => f.id === parentId);
+        return parent ? isDescendant(parent.parentId, targetId) : false;
+      };
+
+      if (newParentId && isDescendant(newParentId, folderId)) {
+        console.log('Cannot move folder into its own descendant');
+        return prev;
+      }
+
+      const updated = prev.map(folder => {
+        if (folder.id === folderId) {
+          return { ...folder, parentId: newParentId };
+        }
+        return folder;
+      });
+      console.log(`Moved folder ${folderId} to parent ${newParentId || 'root'}`);
+      return updated;
+    });
+  };
+
+  // Create note function with context awareness
+  const createNote = (targetFolderId?: string | null) => {
+    const id = generateId();
+    const now = new Date().toISOString();
+    const folderId = targetFolderId !== undefined ? targetFolderId : null; // Always create in root when using + button
+    const newNote: Note = {
+      id,
+      title: 'Untitled Note',
+      content: '',
+      folderId,
+      tags: [],
+      isStarred: false,
+      lastModified: 'just now',
+      wordCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    setNotes(prev => [newNote, ...prev]);
+    setSelectedItem({id: newNote.id, type: 'note'});
+  };
+
   // Handlers
-  const handleSelectNote = (noteId: string) => setSelectedNoteId(noteId);
+  const handleSelectNote = (noteId: string) => setSelectedItem({id: noteId, type: 'note'});
+  const handleSelectFolder = (folderId: string) => setSelectedItem({id: folderId, type: 'folder'});
   const handleToggleStar = (noteId: string) => {
     setNotes(prev => prev.map(n => (n.id === noteId ? { ...n, isStarred: !n.isStarred } : n)));
   };
@@ -168,37 +239,19 @@ export function NotesModule() {
     setNotes(prev => prev.map(n => (n.id === selectedNoteId ? { ...n, title: value, updatedAt: new Date().toISOString() } : n)));
     withSavingTick();
   };
-  const handleCreateNote = () => {
-    const id = String(Date.now());
-    const now = new Date().toISOString();
-    const folder = selectedFolderId ?? folders[0]?.id ?? 'inbox';
-    const newNote: Note = {
-      id,
-      title: 'Untitled note',
-      content: '',
-      folderId: folder,
-      tags: [],
-      isStarred: false,
-      lastModified: 'just now',
-      wordCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setNotes(prev => [newNote, ...prev]);
-    setSelectedNoteId(id);
-  };
+  const handleCreateNote = () => createNote();
   const handleDuplicate = () => {
     if (!selectedNote) return;
-    const id = String(Date.now());
+    const id = generateId();
     const now = new Date().toISOString();
     const copy: Note = { ...selectedNote, id, createdAt: now, updatedAt: now, title: `${selectedNote.title} (Copy)` };
     setNotes(prev => [copy, ...prev]);
-    setSelectedNoteId(id);
+    setSelectedItem({id: copy.id, type: 'note'});
   };
   const handleDelete = () => {
     if (!selectedNote) return;
     setNotes(prev => prev.filter(n => n.id !== selectedNote.id));
-    setSelectedNoteId(null);
+    setSelectedItem(null);
   };
   const handleTagAdd = (tag: string) => {
     if (!selectedNoteId) return;
@@ -218,11 +271,50 @@ export function NotesModule() {
           leftPaneVisible ? (
             <NotesLeftPane
               folders={folders}
+              notes={notes}
               selectedFolderId={selectedFolderId}
+              selectedNoteId={selectedNoteId}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
-              onSelectFolder={setSelectedFolderId}
+              onSelectFolder={handleSelectFolder}
+              onSelectNote={handleSelectNote}
               onHidePane={() => setLeftPaneVisible(false)}
+              onMoveFolder={handleMoveFolder}
+              onFolderAction={(folderId, action) => {
+                switch (action) {
+                  case 'rename':
+                    console.log('Rename folder:', folderId);
+                    break;
+                  case 'move':
+                    console.log('Move folder:', folderId);
+                    break;
+                  case 'new-note':
+                    createNote(folderId);
+                    break;
+                  case 'new-subfolder':
+                    createFolder(folderId);
+                    break;
+                  case 'export-pdf':
+                    console.log('Export folder as PDF:', folderId);
+                    break;
+                  case 'export-word':
+                    console.log('Export folder as Word:', folderId);
+                    break;
+                  case 'export-text':
+                    console.log('Export folder as Text:', folderId);
+                    break;
+                  case 'delete':
+                    // Delete folder and all its notes
+                    setFolders(prev => prev.filter(f => f.id !== folderId && f.parentId !== folderId));
+                    setNotes(prev => prev.filter(n => n.folderId !== folderId));
+                    if (selectedItem?.type === 'folder' && selectedItem.id === folderId) {
+                      setSelectedItem(null);
+                    }
+                    break;
+                  default:
+                    console.log('Unknown folder action:', action, folderId);
+                }
+              }}
               className="w-[var(--tripane-left-width)]"
             />
           ) : (
@@ -248,9 +340,26 @@ export function NotesModule() {
             <PaneHeader className="px-[var(--space-4)]">
               <div className="flex w-full items-center justify-between">
                 <h2 className="text-[var(--text-lg)] font-semibold">Notes</h2>
-                <Button size="sm" onClick={handleCreateNote} aria-label="Create new note">
-                  <Plus size={14} />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" aria-label="Create new content">
+                      <Plus size={14} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => createNote(null)}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      New note
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuSeparator />
+                    
+                    <DropdownMenuItem onClick={() => createFolder()}>
+                      <FolderPlus className="w-4 h-4 mr-2" />
+                      New folder
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </PaneHeader>
           ) : undefined
@@ -277,6 +386,37 @@ export function NotesModule() {
               onSelectNote={handleSelectNote}
               onToggleStar={handleToggleStar}
               onCreateNote={handleCreateNote}
+              onNoteAction={(noteId, action) => {
+                switch (action) {
+                  case 'rename':
+                    console.log('Rename note:', noteId);
+                    break;
+                  case 'move':
+                    console.log('Move note:', noteId);
+                    break;
+                  case 'duplicate':
+                    handleDuplicate();
+                    break;
+                  case 'export-pdf':
+                    console.log('Export note as PDF:', noteId);
+                    break;
+                  case 'export-word':
+                    console.log('Export note as Word:', noteId);
+                    break;
+                  case 'export-text':
+                    console.log('Export note as Text:', noteId);
+                    break;
+                  case 'delete':
+                    if (noteId === selectedNoteId) {
+                      handleDelete();
+                    } else {
+                      setNotes(prev => prev.filter(n => n.id !== noteId));
+                    }
+                    break;
+                  default:
+                    console.log('Unknown note action:', action, noteId);
+                }
+              }}
             />
           )
         }

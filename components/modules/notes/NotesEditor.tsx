@@ -51,7 +51,7 @@ export function NotesEditor({
 }: NotesEditorProps) {
   const [showSlashMenu, setShowSlashMenu] = React.useState(false);
   const [slashPosition, setSlashPosition] = React.useState({ x: 0, y: 0 });
-  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const handleContentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = event.target.value;
@@ -89,12 +89,12 @@ export function NotesEditor({
       </div>
 
       <div className="relative flex-1">
-        <Textarea
+        <textarea
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}
           placeholder="Capture your thoughts with structure, tags, and calm focus."
-          className="h-full w-full resize-none border-none bg-transparent px-[var(--space-5)] py-[var(--space-5)] text-[var(--text-base)] leading-relaxed focus-visible:ring-0"
+          className="h-full w-full resize-none border-none bg-transparent px-[var(--space-5)] py-[var(--space-5)] text-[var(--text-base)] leading-relaxed focus-visible:ring-0 outline-none"
         />
 
         {showSlashMenu && (

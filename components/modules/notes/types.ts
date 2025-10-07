@@ -2,7 +2,7 @@ export interface Note {
   id: string;
   title: string;
   content: string;
-  folderId: string;
+  folderId: string | null;
   tags: string[];
   isStarred: boolean;
   lastModified: string;
@@ -14,7 +14,7 @@ export interface Note {
 export interface NoteFolder {
   id: string;
   name: string;
-  parentId?: string;
+  parentId?: string | null;
   noteCount: number;
 }
 

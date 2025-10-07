@@ -54,10 +54,7 @@ export function NotesCenterPane({
   if (!loading && notes.length === 0) {
     return (
       <EmptyState
-        icon={Star}
-        title="No notes found"
-        description="Create a note to capture ideas, meeting summaries, and research in one place."
-        action={{ label: 'New note', onClick: onCreateNote }}
+        action={{ label: '+ New note', onClick: onCreateNote }}
         className="h-full"
       />
     );
@@ -87,16 +84,17 @@ export function NotesCenterPane({
                 role="button"
                 tabIndex={0}
                 onClick={() => onSelectNote(note.id)}
+                onContextMenu={() => onSelectNote(note.id)}
                 onKeyDown={event => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
                     onSelectNote(note.id);
                   }
                 }}
-                className={`group relative cursor-pointer ${densityPx} ${densityPy} transition-colors duration-[var(--duration-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)] ${
+                className={`group relative cursor-pointer ${densityPx} ${densityPy} transition-colors duration-[var(--duration-base)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)] rounded-lg ${
                   isActive
-                    ? 'bg-[color-mix(in_oklab,_var(--primary)_14%,_transparent)] border-l-2 border-l-[var(--primary)]'
-                    : 'hover:bg-[color-mix(in_oklab,_var(--primary)_10%,_transparent)]'
+                    ? 'bg-[var(--primary)] text-white border-2 border-[var(--primary)]'
+                    : 'border-2 border-transparent hover:bg-[color-mix(in_oklab,_var(--primary)_10%,_transparent)]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-[var(--space-2)]">
