@@ -78,38 +78,45 @@ export function CalendarModule() {
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  const generateCalendarDays = (): CalendarDay[] => {
+  const generateCalendarWeeks = (): CalendarDay[][] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const today = new Date();
     
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
     
-    const days: CalendarDay[] = [];
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 41);
+    const weeks: CalendarDay[][] = [];
     
-    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      const isCurrentMonth = date.getMonth() === month;
-      const isToday = date.toDateString() === today.toDateString();
-  const dayEvents = date.getDate() === 15 && isCurrentMonth ? legacyEvents.slice(0, 2) : 
-           date.getDate() === 22 && isCurrentMonth ? legacyEvents.slice(2, 4) : [];
+    // Generate exactly 6 weeks (42 days)
+    for (let weekIdx = 0; weekIdx < 6; weekIdx++) {
+      const week: CalendarDay[] = [];
       
-      days.push({
-        date: date.getDate(),
-        isCurrentMonth,
-        isToday,
-        events: dayEvents
-      });
+      for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + (weekIdx * 7) + dayIdx);
+        
+        const isCurrentMonth = date.getMonth() === month;
+        const isToday = date.toDateString() === today.toDateString();
+        const dayEvents = date.getDate() === 15 && isCurrentMonth ? legacyEvents.slice(0, 2) : 
+                 date.getDate() === 22 && isCurrentMonth ? legacyEvents.slice(2, 4) : [];
+        
+        week.push({
+          date: date.getDate(),
+          isCurrentMonth,
+          isToday,
+          events: dayEvents
+        });
+      }
+      
+      weeks.push(week);
     }
     
-    return days;
+    return weeks;
   };
 
-  const calendarDays = generateCalendarDays();
+  const calendarWeeks = generateCalendarWeeks();
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(prev => {
@@ -249,77 +256,86 @@ export function CalendarModule() {
         {/* Calendar View Area */}
         <div className="flex-1 overflow-hidden">
           {viewMode === 'month' && (
-            <div className="h-full overflow-auto p-6">
-              {/* Day Headers */}
-              <div className="sticky top-0 z-10 grid grid-cols-7 bg-[var(--bg-surface)]">
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Day Headers - cleaner minimal style */}
+              <div className="grid grid-cols-7 bg-[var(--bg-surface)] border-b border-[var(--border-divider)]">
                 {dayNames.map((day) => (
-                  <div key={day} className="h-10 flex items-center justify-center border-b border-[var(--border-divider)]">
-                    <span className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wider">{day}</span>
+                  <div 
+                    key={day} 
+                    className="h-10 flex items-center justify-center"
+                  >
+                    <span className="text-[10px] font-semibold text-[color:var(--text-tertiary)] uppercase tracking-wider">
+                      {day}
+                    </span>
                   </div>
                 ))}
               </div>
               
-              {/* Calendar Days */}
-              <div className="grid grid-cols-7 gap-0 border-l border-t border-[var(--border-divider)]">
-                {calendarDays.map((day, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      'min-h-[110px] p-2 border-b border-r border-[var(--border-divider)] cursor-pointer transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors',
-                      'hover:bg-[var(--bg-surface-elevated)]',
-                      day.isCurrentMonth ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-canvas)]',
-                      !day.isCurrentMonth && 'opacity-60'
-                    )}
-                    onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date))}
-                  >
-                    <div className="mb-1.5">
-                      {day.isToday ? (
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-[length:var(--text-sm)] font-[var(--font-weight-bold)] text-white">
-                          {day.date}
-                        </span>
-                      ) : (
-                        <span className={cn(
-                          'text-[length:var(--text-sm)] font-[var(--font-weight-semibold)]',
-                          day.isCurrentMonth ? 'text-[color:var(--text-secondary)]' : 'text-[color:var(--text-tertiary)]'
-                        )}>
-                          {day.date}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Events */}
-                    <div className="space-y-1">
-                      {day.events.map((event) => {
-                        // Map event color to token classes
-                        const eventColorClass = 
-                          event.color === 'var(--primary)' ? 'bg-[var(--event-blue-bg)] text-[color:var(--event-blue-text)] hover:bg-[var(--event-blue-hover)]' :
-                          event.color === 'var(--info)' ? 'bg-[var(--event-teal-bg)] text-[color:var(--event-teal-text)] hover:bg-[var(--event-teal-hover)]' :
-                          event.color === 'var(--success)' ? 'bg-[var(--event-green-bg)] text-[color:var(--event-green-text)] hover:bg-[var(--event-green-hover)]' :
-                          'bg-[var(--event-orange-bg)] text-[color:var(--event-orange-text)] hover:bg-[var(--event-orange-hover)]';
-                        
-                        const hasTime = event.time && event.time !== 'All day';
-                        
-                        return (
-                          <div
-                            key={event.id}
-                            className={cn(
-                              'group px-1.5 py-0.5 text-[length:var(--text-xs)] font-[var(--font-weight-medium)] rounded-[var(--radius-sm)] truncate cursor-pointer',
-                              'transition-all duration-[var(--duration-fast)] motion-safe:transition-all',
-                              eventColorClass
-                            )}
-                            title={`${event.title} - ${event.time}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedEvent(event);
-                              setIsEditModalOpen(true);
-                            }}
-                          >
-                            {hasTime && <span className="opacity-90 mr-1">{event.time}</span>}
-                            {event.title}
-                          </div>
-                        );
-                      })}
-                    </div>
+              {/* Calendar Grid - exactly 6 rows, no extra space */}
+              <div className="flex-1 grid grid-rows-[repeat(6,1fr)] overflow-hidden">
+                {calendarWeeks.map((week, weekIdx) => (
+                  <div key={weekIdx} className="grid grid-cols-7">
+                    {week.map((day, dayIdx) => (
+                      <div
+                        key={dayIdx}
+                        className={cn(
+                          'border-r border-b border-[var(--border-divider)] last:border-r-0 p-2',
+                          'hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer',
+                          'flex flex-col',
+                          day.isCurrentMonth ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-canvas)]'
+                        )}
+                        onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date))}
+                      >
+                        {/* Date number */}
+                        <div className="flex items-start mb-1">
+                          <span className={cn(
+                            'text-[13px] font-medium',
+                            day.isToday && 'inline-flex items-center justify-center min-w-[24px] h-[24px] bg-[var(--primary)] text-white rounded-full font-semibold',
+                            !day.isToday && day.isCurrentMonth && 'text-[color:var(--text-primary)]',
+                            !day.isCurrentMonth && 'text-[color:var(--text-tertiary)]'
+                          )}>
+                            {day.date}
+                          </span>
+                        </div>
+
+                        {/* Events */}
+                        <div className="flex flex-col gap-1 overflow-hidden">
+                          {day.events.map((event) => {
+                            // Map event color to token classes
+                            const eventColorClass = 
+                              event.color === 'var(--primary)' ? 'bg-[var(--event-blue-bg)] text-[color:var(--event-blue-text)] hover:bg-[var(--event-blue-hover)]' :
+                              event.color === 'var(--info)' ? 'bg-[var(--event-teal-bg)] text-[color:var(--event-teal-text)] hover:bg-[var(--event-teal-hover)]' :
+                              event.color === 'var(--success)' ? 'bg-[var(--event-green-bg)] text-[color:var(--event-green-text)] hover:bg-[var(--event-green-hover)]' :
+                              'bg-[var(--event-orange-bg)] text-[color:var(--event-orange-text)] hover:bg-[var(--event-orange-hover)]';
+                            
+                            const hasTime = event.time && event.time !== 'All day';
+                            
+                            return (
+                              <div
+                                key={event.id}
+                                className={cn(
+                                  'px-1.5 py-0.5 rounded text-[11px] font-medium truncate cursor-pointer',
+                                  'transition-colors duration-[var(--duration-fast)]',
+                                  eventColorClass
+                                )}
+                                title={`${event.title} - ${event.time}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedEvent(event);
+                                  setIsEditModalOpen(true);
+                                }}
+                              >
+                                {hasTime && (
+                                  <span className="font-semibold">{event.time} </span>
+                                )}
+                                {event.title}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
