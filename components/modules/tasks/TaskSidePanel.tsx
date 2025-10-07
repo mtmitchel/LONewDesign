@@ -273,12 +273,16 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                   <button
                     key={color.value}
                     onClick={() => setSelectedLabelColor(color.value)}
-                    className={`w-5 h-5 rounded-full border-2 transition-all ${
+                    className={`w-5 h-5 rounded-full border transition-all ${
                       selectedLabelColor === color.value 
-                        ? 'border-[var(--primary)] shadow-sm scale-110' 
-                        : 'border-transparent hover:scale-110'
+                        ? 'ring-2 ring-[var(--primary)] ring-offset-1 scale-110' 
+                        : 'hover:scale-110'
                     }`}
-                    style={{ backgroundColor: color.value }}
+                    style={{ 
+                      backgroundColor: `color-mix(in oklab, ${color.value} 18%, transparent)`,
+                      borderColor: `color-mix(in oklab, ${color.value} 35%, transparent)`,
+                      borderWidth: '1px'
+                    }}
                     title={color.name}
                   />
                 ))}

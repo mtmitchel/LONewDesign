@@ -361,10 +361,10 @@ export function TasksModule() {
           >
             <div></div> {/* checkbox column */}
             <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Task name</div>
-          <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Due date</div>
-          <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Priority</div>
-          <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Labels</div>
-        </div>
+            <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">Due date</div>
+            <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">Priority</div>
+            <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">Labels</div>
+          </div>
 
         {columns.map(column => (
           <div key={column.id} className="group">
@@ -426,12 +426,12 @@ export function TasksModule() {
                         </div>
 
                         {/* Due date cell */}
-                        <div className="py-[var(--list-row-pad-y)] text-[length:var(--list-row-meta)] text-[var(--text-tertiary)]">
+                        <div className="py-[var(--list-row-pad-y)] text-[length:var(--list-row-meta)] text-[var(--text-tertiary)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
                           {task.dueDate || '—'}
                         </div>
 
                         {/* Priority cell */}
-                        <div className="py-[var(--list-row-pad-y)] text-[length:var(--list-row-meta)]">
+                        <div className="py-[var(--list-row-pad-y)] text-[length:var(--list-row-meta)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
                           {task.priority !== 'none' ? (
                             <Badge variant="soft" size="sm" tone={task.priority as 'high' | 'medium' | 'low'}>
                               {task.priority[0].toUpperCase() + task.priority.slice(1)}
@@ -442,7 +442,7 @@ export function TasksModule() {
                         </div>
 
                         {/* Labels cell */}
-                        <div className="py-[var(--list-row-pad-y)] flex flex-wrap gap-[var(--chip-gap)] text-[length:var(--list-row-meta)]">
+                        <div className="py-[var(--list-row-pad-y)] flex flex-wrap gap-[var(--chip-gap)] text-[length:var(--list-row-meta)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
                           {task.labels.length > 0 ? (
                             task.labels.map((label, idx) => {
                               const labelName = getLabelName(label);
