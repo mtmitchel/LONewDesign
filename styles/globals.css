@@ -1067,3 +1067,12 @@ html {
     transform: translateY(0) scale(1);
   }
 }
+
+/* Ensure Switch visibility in both states */
+[role="switch"][data-state="unchecked"] {
+  background-color: var(--border-default) !important;
+}
+
+[role="switch"][data-state="checked"] {
+  background-color: var(--primary) !important;
+}

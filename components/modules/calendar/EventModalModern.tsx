@@ -107,20 +107,21 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="w-[480px] max-w-[90vw] p-0 gap-0 rounded-xl border-0 overflow-visible"
-        style={{ boxShadow: '0 8px 40px rgba(0, 0, 0, 0.12)' }}
+        className="w-[480px] max-w-[90vw] p-0 gap-0 rounded-xl border-0 overflow-visible [&>button]:hidden"
+        style={{ boxShadow: 'var(--elevation-xl)' }}
       >
-        {/* Compact header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-medium text-gray-500">
+        {/* Header with single close button */}
+        <div className="flex items-center justify-between px-6 py-4">
+          <h2 className="text-sm font-medium text-[var(--text-secondary)]">
             {mode === 'edit' ? 'Edit event' : 'New event'}
           </h2>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-7 w-7 -mr-1 text-gray-400 hover:text-gray-600 hover:bg-gray-50"
+            className="h-7 w-7 -mr-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-md transition-colors"
             title="Close (Esc)"
+            aria-label="Close dialog"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -260,17 +261,21 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
               </Popover>
             )}
 
-            {/* All-day toggle */}
+            {/* All-day toggle - now always visible */}
             <div className="flex items-center gap-2 ml-auto">
               <Switch
                 checked={formData.allDay}
                 onCheckedChange={(checked) => setFormData({ ...formData, allDay: checked })}
-                id="all-day"
-                className="data-[state=checked]:bg-indigo-600"
+                id="all-day-toggle"
+                className="
+                  data-[state=unchecked]:bg-[var(--border-default)]
+                  data-[state=checked]:bg-[var(--primary)]
+                  transition-colors
+                "
               />
               <label 
-                htmlFor="all-day"
-                className="text-xs text-gray-500 cursor-pointer whitespace-nowrap select-none"
+                htmlFor="all-day-toggle"
+                className="text-sm text-[var(--text-secondary)] cursor-pointer select-none"
               >
                 All day
               </label>
