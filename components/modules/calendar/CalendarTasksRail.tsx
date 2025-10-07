@@ -54,6 +54,18 @@ import { useTaskStore, TaskInput } from '../tasks/taskStore';
 import { TASK_LISTS } from '../tasks/constants';
 import type { Task } from '../tasks/types';
 
+// Chip utility classes for soft priority badges
+const chipBase =
+  "inline-flex items-center justify-center " +
+  "h-[var(--chip-height)] px-[var(--chip-pad-x)] " +
+  "rounded-[var(--chip-radius)] text-[length:var(--text-sm)] " +
+  "font-[var(--font-weight-medium)]";
+
+const ChipHigh = `${chipBase} bg-[var(--chip-high-bg)] text-[var(--chip-high-text)]`;
+const ChipMedium = `${chipBase} bg-[var(--chip-medium-bg)] text-[var(--chip-medium-text)]`;
+const ChipLow = `${chipBase} bg-[var(--chip-low-bg)] text-[var(--chip-low-text)]`;
+const ChipNeutral = `${chipBase} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]`;
+
 type TaskFilterKey = 'all' | 'today' | 'this-week' | 'completed' | string;
 
 type CalendarTasksRailProps = {
@@ -271,32 +283,47 @@ export function CalendarTasksRail({
       return true;
     });
     
-    // Apply sorting
+    // Apply sorting: completed tasks always sink to bottom
     return filtered.sort((a, b) => {
+      // 1) Bucket by completion status: incomplete first, completed last
+      const bucketA = a.isCompleted ? 1 : 0;
+      const bucketB = b.isCompleted ? 1 : 0;
+      if (bucketA !== bucketB) return bucketA - bucketB;
+
+      // 2) Within each bucket, apply the selected sort mode
+      let inner = 0;
       switch (sortBy) {
         case 'due-date': {
           const dateA = parseDueDate(a.dueDate);
           const dateB = parseDueDate(b.dueDate);
-          if (!dateA && !dateB) return 0;
-          if (!dateA) return 1;
-          if (!dateB) return -1;
-          return dateA.getTime() - dateB.getTime();
+          if (!dateA && !dateB) inner = 0;
+          else if (!dateA) inner = 1;
+          else if (!dateB) inner = -1;
+          else inner = dateA.getTime() - dateB.getTime();
+          break;
         }
         case 'title':
-          return a.title.localeCompare(b.title);
+          inner = a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+          break;
         case 'priority': {
           const priorityOrder = { high: 0, medium: 1, low: 2, none: 3 };
           const orderA = priorityOrder[a.priority] ?? 3;
           const orderB = priorityOrder[b.priority] ?? 3;
-          return orderA - orderB;
+          inner = orderA - orderB;
+          break;
         }
         case 'date-created':
         default: {
           const dateA = new Date(a.createdAt || a.dateCreated || 0);
           const dateB = new Date(b.createdAt || b.dateCreated || 0);
-          return dateB.getTime() - dateA.getTime(); // Newest first
+          inner = dateB.getTime() - dateA.getTime(); // Newest first
+          break;
         }
       }
+      if (inner !== 0) return inner;
+
+      // 3) Stable tie-breaker by ID
+      return a.id.localeCompare(b.id);
     });
   }, [tasks, filter, sortBy, now, weekEnd]);
 
@@ -578,30 +605,40 @@ export function CalendarTasksRail({
         </div>
       </div>
 
-      {/* Content area with proper spacing */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Filter - reduce top margin */}
-        <div className="px-4 pt-4 pb-3">
-          <Select value={filter} onValueChange={(value) => setFilterValue(value as TaskFilterKey)}>
-            <SelectTrigger className="h-9 w-full border-[var(--border-default)] bg-[var(--bg-surface)] text-[length:var(--text-sm)]">
-              <SelectValue placeholder="Filter tasks" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              {filterOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Content area with lane wrapper */}
+      <div className="flex-1 overflow-y-auto px-[var(--space-4)] py-[var(--space-3)]">
+        <section
+          aria-label="Task list"
+          className="
+            bg-[var(--section-bg)]
+            rounded-[var(--section-radius)]
+            border border-[var(--section-border)]
+            shadow-[var(--elevation-sm)]
+            p-[var(--space-3)]
+          "
+        >
+          {/* Filter */}
+          <div className="mb-1.5">
+            <Select value={filter} onValueChange={(value) => setFilterValue(value as TaskFilterKey)}>
+              <SelectTrigger className="h-9 w-full border-[var(--border-default)] bg-[var(--bg-surface)] text-[length:var(--text-sm)]">
+                <SelectValue placeholder="Filter tasks" />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {filterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-        {/* Add Task Input - reduce margins */}
-        <div className="px-4 pb-2">
+          {/* Add Task Input */}
+          <div className="mb-1.5">
         {!composerActive && !draftTitle && !draftDueDate && draftPriority === 'none' ? (
           <button
             onClick={() => setComposerActive(true)}
-            className="w-full bg-white rounded-[var(--radius-sm)] border border-[var(--border-subtle)] shadow-[var(--elevation-sm)] p-3 text-left hover:shadow-[var(--elevation-md)] motion-safe:transition-shadow duration-[var(--duration-fast)]"
+            className="w-full rounded-[var(--radius-md)] bg-[var(--bg-surface)] border border-[var(--border-default)] px-[var(--space-3)] py-[var(--space-3)] text-left hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)]"
           >
             <div className="flex items-center gap-3">
               <Plus className="w-4 h-4 text-[color:var(--text-tertiary)]" />
@@ -609,7 +646,7 @@ export function CalendarTasksRail({
             </div>
           </button>
         ) : (
-          <div className="bg-white rounded-[var(--radius-sm)] border-2 border-[var(--primary)] shadow-[var(--elevation-sm)] p-3">
+          <div className="rounded-[var(--radius-md)] bg-[var(--bg-surface)] border-2 border-[var(--primary)] px-[var(--space-3)] py-[var(--space-3)]">
               <div className="flex items-start gap-3">
                 {/* Empty checkbox */}
                 <div className="w-4 h-4 mt-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-surface)]"></div>
@@ -704,26 +741,36 @@ export function CalendarTasksRail({
                         <span className="sr-only">Set priority</span>
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" className="w-48 p-1.5">
-                      <div className="flex flex-col gap-0.5">
-                        {(['high', 'medium', 'low', 'none'] as const).map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => {
-                              setDraftPriority(p);
-                              setShowPriorityPicker(false);
-                            }}
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] capitalize hover:bg-[var(--bg-surface-elevated)] text-left ${
-                              draftPriority === p ? 'bg-[var(--bg-surface-elevated)]' : ''
-                            }`}
-                          >
-                            {p === 'high' && <span className="inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] bg-red-500 text-white">High</span>}
-                            {p === 'medium' && <span className="inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] bg-orange-500 text-white">Medium</span>}
-                            {p === 'low' && <span className="inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] bg-blue-500 text-white">Low</span>}
-                            {p === 'none' && <span>No priority</span>}
-                          </button>
-                        ))}
+                    <PopoverContent align="end" className="min-w-[240px] p-[var(--space-2)] border border-[var(--border-subtle)] rounded-[var(--radius-lg)] shadow-[var(--elevation-lg)] bg-[var(--bg-surface)]">
+                      <div role="menu" className="flex flex-col gap-[var(--space-1)]">
+                        {(['high', 'medium', 'low', 'none'] as const).map((p) => {
+                          const isActive = draftPriority === p;
+                          const labels = { high: 'High', medium: 'Medium', low: 'Low', none: 'No priority' };
+                          return (
+                            <button
+                              key={p}
+                              role="menuitemradio"
+                              aria-checked={isActive}
+                              data-checked={isActive}
+                              type="button"
+                              onClick={() => {
+                                setDraftPriority(p);
+                                setShowPriorityPicker(false);
+                              }}
+                              className="w-full grid grid-cols-[1fr_auto] items-center px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] hover:bg-[var(--primary-tint-5)] data-[checked=true]:bg-[var(--primary-tint-10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-0 rounded-[var(--radius-sm)]"
+                              title={labels[p]}
+                            >
+                              <span className="flex items-center gap-[var(--space-2)]">
+                                {isActive && <Check className="h-4 w-4 text-[var(--primary)]" aria-hidden="true" />}
+                                <span>{labels[p]}</span>
+                              </span>
+                              {p === 'high' && <span className={ChipHigh}>High</span>}
+                              {p === 'medium' && <span className={ChipMedium}>Medium</span>}
+                              {p === 'low' && <span className={ChipLow}>Low</span>}
+                              {p === 'none' && <span className="inline-block w-[var(--priority-dot-size)] h-[var(--priority-dot-size)] rounded-full bg-[var(--priority-dot-color)]" aria-hidden />}
+                            </button>
+                          );
+                        })}
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -731,13 +778,12 @@ export function CalendarTasksRail({
               </div>
             </div>
         )}
-        </div>
+          </div>
 
-        {/* Task List - tighter card spacing */}
-        <div className="px-4 pb-4">
+          {/* Task List */}
           <div
             ref={listViewportRef}
-            className="max-h-[calc(100dvh-320px)] overflow-y-auto"
+            className="max-h-[calc(100dvh-420px)] overflow-y-auto"
             role="presentation"
           >
             {loading ? (
@@ -747,7 +793,7 @@ export function CalendarTasksRail({
             ) : (
               <ul
                 role="list"
-                className="space-y-1.5"
+                className="flex flex-col gap-1.5"
               >
               {filteredTasks.map((task, index) => {
                 return (
@@ -767,12 +813,12 @@ export function CalendarTasksRail({
               })}
             </ul>
           )}
-        </div>
+          </div>
+        </section>
       </div>
 
       <div aria-live="polite" className="sr-only">
         {liveMessage}
-      </div>
       </div>
     </section>
   );
@@ -881,20 +927,22 @@ function TaskRow({
         tabIndex={0}
         draggable="true"
         className={cn(
-          'group bg-white rounded-[var(--radius-sm)] border border-[var(--border-subtle)] shadow-[var(--elevation-sm)] p-3 cursor-grab active:cursor-grabbing hover:shadow-[var(--elevation-md)] motion-safe:transition-shadow duration-[var(--duration-fast)]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
-          task.isCompleted && 'opacity-60'
+          'group rounded-[var(--radius-md)] bg-[var(--bg-surface)] border border-[var(--border-default)] p-[var(--space-2)] cursor-grab active:cursor-grabbing hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] first:mt-0 last:mb-0',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-0',
+          task.isCompleted && 'relative bg-[var(--primary-tint-5)] opacity-85 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[var(--border-subtle)] before:rounded-l-[var(--radius-md)]'
         )}
         onKeyDown={onKeyDown}
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-start">
           {/* Checkbox */}
-          <Checkbox
-            checked={task.isCompleted}
-            onCheckedChange={onToggle}
-            aria-label={task.isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
-            className="w-4 h-4 mt-0.5 rounded border border-[var(--border-default)] text-[var(--primary)]"
-          />
+          <span className="shrink-0 w-7 h-7 grid place-items-center mr-[var(--space-3)]">
+            <Checkbox
+              checked={task.isCompleted}
+              onCheckedChange={onToggle}
+              aria-label={task.isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
+              className="w-4 h-4 rounded border border-[var(--border-default)] text-[var(--primary)]"
+            />
+          </span>
           
           {/* Task content */}
           <div className="flex-1 min-w-0">
@@ -919,8 +967,8 @@ function TaskRow({
                 <button
                   type="button"
                   className={cn(
-                    'text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-primary)] text-left w-full truncate',
-                    task.isCompleted && 'line-through opacity-60'
+                    'text-[length:var(--text-base)] font-[var(--font-weight-medium)] text-[var(--text-primary)] text-left w-full truncate',
+                    task.isCompleted && 'line-through text-[var(--text-secondary)]'
                   )}
                   title={task.title}
                   onClick={() => setEditing(true)}
@@ -932,7 +980,7 @@ function TaskRow({
                 {task.dueDate && (
                   <Popover open={dueOpen} onOpenChange={setDueOpen}>
                     <PopoverTrigger asChild>
-                      <button type="button" className="flex items-center gap-1 mt-1" aria-label="Change due date">
+                      <button type="button" className="flex items-center gap-1 mt-[var(--space-2)]" aria-label="Change due date">
                         <CalendarIcon className="w-3 h-3 text-[var(--text-tertiary)]" />
                         <span className="text-[length:var(--text-xs)] text-[var(--text-secondary)]">
                           {format(parseDueDate(task.dueDate) ?? new Date(), 'MMM d')}

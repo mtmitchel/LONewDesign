@@ -170,6 +170,30 @@
 
   /* Content & Typography */
   --chip-height: 22px;           /* keep pills consistent project-wide */
+  --chip-gap: var(--space-2);
+  --chip-pad-x: var(--space-3);
+  --chip-radius: var(--radius-pill);
+
+  /* Softer "faded" chip backgrounds (align to event tints) */
+  --chip-high-bg: var(--accent-coral-tint-10);
+  --chip-high-text: var(--accent-coral);
+
+  /* Medium uses warning hue */
+  --chip-medium-bg: color-mix(in oklab, var(--warning) 15%, transparent);
+  --chip-medium-text: var(--warning);
+
+  /* Low uses info blue (matches event-blue) */
+  --chip-low-bg: color-mix(in oklab, var(--info) 15%, transparent);
+  --chip-low-text: var(--info);
+
+  /* Neutral / no priority */
+  --chip-neutral-bg: var(--bg-surface-elevated);
+  --chip-neutral-text: var(--text-secondary);
+
+  /* Priority neutral dot (no container, just indicator) */
+  --priority-dot-size: 10px;
+  --priority-dot-color: var(--text-tertiary);
+
   --content-measure: 72ch;       /* email body measure */
   --calendar-gutter: var(--space-6);
   --calendar-cell-min-h: 112px;
