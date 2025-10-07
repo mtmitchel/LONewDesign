@@ -209,15 +209,22 @@
   --due-today: var(--primary);
   --due-overdue: var(--danger);
   
-  /* Calendar Event Colors */
-  --event-blue-bg: var(--primary-tint-10);
-  --event-blue-text: var(--primary);
-  --event-teal-bg: rgba(20, 184, 166, 0.1);
-  --event-teal-text: rgb(20, 184, 166);
-  --event-green-bg: rgba(34, 197, 94, 0.1);
-  --event-green-text: rgb(34, 197, 94);
-  --event-orange-bg: rgba(251, 146, 60, 0.1);
-  --event-orange-text: rgb(251, 146, 60);
+  /* Calendar Event Colors - Updated with proper tints and hover states */
+  --event-green-bg: rgb(209, 250, 229); /* emerald-100 */
+  --event-green-text: rgb(4, 120, 87); /* emerald-700 */
+  --event-green-hover: rgb(167, 243, 208); /* emerald-200 */
+  
+  --event-blue-bg: rgb(219, 234, 254); /* blue-100 */
+  --event-blue-text: rgb(29, 78, 216); /* blue-700 */
+  --event-blue-hover: rgb(191, 219, 254); /* blue-200 */
+  
+  --event-teal-bg: rgb(204, 251, 241); /* teal-100 */
+  --event-teal-text: rgb(15, 118, 110); /* teal-700 */
+  --event-teal-hover: rgb(153, 246, 228); /* teal-200 */
+  
+  --event-orange-bg: rgb(254, 215, 170); /* orange-100 */
+  --event-orange-text: rgb(194, 65, 12); /* orange-700 */
+  --event-orange-hover: rgb(253, 186, 116); /* orange-200 */
 
   /* Inline reply */
   --reply-editor-min-h: 160px;
