@@ -129,6 +129,84 @@
   --check-active-check: var(--primary-foreground);
   --check-disabled: var(--border-divider);
 
+  /* Task card density tokens */
+  --task-density: comfortable;
+
+  /* Comfortable density (default) */
+  --task-card-pad-x--comfortable: var(--space-4);
+  --task-card-pad-y--comfortable: var(--space-3);
+  --task-card-gap--comfortable: var(--space-3);
+  --task-title-size--comfortable: 1rem;     /* 16px */
+  --task-meta-size--comfortable: 0.875rem;  /* 14px */
+  --task-check-size--comfortable: 18px;
+
+  /* Compact density (tighter) */
+  --task-card-pad-x--compact: var(--space-3);
+  --task-card-pad-y--compact: var(--space-2);
+  --task-card-gap--compact: var(--space-2);
+  --task-title-size--compact: 0.9375rem;    /* 15px */
+  --task-meta-size--compact: 0.8125rem;     /* 13px */
+  --task-check-size--compact: 16px;
+
+  /* Active density tokens (default to comfortable) */
+  --task-card-pad-x: var(--task-card-pad-x--comfortable);
+  --task-card-pad-y: var(--task-card-pad-y--comfortable);
+  --task-card-gap: var(--task-card-gap--comfortable);
+  --task-title-size: var(--task-title-size--comfortable);
+  --task-meta-size: var(--task-meta-size--comfortable);
+
+  /* Card visual tokens */
+  --task-card-radius: var(--radius-md);
+  --task-card-border: var(--border-subtle);
+  --task-card-shadow: none;
+
+  /* List header tokens */
+  /* Comfortable (default) */
+  --list-header-pad-x--comfortable: var(--space-4);
+  --list-header-pad-y--comfortable: var(--space-3);
+  --list-header-radius--comfortable: var(--radius-lg);
+  --list-header-shadow--comfortable: var(--elevation-sm);
+  --list-header-title--comfortable: 1.125rem; /* 18px */
+
+  /* Compact (NEW) */
+  --list-header-pad-x--compact: var(--space-3);
+  --list-header-pad-y--compact: var(--space-2);
+  --list-header-radius--compact: var(--radius-md);
+  --list-header-shadow--compact: none;
+  --list-header-title--compact: 1rem;       /* 16px */
+  --list-header-toolbar-icon: 16px;
+
+  /* Live map (default to comfortable) */
+  --list-header-pad-x: var(--list-header-pad-x--comfortable);
+  --list-header-pad-y: var(--list-header-pad-y--comfortable);
+  --list-header-radius: var(--list-header-radius--comfortable);
+  --list-header-shadow: var(--list-header-shadow--comfortable);
+  --list-header-title: var(--list-header-title--comfortable);
+
+  /* Segmented control */
+  --seg-bg: var(--bg-muted);
+  --seg-border: var(--border-subtle);
+  --seg-radius: var(--radius-lg);
+  --seg-pad-x: var(--space-2);
+  --seg-pad-y: var(--space-2);
+  --seg-gap: var(--space-1);
+  --seg-elevation: var(--elevation-sm);
+
+  --seg-item-radius: var(--radius-md);
+  --seg-item-pad-x: var(--space-3);
+  --seg-item-pad-y: var(--space-2);
+  --seg-item-icon: 16px;
+  --seg-item-gap: var(--space-2);
+
+  --seg-item-fg: var(--text-secondary);
+  --seg-item-fg-active: var(--text-primary);
+  --seg-item-bg-hover: color-mix(in oklab, var(--text-secondary) 8%, transparent);
+  --seg-item-bg-active: var(--bg-surface);
+  --seg-item-border-active: var(--border-subtle);
+
+  --seg-focus-ring: var(--focus-ring);
+  --seg-duration: var(--duration-fast);
+
   /* Settings rhythm */
   --settings-pad-x: var(--space-4);
   --settings-pad-y: var(--space-4);
@@ -568,6 +646,21 @@
   --sidebar-accent-foreground: var(--primary);
   --sidebar-border: var(--border-subtle);
   --sidebar-ring: var(--primary);
+}
+
+/* Activate compact density */
+.density-compact {
+  --task-card-pad-x: var(--task-card-pad-x--compact);
+  --task-card-pad-y: var(--task-card-pad-y--compact);
+  --task-card-gap: var(--task-card-gap--compact);
+  --task-title-size: var(--task-title-size--compact);
+  --task-meta-size: var(--task-meta-size--compact);
+  --check-size: var(--task-check-size--compact);
+  --list-header-pad-x: var(--list-header-pad-x--compact);
+  --list-header-pad-y: var(--list-header-pad-y--compact);
+  --list-header-radius: var(--list-header-radius--compact);
+  --list-header-shadow: var(--list-header-shadow--compact);
+  --list-header-title: var(--list-header-title--compact);
 }
 
 .dark {

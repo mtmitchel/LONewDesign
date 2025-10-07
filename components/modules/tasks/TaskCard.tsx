@@ -47,7 +47,7 @@ export function TaskCard({
     <ContextMenu>
         <ContextMenuTrigger>
             <Card 
-              className={`bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-sm)] hover:shadow-[var(--elevation-lg)] motion-safe:transition-shadow duration-[var(--duration-base)] p-[var(--space-2)] cursor-pointer min-h-[44px]`}
+              className={`bg-[var(--bg-surface)] border border-[var(--task-card-border)] rounded-[var(--task-card-radius)] shadow-[var(--task-card-shadow)] hover:shadow-[var(--elevation-sm)] motion-safe:transition-shadow duration-[var(--duration-base)] px-[var(--task-card-pad-x)] py-[var(--task-card-pad-y)] cursor-pointer min-h-[44px]`}
               onClick={onClick}
             >
               <CardContent className="p-0">
@@ -83,14 +83,14 @@ export function TaskCard({
                         />
                       </svg>
                     </button>
-                  <div className="flex-1">
-                    <h4 className={`text-[length:var(--text-sm)] font-[var(--font-weight-medium)] ${isCompleted ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>
+                  <div className="flex-1 min-w-0">
+                    <h4 className={`text-[length:var(--task-title-size)] font-[var(--font-weight-medium)] leading-snug line-clamp-2 ${isCompleted ? 'line-through text-[var(--text-tertiary)] opacity-60' : 'text-[var(--text-primary)]'}`}>
                       {taskTitle}
                     </h4>
                     {(dueDate || priority !== 'none' || labels.length > 0) && (
-                      <div className="flex items-center gap-[var(--chip-gap)] mt-[var(--space-1)] flex-wrap">
+                      <div className="flex items-center gap-[var(--space-2)] mt-[var(--space-1)] flex-wrap">
                         {dueDate && (
-                          <span className="text-[length:var(--text-xs)] font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
+                          <span className="text-[length:var(--task-meta-size)] font-[var(--font-weight-normal)] text-[var(--text-tertiary)]">
                             {dueDate}
                           </span>
                         )}

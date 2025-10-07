@@ -35,6 +35,7 @@ import { TaskCard } from './tasks/TaskCard';
 import { TaskComposer } from './tasks/TaskComposer';
 import { TaskSidePanel } from './tasks/TaskSidePanel';
 import { QuickTaskModal } from '../extended/QuickTaskModal';
+import { SegmentedViewToggle } from './tasks/SegmentedViewToggle';
 import { TASK_LISTS } from './tasks/constants';
 
 interface Task {
@@ -45,6 +46,8 @@ interface Task {
   priority: 'low' | 'medium' | 'high' | 'none';
   dueDate?: string;
   dateCreated: string;
+  completedAt?: string | null;
+  order?: number;
   labels: string[];
   isCompleted: boolean;
 }
@@ -62,6 +65,40 @@ const mockTasks: Task[] = [
 ];
 
 const columns = TASK_LISTS;
+
+// Sort comparator: completed tasks at bottom, manual order for active tasks
+function compareTasks(a: Task, b: Task): number {
+  // 1) Incomplete tasks above completed tasks
+  if (a.isCompleted !== b.isCompleted) {
+    return a.isCompleted ? 1 : -1;
+  }
+
+  // 2) Within active tasks: manual order if present, else due date soonest first
+  if (!a.isCompleted) {
+    if (typeof a.order === 'number' && typeof b.order === 'number') {
+      return a.order - b.order;
+    }
+    
+    // Due date comparison (tasks with due dates come first)
+    const ad = a.dueDate ? Date.parse(a.dueDate) : Number.POSITIVE_INFINITY;
+    const bd = b.dueDate ? Date.parse(b.dueDate) : Number.POSITIVE_INFINITY;
+    if (ad !== bd) return ad - bd;
+
+    // Priority tie-breaker (high → medium → low)
+    const pr = (p: Task['priority']) => (p === 'high' ? 0 : p === 'medium' ? 1 : p === 'low' ? 2 : 3);
+    if (pr(a.priority) !== pr(b.priority)) {
+      return pr(a.priority) - pr(b.priority);
+    }
+
+    // Final tie-breaker: creation date (oldest first)
+    return Date.parse(a.dateCreated) - Date.parse(b.dateCreated);
+  }
+
+  // 3) Within completed tasks: oldest completion first (recently completed at bottom)
+  const ac = a.completedAt ? Date.parse(a.completedAt) : 0;
+  const bc = b.completedAt ? Date.parse(b.completedAt) : 0;
+  return ac - bc;
+}
 
 export function TasksModule() {
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
@@ -114,8 +151,14 @@ export function TasksModule() {
   const getTasksByStatus = (status: string) => {
     const tasks = filteredTasks.filter(task => task.status === status);
     // Use globalSort for list view, sortOption for board view columns
-    const sortBy = viewMode === 'list' ? globalSort : (sortOption[status] || 'date-created');
+    const sortBy = viewMode === 'list' ? globalSort : (sortOption[status] || 'completed-at-bottom');
 
+    // Default: completed tasks at bottom with smart ordering
+    if (sortBy === 'completed-at-bottom' || sortBy === 'date-created') {
+      return tasks.sort(compareTasks);
+    }
+
+    // Legacy sort options for backward compatibility
     return tasks.sort((a, b) => {
         if (sortBy === 'title') {
             return a.title.localeCompare(b.title);
@@ -133,9 +176,17 @@ export function TasksModule() {
   };
 
   const toggleTaskCompletion = (taskId: string) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, isCompleted: !task.isCompleted } : task
-    ));
+    setTasks(tasks.map(task => {
+      if (task.id === taskId) {
+        const newCompletedState = !task.isCompleted;
+        return {
+          ...task,
+          isCompleted: newCompletedState,
+          completedAt: newCompletedState ? new Date().toISOString() : null,
+        };
+      }
+      return task;
+    }));
   };
 
   const handleSort = (columnId: string, sortBy: string) => {
@@ -187,10 +238,10 @@ export function TasksModule() {
 
   const BoardView = () => (
     <div className="flex-1 overflow-x-auto px-6 py-4 bg-[var(--bg-canvas)]">
-      <div className="flex items-start gap-[var(--space-4)] min-w-max">
+      <div className="density-compact flex items-start gap-[var(--space-4)] min-w-max">
         {columns.map((column) => (
           <div key={column.id} className="min-w-[280px] min-h-[160px] bg-[var(--bg-surface-elevated)] rounded-[var(--radius-lg)] p-[var(--space-3)] flex flex-col">
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-[var(--task-card-gap)] flex-1">
               <TaskColumnHeader 
                 columnTitle={column.title}
                 taskCount={getTasksByStatus(column.id).length}
@@ -200,31 +251,39 @@ export function TasksModule() {
                 onRenameList={handleRenameList}
                 onDeleteList={handleDeleteList}
               />
-              {activeComposerSection === column.id ? (
-                <TaskComposer 
-                  onAddTask={(title, dueDate, priority) => handleAddTask(title, column.id, dueDate, priority)}
-                  onCancel={() => setActiveComposerSection(null)}
-                />
-              ) : (
-                <TaskAddButton onClick={() => setActiveComposerSection(column.id)} />
-              )}
-              {getTasksByStatus(column.id).map((task) => (
-                <TaskCard
-                  key={task.id}
-                  taskTitle={task.title}
-                  dueDate={task.dueDate}
-                  priority={task.priority}
-                  labels={task.labels}
-                  isCompleted={task.isCompleted}
-                  onToggleCompletion={() => toggleTaskCompletion(task.id)}
-                  onClick={() => {
-                    setSelectedTask(task);
-                  }}
-                  onEdit={() => handleEditTask(task)}
-                  onDuplicate={() => handleDuplicateTask(task)}
-                  onDelete={() => handleDeleteTask(task.id)}
-                />
-              ))}
+              
+              {/* Task cards stack */}
+              <div className="flex flex-col gap-[var(--task-card-gap)]">
+                {getTasksByStatus(column.id).map((task) => (
+                  <TaskCard
+                    key={task.id}
+                    taskTitle={task.title}
+                    dueDate={task.dueDate}
+                    priority={task.priority}
+                    labels={task.labels}
+                    isCompleted={task.isCompleted}
+                    onToggleCompletion={() => toggleTaskCompletion(task.id)}
+                    onClick={() => {
+                      setSelectedTask(task);
+                    }}
+                    onEdit={() => handleEditTask(task)}
+                    onDuplicate={() => handleDuplicateTask(task)}
+                    onDelete={() => handleDeleteTask(task.id)}
+                  />
+                ))}
+              </div>
+
+              {/* Add task at bottom (primary) */}
+              <div className="mt-auto pt-[var(--space-2)]">
+                {activeComposerSection === column.id ? (
+                  <TaskComposer 
+                    onAddTask={(title, dueDate, priority) => handleAddTask(title, column.id, dueDate, priority)}
+                    onCancel={() => setActiveComposerSection(null)}
+                  />
+                ) : (
+                  <TaskAddButton onClick={() => setActiveComposerSection(column.id)} />
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -445,26 +504,10 @@ export function TasksModule() {
     <div className="h-full flex flex-col bg-[var(--bg-default)] text-[var(--text-primary)]">
       <header className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
-          <div className="flex bg-[var(--bg-surface-elevated)] rounded-md p-1 border border-[var(--border-default)]">
-            <Button
-              variant={viewMode === 'board' ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('board')}
-              className="h-8 w-20"
-            >
-              <KanbanSquare size={16} className="mr-2" />
-              Board
-            </Button>
-            <Button
-              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              className="h-8 w-20"
-            >
-              <List size={16} className="mr-2" />
-              List
-            </Button>
-          </div>
+          <SegmentedViewToggle
+            value={viewMode}
+            onChange={setViewMode}
+          />
           <h1 className="text-lg font-semibold">Tasks</h1>
         </div>
 

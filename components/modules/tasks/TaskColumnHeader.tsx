@@ -40,27 +40,29 @@ export function TaskColumnHeader({
   return (
     <Card
       className={cn(
-        "bg-[var(--task-header-bg)] border border-[var(--task-header-border)]",
-        "rounded-[var(--task-header-radius)] shadow-[var(--elevation-sm)]",
-        "px-[var(--task-header-pad-x)] py-[var(--task-header-pad-y)]"
+        "bg-[var(--bg-surface)] border border-[var(--border-subtle)]",
+        "rounded-[var(--list-header-radius)] shadow-[var(--list-header-shadow)]",
+        "px-[var(--list-header-pad-x)] py-[var(--list-header-pad-y)]"
       )}
       role="group"
       aria-roledescription="list header"
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <h3 className="text-[length:var(--text-xl)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">
+      <div className="flex items-center justify-between gap-[var(--space-2)]">
+        <div className="flex items-center gap-[var(--space-2)] min-w-0">
+          <h3 
+            className="text-[length:var(--list-header-title)] font-semibold text-[var(--text-primary)] truncate"
+          >
             {columnTitle}
           </h3>
-          <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)] ml-[var(--space-2)]">
+          <span className="shrink-0 rounded-[var(--radius-full)] px-[var(--space-2)] py-[calc(var(--space-1)/2)] text-xs bg-[color-mix(in_oklab,var(--text-secondary)_10%,transparent)] text-[var(--text-secondary)]">
             {taskCount}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-[var(--space-1)]">
           <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-6 h-6 p-0">
-                      <ArrowUpDown className="w-4 h-4 text-[var(--text-tertiary)]" />
+                  <Button variant="ghost" size="icon" title="Sort" aria-keyshortcuts="Shift+S" className="w-6 h-6 p-0">
+                      <ArrowUpDown style={{ width: "var(--list-header-toolbar-icon)", height: "var(--list-header-toolbar-icon)" }} className="text-[var(--text-tertiary)]" />
                   </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -112,8 +114,8 @@ export function TaskColumnHeader({
           </DropdownMenu>
           <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-6 h-6 p-0">
-                      <MoreHorizontal className="w-4 h-4 text-[var(--text-tertiary)]" />
+                  <Button variant="ghost" size="icon" title="More options" aria-keyshortcuts="Alt+M" className="w-6 h-6 p-0">
+                      <MoreHorizontal style={{ width: "var(--list-header-toolbar-icon)", height: "var(--list-header-toolbar-icon)" }} className="text-[var(--text-tertiary)]" />
                   </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
