@@ -252,11 +252,11 @@ export function CalendarModule() {
 
       </header>
 
-      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {/* Calendar View Area */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {viewMode === 'month' && (
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <>
               {/* Day Headers - cleaner minimal style */}
               <div className="grid grid-cols-7 bg-[var(--bg-surface)] border-b border-[var(--border-divider)]">
                 {dayNames.map((day) => (
@@ -272,7 +272,7 @@ export function CalendarModule() {
               </div>
               
               {/* Calendar Grid - exactly 6 rows, no extra space */}
-              <div className="flex-1 grid grid-rows-[repeat(6,1fr)] overflow-hidden">
+              <div className="flex-1 grid grid-rows-6 overflow-hidden">
                 {calendarWeeks.map((week, weekIdx) => (
                   <div key={weekIdx} className="grid grid-cols-7">
                     {week.map((day, dayIdx) => (
@@ -339,7 +339,7 @@ export function CalendarModule() {
                   </div>
                 ))}
               </div>
-            </div>
+            </>
           )}
           
           {viewMode === 'day' && (
