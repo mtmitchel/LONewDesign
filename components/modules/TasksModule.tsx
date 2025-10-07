@@ -680,6 +680,7 @@ export function TasksModule() {
                     </div>
                     {allLabels.map(label => {
                       const labelColor = allLabelsMap.get(label) || 'var(--label-gray)';
+                      const isSelected = selectedLabels.includes(label);
                       return (
                         <DropdownMenuItem
                           key={label}
@@ -689,19 +690,14 @@ export function TasksModule() {
                             toggleLabelFilter(label);
                           }}
                         >
-                          <Checkbox
-                            checked={selectedLabels.includes(label)}
-                            onCheckedChange={() => toggleLabelFilter(label)}
-                            className="w-4 h-4"
-                          />
                           <Badge
                             variant="soft"
                             size="sm"
-                            className="relative flex-1"
+                            className={`relative flex-1 ${isSelected ? 'ring-2 ring-[var(--primary)] ring-offset-1' : ''}`}
                             style={{ 
-                              backgroundColor: `color-mix(in oklab, ${labelColor} 18%, transparent)`,
+                              backgroundColor: `color-mix(in oklab, ${labelColor} ${isSelected ? '25' : '18'}%, transparent)`,
                               color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
-                              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`
+                              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} ${isSelected ? '45' : '35'}%, transparent)`
                             }}
                           >
                             {label}
