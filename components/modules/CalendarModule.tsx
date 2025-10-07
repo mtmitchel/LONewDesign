@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Search, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { CalendarTasksRail } from './calendar/CalendarTasksRail';
-import { EventModalFixed } from './calendar/EventModalFixed';
+import { EventModalModern } from './calendar/EventModalModern';
 import { CalendarPopover } from './calendar/CalendarPopover';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
@@ -412,7 +412,7 @@ export function CalendarModule() {
         </aside>
       </div>
 
-      <EventModalFixed
+      <EventModalModern
         isOpen={modalState.isOpen}
         mode={modalState.mode}
         onClose={() => {
