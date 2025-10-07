@@ -4,6 +4,8 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { CalendarTasksRail } from './calendar/CalendarTasksRail';
 import { EditEventModal } from './calendar/EditEventModal';
+import { CalendarDayView } from './calendar/CalendarDayView';
+import { CalendarWeekView } from './calendar/CalendarWeekView';
 import { cn } from '../ui/utils';
 
 interface LegacyCalendarEvent {
@@ -200,80 +202,106 @@ export function CalendarModule() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col lg:flex-row">
-        {/* Calendar Grid */}
-        <div className="flex-1 p-6">
-          {/* Day Headers */}
-          <div className="grid grid-cols-7 mb-4">
-            {dayNames.map((day) => (
-              <div key={day} className="p-2 text-center">
-                <span className="text-sm font-medium text-[var(--text-secondary)]">{day}</span>
+      <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+        {/* Calendar View Area */}
+        <div className="flex-1 overflow-hidden">
+          {viewMode === 'month' && (
+            <div className="h-full overflow-auto p-6">
+              {/* Day Headers */}
+              <div className="grid grid-cols-7 mb-4">
+                {dayNames.map((day) => (
+                  <div key={day} className="p-2 text-center">
+                    <span className="text-sm font-medium text-[var(--text-secondary)]">{day}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          
-          {/* Calendar Days */}
-          <div className="grid grid-cols-7 gap-0 border border-[var(--border-divider)]">
-            {calendarDays.map((day, index) => (
-              <div
-                key={index}
-                className={cn(
-                  'min-h-[120px] p-[var(--space-2)] border-b border-r border-[var(--border-divider)] cursor-pointer transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors',
-                  'hover:bg-[var(--bg-surface-elevated)]',
-                  day.isToday ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-surface)]',
-                  !day.isCurrentMonth && 'opacity-40'
-                )}
-                onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date))}
-              >
-                <div className="mb-[var(--space-2)]">
-                  {day.isToday ? (
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-[length:var(--text-sm)] font-[var(--font-weight-bold)] text-white">
-                      {day.date}
-                    </span>
-                  ) : (
-                    <span className={cn(
-                      'text-[length:var(--text-sm)] font-[var(--font-weight-semibold)]',
-                      day.isCurrentMonth ? 'text-[color:var(--text-secondary)]' : 'text-[color:var(--text-tertiary)]'
-                    )}>
-                      {day.date}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Events */}
-                <div className="space-y-[var(--space-1)]">
-                  {day.events.map((event) => (
-                    <div
-                      key={event.id}
-                      className={cn(
-                        'group p-[var(--space-1)] px-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] rounded-[var(--radius-sm)] truncate cursor-pointer',
-                        'transition-all duration-[var(--duration-fast)] motion-safe:transition-all',
-                        'hover:shadow-[var(--elevation-sm)] hover:-translate-y-px'
+              
+              {/* Calendar Days */}
+              <div className="grid grid-cols-7 gap-0 border border-[var(--border-divider)]">
+                {calendarDays.map((day, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      'min-h-[120px] p-[var(--space-2)] border-b border-r border-[var(--border-divider)] cursor-pointer transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors',
+                      'hover:bg-[var(--bg-surface-elevated)]',
+                      day.isToday ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-surface)]',
+                      !day.isCurrentMonth && 'opacity-40'
+                    )}
+                    onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date))}
+                  >
+                    <div className="mb-[var(--space-2)]">
+                      {day.isToday ? (
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--primary)] text-[length:var(--text-sm)] font-[var(--font-weight-bold)] text-white">
+                          {day.date}
+                        </span>
+                      ) : (
+                        <span className={cn(
+                          'text-[length:var(--text-sm)] font-[var(--font-weight-semibold)]',
+                          day.isCurrentMonth ? 'text-[color:var(--text-secondary)]' : 'text-[color:var(--text-tertiary)]'
+                        )}>
+                          {day.date}
+                        </span>
                       )}
-                      style={{
-                        backgroundColor: event.color === 'var(--primary)' ? 'var(--primary-tint-10)' :
-                                       event.color === 'var(--info)' ? 'rgba(20, 184, 166, 0.1)' :
-                                       event.color === 'var(--success)' ? 'rgba(34, 197, 94, 0.1)' :
-                                       'rgba(251, 146, 60, 0.1)',
-                        color: event.color === 'var(--primary)' ? 'var(--primary)' :
-                              event.color === 'var(--info)' ? 'rgb(20, 184, 166)' :
-                              event.color === 'var(--success)' ? 'rgb(34, 197, 94)' :
-                              'rgb(251, 146, 60)'
-                      }}
-                      title={`${event.title} - ${event.time}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedEvent(event);
-                        setIsEditModalOpen(true);
-                      }}
-                    >
-                      {event.title}
                     </div>
-                  ))}
-                </div>
+                    
+                    {/* Events */}
+                    <div className="space-y-[var(--space-1)]">
+                      {day.events.map((event) => (
+                        <div
+                          key={event.id}
+                          className={cn(
+                            'group p-[var(--space-1)] px-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] rounded-[var(--radius-sm)] truncate cursor-pointer',
+                            'transition-all duration-[var(--duration-fast)] motion-safe:transition-all',
+                            'hover:shadow-[var(--elevation-sm)] hover:-translate-y-px'
+                          )}
+                          style={{
+                            backgroundColor: event.color === 'var(--primary)' ? 'var(--primary-tint-10)' :
+                                           event.color === 'var(--info)' ? 'rgba(20, 184, 166, 0.1)' :
+                                           event.color === 'var(--success)' ? 'rgba(34, 197, 94, 0.1)' :
+                                           'rgba(251, 146, 60, 0.1)',
+                            color: event.color === 'var(--primary)' ? 'var(--primary)' :
+                                  event.color === 'var(--info)' ? 'rgb(20, 184, 166)' :
+                                  event.color === 'var(--success)' ? 'rgb(34, 197, 94)' :
+                                  'rgb(251, 146, 60)'
+                          }}
+                          title={`${event.title} - ${event.time}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(event);
+                            setIsEditModalOpen(true);
+                          }}
+                        >
+                          {event.title}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+          
+          {viewMode === 'day' && (
+            <CalendarDayView
+              currentDate={currentDate}
+              events={legacyEvents}
+              onEventClick={(event) => {
+                setSelectedEvent(event);
+                setIsEditModalOpen(true);
+              }}
+            />
+          )}
+          
+          {viewMode === 'week' && (
+            <CalendarWeekView
+              currentDate={currentDate}
+              events={legacyEvents}
+              onEventClick={(event) => {
+                setSelectedEvent(event);
+                setIsEditModalOpen(true);
+              }}
+            />
+          )}
         </div>
 
         {/* Tasks Rail */}
