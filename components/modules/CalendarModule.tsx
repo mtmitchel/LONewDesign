@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Search, LayoutList, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Search, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
 import { CalendarTasksRail } from './calendar/CalendarTasksRail';
 import { EditEventModal } from './calendar/EditEventModal';
 import { CalendarDayView } from './calendar/CalendarDayView';
 import { CalendarWeekView } from './calendar/CalendarWeekView';
+import { CalendarPopover } from './calendar/CalendarPopover';
+import { NewEventModal } from './calendar/NewEventModal';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import { cn } from '../ui/utils';
 
 interface LegacyCalendarEvent {
@@ -65,6 +68,7 @@ export function CalendarModule() {
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
 
   const monthNames = [
@@ -121,85 +125,122 @@ export function CalendarModule() {
 
   return (
     <div className="flex h-full flex-col bg-[var(--bg-surface)]">
-      {/* Streamlined Header */}
-      <header className="flex h-[var(--calendar-header-h)] items-center justify-between gap-[var(--space-4)] border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-6)] shadow-[var(--elevation-sm)]">
-        {/* Left: Date Navigation */}
+      {/* Enhanced Header */}
+      <header className="h-12 flex items-center justify-between px-[var(--space-4)] border-b border-[var(--border-divider)] bg-[var(--bg-surface)]">
+        
+        {/* Left: Navigation */}
         <div className="flex items-center gap-[var(--space-3)]">
-          <Button
-            variant="outline"
+          <Button 
+            variant="ghost" 
             size="sm"
+            className="h-8 px-[var(--space-3)]"
             onClick={goToToday}
-            className="h-8 px-[var(--space-3)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)]"
           >
             Today
           </Button>
+          
           <div className="flex items-center gap-[var(--space-1)]">
-            <Button
-              variant="ghost"
+            <Button 
+              variant="ghost" 
               size="icon"
-              onClick={() => navigateMonth('prev')}
               className="h-8 w-8"
-              title="Previous month"
+              onClick={() => navigateMonth('prev')}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
+            <Button 
+              variant="ghost" 
               size="icon"
-              onClick={() => navigateMonth('next')}
               className="h-8 w-8"
-              title="Next month"
+              onClick={() => navigateMonth('next')}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <h2 className="text-[length:var(--text-lg)] font-[var(--font-weight-semibold)] text-[color:var(--text-primary)]">
+
+          <h2 className="text-[length:var(--text-lg)] font-semibold text-[color:var(--text-primary)] ml-[var(--space-2)]">
             {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
           </h2>
         </div>
 
-        {/* Center: Search */}
-        <div className="relative hidden md:flex md:flex-1 md:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--text-muted)]" />
-          <Input
-            type="search"
-            placeholder="Search events"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-full pl-9 text-[length:var(--text-sm)]"
-          />
-        </div>
-
-        {/* Right: View Toggle + New Event */}
-        <div className="flex items-center gap-[var(--space-2)]">
-          <div className="hidden items-center gap-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[calc(var(--space-1)/2)] lg:flex">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setViewMode('month')}
-              className={`h-7 w-7 ${viewMode === 'month' ? 'bg-[var(--bg-muted)]' : ''}`}
-              title="Month view"
-            >
-              <CalendarIcon className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setViewMode('week')}
-              className={`h-7 w-7 ${viewMode === 'week' ? 'bg-[var(--bg-muted)]' : ''}`}
-              title="Week view"
-            >
-              <LayoutList className="h-4 w-4" />
-            </Button>
+        {/* Right: Actions */}
+        <div className="flex items-center gap-[var(--space-3)]">
+          
+          {/* Search input */}
+          <div className="relative hidden md:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-tertiary)] pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search events"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-8 w-64 pl-9 pr-3 bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+            />
           </div>
-          <Button
-            size="sm"
-            className="h-8 gap-[var(--space-2)] bg-[var(--primary)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-white hover:bg-[var(--primary-hover)] shadow-sm"
+
+          {/* Calendar popover trigger */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="Jump to date"
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent 
+              className="w-auto p-0" 
+              align="end"
+            >
+              <CalendarPopover 
+                selectedDate={currentDate}
+                onDateSelect={(date) => {
+                  setCurrentDate(date);
+                  setSelectedDate(date);
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+
+          {/* View toggle */}
+          <ToggleGroup 
+            type="single" 
+            value={viewMode}
+            onValueChange={(value) => value && setViewMode(value as 'month' | 'week' | 'day')}
+            className="border border-[var(--border-default)] rounded-[var(--radius-sm)] p-0.5 bg-[var(--bg-surface)]"
           >
-            <Plus className="h-4 w-4" />
+            <ToggleGroupItem 
+              value="month"
+              className="h-7 px-3 text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary)] data-[state=on]:text-white rounded-[var(--radius-sm)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+            >
+              Month
+            </ToggleGroupItem>
+            <ToggleGroupItem 
+              value="week"
+              className="h-7 px-3 text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary)] data-[state=on]:text-white rounded-[var(--radius-sm)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+            >
+              Week
+            </ToggleGroupItem>
+            <ToggleGroupItem 
+              value="day"
+              className="h-7 px-3 text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary)] data-[state=on]:text-white rounded-[var(--radius-sm)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+            >
+              Day
+            </ToggleGroupItem>
+          </ToggleGroup>
+
+          {/* New event button */}
+          <Button 
+            className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)]"
+            onClick={() => setIsNewEventModalOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
             New event
           </Button>
         </div>
+
       </header>
 
       <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
@@ -325,6 +366,17 @@ export function CalendarModule() {
         onDelete={() => {
           console.log('Delete event:', selectedEvent);
           // Handle event delete logic here
+        }}
+      />
+
+      {/* New Event Modal */}
+      <NewEventModal
+        isOpen={isNewEventModalOpen}
+        onClose={() => setIsNewEventModalOpen(false)}
+        defaultDate={selectedDate || currentDate}
+        onSave={(eventData) => {
+          console.log('Create event:', eventData);
+          // Handle event creation logic here
         }}
       />
     </div>
