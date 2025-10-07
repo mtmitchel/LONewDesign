@@ -106,7 +106,7 @@ export function CalendarDayView({ currentDate, events, onEventClick }: CalendarD
                </div>
               
                {/* Time Slot */}
-               <div className="relative border-b border-[var(--border-divider)] h-[60px] px-[var(--calendar-day-column-pad-x)] transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors hover:bg-[var(--bg-surface-elevated)]">
+               <div className="relative border-b border-[var(--border-divider)] h-[60px] px-[var(--calendar-day-column-pad-x)] transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors">
                 {/* Events positioned absolutely */}
                 {hour === 0 && positionedEvents.map((event) => {
                   // Map legacy color to simple color name
@@ -125,9 +125,9 @@ export function CalendarDayView({ currentDate, events, onEventClick }: CalendarD
                       key={event.id}
                       title={event.title}
                       time={event.time}
-                      color={mapEventColor(event.color)}
+                      tone={mapEventColor(event.color)}
                       density="default"
-                      className="absolute left-0 right-0 hover:shadow-[var(--elevation-sm)] hover:-translate-y-px z-[1]"
+                      className="absolute inset-x-0 hover:shadow-[var(--elevation-sm)] hover:-translate-y-px z-[1]"
                       style={{
                         top: `${event.top}px`,
                         height: `${event.height}px`,

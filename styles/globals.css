@@ -369,13 +369,20 @@
   --calendar-gutter: var(--space-6);
   --calendar-cell-min-h: 112px;
   --calendar-hour-row-h: 56px;
+  /* Aliases for Gmail-like sizing */
+  --cal-hour-row-h: var(--calendar-hour-row-h);
+  --cal-30m-min-h: 22px;
+  --cal-15m-min-h: 16px;
+  --cal-month-chip-min-h: 20px;
+  --cal-month-chip-gap: var(--space-1);
+  --cal-slot-hover-line: var(--border-subtle);
   --calendar-rail-w: 340px;
   --calendar-cell-border: var(--border-subtle);
   --calendar-event-radius: var(--radius-md);
   --calendar-rail-shadow: var(--elevation-sm);
   
   /* Calendar — event layout (shared) */
-  --calendar-event-pad-x: var(--space-3);  /* internal left/right padding */
+  --calendar-event-pad-x: var(--space-2);  /* internal left/right padding */
   --calendar-event-pad-y: calc(var(--space-2) - 2px); /* top/btm padding */
   --calendar-event-gap: var(--space-2);    /* gap between stacked events */
   --calendar-event-focus: color-mix(in oklab, var(--primary) 36%, transparent);
@@ -395,6 +402,16 @@
   --calendar-event-radius: var(--radius-md);
   --calendar-event-border: var(--border-subtle);
   --calendar-event-focus-ring: color-mix(in oklab, var(--primary) 36%, transparent);
+  /* Typography */
+  --calendar-event-text: var(--text);
+  --calendar-event-time: var(--text-tertiary);
+  --calendar-event-font-sm: var(--text-sm);
+  --calendar-event-font-xs: var(--text-xs);
+  --calendar-event-font-xxs: clamp(10px, 0.65rem, 11px);
+  --calendar-event-leading-tight: 1.1;
+  --calendar-event-pad-y-ultra: calc(var(--space-1) - 2px);
+  --calendar-event-pad-y-micro: 0;
+  --calendar-event-gap-micro: 0;
   
   /* Calendar states */
   --calendar-today-indicator-bg: color-mix(in oklab, var(--primary) 10%, transparent);
@@ -435,21 +452,29 @@
   --due-overdue: var(--danger);
   
   /* Calendar Event Colors - TRUE LOW-INK (5-10% opacity) */
-  --event-green-bg: color-mix(in oklab, rgb(34, 197, 94) 8%, transparent); /* 8% green */
-  --event-green-text: color-mix(in oklab, rgb(34, 197, 94) 85%, transparent); /* 85% green */
-  --event-green-hover: color-mix(in oklab, rgb(34, 197, 94) 12%, transparent); /* 12% green hover */
-  
-  --event-blue-bg: color-mix(in oklab, rgb(59, 130, 246) 8%, transparent); /* 8% blue */
-  --event-blue-text: color-mix(in oklab, rgb(59, 130, 246) 85%, transparent); /* 85% blue */
-  --event-blue-hover: color-mix(in oklab, rgb(59, 130, 246) 12%, transparent); /* 12% blue hover */
-  
-  --event-teal-bg: color-mix(in oklab, rgb(20, 184, 166) 8%, transparent); /* 8% teal */
-  --event-teal-text: color-mix(in oklab, rgb(20, 184, 166) 85%, transparent); /* 85% teal */
-  --event-teal-hover: color-mix(in oklab, rgb(20, 184, 166) 12%, transparent); /* 12% teal hover */
-  
-  --event-orange-bg: color-mix(in oklab, rgb(251, 146, 60) 8%, transparent); /* 8% orange */
-  --event-orange-text: color-mix(in oklab, rgb(251, 146, 60) 85%, transparent); /* 85% orange */
-  --event-orange-hover: color-mix(in oklab, rgb(251, 146, 60) 12%, transparent); /* 12% orange hover */
+  /* Low-ink paper palette */
+  --paper: var(--bg-surface);
+  --h-blue: var(--primary);
+  --h-green: var(--accent-green, #00A86B);
+  --h-teal: var(--accent-teal, #12b3ad);
+  --h-orange: var(--accent-orange, #f59e0b);
+
+  --event-blue-bg:   color-mix(in oklab, var(--paper) 82%, var(--h-blue)   18%);
+  --event-green-bg:  color-mix(in oklab, var(--paper) 82%, var(--h-green)  18%);
+  --event-teal-bg:   color-mix(in oklab, var(--paper) 82%, var(--h-teal)   18%);
+  --event-orange-bg: color-mix(in oklab, var(--paper) 82%, var(--h-orange) 18%);
+
+  --event-blue-hover:   color-mix(in oklab, var(--paper) 74%, var(--h-blue)   26%);
+  --event-green-hover:  color-mix(in oklab, var(--paper) 74%, var(--h-green)  26%);
+  --event-teal-hover:   color-mix(in oklab, var(--paper) 74%, var(--h-teal)   26%);
+  --event-orange-hover: color-mix(in oklab, var(--paper) 74%, var(--h-orange) 26%);
+
+  --event-blue-text:   var(--text);
+  --event-green-text:  var(--text);
+  --event-teal-text:   var(--text);
+  --event-orange-text: var(--text);
+
+  --calendar-event-border: color-mix(in oklab, currentColor 12%, transparent);
 
   /* Inline reply */
   --reply-editor-min-h: 160px;

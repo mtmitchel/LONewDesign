@@ -4,7 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { cn } from '../../ui/utils';
 import type { CalendarEvent } from './types';
 import type { MonthCell } from './useCalendarEngine';
-import { EventChip } from './EventChip';
+import { CalendarEvent as CalendarEventPill } from '../../calendar/CalendarEvent';
 
 const DAY_LABELS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -110,12 +110,21 @@ export function MonthGrid({ cells, getEventsForDate, onSelectDay, onSelectRange,
                   flex flex-col
                   items-stretch
                   px-[var(--space-2)] py-[var(--space-2)]
-                  gap-[var(--calendar-event-gap)]
+                  gap-[var(--cal-month-chip-gap)]
                 "
               >
-                {visibleEvents.map((event) => (
-                  <EventChip key={event.id} event={event} onClick={onEventClick} />
-                ))}
+               {visibleEvents.map((event) => (
+                 <CalendarEventPill
+                   key={event.id}
+                   density="micro"
+                   size="xxs"
+                   className="min-h-[var(--cal-month-chip-min-h)]"
+                   tone={event.category === 'personal' ? 'green' : event.category === 'meeting' ? 'teal' : event.category === 'travel' ? 'orange' : 'blue'}
+                   time={!event.allDay ? format(new Date(event.startsAt), 'p') : undefined}
+                   title={event.title}
+                   onClick={() => onEventClick(event)}
+                 />
+               ))}
                 {overflowCount > 0 && (
                   <Popover>
                     <PopoverTrigger asChild>
@@ -128,7 +137,16 @@ export function MonthGrid({ cells, getEventsForDate, onSelectDay, onSelectRange,
                     </PopoverTrigger>
                     <PopoverContent className="w-64 space-y-[var(--space-2)]">
                       {events.slice(3).map((event) => (
-                        <EventChip key={event.id} event={event} onClick={onEventClick} />
+                        <CalendarEventPill
+                          key={event.id}
+                          density="micro"
+                          size="xxs"
+                          className="min-h-[var(--cal-month-chip-min-h)]"
+                          tone={event.category === 'personal' ? 'green' : event.category === 'meeting' ? 'teal' : event.category === 'travel' ? 'orange' : 'blue'}
+                          time={!event.allDay ? format(new Date(event.startsAt), 'p') : undefined}
+                          title={event.title}
+                          onClick={() => onEventClick(event)}
+                        />
                       ))}
                     </PopoverContent>
                   </Popover>

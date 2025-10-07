@@ -151,7 +151,7 @@ export function CalendarWeekView({ currentDate, events, onEventClick }: Calendar
               {weekDays.map((_, dayIndex) => (
                 <div
                   key={dayIndex}
-                  className="relative border-r border-b border-[var(--border-divider)] h-[60px] transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors hover:bg-[var(--bg-surface-elevated)]"
+                  className="relative border-r border-b border-[var(--border-divider)] h-[60px] transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors"
                 >
                   {/* Events positioned absolutely (only render in first hour to avoid duplicates) */}
                   {hour === 0 && getPositionedEvents(dayIndex).map((event) => {
