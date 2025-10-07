@@ -369,6 +369,58 @@
   --calendar-gutter: var(--space-6);
   --calendar-cell-min-h: 112px;
   --calendar-hour-row-h: 56px;
+  /* Frame & layout */
+  --cal-frame-radius: var(--radius-lg);
+  --cal-frame-border: var(--border-subtle);
+  --cal-bg: var(--bg-surface);
+  --cal-header-h: 48px;               /* weekday header height */
+  --cal-hour-row-h: 56px;             /* vertical scale for week/day */
+  --cal-cell-min-h: 112px;            /* month cell min height */
+  --cal-rail-w: 64px;                 /* time rail width (week/day) */
+  --calendar-min-h: calc(100vh - var(--header-height) - var(--space-8));
+
+  /* Lines & rings */
+  --cal-gridline: var(--border-divider);        /* subtle internal lines */
+  --cal-ring: var(--primary);                   /* focus/selected/today ring */
+  --cal-hover: var(--primary-tint-5);           /* light hover tint */
+
+  /* Month outside-days ink */
+  --cal-outside-ink: 0.52;                      /* opacity for other-month days */
+
+  /* Now indicator (week/day) */
+  --cal-now-line: color-mix(in oklab, var(--primary) 45%, transparent);
+  --cal-now-dot: var(--primary);
+
+  /* Event pills (shared across views) */
+  --event-pill-r: var(--radius-md);
+  --event-pill-px: var(--space-3);
+  --event-pill-py: var(--space-1);
+  --event-gap: var(--space-2);                  /* vertical gap between pills */
+  --event-overlap-gap: var(--space-2);          /* week/day collision gap */
+  /* Calendar layout structure & rhythm */
+  --calendar-gap: var(--space-3);
+  --calendar-cell-pad: var(--space-3);
+  --calendar-cell-radius: var(--radius-md);
+  --calendar-col-radius: var(--radius-lg);
+  --calendar-header-h: 56px;
+  --calendar-all-day-h: 40px;
+  /* Lines & fills */
+  --calendar-gridline: var(--border-subtle);
+  --calendar-band: var(--bg-surface-elevated);
+  --calendar-band-alt: var(--bg-surface);
+  /* States */
+  --calendar-hover-bg: var(--primary-tint-5);
+  --calendar-today-ring: var(--primary);
+  --calendar-selected-ring: var(--primary);
+  --calendar-outside-ink: 0.52;
+  /* Now indicator */
+  --calendar-now-line: color-mix(in oklab, var(--primary) 32%, white);
+  --calendar-now-dot: var(--primary);
+  /* Event pill alignment with Tasks chips */
+  --event-pill-pad-x: var(--space-3);
+  --event-pill-pad-y: var(--space-1);
+  --event-pill-radius: var(--radius-md);
+  --event-pill-hover: var(--primary-tint-10);
   /* Aliases for Gmail-like sizing */
   --cal-hour-row-h: var(--calendar-hour-row-h);
   --cal-30m-min-h: 22px;

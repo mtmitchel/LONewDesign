@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Calendar: Unified Views + Token-Driven Event Pills (2025-10)
+- Swapped legacy calendar rendering to unified MonthGrid/WeekGrid/DayView backed by `useCalendarEngine`.
+- Replaced per-view `EventBlock`/inline markup with a single strict `CalendarEvent` pill:
+  - Top-left alignment enforced (inline-flex, items-start/justify-start, text-left).
+  - One-line layout: time `whitespace-nowrap tabular-nums`, title `truncate`.
+  - Density variants (micro/compact/default) + size variants (xxs/sm) using tokens only.
+  - Duration-aware density for week/day: ≤15m micro + min-h 16px; ≤30m micro + min-h 22px; ≤60m compact; else default.
+- Month chips now use `density="micro" size="xxs"` with `min-h: var(--cal-month-chip-min-h)` (~20–22px), matching Gmail feel.
+- Timed blocks respect min-height guards and scale with `--cal-hour-row-h` (e.g., 2h = 2× row height).
+- Removed cell/column hover greying; hover feedback is applied to the event pill only.
+- Adopted a low-ink “paper” palette (tinted surface backgrounds + neutral text) for events, with subtle hover deepen.
+- Centralized category→tone mapping and paved path to deprecate `EventChip` and legacy `CalendarWeekView`.
+
 ### Tasks Module Enhancements (2025-10)
 - **Inline List Creation**: Asana-style compact inline forms for creating new lists/sections
   - Board view: Minimal 160px panel with 32px input, 28px buttons
