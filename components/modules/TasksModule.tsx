@@ -118,6 +118,7 @@ export function TasksModule() {
   const [globalSort, setGlobalSort] = useState<'due-date' | 'date-created' | 'priority'>('date-created');
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListName, setNewListName] = useState('');
+  const [labelsColorMap, setLabelsColorMap] = useState<Map<string, string>>(new Map());
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -128,17 +129,21 @@ export function TasksModule() {
   });
 
   // Get all unique labels from tasks with their colors
-  const allLabelsMap = new Map<string, string>();
-  tasks.forEach(task => {
-    task.labels.forEach(label => {
-      const name = getLabelName(label);
-      const color = getLabelColor(label);
-      if (!allLabelsMap.has(name)) {
-        allLabelsMap.set(name, color);
-      }
+  React.useEffect(() => {
+    const newMap = new Map<string, string>();
+    tasks.forEach(task => {
+      task.labels.forEach(label => {
+        const name = getLabelName(label);
+        const color = getLabelColor(label);
+        if (!newMap.has(name)) {
+          newMap.set(name, color);
+        }
+      });
     });
-  });
-  const allLabels = Array.from(allLabelsMap.keys()).sort();
+    setLabelsColorMap(newMap);
+  }, [tasks]);
+  
+  const allLabels = Array.from(labelsColorMap.keys()).sort();
 
   const toggleLabelFilter = (label: string) => {
     setSelectedLabels(prev => 
@@ -679,7 +684,7 @@ export function TasksModule() {
                       Filter by label
                     </div>
                     {allLabels.map(label => {
-                      const labelColor = allLabelsMap.get(label) || 'var(--label-gray)';
+                      const labelColor = labelsColorMap.get(label) || 'var(--label-gray)';
                       const isSelected = selectedLabels.includes(label);
                       return (
                         <DropdownMenuItem
@@ -693,11 +698,12 @@ export function TasksModule() {
                           <Badge
                             variant="soft"
                             size="sm"
-                            className={`relative flex-1 ${isSelected ? 'ring-2 ring-[var(--primary)] ring-offset-1' : ''}`}
+                            className={`relative ${isSelected ? 'ring-2 ring-[var(--primary)] ring-offset-1' : ''}`}
                             style={{ 
                               backgroundColor: `color-mix(in oklab, ${labelColor} ${isSelected ? '25' : '18'}%, transparent)`,
                               color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
-                              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} ${isSelected ? '45' : '35'}%, transparent)`
+                              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} ${isSelected ? '45' : '35'}%, transparent)`,
+                              minWidth: 'fit-content'
                             }}
                           >
                             {label}

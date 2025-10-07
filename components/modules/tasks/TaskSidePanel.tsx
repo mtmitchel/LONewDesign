@@ -259,7 +259,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                       </div>
                       {editingLabelIndex === idx && (
                         <div className="absolute top-full left-0 mt-1 p-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] z-10">
-                          <div className="flex gap-1">
+                          <div className="grid grid-cols-5 gap-1">
                             {[
                               { name: 'Blue', value: 'var(--label-blue)' },
                               { name: 'Purple', value: 'var(--label-purple)' },
