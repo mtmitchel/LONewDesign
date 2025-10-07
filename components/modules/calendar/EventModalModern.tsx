@@ -7,8 +7,8 @@ import { Switch } from '../../ui/switch';
 import { Textarea } from '../../ui/textarea';
 import { Dialog, DialogContent } from '../../ui/dialog';
 import { Calendar } from '../../ui/calendar';
-import { X, Clock, Calendar as CalendarIcon, ChevronDown, Trash2, MapPin, Repeat, FileText, Sparkles } from 'lucide-react';
-import { format, parse } from 'date-fns';
+import { X, Clock, Calendar as CalendarIcon, ChevronDown, Trash2, MapPin, Repeat, FileText } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface CalendarEvent {
   id: string;
@@ -183,7 +183,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
                     <div className="grid grid-cols-2 gap-2">
                       {/* Start time */}
                       <div>
-                        <label className="text-xs text-gray-500 mb-1.5 block">
+                        <label className="text-xs text-[var(--text-secondary)] mb-1.5 block">
                           Start
                         </label>
                         <Select
@@ -210,7 +210,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
 
                       {/* End time */}
                       <div>
-                        <label className="text-xs text-gray-500 mb-1.5 block">
+                        <label className="text-xs text-[var(--text-secondary)] mb-1.5 block">
                           End
                         </label>
                         <Select
@@ -277,27 +277,25 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
             </div>
           </div>
 
-          {/* Calendar selector - minimal */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-9 px-0 text-sm font-normal justify-start gap-2 hover:bg-transparent"
-              >
-                <span 
-                  className="w-2.5 h-2.5 rounded-full" 
-                  style={{ backgroundColor: formData.calendarColor }}
-                />
-                <span className="text-gray-600">{formData.calendar}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-gray-400 ml-auto" />
-              </Button>
+          {/* Calendar selector */}
+          <div className="pt-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 py-1.5 px-0 hover:opacity-80 transition-opacity">
+                  <span 
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: formData.calendarColor }}
+                  />
+                  <span className="text-sm text-[var(--text-secondary)]">{formData.calendar}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+                </button>
             </PopoverTrigger>
             <PopoverContent className="w-[200px] p-1 z-[200]" align="start">
               <div className="space-y-0.5">
                 {[
-                  { name: 'Personal', color: 'rgb(52, 211, 153)' },
-                  { name: 'Work', color: 'rgb(59, 130, 246)' },
-                  { name: 'Travel', color: 'rgb(251, 146, 60)' }
+                  { name: 'Personal', color: 'hsl(160 84% 51%)' },
+                  { name: 'Work', color: 'hsl(217 91% 60%)' },
+                  { name: 'Travel', color: 'hsl(25 95% 63%)' }
                 ].map((cal) => (
                   <button
                     key={cal.name}
@@ -308,10 +306,10 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
                         calendarColor: cal.color 
                       });
                     }}
-                    className="w-full flex items-center gap-2.5 px-2 py-1.5 text-sm rounded hover:bg-gray-50 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-2 py-1.5 text-sm rounded hover:bg-[var(--bg-hover)] transition-colors text-[var(--text-primary)]"
                   >
                     <span 
-                      className="w-2.5 h-2.5 rounded-full" 
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
                       style={{ backgroundColor: cal.color }}
                     />
                     {cal.name}
@@ -320,108 +318,109 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
               </div>
             </PopoverContent>
           </Popover>
+          </div>
 
-          {/* Progressive disclosure - cleaner */}
-          {!isExpanded ? (
-            <button
-              onClick={() => setIsExpanded(true)}
-              className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
-            >
-              <ChevronDown className="h-4 w-4" />
-              Add details
-            </button>
-          ) : (
+          {/* Details section - fixed spacing */}
+          {isExpanded && (
             <div className="space-y-3 pt-2">
-              {/* Location - minimal */}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                  <Input
-                    value={formData.location || ''}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    placeholder="Add location"
-                    className="border-0 h-8 px-0 text-sm placeholder:text-gray-400 focus-visible:ring-0"
-                  />
-                </div>
-              </div>
+              {/* Location - fixed icon alignment */}
+              <button className="w-full flex items-center gap-2 py-1.5 group hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-md transition-colors">
+                <MapPin className="h-4 w-4 text-[var(--text-tertiary)] flex-shrink-0" />
+                <Input
+                  value={formData.location || ''}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="Add location"
+                  className="border-0 h-auto py-0 px-0 text-sm placeholder:text-[var(--text-tertiary)] focus-visible:ring-0 bg-transparent"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </button>
 
-              {/* Repeat - minimal */}
-              <div className="space-y-1.5">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="flex items-center gap-2 w-full text-left py-1 hover:text-gray-700 transition-colors">
-                      <Repeat className="h-3.5 w-3.5 text-gray-400" />
-                      <span className="text-sm text-gray-600">
-                        {formData.repeat === 'none' ? 'Does not repeat' : formData.repeat}
-                      </span>
-                    </button>
-                  </PopoverTrigger>
+              {/* Repeat - fixed icon alignment */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="w-full flex items-center gap-2 py-1.5 hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-md transition-colors text-left">
+                    <Repeat className="h-4 w-4 text-[var(--text-tertiary)] flex-shrink-0" />
+                    <span className="text-sm text-[var(--text-secondary)]">
+                      {formData.repeat === 'none' ? 'Does not repeat' : formData.repeat}
+                    </span>
+                  </button>
+                </PopoverTrigger>
                   <PopoverContent className="w-[180px] p-1 z-[200]" align="start">
                     {['none', 'Daily', 'Weekly', 'Monthly', 'Yearly'].map((option) => (
                       <button
                         key={option}
                         onClick={() => setFormData({ ...formData, repeat: option })}
-                        className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-gray-50"
+                        className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
                       >
                         {option === 'none' ? 'Does not repeat' : option}
                       </button>
                     ))}
                   </PopoverContent>
-                </Popover>
+              </Popover>
+
+              {/* Description - fixed icon alignment */}
+              <div className="flex items-start gap-2 py-1.5 hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-md transition-colors">
+                <FileText className="h-4 w-4 text-[var(--text-tertiary)] flex-shrink-0 mt-0.5" />
+                <Textarea
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Add description"
+                  className="min-h-[60px] resize-none text-sm border-0 px-0 py-0 placeholder:text-[var(--text-tertiary)] focus-visible:ring-0 bg-transparent"
+                />
               </div>
 
-              {/* Description - minimal */}
-              <div className="space-y-1.5">
-                <div className="flex items-start gap-2">
-                  <FileText className="h-3.5 w-3.5 text-gray-400 mt-2" />
-                  <Textarea
-                    value={formData.description || ''}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Add description"
-                    className="min-h-[60px] resize-none text-sm border-0 px-0 placeholder:text-gray-400 focus-visible:ring-0"
-                  />
-                </div>
-              </div>
-
+              {/* Hide details button */}
               <button
                 onClick={() => setIsExpanded(false)}
-                className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors py-1"
+                className="flex items-center gap-1.5 text-sm text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors py-1 -mx-2 px-2"
               >
                 <ChevronDown className="h-4 w-4 rotate-180" />
                 Hide details
               </button>
             </div>
           )}
+
+          {/* Show details button when collapsed */}
+          {!isExpanded && (
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="flex items-center gap-1.5 text-sm text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors py-1"
+            >
+              <ChevronDown className="h-4 w-4" />
+              Add details
+            </button>
+          )}
         </div>
 
-        {/* Minimal action bar */}
-        <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100">
-          {mode === 'edit' && onDelete && (
+        {/* Action bar with system colors */}
+        <div className="flex justify-between items-center px-6 py-4 border-t border-[var(--border-default)] bg-[var(--bg-canvas)]">
+          {mode === 'edit' && onDelete ? (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleDelete}
-              className="h-8 px-2 text-gray-400 hover:text-red-600 hover:bg-red-50"
+              className="h-8 px-2 text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
             >
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              <Trash2 className="h-4 w-4 mr-1.5" />
               Delete
             </Button>
+          ) : (
+            <div />
           )}
-          {mode === 'create' && <div />}
           
           <div className="flex gap-2">
             <Button 
               variant="ghost" 
               size="sm"
               onClick={onClose}
-              className="h-8 px-3 text-sm"
+              className="h-8 px-3 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
             >
               Cancel
             </Button>
             <Button 
               size="sm"
               onClick={handleSave}
-              className="h-8 px-4 text-sm bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="h-8 px-4 text-sm bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-sm"
             >
               Save
             </Button>
