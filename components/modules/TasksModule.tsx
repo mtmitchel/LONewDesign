@@ -356,7 +356,7 @@ export function TasksModule() {
         {/* Table header */}
         <div 
           className="grid items-center px-[var(--list-row-pad-x)] py-[var(--space-2)] border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
-          style={{ gridTemplateColumns: "28px 1fr 160px 120px 1fr", columnGap: "var(--list-row-gap)" }}
+          style={{ gridTemplateColumns: "28px 1fr 160px 120px auto", columnGap: "var(--list-row-gap)" }}
         >
           <div></div> {/* checkbox column */}
           <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Task name</div>
@@ -382,7 +382,7 @@ export function TasksModule() {
                       <div 
                         className="grid items-center border-b border-[var(--border-divider)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
                         style={{
-                          gridTemplateColumns: "28px 1fr 160px 120px 1fr", 
+                          gridTemplateColumns: "28px 1fr 160px 120px auto", 
                           columnGap: "var(--list-row-gap)",
                           minHeight: "var(--list-row-min-h)",
                           paddingLeft: "var(--list-row-pad-x)",
