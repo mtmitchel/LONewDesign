@@ -29,9 +29,9 @@ export function MonthView({
   onEventClick,
 }: Props) {
   return (
-    <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)] bg-[var(--cal-bg)] overflow-hidden min-h-[var(--calendar-min-h)]">
+    <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)] bg-[var(--cal-bg)] overflow-hidden h-full flex flex-col">
       {/* header */}
-      <div className="grid grid-cols-7 h-[var(--cal-header-h)]">
+      <div className="grid grid-cols-7 h-[var(--cal-header-h)] flex-shrink-0">
         {weekdays.map(w => (
           <div key={w} className="grid place-items-center text-[var(--text-tertiary)] text-[var(--text-xs)] font-medium border-r last:border-r-0 border-[var(--cal-gridline)]">
             {w}
@@ -40,7 +40,7 @@ export function MonthView({
       </div>
 
       {/* grid */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 grid-rows-6 flex-grow">
         {days.map((d, i) => {
           const isFirstRow = i < 7;
           const isLastCol = (i % 7) === 6;
@@ -51,7 +51,7 @@ export function MonthView({
               aria-pressed={d.isSelected || undefined}
               aria-label={`${d.date.toDateString()}, ${d.events.length} events`}
               className={[
-                "relative h-[var(--cal-cell-min-h)] text-left align-top",
+                "relative min-h-[var(--cal-cell-min-h)] text-left align-top",
                 "border-[var(--cal-gridline)] border-b border-r",
                 isFirstRow && "border-t",
                 isLastCol  && "border-r-0",
