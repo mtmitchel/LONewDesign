@@ -155,9 +155,9 @@ export function DayView({
   const isToday = new Date().toDateString() === date.toDateString();
 
   return (
-    <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)] bg-[var(--cal-bg)] overflow-hidden">
+    <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)] bg-[var(--cal-bg)] overflow-hidden h-full flex flex-col">
       {/* header */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_1fr] h-[var(--cal-header-h)] sticky top-0 bg-[var(--cal-bg)] z-[1]">
+      <div className="grid grid-cols-[var(--cal-rail-w)_1fr] h-[var(--cal-header-h)] flex-shrink-0 bg-[var(--cal-bg)] z-[1] border-b border-[var(--cal-gridline)]">
         <div />
         <div className="grid place-items-center text-[var(--text-sm)] font-medium text-[var(--text-primary)]
                        border-l border-[var(--cal-gridline)]">
@@ -165,8 +165,10 @@ export function DayView({
         </div>
       </div>
 
-      {/* all-day */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
+      {/* scrollable container */}
+      <div className="flex-grow overflow-y-auto">
+        {/* all-day */}
+        <div className="grid grid-cols-[var(--cal-rail-w)_1fr] sticky top-0 bg-[var(--cal-bg)] z-[1]">
         <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">
           all day
         </div>
@@ -176,10 +178,10 @@ export function DayView({
             <EventPill key={event.id} title={event.title} tone={event.tone} />
           ))}
         </div>
-      </div>
+        </div>
 
-      {/* timed grid */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
+        {/* timed grid */}
+        <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
         {/* rail */}
         <div className="flex flex-col border-t border-[var(--cal-gridline)]">
           {times.map(t => (
@@ -212,6 +214,7 @@ export function DayView({
               <div className="absolute -ml-1 h-2 w-2 rounded-full bg-[var(--cal-now-dot)]" style={{ top: nowPx - 3, left: 0 }} />
             </>
           )}
+        </div>
         </div>
       </div>
     </div>
