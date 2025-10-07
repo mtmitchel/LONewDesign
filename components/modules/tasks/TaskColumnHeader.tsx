@@ -1,7 +1,9 @@
 import React from 'react';
 import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
+import { Card } from '../../ui/card';
 import { MoreHorizontal, ArrowUpDown, Check } from 'lucide-react';
+import { cn } from '../../ui/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,16 +38,25 @@ export function TaskColumnHeader({
   }
 
   return (
-    <div className="flex items-center justify-between px-[var(--space-2)] py-[var(--space-2)]">
-      <div className="flex items-center">
-        <h3 className="text-[length:var(--text-base)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">
-          {columnTitle}
-        </h3>
-        <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)] ml-[var(--space-2)]">
-          {taskCount}
-        </span>
-      </div>
-      <div className="flex items-center gap-1">
+    <Card
+      className={cn(
+        "bg-[var(--task-header-bg)] border border-[var(--task-header-border)]",
+        "rounded-[var(--task-header-radius)] shadow-[var(--elevation-sm)]",
+        "px-[var(--task-header-pad-x)] py-[var(--task-header-pad-y)]"
+      )}
+      role="group"
+      aria-roledescription="list header"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <h3 className="text-[length:var(--text-xl)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">
+            {columnTitle}
+          </h3>
+          <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)] ml-[var(--space-2)]">
+            {taskCount}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
           <DropdownMenu>
               <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="w-6 h-6 p-0">
@@ -105,14 +116,21 @@ export function TaskColumnHeader({
                       <MoreHorizontal className="w-4 h-4 text-[var(--text-tertiary)]" />
                   </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={onHideCompleted}>Hide completed tasks</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={onHideCompleted}>
+                      Hide completed tasks
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={onRenameList}>Rename list</DropdownMenuItem>
-                  <DropdownMenuItem onClick={onDeleteList} className="text-[var(--danger)]">Delete list</DropdownMenuItem>
+                  <DropdownMenuItem onClick={onRenameList}>
+                      Rename list
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onDeleteList} className="text-[var(--danger)]">
+                      Delete list
+                  </DropdownMenuItem>
               </DropdownMenuContent>
           </DropdownMenu>
+        </div>
       </div>
-    </div>
+    </Card>
   );
 }

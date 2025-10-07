@@ -110,6 +110,25 @@
   --settings-surface-radius: var(--radius-lg);
   --settings-surface-elevation: var(--elevation-sm);
 
+  /* Task board column tokens */
+  --task-col-gap: var(--space-4);
+  --task-card-gap: var(--space-4);
+  --task-header-bg: var(--bg-surface);
+  --task-header-border: var(--border-subtle);
+  --task-header-radius: var(--radius-lg);
+  --task-header-pad-x: var(--space-4);
+  --task-header-pad-y: var(--space-4);
+
+  /* Task checkbox "always-check" pattern */
+  --check-size: 18px;
+  --check-ring: var(--border-subtle);
+  --check-idle-bg: var(--bg-surface);
+  --check-idle-check: color-mix(in oklab, var(--text-tertiary) 55%, transparent);
+  --check-hover-ring: var(--primary);
+  --check-active-bg: var(--primary);
+  --check-active-check: var(--primary-foreground);
+  --check-disabled: var(--border-divider);
+
   /* Settings rhythm */
   --settings-pad-x: var(--space-4);
   --settings-pad-y: var(--space-4);
@@ -172,23 +191,43 @@
   --chip-height: 22px;           /* keep pills consistent project-wide */
   --chip-gap: var(--space-2);
   --chip-pad-x: var(--space-3);
-  --chip-radius: var(--radius-pill);
+  --chip-py: var(--space-1);
+  --chip-radius: var(--radius-full);
+  --chip-text: var(--text-secondary);
+  --chip-border: var(--border-subtle);
+  --chip-shadow: none;
+
+  /* Semantic sources */
+  --priority-high: var(--danger);
+  --priority-medium: var(--warning);
+  --priority-low: var(--info);
+  --label-neutral: var(--accent);
 
   /* Softer "faded" chip backgrounds (align to event tints) */
-  --chip-high-bg: var(--accent-coral-tint-10);
-  --chip-high-text: var(--accent-coral);
+  --chip-high-bg: color-mix(in oklab, var(--priority-high) 14%, transparent);
+  --chip-high-fg: color-mix(in oklab, var(--priority-high) 50%, var(--chip-text));
+  --chip-high-text: var(--accent-coral);  /* legacy alias */
 
   /* Medium uses warning hue */
-  --chip-medium-bg: color-mix(in oklab, var(--warning) 15%, transparent);
-  --chip-medium-text: var(--warning);
+  --chip-medium-bg: color-mix(in oklab, var(--priority-medium) 16%, transparent);
+  --chip-medium-fg: color-mix(in oklab, var(--priority-medium) 45%, var(--chip-text));
+  --chip-medium-text: var(--warning);  /* legacy alias */
 
   /* Low uses info blue (matches event-blue) */
-  --chip-low-bg: color-mix(in oklab, var(--info) 15%, transparent);
-  --chip-low-text: var(--info);
+  --chip-low-bg: color-mix(in oklab, var(--priority-low) 16%, transparent);
+  --chip-low-fg: color-mix(in oklab, var(--priority-low) 48%, var(--chip-text));
+  --chip-low-text: var(--info);  /* legacy alias */
+
+  /* Label chips */
+  --chip-label-bg: color-mix(in oklab, var(--label-neutral) 12%, transparent);
+  --chip-label-fg: color-mix(in oklab, var(--label-neutral) 45%, var(--chip-text));
 
   /* Neutral / no priority */
   --chip-neutral-bg: var(--bg-surface-elevated);
   --chip-neutral-text: var(--text-secondary);
+
+  /* Hover lift (very subtle) */
+  --chip-hover-bg-boost: 6%;
 
   /* Priority neutral dot (no container, just indicator) */
   --priority-dot-size: 10px;

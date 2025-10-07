@@ -58,32 +58,53 @@ export function TaskCard({
                         e.stopPropagation();
                         onToggleCompletion();
                       }}
-                      className="mt-1 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 motion-safe:transition-all duration-[var(--duration-fast)] hover:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-                      style={{
-                        borderColor: isCompleted ? 'var(--primary)' : 'var(--border-default)',
-                        backgroundColor: isCompleted ? 'var(--primary)' : 'transparent'
-                      }}
+                      className="mt-1 grid place-items-center shrink-0 size-[var(--check-size)] rounded-[var(--radius-full)] border border-[var(--check-ring)] bg-[var(--check-idle-bg)] motion-safe:transition-[background-color,border-color,box-shadow] duration-[var(--duration-base)] hover:border-[var(--check-hover-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
+                      aria-pressed={isCompleted}
+                      aria-label={isCompleted ? 'Mark as not done' : 'Mark as done'}
                     >
-                      {isCompleted && <Check className="w-3 h-3 text-white" />}
+                      <svg
+                        viewBox="0 0 20 20"
+                        className="size-[calc(var(--check-size)-4px)]"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          cx="10"
+                          cy="10"
+                          r="10"
+                          className={`motion-safe:transition-opacity duration-[var(--duration-base)] ${isCompleted ? 'opacity-100 fill-[var(--check-active-bg)]' : 'opacity-0 fill-[var(--check-active-bg)]'}`}
+                        />
+                        <path
+                          d="M5 10.5l3 3 7-7"
+                          fill="none"
+                          strokeWidth="2"
+                          className={`motion-safe:transition-[stroke,opacity] duration-[var(--duration-base)] ${isCompleted ? 'stroke-[var(--check-active-check)] opacity-100' : 'stroke-[var(--check-idle-check)] opacity-80'}`}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     </button>
                   <div className="flex-1">
                     <h4 className={`text-[length:var(--text-sm)] font-[var(--font-weight-medium)] ${isCompleted ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>
                       {taskTitle}
                     </h4>
                     {(dueDate || priority !== 'none' || labels.length > 0) && (
-                      <div className="flex items-center gap-1 mt-[var(--space-1)] flex-wrap">
+                      <div className="flex items-center gap-[var(--chip-gap)] mt-[var(--space-1)] flex-wrap">
                         {dueDate && (
                           <span className="text-[length:var(--text-xs)] font-[var(--font-weight-normal)] text-[var(--text-secondary)]">
                             {dueDate}
                           </span>
                         )}
                         {priority !== 'none' && (
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] capitalize ${priorityColors[priority]}`}>
-                            {priority}
-                          </span>
+                          <Badge 
+                            variant="soft" 
+                            tone={priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : 'low'}
+                            size="sm"
+                          >
+                            {priority[0].toUpperCase() + priority.slice(1)}
+                          </Badge>
                         )}
                         {labels.map(label => (
-                          <Badge key={label} variant="secondary" className="text-[length:var(--text-xs)] font-[var(--font-weight-normal)] py-0.5">
+                          <Badge key={label} variant="soft" tone="label" size="sm">
                             {label}
                           </Badge>
                         ))}
