@@ -127,10 +127,18 @@ export function TasksModule() {
     return matchesSearch && matchesLabels && matchesList;
   });
 
-  // Get all unique labels from tasks
-  const allLabels = Array.from(new Set(
-    tasks.flatMap(task => task.labels.map(getLabelName))
-  )).sort();
+  // Get all unique labels from tasks with their colors
+  const allLabelsMap = new Map<string, string>();
+  tasks.forEach(task => {
+    task.labels.forEach(label => {
+      const name = getLabelName(label);
+      const color = getLabelColor(label);
+      if (!allLabelsMap.has(name)) {
+        allLabelsMap.set(name, color);
+      }
+    });
+  });
+  const allLabels = Array.from(allLabelsMap.keys()).sort();
 
   const toggleLabelFilter = (label: string) => {
     setSelectedLabels(prev => 
@@ -670,23 +678,37 @@ export function TasksModule() {
                     <div className="px-3 py-1.5 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-tertiary)] uppercase">
                       Filter by label
                     </div>
-                    {allLabels.map(label => (
-                      <DropdownMenuItem
-                        key={label}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toggleLabelFilter(label);
-                        }}
-                      >
-                        <Checkbox
-                          checked={selectedLabels.includes(label)}
-                          onCheckedChange={() => toggleLabelFilter(label)}
-                          className="w-4 h-4"
-                        />
-                        <span className="flex-1 capitalize">{label}</span>
-                      </DropdownMenuItem>
-                    ))}
+                    {allLabels.map(label => {
+                      const labelColor = allLabelsMap.get(label) || 'var(--label-gray)';
+                      return (
+                        <DropdownMenuItem
+                          key={label}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            toggleLabelFilter(label);
+                          }}
+                        >
+                          <Checkbox
+                            checked={selectedLabels.includes(label)}
+                            onCheckedChange={() => toggleLabelFilter(label)}
+                            className="w-4 h-4"
+                          />
+                          <Badge
+                            variant="soft"
+                            size="sm"
+                            className="relative flex-1"
+                            style={{ 
+                              backgroundColor: `color-mix(in oklab, ${labelColor} 18%, transparent)`,
+                              color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
+                              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`
+                            }}
+                          >
+                            {label}
+                          </Badge>
+                        </DropdownMenuItem>
+                      );
+                    })}
                     {selectedLabels.length > 0 && (
                       <>
                         <DropdownMenuSeparator className="my-1" />
