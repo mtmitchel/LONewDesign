@@ -2,9 +2,8 @@ import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Search, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { CalendarTasksRail } from './calendar/CalendarTasksRail';
-import { EditEventModal } from './calendar/EditEventModal';
+import { EventModalCompact } from './calendar/EventModalCompact';
 import { CalendarPopover } from './calendar/CalendarPopover';
-import { NewEventModal } from './calendar/NewEventModal';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
 import { cn } from '../ui/utils';
@@ -102,8 +101,7 @@ export function CalendarModule() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarView>('month');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false);
+  const [modalState, setModalState] = useState<{ mode: 'edit' | 'create'; isOpen: boolean }>({ mode: 'create', isOpen: false });
   const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
   
   // State for managing events
@@ -136,19 +134,59 @@ export function CalendarModule() {
     return map;
   }, [events]);
 
-  const handleEditEvent = (eventId: string) => {
+  const handleOpenEditModal = (eventId: string) => {
     const evt = eventLookup.get(eventId);
     if (!evt) return;
     setSelectedEvent(evt);
-    setIsEditModalOpen(true);
+    setModalState({ mode: 'edit', isOpen: true });
+  };
+  
+  const handleEditEvent = (eventData: any) => {
+    if (!selectedEvent) return;
+    
+    // Update the event in the events array
+    setEvents(prev => prev.map(evt => {
+      if (evt.id === selectedEvent.id) {
+        // Parse the date string from the modal
+        const eventDate = eventData.startDate ? new Date(eventData.startDate) : new Date(evt.startsAt);
+        
+        // Combine date and time
+        if (eventData.startTime) {
+          const [hours, minutes] = eventData.startTime.split(':').map(Number);
+          eventDate.setHours(hours, minutes, 0, 0);
+        }
+        
+        // Calculate end time
+        const endDate = new Date(eventDate);
+        if (eventData.endTime) {
+          const [hours, minutes] = eventData.endTime.split(':').map(Number);
+          endDate.setHours(hours, minutes, 0, 0);
+        } else {
+          endDate.setHours(endDate.getHours() + 1);
+        }
+        
+        return {
+          ...evt,
+          title: eventData.title || evt.title,
+          startsAt: eventDate.toISOString(),
+          endsAt: endDate.toISOString(),
+          allDay: eventData.allDay || false,
+        };
+      }
+      return evt;
+    }));
+    
+    setModalState({ ...modalState, isOpen: false });
+    setSelectedEvent(null);
+    toast.success('Event updated');
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    setEvents(prev => prev.filter(evt => evt.id !== eventId));
-    if (selectedEvent?.id === eventId) {
-      setSelectedEvent(null);
-      setIsEditModalOpen(false);
-    }
+  const handleDeleteEvent = () => {
+    if (!selectedEvent) return;
+    
+    setEvents(prev => prev.filter(evt => evt.id !== selectedEvent.id));
+    setModalState({ ...modalState, isOpen: false });
+    setSelectedEvent(null);
     toast.success('Event deleted');
   };
   
@@ -183,7 +221,7 @@ export function CalendarModule() {
     };
     
     setEvents(prev => [...prev, newEvent]);
-    setIsNewEventModalOpen(false);
+    setModalState({ ...modalState, isOpen: false });
   };
 
   const goToToday = () => setCurrentDate(new Date());
@@ -239,7 +277,7 @@ export function CalendarModule() {
             <ToggleGroupItem value="week" className="px-[var(--space-3)] h-[32px] rounded-[var(--radius-pill)] text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary-tint-10)] data-[state=on]:text-[var(--primary)]">Week</ToggleGroupItem>
             <ToggleGroupItem value="day" className="px-[var(--space-3)] h-[32px] rounded-[var(--radius-pill)] text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary-tint-10)] data-[state=on]:text-[var(--primary)]">Day</ToggleGroupItem>
           </ToggleGroup>
-          <Button className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] ml-[var(--space-3)]" onClick={() => setIsNewEventModalOpen(true)}>
+          <Button className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] ml-[var(--space-3)]" onClick={() => setModalState({ mode: 'create', isOpen: true })}>
             <Plus className="w-4 h-4 mr-1.5" />
             New event
           </Button>
@@ -291,7 +329,7 @@ export function CalendarModule() {
                 const evt = events.find(e => e.id === id);
                 if (evt) setSelectedEvent(evt);
               }}
-              onEditEvent={handleEditEvent}
+              onEditEvent={handleOpenEditModal}
               onDeleteEvent={handleDeleteEvent}
               />
             </div>
@@ -328,7 +366,7 @@ export function CalendarModule() {
                 const evt = events.find(e => e.id === id);
                 if (evt) setSelectedEvent(evt);
               }}
-              onEditEvent={handleEditEvent}
+              onEditEvent={handleOpenEditModal}
               onDeleteEvent={handleDeleteEvent}
             />
           )}
@@ -363,7 +401,7 @@ export function CalendarModule() {
                 const evt = events.find(e => e.id === id);
                 if (evt) setSelectedEvent(evt);
               }}
-              onEditEvent={handleEditEvent}
+              onEditEvent={handleOpenEditModal}
               onDeleteEvent={handleDeleteEvent}
             />
           )}
@@ -374,19 +412,27 @@ export function CalendarModule() {
         </aside>
       </div>
 
-      <EditEventModal
-        isOpen={isEditModalOpen}
-        onClose={() => { setIsEditModalOpen(false); setSelectedEvent(null); }}
-        event={selectedEvent as any}
-        onSave={() => {}}
-        onDelete={() => {}}
-      />
-
-      <NewEventModal
-        isOpen={isNewEventModalOpen}
-        onClose={() => setIsNewEventModalOpen(false)}
-        defaultDate={currentDate}
-        onSave={handleAddEvent}
+      <EventModalCompact
+        isOpen={modalState.isOpen}
+        mode={modalState.mode}
+        onClose={() => {
+          setModalState({ ...modalState, isOpen: false });
+          setSelectedEvent(null);
+        }}
+        event={modalState.mode === 'edit' ? selectedEvent as any : {
+          title: '',
+          calendar: 'Personal',
+          startDate: format(currentDate, 'yyyy-MM-dd'),
+          startTime: '09:00',
+          endDate: format(currentDate, 'yyyy-MM-dd'),
+          endTime: '10:00',
+          allDay: false,
+          repeat: 'Does not repeat',
+          location: '',
+          description: ''
+        }}
+        onSave={modalState.mode === 'edit' ? handleEditEvent : handleAddEvent}
+        onDelete={modalState.mode === 'edit' ? handleDeleteEvent : undefined}
       />
     </div>
   );
