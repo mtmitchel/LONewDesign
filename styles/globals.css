@@ -268,12 +268,15 @@
   /* Content & Typography */
   --chip-height: 22px;           /* keep pills consistent project-wide */
   --chip-gap: var(--space-2);
-  --chip-pad-x: var(--space-3);
-  --chip-py: var(--space-1);
+  --chip-px: var(--space-3);     /* horizontal padding */
+  --chip-py: var(--space-1);     /* vertical padding */
+  --chip-pad-x: var(--space-3);  /* legacy alias */
   --chip-radius: var(--radius-full);
   --chip-text: var(--text-secondary);
   --chip-border: var(--border-subtle);
-  --chip-shadow: none;
+  --chip-inset-shadow: inset 0 0 0 1px var(--chip-border);
+  --chip-shadow: none;           /* legacy alias */
+  --chip-hover-bg-boost: 6%;
 
   /* Semantic sources */
   --priority-high: var(--danger);
@@ -281,31 +284,35 @@
   --priority-low: var(--info);
   --label-neutral: var(--accent);
 
-  /* Softer "faded" chip backgrounds (align to event tints) */
+  /* Low-ink chip tints (unified for board + list) */
   --chip-high-bg: color-mix(in oklab, var(--priority-high) 14%, transparent);
-  --chip-high-fg: color-mix(in oklab, var(--priority-high) 50%, var(--chip-text));
+  --chip-high-fg: color-mix(in oklab, var(--priority-high) 55%, var(--chip-text));
   --chip-high-text: var(--accent-coral);  /* legacy alias */
 
   /* Medium uses warning hue */
   --chip-medium-bg: color-mix(in oklab, var(--priority-medium) 16%, transparent);
-  --chip-medium-fg: color-mix(in oklab, var(--priority-medium) 45%, var(--chip-text));
+  --chip-medium-fg: color-mix(in oklab, var(--priority-medium) 52%, var(--chip-text));
   --chip-medium-text: var(--warning);  /* legacy alias */
 
   /* Low uses info blue (matches event-blue) */
   --chip-low-bg: color-mix(in oklab, var(--priority-low) 16%, transparent);
-  --chip-low-fg: color-mix(in oklab, var(--priority-low) 48%, var(--chip-text));
+  --chip-low-fg: color-mix(in oklab, var(--priority-low) 52%, var(--chip-text));
   --chip-low-text: var(--info);  /* legacy alias */
 
   /* Label chips */
-  --chip-label-bg: color-mix(in oklab, var(--label-neutral) 12%, transparent);
-  --chip-label-fg: color-mix(in oklab, var(--label-neutral) 45%, var(--chip-text));
+  --chip-label-bg: color-mix(in oklab, var(--label-neutral) 14%, transparent);
+  --chip-label-fg: color-mix(in oklab, var(--label-neutral) 60%, var(--text-secondary));
 
   /* Neutral / no priority */
   --chip-neutral-bg: var(--bg-surface-elevated);
   --chip-neutral-text: var(--text-secondary);
 
-  /* Hover lift (very subtle) */
-  --chip-hover-bg-boost: 6%;
+  /* List view density (compact) */
+  --list-row-pad-y: var(--space-2);   /* 8px vertical */
+  --list-row-pad-x: var(--space-3);   /* 12px horizontal */
+  --list-row-gap: var(--space-3);     /* 12px column gap */
+  --list-row-font: 0.9375rem;         /* 15px - task name */
+  --list-row-meta: 0.8125rem;         /* 13px - due date, etc */
 
   /* Priority neutral dot (no container, just indicator) */
   --priority-dot-size: 10px;

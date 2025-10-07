@@ -18,7 +18,7 @@ const badgeVariants = cva(
         outline:
           "border border-[var(--chip-border)] text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground px-2 py-0.5 transition-[color,box-shadow]",
         soft:
-          "px-[var(--chip-pad-x)] py-[var(--chip-py)] border border-transparent shadow-[var(--chip-shadow)] transition-colors motion-safe:duration-[var(--duration-fast)]",
+          "px-[var(--chip-px)] py-[var(--chip-py)] border border-transparent shadow-[var(--chip-inset-shadow)] transition-colors motion-safe:duration-[var(--duration-fast)]",
       },
       tone: {
         high:
@@ -28,7 +28,7 @@ const badgeVariants = cva(
         low:
           "text-[var(--chip-low-fg)] bg-[var(--chip-low-bg)] hover:bg-[color-mix(in_oklab,var(--priority-low)_calc(16%+var(--chip-hover-bg-boost)),transparent)]",
         label:
-          "text-[var(--chip-label-fg)] bg-[var(--chip-label-bg)] hover:bg-[color-mix(in_oklab,var(--label-neutral)_calc(12%+var(--chip-hover-bg-boost)),transparent)]",
+          "text-[var(--chip-label-fg)] bg-[var(--chip-label-bg)] hover:bg-[color-mix(in_oklab,var(--label-neutral)_calc(14%+var(--chip-hover-bg-boost)),transparent)]",
         neutral:
           "text-[var(--chip-text)] bg-[color-mix(in_oklab,var(--text-secondary)_12%,transparent)] hover:bg-[color-mix(in_oklab,var(--text-secondary)_18%,transparent)]",
       },

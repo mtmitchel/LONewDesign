@@ -344,98 +344,130 @@ export function TasksModule() {
       setExpandedSections(newSet);
     };
 
-    const priorityColors: { [key in Task['priority']]: string } = {
-        high: 'text-red-500',
-        medium: 'text-yellow-500',
-        low: 'text-blue-500',
-        none: 'text-[var(--text-tertiary)]'
-    }
-
     return (
       <div className="flex-1 overflow-y-auto">
         {/* Table header */}
-        <div className="flex items-center px-4 py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]">
-            <div className="flex-1 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Task name</div>
-            <div className="w-32 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Due date</div>
-            <div className="w-32 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Priority</div>
-            <div className="w-40 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Labels</div>
+        <div 
+          className="grid items-center px-[var(--list-row-pad-x)] py-[var(--space-2)] border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
+          style={{ gridTemplateColumns: "28px 1fr 160px 140px 1fr", columnGap: "var(--list-row-gap)" }}
+        >
+          <div></div> {/* checkbox column */}
+          <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Task name</div>
+          <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Due date</div>
+          <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Priority</div>
+          <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Labels</div>
         </div>
 
         {columns.map(column => (
           <div key={column.id} className="group">
-            {/* Section header - no background, no border, minimal */}
-            <div className="flex items-center gap-2 py-3 px-4 cursor-pointer" onClick={() => toggleSection(column.id)}>
-                <ChevronDown size={16} className={`text-[var(--text-secondary)] motion-safe:transition-transform duration-[var(--duration-fast)] ${expandedSections.has(column.id) ? '' : '-rotate-90'}`} />
-                <h3 className="text-[length:var(--text-sm)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">{column.title}</h3>
-                <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)]">{getTasksByStatus(column.id).length}</span>
+            {/* Section header */}
+            <div className="flex items-center gap-[var(--space-2)] py-[var(--space-3)] px-[var(--space-4)] cursor-pointer" onClick={() => toggleSection(column.id)}>
+              <ChevronDown size={16} className={`text-[var(--text-secondary)] motion-safe:transition-transform duration-[var(--duration-fast)] ${expandedSections.has(column.id) ? '' : '-rotate-90'}`} />
+              <h3 className="text-[length:var(--text-sm)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">{column.title}</h3>
+              <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)]">{getTasksByStatus(column.id).length}</span>
             </div>
+            
             {expandedSections.has(column.id) && (
-                <div>
-                    {getTasksByStatus(column.id).map(task => {
-                        const priorityColors: { [key: string]: string } = {
-                            high: 'bg-red-500 text-white',
-                            medium: 'bg-orange-500 text-white',
-                            low: 'bg-blue-500 text-white',
-                            none: ''
-                        };
-                        
-                        return (
-                        <ContextMenu key={task.id}>
-                            <ContextMenuTrigger>
-                                <div className="flex items-center px-4 py-2.5 border-b border-[var(--border-subtle)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
-                                    onClick={() => setSelectedTask(task)}>
-                                    <div className="flex-1 flex items-center gap-3">
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleTaskCompletion(task.id);
-                                          }}
-                                          className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 motion-safe:transition-all duration-[var(--duration-fast)] hover:border-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-                                          style={{
-                                            borderColor: task.isCompleted ? 'var(--primary)' : 'var(--border-default)',
-                                            backgroundColor: task.isCompleted ? 'var(--primary)' : 'transparent'
-                                          }}
-                                        >
-                                          {task.isCompleted && <CheckSquare className="w-3 h-3 text-white" />}
-                                        </button>
-                                        <div className={`truncate text-[length:var(--text-sm)] font-[var(--font-weight-medium)] ${task.isCompleted ? 'line-through text-[var(--text-tertiary)]' : 'text-[var(--text-primary)]'}`}>{task.title}</div>
-                                    </div>
-                                    <div className="w-32 text-[length:var(--text-sm)] text-[var(--text-secondary)]">{task.dueDate || '—'}</div>
-                                    <div className="w-32">
-                                        {task.priority !== 'none' && (
-                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] capitalize ${priorityColors[task.priority]}`}>
-                                                {task.priority}
-                                            </span>
-                                        )}
-                                        {task.priority === 'none' && <span className="text-[var(--text-tertiary)]">—</span>}
-                                    </div>
-                                    <div className="w-40 flex items-center gap-1">
-                                        {task.labels.map(label => <Badge key={label} variant="secondary" className="text-[length:var(--text-xs)] font-[var(--font-weight-normal)] py-0.5">{label}</Badge>)}
-                                    </div>
-                                </div>
-                            </ContextMenuTrigger>
-                            <ContextMenuContent className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] p-[var(--space-2)]">
-                                <ContextMenuItem onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(task.id); }} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
-                                    <CheckSquare className="w-4 h-4 mr-2" />
-                                    {task.isCompleted ? 'Mark as not completed' : 'Mark completed'}
-                                </ContextMenuItem>
-                                <ContextMenuItem onClick={(e) => { e.stopPropagation(); handleEditTask(task); }} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit
-                                </ContextMenuItem>
-                                <ContextMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicateTask(task); }} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    Duplicate
-                                </ContextMenuItem>
-                                <ContextMenuSeparator />
-                                <ContextMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--danger)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
-                                    <Trash className="w-4 h-4 mr-2" />
-                                    Delete
-                                </ContextMenuItem>
-                            </ContextMenuContent>
-                        </ContextMenu>
-                    );})}
+              <div>
+                {getTasksByStatus(column.id).map(task => (
+                  <ContextMenu key={task.id}>
+                    <ContextMenuTrigger>
+                      <div 
+                        className="grid items-center border-b border-[var(--border-divider)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
+                        style={{ gridTemplateColumns: "28px 1fr 160px 140px 1fr", columnGap: "var(--list-row-gap)" }}
+                        onClick={() => setSelectedTask(task)}
+                      >
+                        {/* Checkbox cell */}
+                        <div className="flex items-center justify-center py-[var(--list-row-pad-y)]">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTaskCompletion(task.id);
+                            }}
+                            className="grid place-items-center shrink-0 size-[var(--check-size)] rounded-[var(--radius-full)] border border-[var(--check-ring)] bg-[var(--check-idle-bg)] motion-safe:transition-[background-color,border-color] duration-[var(--duration-base)] hover:border-[var(--check-hover-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
+                            aria-pressed={task.isCompleted}
+                            aria-label={task.isCompleted ? 'Mark as not done' : 'Mark as done'}
+                          >
+                            <svg viewBox="0 0 20 20" className="size-[calc(var(--check-size)-4px)]" aria-hidden="true">
+                              <circle
+                                cx="10" cy="10" r="10"
+                                className={`motion-safe:transition-opacity duration-[var(--duration-base)] ${task.isCompleted ? 'opacity-100 fill-[var(--check-active-bg)]' : 'opacity-0 fill-[var(--check-active-bg)]'}`}
+                              />
+                              <path
+                                d="M5 10.5l3 3 7-7"
+                                fill="none" strokeWidth="2"
+                                className={`motion-safe:transition-[stroke,opacity] duration-[var(--duration-base)] ${task.isCompleted ? 'stroke-[var(--check-active-check)] opacity-100' : 'stroke-[var(--check-idle-check)] opacity-80'}`}
+                                strokeLinecap="round" strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* Task name cell */}
+                        <div className="py-[var(--list-row-pad-y)] px-[var(--list-row-pad-x)]">
+                          <span className={`text-[length:var(--list-row-font)] font-[var(--font-weight-medium)] ${task.isCompleted ? 'line-through text-[var(--text-tertiary)] opacity-60' : 'text-[var(--text-primary)]'}`}>
+                            {task.title}
+                          </span>
+                        </div>
+
+                        {/* Due date cell */}
+                        <div className="py-[var(--list-row-pad-y)] text-[length:var(--list-row-meta)] text-[var(--text-tertiary)]">
+                          {task.dueDate || '—'}
+                        </div>
+
+                        {/* Priority cell */}
+                        <div className="py-[var(--list-row-pad-y)]">
+                          {task.priority !== 'none' ? (
+                            <Badge variant="soft" size="sm" tone={task.priority as 'high' | 'medium' | 'low'}>
+                              {task.priority[0].toUpperCase() + task.priority.slice(1)}
+                            </Badge>
+                          ) : (
+                            <span className="text-[var(--text-tertiary)]">—</span>
+                          )}
+                        </div>
+
+                        {/* Labels cell */}
+                        <div className="py-[var(--list-row-pad-y)] flex flex-wrap gap-[var(--chip-gap)]">
+                          {task.labels.length > 0 ? (
+                            task.labels.map(label => (
+                              <Badge
+                                key={label}
+                                variant="soft"
+                                size="sm"
+                                tone="label"
+                                style={{ ['--label-neutral' as any]: 'var(--accent)' }}
+                              >
+                                {label}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-[var(--text-tertiary)]">—</span>
+                          )}
+                        </div>
+                      </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] p-[var(--space-2)]">
+                      <ContextMenuItem onClick={(e) => { e.stopPropagation(); toggleTaskCompletion(task.id); }} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
+                        <CheckSquare className="w-4 h-4 mr-2" />
+                        {task.isCompleted ? 'Mark as not completed' : 'Mark completed'}
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={(e) => { e.stopPropagation(); handleEditTask(task); }} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </ContextMenuItem>
+                      <ContextMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicateTask(task); }} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
+                        <Copy className="w-4 h-4 mr-2" />
+                        Duplicate
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--danger)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
+                        <Trash className="w-4 h-4 mr-2" />
+                        Delete
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ))}
                     {activeComposerSection === column.id ? (
                         <div className="px-4 py-2">
                             <TaskComposer 
