@@ -55,16 +55,16 @@ interface Task {
 }
 
 const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
-const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--accent)' : label.color;
+const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
 
 const mockTasks: Task[] = [
   { id: '1', title: 'Dump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-01' },
   { id: '2', title: 'Hump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-02' },
-  { id: '3', title: 'Buy milk', dueDate: 'Aug 17', status: 'todo', priority: 'medium', labels: ['errands'], isCompleted: false, dateCreated: '2025-10-03' },
-  { id: '4', title: 'Return library books', dueDate: 'Aug 13', status: 'todo', priority: 'high', labels: ['personal'], isCompleted: false, dateCreated: '2025-10-04' },
+  { id: '3', title: 'Buy milk', dueDate: 'Aug 17', status: 'todo', priority: 'medium', labels: [{ name: 'errands', color: 'var(--label-orange)' }], isCompleted: false, dateCreated: '2025-10-03' },
+  { id: '4', title: 'Return library books', dueDate: 'Aug 13', status: 'todo', priority: 'high', labels: [{ name: 'personal', color: 'var(--label-purple)' }], isCompleted: false, dateCreated: '2025-10-04' },
   { id: '5', title: 'asdfasdfasdfsa', dueDate: 'Aug 28', status: 'todo', priority: 'low', labels: [], isCompleted: true, dateCreated: '2025-10-05' },
   { id: '6', title: 'Blah', status: 'in-progress', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-06' },
-  { id: '7', title: 'Buy bread', dueDate: 'Oct 1', status: 'in-progress', priority: 'medium', labels: ['errands'], isCompleted: false, dateCreated: '2025-10-07' },
+  { id: '7', title: 'Buy bread', dueDate: 'Oct 1', status: 'in-progress', priority: 'medium', labels: [{ name: 'errands', color: 'var(--label-orange)' }], isCompleted: false, dateCreated: '2025-10-07' },
   { id: '8', title: 'Task 1', dueDate: 'Oct 2 – 3', status: 'todo', priority: 'low', labels: [], isCompleted: false, dateCreated: '2025-10-08' },
   { id: '9', title: 'tretre', dueDate: 'Oct 29', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-09' },
 ];

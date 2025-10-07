@@ -27,7 +27,7 @@ interface TaskCardProps {
 }
 
 const getTaskLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
-const getTaskLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--accent)' : label.color;
+const getTaskLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
 
 export function TaskCard({ 
     taskTitle, 
