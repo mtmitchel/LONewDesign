@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Calendar } from '../../ui/calendar';
 import { format } from 'date-fns';
 
-interface EventModalCompactProps {
+interface EventModalFixedProps {
   isOpen: boolean;
   onClose: () => void;
   mode: 'edit' | 'create';
@@ -37,25 +37,29 @@ interface EventModalCompactProps {
 }
 
 const CALENDAR_COLORS: Record<string, string> = {
-  'Personal': '#10B981', // emerald-500
-  'Work': '#3B82F6',     // blue-500
-  'Travel': '#F97316',   // orange-500
+  'Personal': 'var(--event-green)',  // Use design system colors
+  'Work': 'var(--event-blue)',
+  'Travel': 'var(--event-orange)',
 };
 
-export function EventModalCompact({ 
+export function EventModalFixed({ 
   isOpen, 
   onClose, 
   mode = 'edit',
   event, 
   onSave, 
   onDelete 
-}: EventModalCompactProps) {
+}: EventModalFixedProps) {
   const [title, setTitle] = useState(event?.title || '');
   const [calendar, setCalendar] = useState(event?.calendar || 'Personal');
   const [allDay, setAllDay] = useState(event?.allDay || false);
-  const [startDate, setStartDate] = useState(event?.startDate || '');
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    event?.startDate ? new Date(event.startDate) : new Date()
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    event?.endDate ? new Date(event.endDate) : new Date()
+  );
   const [startTime, setStartTime] = useState(event?.startTime || '09:00');
-  const [endDate, setEndDate] = useState(event?.endDate || '');
   const [endTime, setEndTime] = useState(event?.endTime || '10:00');
   const [repeat, setRepeat] = useState(event?.repeat || 'Does not repeat');
   const [location, setLocation] = useState(event?.location || '');
@@ -67,9 +71,9 @@ export function EventModalCompact({
       setTitle(event.title || '');
       setCalendar(event.calendar || 'Personal');
       setAllDay(event.allDay || false);
-      setStartDate(event.startDate || '');
+      setStartDate(event.startDate ? new Date(event.startDate) : new Date());
+      setEndDate(event.endDate ? new Date(event.endDate) : new Date());
       setStartTime(event.startTime || '09:00');
-      setEndDate(event.endDate || event.startDate || '');
       setEndTime(event.endTime || '10:00');
       setRepeat(event.repeat || 'Does not repeat');
       setLocation(event.location || '');
@@ -84,9 +88,9 @@ export function EventModalCompact({
       title,
       calendar,
       allDay,
-      startDate,
+      startDate: startDate ? format(startDate, 'yyyy-MM-dd') : '',
       startTime,
-      endDate,
+      endDate: endDate ? format(endDate, 'yyyy-MM-dd') : '',
       endTime,
       repeat,
       location,
@@ -106,20 +110,20 @@ export function EventModalCompact({
   const modalTitle = mode === 'edit' ? 'Edit event' : 'New event';
 
   return (
-    <div className="fixed inset-0 grid place-items-center p-4 bg-black/50 backdrop-blur-sm z-50">
-      <div className="w-full max-w-[440px] bg-white rounded-lg shadow-xl">
+    <div className="fixed inset-0 grid place-items-center p-4 bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)] z-[var(--z-overlay)]">
+      <div className="w-full max-w-[440px] bg-[var(--bg-surface)] rounded-[var(--radius-lg)] shadow-[var(--elevation-xl)]">
         
-        {/* Header - Single close button properly positioned */}
+        {/* Header - Single close button */}
         <div className="flex items-center justify-between p-6 pb-4">
-          <h2 className="text-base font-medium text-gray-900">
+          <h2 className="text-[var(--text-base)] font-medium text-[var(--text-primary)]">
             {modalTitle}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+            className="p-1.5 rounded hover:bg-[var(--bg-hover)] transition-colors"
             aria-label="Close"
           >
-            <X className="w-4 h-4 text-gray-500" />
+            <X className="w-4 h-4 text-[var(--text-tertiary)]" />
           </button>
         </div>
 
@@ -132,71 +136,102 @@ export function EventModalCompact({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Event title"
-            className="w-full text-base font-medium bg-transparent border-0 outline-none focus:outline-none px-0 py-1 placeholder-gray-400"
+            className="w-full text-[var(--text-base)] font-medium bg-transparent border-0 outline-none focus:outline-none px-0 py-1 placeholder-[var(--text-tertiary)]"
             autoFocus
           />
 
           {/* Date & time section */}
           <div className="space-y-2">
-            <label className="block text-sm text-gray-600">Date & time</label>
+            <label className="block text-[var(--text-sm)] text-[var(--text-secondary)]">Date & time</label>
             
             {/* Date/time inputs row */}
             <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              {/* Start date picker */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="justify-start text-left font-normal border-[var(--border-default)]"
+                  >
+                    {startDate ? format(startDate, 'MM/dd/yyyy') : 'Pick date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
               {!allDay && (
-                <input
+                <Input
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-24 border-[var(--border-default)]"
                 />
               )}
-              <span className="text-gray-500 text-sm">–</span>
-              <input
-                type="date"
-                value={endDate || startDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+
+              <span className="text-[var(--text-secondary)] text-sm">–</span>
+
+              {/* End date picker */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="justify-start text-left font-normal border-[var(--border-default)]"
+                  >
+                    {endDate ? format(endDate, 'MM/dd/yyyy') : 'Pick date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+
               {!allDay && (
-                <input
+                <Input
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-24 border-[var(--border-default)]"
                 />
               )}
             </div>
 
-            {/* All day toggle - properly positioned below date/time */}
+            {/* All day toggle - with actual Switch component */}
             <div className="flex items-center gap-2 pt-1">
               <Switch
                 checked={allDay}
                 onCheckedChange={setAllDay}
                 id="all-day"
+                className="data-[state=checked]:bg-[var(--primary)]"
               />
-              <label htmlFor="all-day" className="text-sm text-gray-600 cursor-pointer">
+              <label htmlFor="all-day" className="text-[var(--text-sm)] text-[var(--text-secondary)] cursor-pointer">
                 All day
               </label>
             </div>
           </div>
 
-          {/* Calendar selector */}
+          {/* Calendar selector - single dot */}
           <div className="space-y-2">
-            <label className="block text-sm text-gray-600">Calendar</label>
+            <label className="block text-[var(--text-sm)] text-[var(--text-secondary)]">Calendar</label>
             <Select value={calendar} onValueChange={setCalendar}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full border-[var(--border-default)]">
                 <div className="flex items-center gap-2">
                   <span 
                     className="w-2 h-2 rounded-full" 
                     style={{ backgroundColor: calendarColor }}
                   />
-                  <SelectValue />
+                  <span>{calendar}</span>
                 </div>
               </SelectTrigger>
               <SelectContent>
@@ -215,10 +250,10 @@ export function EventModalCompact({
             </Select>
           </div>
 
-          {/* Progressive disclosure - shows "More details" when closed */}
+          {/* Progressive disclosure - correct text */}
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className="w-full flex items-center justify-between py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            className="w-full flex items-center justify-between py-2 text-[var(--text-sm)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           >
             <span>{showDetails ? 'Fewer details' : 'More details'}</span>
             <ChevronDown 
@@ -231,7 +266,7 @@ export function EventModalCompact({
             <div className="space-y-4 pt-2">
               {/* Location */}
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-gray-600">
+                <label className="flex items-center gap-2 text-[var(--text-sm)] text-[var(--text-secondary)]">
                   <MapPin className="w-4 h-4" />
                   Location
                 </label>
@@ -239,18 +274,18 @@ export function EventModalCompact({
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Add location"
-                  className="w-full"
+                  className="w-full border-[var(--border-default)]"
                 />
               </div>
 
               {/* Repeat */}
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-gray-600">
+                <label className="flex items-center gap-2 text-[var(--text-sm)] text-[var(--text-secondary)]">
                   <Repeat className="w-4 h-4" />
                   Repeat
                 </label>
                 <Select value={repeat} onValueChange={setRepeat}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full border-[var(--border-default)]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -265,7 +300,7 @@ export function EventModalCompact({
 
               {/* Description */}
               <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm text-gray-600">
+                <label className="flex items-center gap-2 text-[var(--text-sm)] text-[var(--text-secondary)]">
                   <FileText className="w-4 h-4" />
                   Description
                 </label>
@@ -273,7 +308,7 @@ export function EventModalCompact({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Add description"
-                  className="w-full min-h-[80px] resize-none"
+                  className="w-full min-h-[80px] resize-none border-[var(--border-default)]"
                 />
               </div>
             </div>
@@ -281,11 +316,11 @@ export function EventModalCompact({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--border-default)] bg-[var(--bg-canvas)]">
           {mode === 'edit' && onDelete ? (
             <button
               onClick={handleDelete}
-              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+              className="p-2 text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded transition-colors"
               aria-label="Delete event"
             >
               <Trash2 className="w-4 h-4" />
@@ -304,7 +339,7 @@ export function EventModalCompact({
             </Button>
             <Button
               onClick={handleSave}
-              className="px-6 bg-blue-600 hover:bg-blue-700 text-white"
+              className="px-6 bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
             >
               Save
             </Button>
