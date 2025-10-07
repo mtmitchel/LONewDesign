@@ -116,105 +116,78 @@ function useDayLayoutFor(event: TimedEvent, allEvents: TimedEvent[]): { top: num
 function DayTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: TimedEvent[] }) {
   const s = useDayLayoutFor(event, allEvents);
   
-  const toneBg = {
-    low: "bg-[var(--chip-low-bg)] text-[var(--chip-low-fg)]",
-    medium: "bg-[var(--chip-medium-bg)] text-[var(--chip-medium-fg)]",
-    high: "bg-[var(--chip-high-bg)] text-[var(--chip-high-fg)]",
-    neutral: "bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]",
-  }[event.tone || 'neutral'];
-  
   return (
     <div
-      className={[
-        "absolute rounded-[var(--event-pill-r)]",
-        "px-[var(--event-pill-px)] py-[var(--event-pill-py)]",
-        "text-[var(--text-xs)] leading-tight hover:bg-[var(--cal-hover)]",
-        "focus-visible:ring-1 ring-[var(--cal-ring)] outline-none cursor-pointer",
-        toneBg,
-      ].join(" ")}
+      className="absolute rounded-[var(--event-pill-r)]
+                 bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]
+                 px-[var(--event-pill-px)] py-[var(--event-pill-py)]
+                 text-[var(--text-xs)] leading-tight
+                 hover:bg-[var(--cal-hover)] focus-visible:ring-1 ring-[var(--cal-ring)] outline-none"
       style={{ top: s.top, height: s.height, left: `${s.leftPct}%`, width: `${s.widthPct}%` }}
-      role="button" 
-      tabIndex={0} 
-      title={event.title} 
-      aria-label={`${event.title} ${event.startMin}-${event.endMin}`}
+      title={event.title || event.label}
+      role="button"
+      tabIndex={0}
     >
-      <div className="truncate">{event.title}</div>
+      <div className="truncate">{event.title || event.label}</div>
     </div>
   );
 }
 
 export function DayView({
-  date,
-  dayLabel,
-  times,       // 24 (or 12) items: { key, label }
+  day, // { fullLabel, isToday }
+  times,
   eventsAllDay = [],
-  eventsTimed = [], // with start/end minutes, tone
-  nowPx,       // optional current-minute → px offset
+  eventsTimed = [],
+  nowPx,
   onEventClick,
 }: Props) {
-  const isToday = new Date().toDateString() === date.toDateString();
-
   return (
-    <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)] bg-[var(--cal-bg)] overflow-hidden h-full flex flex-col">
+    <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
+                    bg-[var(--cal-bg)] overflow-hidden">
       {/* header */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_1fr] h-[var(--cal-header-h)] flex-shrink-0 bg-[var(--cal-bg)] z-[1] border-b border-[var(--cal-gridline)]">
-        <div />
-        <div className="grid place-items-center text-[var(--text-sm)] font-medium text-[var(--text-primary)]
-                       border-l border-[var(--cal-gridline)]">
-          {dayLabel}
-        </div>
+      <div className="h-[var(--cal-header-h)] grid place-items-center text-[var(--text-lg)] font-semibold">
+        {day?.fullLabel || day?.dayLabel || ""}
       </div>
 
-      {/* scrollable container */}
-      <div className="flex-grow overflow-y-auto">
-        {/* all-day */}
-        <div className="grid grid-cols-[var(--cal-rail-w)_1fr] sticky top-0 bg-[var(--cal-bg)] z-[1]">
-        <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">
-          all day
-        </div>
-        <div className="h-[var(--cal-hour-row-h)] border-t border-l border-r border-[var(--cal-gridline)]
-                        bg-[var(--bg-surface-elevated)] flex items-center px-[var(--space-2)] gap-[var(--event-gap)]">
-          {eventsAllDay.map(event => (
-            <EventPill key={event.id} title={event.title} tone={event.tone} />
-          ))}
-        </div>
-        </div>
+      {/* all-day row */}
+      <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
+        <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">all day</div>
+        <div className="h-[var(--cal-hour-row-h)] bg-[var(--bg-surface-elevated)]
+                        border-y border-l border-[var(--cal-gridline)]" />
+      </div>
 
-        {/* timed grid */}
-        <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
-        {/* rail */}
+      {/* timed grid */}
+      <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
         <div className="flex flex-col border-t border-[var(--cal-gridline)]">
           {times.map(t => (
-            <div key={t.key} className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] border-b last:border-b-0 border-[var(--cal-gridline)] leading-[var(--cal-hour-row-h)]">
+            <div key={t.key}
+                 className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)]
+                            border-b last:border-b-0 border-[var(--cal-gridline-subtle)]">
               {t.label}
             </div>
           ))}
         </div>
 
-        {/* single day column */}
-        <div className="relative border-t border-l border-r border-[var(--cal-gridline)]">
-          {/* hour lines (no fills) */}
+        <div className="relative border-t border-l border-[var(--cal-gridline)]">
+          {/* hour lines */}
           <div className="pointer-events-none absolute inset-0">
             {times.map(t => (
-              <div key={t.key} className="h-[var(--cal-hour-row-h)] border-b last:border-b-0 border-[var(--cal-gridline)]" />
+              <div key={t.key} className="h-[var(--cal-hour-row-h)] border-b last:border-b-0 border-[var(--cal-gridline-subtle)]" />
             ))}
           </div>
 
-          {/* events layer */}
+          {/* events */}
           <div className="relative">
-            {eventsTimed.map(e => (
-              <DayTimedEvent key={e.id} event={e} allEvents={eventsTimed} />
-            ))}
+            {eventsTimed.map(e => <DayTimedEvent key={e.id} event={e} allEvents={eventsTimed} />)}
           </div>
 
           {/* now line */}
-          {isToday && typeof nowPx === "number" && (
+          {(day?.isToday || new Date().toDateString() === day?.date?.toDateString()) && typeof nowPx === "number" && (
             <>
               <div className="absolute left-0 right-0 h-px bg-[var(--cal-now-line)]" style={{ top: nowPx }} />
               <div className="absolute -ml-1 h-2 w-2 rounded-full bg-[var(--cal-now-dot)]" style={{ top: nowPx - 3, left: 0 }} />
             </>
           )}
-        </div>
         </div>
       </div>
     </div>

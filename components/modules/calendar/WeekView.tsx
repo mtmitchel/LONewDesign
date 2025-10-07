@@ -137,91 +137,83 @@ function useWeekLayoutFor(event: TimedEvent, allEvents: TimedEvent[]): { top: nu
 function WeekTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: TimedEvent[] }) {
   const s = useWeekLayoutFor(event, allEvents);
   
-  const toneBg = {
-    low: "bg-[var(--chip-low-bg)] text-[var(--chip-low-fg)]",
-    medium: "bg-[var(--chip-medium-bg)] text-[var(--chip-medium-fg)]",
-    high: "bg-[var(--chip-high-bg)] text-[var(--chip-high-fg)]",
-    neutral: "bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]",
-  }[event.tone || 'neutral'];
-  
   return (
     <div
-      className={[
-        "absolute rounded-[var(--event-pill-r)]",
-        "px-[var(--event-pill-px)] py-[var(--event-pill-py)]",
-        "text-[var(--text-xs)] leading-tight hover:bg-[var(--cal-hover)]",
-        "focus-visible:ring-1 ring-[var(--cal-ring)] outline-none cursor-pointer",
-        toneBg,
-      ].join(" ")}
+      className="absolute rounded-[var(--event-pill-r)]
+                 bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]
+                 px-[var(--event-pill-px)] py-[var(--event-pill-py)]
+                 text-[var(--text-xs)] leading-tight
+                 hover:bg-[var(--cal-hover)] focus-visible:ring-1 ring-[var(--cal-ring)] outline-none"
       style={{ top: s.top, height: s.height, left: `${s.leftPct}%`, width: `${s.widthPct}%` }}
+      title={event.title || event.label} 
       role="button" 
-      tabIndex={0} 
-      title={event.title} 
-      aria-label={`${event.title} ${event.startMin}-${event.endMin}`}
+      tabIndex={0}
     >
-      <div className="truncate">{event.title}</div>
+      <div className="truncate">{event.title || event.label}</div>
     </div>
   );
 }
 
 export function WeekView({
-  weekDays,    // 7 days: { key, label, isToday }
-  times,       // 24 (or 12) items: { key, label }
-  eventsAllDay = {},// by dayKey
-  eventsTimed = [], // with start/end minutes, dayKey, tone
-  nowPx,       // optional current-minute → px offset
+  weekDays,    // 7: { key,label,isToday }
+  times,       // e.g., 0..23 -> { key,label }
+  eventsAllDay = [],// [{id,dayKey,label,tone?}]
+  eventsTimed = [], // [{id,dayKey,startMin,endMin,label,tone?}]
+  nowPx,       // optional: minute->px mapping result
   onEventClick,
 }: Props) {
   return (
-    <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)] bg-[var(--cal-bg)] overflow-hidden h-full flex flex-col">
+    <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
+                    bg-[var(--cal-bg)] overflow-hidden">
       {/* header */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)] h-[var(--cal-header-h)] flex-shrink-0 bg-[var(--cal-bg)] z-[1] border-b border-[var(--cal-gridline)]">
+      <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)] h-[var(--cal-header-h)]
+                      sticky top-0 z-[1] bg-[var(--cal-bg)]">
         <div />
         {weekDays.map(d => (
           <div key={d.key}
-            className="grid place-items-center text-[var(--text-sm)] font-medium text-[var(--text-primary)]
-                       border-l first:border-l-0 border-[var(--cal-gridline)]">
+               className="grid place-items-center border-l first:border-l-0 border-[var(--cal-gridline)]
+                          text-[var(--text-sm)] font-medium text-[var(--text-primary)]">
             {d.label}
           </div>
         ))}
       </div>
 
-      {/* scrollable container */}
-      <div className="flex-grow overflow-y-auto">
-        {/* all-day */}
-        <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)] sticky top-0 bg-[var(--cal-bg)] z-[1]">
-          <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">
-            all day
-          </div>
-          {weekDays.map(d => (
-            <div key={d.key}
-                 className="h-[var(--cal-hour-row-h)] border-t border-l last:border-r border-[var(--cal-gridline)]
-                            bg-[var(--bg-surface-elevated)] flex items-center px-[var(--space-2)] gap-[var(--event-gap)]">
-              {(eventsAllDay[d.key] || []).map(event => (
-                <EventPill key={event.id} title={event.title} tone={event.tone} />
-              ))}
-            </div>
-          ))}
+      {/* all-day */}
+      <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)]">
+        <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right
+                        text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">
+          all day
         </div>
+        {weekDays.map(d => (
+          <div key={d.key}
+               className="h-[var(--cal-hour-row-h)] bg-[var(--bg-surface-elevated)]
+                          border-y border-l last:border-r border-[var(--cal-gridline)]" />
+        ))}
+      </div>
 
-        {/* timed grid */}
-        <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)]">
-        {/* rail */}
+      {/* timed grid */}
+      <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)]">
+        {/* rail (single border per hour) */}
         <div className="flex flex-col border-t border-[var(--cal-gridline)]">
           {times.map(t => (
-            <div key={t.key} className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] border-b last:border-b-0 border-[var(--cal-gridline)] leading-[var(--cal-hour-row-h)]">
+            <div key={t.key}
+                 className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right
+                            text-[var(--text-xs)] text-[var(--text-tertiary)]
+                            border-b last:border-b-0 border-[var(--cal-gridline-subtle)]">
               {t.label}
             </div>
           ))}
         </div>
 
-        {/* columns */}
+        {/* day columns */}
         {weekDays.map(day => (
-          <div key={day.key} className="relative border-t border-l last:border-r border-[var(--cal-gridline)]">
+          <div key={day.key}
+               className="relative border-t border-l last:border-r border-[var(--cal-gridline)]">
             {/* hour lines (no fills) */}
             <div className="pointer-events-none absolute inset-0">
               {times.map(t => (
-                <div key={t.key} className="h-[var(--cal-hour-row-h)] border-b last:border-b-0 border-[var(--cal-gridline)]" />
+                <div key={t.key}
+                     className="h-[var(--cal-hour-row-h)] border-b last:border-b-0 border-[var(--cal-gridline-subtle)]" />
               ))}
             </div>
 
@@ -241,7 +233,6 @@ export function WeekView({
             )}
           </div>
         ))}
-        </div>
       </div>
     </div>
   );

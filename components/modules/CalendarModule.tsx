@@ -193,10 +193,11 @@ export function CalendarModule() {
                 key: i.toString(),
                 label: i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`,
               }))}
-              eventsAllDay={{}}
+              eventsAllDay={[]}
               eventsTimed={engine.weekEvents.map(evt => ({
                 id: evt.id,
                 title: evt.title,
+                label: evt.title,
                 tone: 'neutral' as const,
                 startMin: new Date(evt.startsAt).getHours() * 60 + new Date(evt.startsAt).getMinutes(),
                 endMin: new Date(evt.endsAt).getHours() * 60 + new Date(evt.endsAt).getMinutes(),
@@ -211,8 +212,11 @@ export function CalendarModule() {
           )}
           {viewMode === 'day' && (
             <DayView
-              date={currentDate}
-              dayLabel={currentDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+              day={{
+                fullLabel: currentDate.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }),
+                isToday: currentDate.toDateString() === new Date().toDateString(),
+                date: currentDate
+              }}
               times={Array.from({ length: 24 }, (_, i) => ({
                 key: i.toString(),
                 label: i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`
@@ -220,11 +224,13 @@ export function CalendarModule() {
               eventsAllDay={unifiedEvents.filter(e => e.allDay).map(evt => ({
                 id: evt.id,
                 title: evt.title,
+                label: evt.title,
                 tone: 'neutral' as const
               }))}
               eventsTimed={unifiedEvents.filter(e => !e.allDay && new Date(e.startsAt).toDateString() === currentDate.toDateString()).map(evt => ({
                 id: evt.id,
                 title: evt.title,
+                label: evt.title,
                 tone: 'neutral' as const,
                 startMin: new Date(evt.startsAt).getHours() * 60 + new Date(evt.startsAt).getMinutes(),
                 endMin: new Date(evt.endsAt).getHours() * 60 + new Date(evt.endsAt).getMinutes(),
