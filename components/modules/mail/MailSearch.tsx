@@ -39,17 +39,18 @@ export function MailSearch({
   return (
     <Popover open={showAdvancedSearch} onOpenChange={onAdvancedSearchToggle}>
       <PopoverAnchor asChild>
-        <div className="relative max-w-md w-full">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
-          <Input
+        <div className="relative w-[320px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-tertiary)]" />
+          <input
+            type="text"
             placeholder="Search mail"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 pr-10 bg-[var(--bg-surface)] border-[var(--border-default)]"
+            className="h-9 w-full pl-9 pr-10 bg-white border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] motion-safe:transition-colors duration-[var(--duration-fast)]"
           />
           <PopoverTrigger asChild>
             <button
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors"
             >
               <SlidersHorizontal className="w-4 h-4" />
             </button>
