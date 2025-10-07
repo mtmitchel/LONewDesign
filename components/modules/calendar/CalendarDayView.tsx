@@ -100,13 +100,13 @@ export function CalendarDayView({ currentDate, events, onEventClick }: CalendarD
         <div className="grid" style={{ gridTemplateColumns: '60px 1fr' }}>
           {hours.map((hour) => (
             <React.Fragment key={hour}>
-              {/* Time Label */}
-              <div className="p-[var(--space-2)] text-right text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] border-r border-b border-[var(--border-divider)] h-[60px]">
-                {formatHour(hour)}
-              </div>
+               {/* Time Label */}
+               <div className="sticky left-0 pr-[var(--space-2)] text-right text-[length:var(--text-xs)] leading-none text-[var(--text-tertiary)] border-r border-b border-[var(--border-divider)] h-[60px] flex items-center justify-end">
+                 {formatHour(hour)}
+               </div>
               
-              {/* Time Slot */}
-              <div className="relative border-b border-[var(--border-divider)] h-[60px] transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors hover:bg-[var(--bg-surface-elevated)]">
+               {/* Time Slot */}
+               <div className="relative border-b border-[var(--border-divider)] h-[60px] px-[var(--calendar-day-column-pad-x)] transition-colors duration-[var(--duration-fast)] motion-safe:transition-colors hover:bg-[var(--bg-surface-elevated)]">
                 {/* Events positioned absolutely */}
                 {hour === 0 && positionedEvents.map((event) => {
                   // Map legacy color to simple color name

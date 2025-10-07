@@ -380,6 +380,30 @@
   --calendar-event-gap: var(--space-2);    /* gap between stacked events */
   --calendar-event-focus: color-mix(in oklab, var(--primary) 36%, transparent);
   
+  /* Calendar containers */
+  --calendar-month-cell-pad-x: var(--space-2);
+  --calendar-month-cell-pad-y: var(--space-2);
+  --calendar-week-column-pad-x: 0;          /* full stretch */
+  --calendar-day-column-pad-x: 0;           /* full stretch */
+
+  /* Events (shared) */
+  --calendar-event-gap: var(--space-2);
+  --calendar-event-pad-x: var(--space-3);
+  --calendar-event-pad-y: var(--space-2);
+  --calendar-event-pad-y-compact: var(--space-1); /* month uses this */
+  --calendar-event-content-align: flex-start; /* top-align long events */
+  --calendar-event-radius: var(--radius-md);
+  --calendar-event-border: var(--border-subtle);
+  --calendar-event-focus-ring: color-mix(in oklab, var(--primary) 36%, transparent);
+  
+  /* Calendar states */
+  --calendar-today-indicator-bg: color-mix(in oklab, var(--primary) 10%, transparent);
+  --calendar-month-selected-bg: color-mix(in oklab, var(--bg-surface) 100%, var(--primary) 6%);
+
+  /* Grid/labels */
+  --calendar-grid-line: var(--border-subtle);
+  --calendar-time-label-color: var(--text-tertiary);
+  
   /* Tasks Rail - Compact spacing system */
   --tasks-rail-padding: var(--space-4);   /* 16px outer padding */
   --tasks-rail-gap: var(--space-4);       /* 16px between sections */

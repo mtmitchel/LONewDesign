@@ -17,6 +17,27 @@ export function EventChip({ event, onClick, onMouseEnter, onMouseLeave }: EventC
     ? `${format(new Date(event.startsAt), 'HH:mm')} ${event.title}`
     : event.title;
 
+  // Map category colors to event color variants
+  const getEventColor = (category: string | undefined) => {
+    const colorMap: Record<string, 'blue' | 'green' | 'teal' | 'orange'> = {
+      'work': 'blue',
+      'personal': 'green',
+      'meeting': 'teal',
+      'reminder': 'orange',
+    };
+    return category ? colorMap[category] || 'blue' : 'blue';
+  };
+
+  const eventColor = getEventColor(event.category);
+  const colorTokens = {
+    blue: { bg: 'var(--event-blue-bg)', text: 'var(--event-blue-text)', hover: 'var(--event-blue-hover)' },
+    green: { bg: 'var(--event-green-bg)', text: 'var(--event-green-text)', hover: 'var(--event-green-hover)' },
+    teal: { bg: 'var(--event-teal-bg)', text: 'var(--event-teal-text)', hover: 'var(--event-teal-hover)' },
+    orange: { bg: 'var(--event-orange-bg)', text: 'var(--event-orange-text)', hover: 'var(--event-orange-hover)' },
+  };
+
+  const colors = colorTokens[eventColor];
+
   return (
     <button
       type="button"
@@ -24,17 +45,26 @@ export function EventChip({ event, onClick, onMouseEnter, onMouseLeave }: EventC
       onMouseEnter={() => onMouseEnter?.(event)}
       onMouseLeave={() => onMouseLeave?.(event)}
       className={cn(
-        'group flex w-full items-center justify-start gap-[var(--space-2)] rounded-[var(--calendar-event-radius)] px-[var(--space-2)] text-left text-[length:var(--text-xs)] font-[var(--font-weight-medium)] text-white transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]'
+        'w-full',
+        'rounded-[var(--calendar-event-radius)]',
+        'border border-[var(--calendar-event-border)]',
+        'px-[var(--calendar-event-pad-x)] py-[var(--calendar-event-pad-y-compact)]', // compact for month
+        'text-[length:var(--text-xs)]', // smaller text for month
+        'hover:bg-[var(--event-blue-hover)]',
+        'focus:outline-none focus-visible:ring-2',
+        'focus-visible:ring-[var(--calendar-event-focus-ring)]',
+        'focus-visible:ring-offset-0',
+        'motion-safe:transition-colors'
       )}
       style={{
-        backgroundColor: colorToken,
-        lineHeight: 1.3,
-        height: '28px'
-      }}
+        backgroundColor: colors.bg,
+        color: colors.text,
+        '--tw-hover-bg': colors.hover,
+      } as React.CSSProperties}
       aria-label={eventLabel}
     >
-      <span className="truncate">{eventLabel}</span>
+      {hasTime && <span className="mr-2 opacity-80">{format(new Date(event.startsAt), 'HH:mm')}</span>}
+      <span className="truncate">{event.title}</span>
     </button>
   );
 }

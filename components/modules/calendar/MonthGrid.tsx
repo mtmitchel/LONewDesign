@@ -86,9 +86,9 @@ export function MonthGrid({ cells, getEventsForDate, onSelectDay, onSelectRange,
               aria-selected={isHighlighted}
               className={cn(
                 'min-h-[var(--calendar-cell-min-h)] rounded-[var(--radius-lg)] border border-[var(--calendar-cell-border)] bg-[var(--bg-surface)] p-[var(--space-3)] transition-shadow',
-                cell.isToday && 'border-[var(--primary)] shadow-[0_0_0_1px_var(--primary)]',
+                cell.isToday && 'border-[var(--primary)] bg-[var(--calendar-today-indicator-bg)]',
                 !cell.isCurrentMonth && 'opacity-50',
-                isHighlighted && 'ring-2 ring-[var(--primary)] ring-offset-2 ring-offset-[var(--bg-surface)]'
+                isHighlighted && 'bg-[var(--calendar-month-selected-bg)] ring-1 ring-[color-mix(in_oklab,var(--primary)_20%,transparent)]'
               )}
               onClick={() => onSelectDay(cell.date)}
               onPointerDown={(event) => {
@@ -99,13 +99,20 @@ export function MonthGrid({ cells, getEventsForDate, onSelectDay, onSelectRange,
                 setDragState((prev) => (prev ? { ...prev, end: cell.date } : prev));
               }}
             >
-              <div className="mb-[var(--space-2)] flex items-center justify-between">
+              <div className="flex items-center justify-between">
                 <span className={cn('text-[length:var(--text-sm)] font-[var(--font-weight-medium)]', cell.isToday ? 'text-[color:var(--primary)]' : 'text-[color:var(--text-primary)]')}>
                   {format(cell.date, 'd')}
                 </span>
               </div>
 
-              <div className="flex flex-col gap-[var(--space-2)]">
+              <div
+                className="
+                  flex flex-col
+                  items-stretch
+                  px-[var(--space-2)] py-[var(--space-2)]
+                  gap-[var(--calendar-event-gap)]
+                "
+              >
                 {visibleEvents.map((event) => (
                   <EventChip key={event.id} event={event} onClick={onEventClick} />
                 ))}

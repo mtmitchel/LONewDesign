@@ -1,3 +1,4 @@
+import React from 'react';
 import { addDays, addMinutes, format, isSameDay, startOfDay } from 'date-fns';
 import { cn } from '../../ui/utils';
 import type { CalendarEvent } from './types';
@@ -62,12 +63,14 @@ export function WeekGrid({ weekStart, placements, events, onEventClick, onCreate
         >
           <div className="absolute inset-0 flex flex-col">
             {HOURS.map((hour) => (
-              <div
-                key={`label-${hour}`}
-                className="flex h-[var(--calendar-hour-row-h)] items-start justify-end pr-[var(--space-2)] text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]"
-              >
-                {format(new Date().setHours(hour, 0, 0, 0), 'ha')}
-              </div>
+              <React.Fragment key={`label-${hour}`}>
+                <div
+                  className="sticky left-0 flex items-center justify-end pr-[var(--space-2)] text-[length:var(--text-xs)] leading-none text-[var(--text-tertiary)] h-[var(--calendar-hour-row-h)]"
+                >
+                  {format(new Date().setHours(hour, 0, 0, 0), 'ha')}
+                </div>
+                <div className="border-t border-[var(--calendar-grid-line)]" />
+              </React.Fragment>
             ))}
           </div>
         </div>
@@ -79,17 +82,19 @@ export function WeekGrid({ weekStart, placements, events, onEventClick, onCreate
           return (
             <div
               key={key}
-              className="relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--calendar-cell-border)] bg-[var(--bg-surface)]"
-              style={{ height: BODY_HEIGHT }}
-              onDoubleClick={(event) => {
-                const rect = event.currentTarget.getBoundingClientRect();
-                const y = event.clientY - rect.top;
-                const minutes = Math.floor((y / rect.height) * 24 * 60 / 15) * 15;
-                const start = addMinutes(startOfDay(day), minutes);
-                const end = addMinutes(start, 60);
-                onCreateRange(start, end);
-              }}
+              className="relative h-full px-[var(--calendar-week-column-pad-x)]"
             >
+              <div
+                className="relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--calendar-cell-border)] bg-[var(--bg-surface)] h-full"
+                onDoubleClick={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  const y = event.clientY - rect.top;
+                  const minutes = Math.floor((y / rect.height) * 24 * 60 / 15) * 15;
+                  const start = addMinutes(startOfDay(day), minutes);
+                  const end = addMinutes(start, 60);
+                  onCreateRange(start, end);
+                }}
+              >
               <div className="absolute inset-0 grid grid-rows-[repeat(24,var(--calendar-hour-row-h))]">
                 {HOURS.map((hour) => (
                   <div
@@ -109,6 +114,7 @@ export function WeekGrid({ weekStart, placements, events, onEventClick, onCreate
               {placements.get(key)?.map((placement) => (
                 <EventBlock key={placement.event.id} placement={placement} onClick={onEventClick} />
               ))}
+              </div>
             </div>
           );
         })}

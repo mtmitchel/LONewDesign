@@ -54,29 +54,25 @@ export function CalendarEvent({
       style={style}
       className={cn(
         "w-full rounded-[var(--calendar-event-radius)]",
-        "border border-[var(--calendar-cell-border)]", // very subtle envelope
+        "border border-[var(--calendar-event-border)]", // unified subtle border
         map.bg,
         map.text,
         map.hover,
         density === "compact" 
-          ? "text-[var(--text-xs)] px-[var(--space-2)] py-[calc(var(--space-1)/2)]" // Very compact for month view
+          ? "text-[var(--text-xs)] px-[var(--calendar-event-pad-x)] py-[var(--calendar-event-pad-y-compact)]" // Compact for month view
           : "text-[var(--text-sm)] px-[var(--calendar-event-pad-x)] py-[var(--calendar-event-pad-y)]", // Normal for day/week
         "motion-safe:transition-colors",
         // accessibility & focus
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--calendar-event-focus)] focus-visible:ring-offset-0",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--calendar-event-focus-ring)] focus-visible:ring-offset-0",
         // NO ACCENT COLORS - NO LEFT BORDERS - NOTHING
         className
       )}
       aria-label={time ? `${title}, ${time}` : title}
     >
-      {density === "compact" ? (
+      <div className="flex items-[var(--calendar-event-content-align)] w-full">
+        {time && <span className="mr-[var(--space-2)] opacity-80">{time}</span>}
         <span className="truncate">{title}</span>
-      ) : (
-        <>
-          {time && <span className="mr-2 opacity-80">{time}</span>}
-          <span className="truncate">{title}</span>
-        </>
-      )}
+      </div>
     </button>
   );
 }
