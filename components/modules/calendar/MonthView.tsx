@@ -69,9 +69,22 @@ export function MonthView({
                 {d.dayNumber}
               </span>
 
-              {/* events: top stack */}
-              <div className="mt-[var(--space-6)] px-[var(--space-2)] flex flex-col gap-[var(--event-gap)]">
-                {d.events.map(ev => <EventPill key={ev.id} label={`${ev.time ? ev.time + ' ' : ''}${ev.title || ev.label}`} tone={ev.tone ?? "neutral"} />)}
+              {/* events: top stack - positioned below day number */}
+              <div className="absolute top-[calc(var(--space-2)+1.5rem)] left-[var(--space-2)] right-[var(--space-2)] flex flex-col gap-[var(--event-gap)]">
+                {d.events.map(ev => (
+                  <EventPill
+                    key={ev.id}
+                    label={`${ev.time ? ev.time + ' ' : ''}${ev.title}`}
+                    tone={ev.tone ?? "low"}
+                    density="dense"
+                    multiline="one"
+                    className="w-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log('calendar.event.open', ev.id, 'month');
+                    }}
+                  />
+                ))}
               </div>
 
               {d.isToday    && <span className="pointer-events-none absolute inset-0 ring-1 ring-[var(--cal-ring-today)]" />}

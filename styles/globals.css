@@ -393,11 +393,77 @@
   /* Hover */
   --cal-hover: var(--primary-tint-5);
 
-  /* Events (shared) */
+  /* Event Pill tokens - complete system */
+  /* Pill shape & spacing */
   --event-pill-r: var(--radius-md);
   --event-pill-px: var(--space-3);
   --event-pill-py: var(--space-1);
+  --event-pill-gap: var(--space-2);
   --event-gap: var(--space-2);
+  
+  /* Typography */
+  --event-pill-fs: 0.75rem;         /* 12px - matching text-xs for compact events */
+  --event-pill-lh: 1.2;            /* tight, readable */
+  --event-title-weight: 500;       /* medium */
+  --event-meta-ink: var(--text-tertiary);
+  
+  /* Calendar colors - Aligned with design system accent colors */
+  /* Primary blue (default) */
+  --cal-color-blue-bg: color-mix(in oklab, var(--primary) 18%, var(--bg-surface));      
+  --cal-color-blue-text: var(--primary);    
+  
+  /* Coral (urgent/important) */
+  --cal-color-coral-bg: color-mix(in oklab, var(--accent-coral) 20%, var(--bg-surface));         
+  --cal-color-coral-text: color-mix(in oklab, var(--accent-coral) 80%, var(--text-primary));
+  
+  /* Yellow (warning/attention) */
+  --cal-color-yellow-bg: color-mix(in oklab, var(--warning) 22%, var(--bg-surface));     
+  --cal-color-yellow-text: color-mix(in oklab, var(--warning) 85%, var(--text-primary));   
+  
+  /* Green (success/personal) */
+  --cal-color-green-bg: color-mix(in oklab, var(--success) 20%, var(--bg-surface));     
+  --cal-color-green-text: color-mix(in oklab, var(--success) 75%, var(--text-primary));   
+  
+  /* Purple (creative/special) */
+  --cal-color-purple-bg: color-mix(in oklab, hsl(275, 70%, 60%) 20%, var(--bg-surface));    
+  --cal-color-purple-text: color-mix(in oklab, hsl(275, 70%, 45%) 85%, var(--text-primary));  
+  
+  /* Orange (meetings/collaboration) */
+  --cal-color-orange-bg: color-mix(in oklab, hsl(25, 85%, 63%) 20%, var(--bg-surface));     
+  --cal-color-orange-text: color-mix(in oklab, hsl(25, 85%, 45%) 85%, var(--text-primary));   
+  
+  /* Teal (info/learning) */
+  --cal-color-teal-bg: color-mix(in oklab, var(--info) 20%, var(--bg-surface));      
+  --cal-color-teal-text: color-mix(in oklab, var(--info) 75%, var(--text-primary));
+  
+  /* Pink (social/fun) */
+  --cal-color-pink-bg: color-mix(in oklab, hsl(340, 75%, 65%) 20%, var(--bg-surface));      
+  --cal-color-pink-text: color-mix(in oklab, hsl(340, 75%, 45%) 85%, var(--text-primary));
+  
+  /* Event surfaces - map to calendar colors for visibility */
+  --event-neutral-bg: var(--cal-color-green-bg);   /* Use green instead of gray */
+  --event-neutral-text: var(--cal-color-green-text);
+  --event-low-bg: var(--cal-color-blue-bg);        /* Blue as default */
+  --event-low-text: var(--cal-color-blue-text);
+  --event-medium-bg: var(--cal-color-yellow-bg);
+  --event-medium-text: var(--cal-color-yellow-text);
+  --event-high-bg: var(--cal-color-coral-bg);      /* Coral for high priority */
+  --event-high-text: var(--cal-color-coral-text);
+  
+  /* States */
+  --event-hover-bg: var(--primary-tint-5);
+  --event-focus-ring: var(--primary);
+  --event-selected-ring: var(--primary);
+  
+  /* Optional accent bar */
+  --event-accent-w: 2px;
+  --event-accent-ink: var(--primary);
+  
+  /* Density variants */
+  --event-dense-px: var(--space-2);
+  --event-dense-py: var(--space-1);
+  
+  /* Overlap spacing (Week/Day collisions) */
   --event-overlap-gap: var(--space-2);
 
   /* Now indicator */

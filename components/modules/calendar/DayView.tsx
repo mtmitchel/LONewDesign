@@ -115,20 +115,24 @@ function useDayLayoutFor(event: TimedEvent, allEvents: TimedEvent[]): { top: num
 
 function DayTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: TimedEvent[] }) {
   const s = useDayLayoutFor(event, allEvents);
+  const shouldUseMultiline = s.height >= 48; // Allow 2 lines if height permits
+  const hours = Math.floor(event.startMin / 60);
+  const minutes = event.startMin % 60;
+  const eventTime = `${hours}:${String(minutes).padStart(2, '0')}`;
   
   return (
     <div
-      className="absolute rounded-[var(--event-pill-r)]
-                 bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]
-                 px-[var(--event-pill-px)] py-[var(--event-pill-py)]
-                 text-[var(--text-xs)] leading-tight
-                 hover:bg-[var(--primary-tint-5)] focus-visible:ring-1 ring-[var(--cal-ring)] outline-none"
+      className="absolute"
       style={{ top: s.top, height: s.height, left: `${s.leftPct ?? 0}%`, width: `${s.widthPct ?? 100}%` }}
-      title={event.title || event.label}
-      role="button"
-      tabIndex={0}
     >
-      <div className="truncate">{event.title || event.label}</div>
+      <EventPill
+        label={`${eventTime} ${event.title}`}
+        tone={event.tone ?? "low"}
+        multiline={shouldUseMultiline ? "two" : "one"}
+        density={s.height < 32 ? "dense" : "default"}
+        className="w-full"
+        onClick={() => console.log('calendar.event.open', event.id, 'day')}
+      />
     </div>
   );
 }
@@ -169,7 +173,7 @@ export function DayView({
           ))}
         </div>
 
-        <div className="relative border-t border-l border-[var(--cal-gridline)]">
+        <div className="relative border-t border-l border-[var(--cal-gridline)] overflow-hidden">
           {/* hour lines */}
           <div className="pointer-events-none absolute inset-0">
             {times.map(t => (

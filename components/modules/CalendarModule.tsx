@@ -46,6 +46,17 @@ function parseDurationToMinutes(durationStr: string): number {
   return 30;
 }
 
+// Map event categories to calendar colors  
+function getCategoryTone(category?: string): "low" | "medium" | "high" | "neutral" {
+  switch (category) {
+    case 'work': return 'low';      // blue (primary)
+    case 'meeting': return 'medium'; // yellow (warning)
+    case 'travel': return 'high';    // coral (accent)
+    case 'personal': return 'neutral'; // green (success) - no longer grey
+    default: return 'low';           // default to blue
+  }
+}
+
 export function CalendarModule() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarView>('month');
@@ -53,27 +64,64 @@ export function CalendarModule() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isNewEventModalOpen, setIsNewEventModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
-
-  // Map demo events to the current month spread across a few days
-  const baseDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 15);
-  const unifiedEvents: UnifiedEvent[] = DEMO_EVENTS.map((e, idx) => {
-    const day = new Date(baseDay);
-    day.setDate(baseDay.getDate() + idx * 2);
-    const start = parseTimeToDate(day, e.time);
-    const minutes = parseDurationToMinutes(e.duration);
-    const end = addMinutes(start, minutes);
-    return {
-      id: e.id,
-      title: e.title,
-      calendarId: 'demo',
-      startsAt: start.toISOString(),
-      endsAt: end.toISOString(),
-      allDay: false,
-      category: e.category,
-    };
+  
+  // State for managing events
+  const [events, setEvents] = useState<UnifiedEvent[]>(() => {
+    // Map demo events to the current month spread across a few days
+    const baseDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 15);
+    return DEMO_EVENTS.map((e, idx) => {
+      const day = new Date(baseDay);
+      day.setDate(baseDay.getDate() + idx * 2);
+      const start = parseTimeToDate(day, e.time);
+      const minutes = parseDurationToMinutes(e.duration);
+      const end = addMinutes(start, minutes);
+      return {
+        id: e.id,
+        title: e.title,
+        calendarId: 'demo',
+        startsAt: start.toISOString(),
+        endsAt: end.toISOString(),
+        allDay: false,
+        category: e.category,
+      };
+    });
   });
 
-  const engine = useCalendarEngine(unifiedEvents, viewMode, currentDate);
+  const engine = useCalendarEngine(events, viewMode, currentDate);
+  
+  // Function to add a new event from modal
+  const handleAddEvent = (eventData: any) => {
+    // Parse the date string from the modal
+    const eventDate = eventData.startDate ? new Date(eventData.startDate) : currentDate;
+    
+    // Combine date and time
+    if (eventData.startTime) {
+      const [hours, minutes] = eventData.startTime.split(':').map(Number);
+      eventDate.setHours(hours, minutes, 0, 0);
+    }
+    
+    // Calculate end time (default 1 hour later)
+    const endDate = new Date(eventDate);
+    if (eventData.endTime) {
+      const [hours, minutes] = eventData.endTime.split(':').map(Number);
+      endDate.setHours(hours, minutes, 0, 0);
+    } else {
+      endDate.setHours(endDate.getHours() + 1);
+    }
+    
+    const newEvent: UnifiedEvent = {
+      id: `event-${Date.now()}`,
+      title: eventData.title || 'New Event',
+      calendarId: 'demo',
+      startsAt: eventDate.toISOString(),
+      endsAt: endDate.toISOString(),
+      allDay: eventData.allDay || false,
+      category: 'work',
+    };
+    
+    setEvents(prev => [...prev, newEvent]);
+    setIsNewEventModalOpen(false);
+  };
 
   const goToToday = () => setCurrentDate(new Date());
   const navigateView = (dir: 'prev' | 'next') => setCurrentDate((d) => navigate(d, viewMode, dir));
@@ -168,13 +216,13 @@ export function CalendarModule() {
                     id: evt.id,
                     title: evt.title,
                     time: evt.allDay ? undefined : new Date(evt.startsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-                    tone: 'neutral' as const,
+                    tone: getCategoryTone(evt.category),
                   }))
                 }));
               })()}
               onSelectDay={(date) => setCurrentDate(date)}
               onEventClick={(id) => {
-                const evt = unifiedEvents.find(e => e.id === id);
+                const evt = events.find(e => e.id === id);
                 if (evt) setSelectedEvent(evt);
               }}
               />
@@ -200,14 +248,14 @@ export function CalendarModule() {
                 id: evt.id,
                 title: evt.title,
                 label: evt.title,
-                tone: 'neutral' as const,
+                tone: getCategoryTone(evt.category),
                 startMin: new Date(evt.startsAt).getHours() * 60 + new Date(evt.startsAt).getMinutes(),
                 endMin: new Date(evt.endsAt).getHours() * 60 + new Date(evt.endsAt).getMinutes(),
                 dayKey: new Date(evt.startsAt).getDay().toString(),
               }))}
               nowPx={(new Date().getHours() * 60 + new Date().getMinutes()) / 60 * 56}
               onEventClick={(id) => {
-                const evt = unifiedEvents.find(e => e.id === id);
+                const evt = events.find(e => e.id === id);
                 if (evt) setSelectedEvent(evt);
               }}
             />
@@ -223,23 +271,23 @@ export function CalendarModule() {
                 key: i.toString(),
                 label: i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`
               }))}
-              eventsAllDay={unifiedEvents.filter(e => e.allDay).map(evt => ({
+              eventsAllDay={events.filter(e => e.allDay).map(evt => ({
                 id: evt.id,
                 title: evt.title,
                 label: evt.title,
-                tone: 'neutral' as const
+                tone: getCategoryTone(evt.category)
               }))}
-              eventsTimed={unifiedEvents.filter(e => !e.allDay && new Date(e.startsAt).toDateString() === currentDate.toDateString()).map(evt => ({
+              eventsTimed={events.filter(e => !e.allDay && new Date(e.startsAt).toDateString() === currentDate.toDateString()).map(evt => ({
                 id: evt.id,
                 title: evt.title,
                 label: evt.title,
-                tone: 'neutral' as const,
+                tone: getCategoryTone(evt.category),
                 startMin: new Date(evt.startsAt).getHours() * 60 + new Date(evt.startsAt).getMinutes(),
                 endMin: new Date(evt.endsAt).getHours() * 60 + new Date(evt.endsAt).getMinutes(),
               }))}
               nowPx={(new Date().getHours() * 60 + new Date().getMinutes()) / 60 * 56}
               onEventClick={(id) => {
-                const evt = unifiedEvents.find(e => e.id === id);
+                const evt = events.find(e => e.id === id);
                 if (evt) setSelectedEvent(evt);
               }}
             />
@@ -263,7 +311,7 @@ export function CalendarModule() {
         isOpen={isNewEventModalOpen}
         onClose={() => setIsNewEventModalOpen(false)}
         defaultDate={currentDate}
-        onSave={() => {}}
+        onSave={handleAddEvent}
       />
     </div>
   );
