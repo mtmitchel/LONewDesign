@@ -1,4 +1,5 @@
 import { EventPill } from './EventPill';
+import { EventPreviewPopover } from './EventPreviewPopover';
 
 type MonthCell = {
   key: string;
@@ -12,6 +13,9 @@ type MonthCell = {
     title: string;
     time?: string;
     tone?: "low" | "medium" | "high" | "neutral";
+    calendarName: string;
+    allDay?: boolean;
+    timeRangeText?: string;
   }>;
 };
 
@@ -20,6 +24,8 @@ type Props = {
   weekdays?: string[];
   onSelectDay?: (date: Date) => void;
   onEventClick?: (id: string) => void;
+  onEditEvent?: (id: string) => void;
+  onDeleteEvent?: (id: string) => Promise<void> | void;
 };
 
 export function MonthView({
@@ -27,6 +33,8 @@ export function MonthView({
   weekdays = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],
   onSelectDay,
   onEventClick,
+  onEditEvent,
+  onDeleteEvent,
 }: Props) {
   return (
     <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
@@ -72,18 +80,35 @@ export function MonthView({
               {/* events: top stack - positioned below day number */}
               <div className="absolute inset-x-0 top-[calc(var(--space-2)+1.5rem)] flex flex-col gap-[var(--event-gap)]">
                 {d.events.map(ev => (
-                  <EventPill
+                  <EventPreviewPopover
                     key={ev.id}
-                    label={`${ev.time ? ev.time + ' ' : ''}${ev.title}`}
-                    tone={ev.tone ?? "low"}
-                    density="dense"
-                    multiline="one"
-                    className="w-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      console.log('calendar.event.open', ev.id, 'month');
+                    event={{
+                      id: ev.id,
+                      title: ev.title,
+                      calendarName: ev.calendarName,
+                      allDay: ev.allDay,
+                      timeRangeText: ev.timeRangeText,
                     }}
-                  />
+                    onEdit={() => onEditEvent?.(ev.id)}
+                    onConfirmDelete={() => onDeleteEvent?.(ev.id)}
+                  >
+                    <EventPill
+                      label={`${ev.time ? ev.time + ' ' : ''}${ev.title}`}
+                      tone={ev.tone ?? "low"}
+                      density="dense"
+                      multiline="one"
+                      className="w-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick?.(ev.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                        }
+                      }}
+                    />
+                  </EventPreviewPopover>
                 ))}
               </div>
 

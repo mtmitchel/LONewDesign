@@ -1,4 +1,5 @@
 import { EventPill } from './EventPill';
+import { EventPreviewPopover } from './EventPreviewPopover';
 
 type TimeSlot = {
   key: string;
@@ -11,16 +12,25 @@ type TimedEvent = {
   tone?: "low" | "medium" | "high" | "neutral";
   startMin: number;
   endMin: number;
+  calendarName: string;
+  allDay?: boolean;
+  timeRangeText?: string;
 };
 
 type Props = {
-  date: Date;
-  dayLabel: string;
+  day: {
+    fullLabel?: string;
+    dayLabel?: string;
+    isToday?: boolean;
+    date?: Date;
+  };
   times: TimeSlot[];       // 24 (or 12) items: { key, label }
   eventsAllDay: Array<{ id: string; title: string; tone?: "low" | "medium" | "high" | "neutral" }>;
   eventsTimed: TimedEvent[]; // with start/end minutes, tone
   nowPx?: number;       // optional current-minute → px offset
   onEventClick?: (id: string) => void;
+  onEditEvent?: (id: string) => void;
+  onDeleteEvent?: (id: string) => Promise<void> | void;
 };
 
 function pxFromMin(min: number): number {
@@ -113,7 +123,19 @@ function useDayLayoutFor(event: TimedEvent, allEvents: TimedEvent[]): { top: num
   };
 }
 
-function DayTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: TimedEvent[] }) {
+function DayTimedEvent({
+  event,
+  allEvents,
+  onEditEvent,
+  onDeleteEvent,
+  onEventClick,
+}: {
+  event: TimedEvent;
+  allEvents: TimedEvent[];
+  onEditEvent?: (id: string) => void;
+  onDeleteEvent?: (id: string) => Promise<void> | void;
+  onEventClick?: (id: string) => void;
+}) {
   const s = useDayLayoutFor(event, allEvents);
   const shouldUseMultiline = s.height >= 48; // Allow 2 lines if height permits
   const hours = Math.floor(event.startMin / 60);
@@ -125,14 +147,34 @@ function DayTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: Tim
       className="absolute"
       style={{ top: s.top, height: s.height, left: `${s.leftPct ?? 0}%`, width: `${s.widthPct ?? 100}%` }}
     >
-      <EventPill
-        label={`${eventTime} ${event.title}`}
-        tone={event.tone ?? "low"}
-        multiline={shouldUseMultiline ? "two" : "one"}
-        density={s.height < 32 ? "dense" : "default"}
-        className="w-full"
-        onClick={() => console.log('calendar.event.open', event.id, 'day')}
-      />
+      <EventPreviewPopover
+        event={{
+          id: event.id,
+          title: event.title,
+          calendarName: event.calendarName,
+          allDay: event.allDay,
+          timeRangeText: event.timeRangeText,
+        }}
+        onEdit={() => onEditEvent?.(event.id)}
+        onConfirmDelete={() => onDeleteEvent?.(event.id)}
+      >
+        <EventPill
+          label={`${eventTime} ${event.title}`}
+          tone={event.tone ?? "low"}
+          multiline={shouldUseMultiline ? "two" : "one"}
+          density={s.height < 32 ? "dense" : "default"}
+          className="w-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEventClick?.(event.id);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.stopPropagation();
+            }
+          }}
+        />
+      </EventPreviewPopover>
     </div>
   );
 }
@@ -144,6 +186,8 @@ export function DayView({
   eventsTimed = [],
   nowPx,
   onEventClick,
+  onEditEvent,
+  onDeleteEvent,
 }: Props) {
   return (
     <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
@@ -183,7 +227,16 @@ export function DayView({
 
           {/* events */}
           <div className="relative">
-            {eventsTimed.map(e => <DayTimedEvent key={e.id} event={e} allEvents={eventsTimed} />)}
+            {eventsTimed.map(e => (
+              <DayTimedEvent
+                key={e.id}
+                event={e}
+                allEvents={eventsTimed}
+                onEditEvent={onEditEvent}
+                onDeleteEvent={onDeleteEvent}
+                onEventClick={onEventClick}
+              />
+            ))}
           </div>
 
           {/* now line */}

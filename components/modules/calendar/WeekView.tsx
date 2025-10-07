@@ -1,4 +1,5 @@
 import { EventPill } from './EventPill';
+import { EventPreviewPopover } from './EventPreviewPopover';
 
 type WeekDay = {
   key: string;
@@ -18,6 +19,9 @@ type TimedEvent = {
   startMin: number;
   endMin: number;
   dayKey: string;
+  calendarName: string;
+  allDay?: boolean;
+  timeRangeText?: string;
 };
 
 type Props = {
@@ -27,6 +31,8 @@ type Props = {
   eventsTimed: TimedEvent[]; // with start/end minutes, dayKey, tone
   nowPx?: number;       // optional current-minute → px offset
   onEventClick?: (id: string) => void;
+  onEditEvent?: (id: string) => void;
+  onDeleteEvent?: (id: string) => Promise<void> | void;
 };
 
 function pxFromMin(min: number): number {
@@ -134,7 +140,19 @@ function useWeekLayoutFor(event: TimedEvent, allEvents: TimedEvent[]): { top: nu
   };
 }
 
-function WeekTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: TimedEvent[] }) {
+function WeekTimedEvent({
+  event,
+  allEvents,
+  onEditEvent,
+  onDeleteEvent,
+  onEventClick,
+}: {
+  event: TimedEvent;
+  allEvents: TimedEvent[];
+  onEditEvent?: (id: string) => void;
+  onDeleteEvent?: (id: string) => Promise<void> | void;
+  onEventClick?: (id: string) => void;
+}) {
   const s = useWeekLayoutFor(event, allEvents);
   const shouldUseMultiline = s.height >= 48; // Allow 2 lines if height permits
   const hours = Math.floor(event.startMin / 60);
@@ -145,14 +163,34 @@ function WeekTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: Ti
     <div
       className="absolute"
       style={{ top: s.top, height: s.height, left: `${s.leftPct ?? 0}%`, width: `${s.widthPct ?? 100}%` }}>
-      <EventPill
-        label={`${eventTime} ${event.title}`}
-        tone={event.tone ?? "low"}
-        multiline={shouldUseMultiline ? "two" : "one"}
-        density={s.height < 32 ? "dense" : "default"}
-        className="w-full"
-        onClick={() => console.log('calendar.event.open', event.id, 'week')}
-      />
+      <EventPreviewPopover
+        event={{
+          id: event.id,
+          title: event.title,
+          calendarName: event.calendarName,
+          allDay: event.allDay,
+          timeRangeText: event.timeRangeText,
+        }}
+        onEdit={() => onEditEvent?.(event.id)}
+        onConfirmDelete={() => onDeleteEvent?.(event.id)}
+      >
+        <EventPill
+          label={`${eventTime} ${event.title}`}
+          tone={event.tone ?? "low"}
+          multiline={shouldUseMultiline ? "two" : "one"}
+          density={s.height < 32 ? "dense" : "default"}
+          className="w-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEventClick?.(event.id);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.stopPropagation();
+            }
+          }}
+        />
+      </EventPreviewPopover>
     </div>
   );
 }
@@ -160,10 +198,12 @@ function WeekTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: Ti
 export function WeekView({
   weekDays,    // 7: { key,label,isToday }
   times,       // e.g., 0..23 -> { key,label }
-  eventsAllDay = [],// [{id,dayKey,label,tone?}]
+  eventsAllDay = {},// [{id,dayKey,label,tone?}]
   eventsTimed = [], // [{id,dayKey,startMin,endMin,label,tone?}]
   nowPx,       // optional: minute->px mapping result
   onEventClick,
+  onEditEvent,
+  onDeleteEvent,
 }: Props) {
   return (
     <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
@@ -224,7 +264,14 @@ export function WeekView({
             {/* events layer */}
             <div className="relative">
               {eventsTimed.filter(e => e.dayKey === day.key).map(e => (
-                <WeekTimedEvent key={e.id} event={e} allEvents={eventsTimed} />
+                <WeekTimedEvent
+                  key={e.id}
+                  event={e}
+                  allEvents={eventsTimed}
+                  onEditEvent={onEditEvent}
+                  onDeleteEvent={onDeleteEvent}
+                  onEventClick={onEventClick}
+                />
               ))}
             </div>
 

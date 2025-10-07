@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Event preview popover refinements (2025-10-08)
+- Updated calendar event preview popover to sit on `--bg-surface-raised` with an emphasized border + inset hairline for clearer separation from the grid.
+- Swapped the elevation to `--elevation-lg`, added calm open motion, and tuned icon buttons to stay low-ink until hovered/focused.
+- Introduced supporting tokens (`--bg-surface-raised`, `--border-emphasis`, `--border-hairline`) and a shared `popover-in` keyframe for smooth entry.
+
 ### Calendar visual consistency (2025-10-07)
 - Removed legacy `components/calendar/CalendarEvent.tsx` and `CalendarTaskRail.tsx` to prevent stale inline-flex + gray color imports from leaking into the new module system.
 - Adjusted the month-view event stack to use `inset-x-0` (instead of padded left/right offsets) so every `EventPill` now spans the full cell width on all browsers.
