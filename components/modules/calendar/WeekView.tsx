@@ -164,10 +164,10 @@ export function WeekView({
 }: Props) {
   return (
     <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
-                    bg-[var(--cal-bg)] overflow-hidden">
+                    bg-[var(--cal-bg)] overflow-hidden h-full flex flex-col">
       {/* header */}
       <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)] h-[var(--cal-header-h)]
-                      sticky top-0 z-[1] bg-[var(--cal-bg)]">
+                      bg-[var(--cal-bg)] flex-shrink-0">
         <div />
         {weekDays.map(d => (
           <div key={d.key}
@@ -178,21 +178,23 @@ export function WeekView({
         ))}
       </div>
 
-      {/* all-day */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)]">
-        <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right
-                        text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">
-          all day
+      {/* scrollable container */}
+      <div className="flex-1 overflow-y-auto">
+        {/* all-day */}
+        <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)] sticky top-0 bg-[var(--cal-bg)] z-10">
+          <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right
+                          text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">
+            all day
+          </div>
+          {weekDays.map(d => (
+            <div key={d.key}
+                 className="h-[var(--cal-hour-row-h)] bg-[var(--bg-surface-elevated)]
+                            border-y border-l last:border-r border-[var(--cal-gridline)]" />
+          ))}
         </div>
-        {weekDays.map(d => (
-          <div key={d.key}
-               className="h-[var(--cal-hour-row-h)] bg-[var(--bg-surface-elevated)]
-                          border-y border-l last:border-r border-[var(--cal-gridline)]" />
-        ))}
-      </div>
 
-      {/* timed grid */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)]">
+        {/* timed grid */}
+        <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)]">
         {/* rail: NO bottom borders */}
         <div className="flex flex-col border-t border-[var(--cal-gridline)]">
           {times.map(t => (
@@ -232,6 +234,7 @@ export function WeekView({
             )}
           </div>
         ))}
+        </div>
       </div>
     </div>
   );

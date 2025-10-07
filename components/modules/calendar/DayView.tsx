@@ -143,21 +143,23 @@ export function DayView({
 }: Props) {
   return (
     <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
-                    bg-[var(--cal-bg)] overflow-hidden">
+                    bg-[var(--cal-bg)] overflow-hidden h-full flex flex-col">
       {/* header */}
-      <div className="h-[var(--cal-header-h)] grid place-items-center text-[var(--text-lg)] font-semibold">
+      <div className="h-[var(--cal-header-h)] grid place-items-center text-[var(--text-lg)] font-semibold flex-shrink-0">
         {day?.fullLabel || day?.dayLabel || ""}
       </div>
 
-      {/* all-day row */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
-        <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">all day</div>
-        <div className="h-[var(--cal-hour-row-h)] bg-[var(--bg-surface-elevated)]
-                        border-y border-l border-[var(--cal-gridline)]" />
-      </div>
+      {/* scrollable container */}
+      <div className="flex-1 overflow-y-auto">
+        {/* all-day row */}
+        <div className="grid grid-cols-[var(--cal-rail-w)_1fr] sticky top-0 bg-[var(--cal-bg)] z-10">
+          <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">all day</div>
+          <div className="h-[var(--cal-hour-row-h)] bg-[var(--bg-surface-elevated)]
+                          border-y border-l border-[var(--cal-gridline)]" />
+        </div>
 
-      {/* timed grid */}
-      <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
+        {/* timed grid */}
+        <div className="grid grid-cols-[var(--cal-rail-w)_1fr]">
         <div className="flex flex-col border-t border-[var(--cal-gridline)]">
           {times.map(t => (
             <div key={t.key}
@@ -187,6 +189,7 @@ export function DayView({
               <div className="absolute -ml-1 h-2 w-2 rounded-full bg-[var(--cal-now-dot)]" style={{ top: nowPx - 3, left: 0 }} />
             </>
           )}
+        </div>
         </div>
       </div>
     </div>
