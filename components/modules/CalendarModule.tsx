@@ -9,6 +9,7 @@ import { CalendarPopover } from './calendar/CalendarPopover';
 import { NewEventModal } from './calendar/NewEventModal';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
+import { CalendarEvent } from '../calendar/CalendarEvent';
 import { cn } from '../ui/utils';
 
 interface LegacyCalendarEvent {
@@ -279,7 +280,7 @@ export function CalendarModule() {
                       <div
                         key={dayIdx}
                         className={cn(
-                          'p-[var(--space-3)] border-b border-r border-[var(--border-subtle)] align-top',
+                          'border-b border-r border-[var(--border-subtle)] align-top',
                           'hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer',
                           'flex flex-col',
                           day.isCurrentMonth ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-canvas)]'
@@ -287,7 +288,7 @@ export function CalendarModule() {
                         onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day.date))}
                       >
                         {/* Date number */}
-                        <div className="flex items-start mb-1">
+                        <div className="flex items-start mb-1 p-[var(--space-2)]">
                           <span className={cn(
                             'text-[length:var(--text-xs)] text-[color:var(--text-secondary)]',
                             day.isToday && 'inline-flex items-center justify-center min-w-[24px] h-[24px] bg-[var(--primary)] text-white rounded-full font-semibold',
@@ -298,34 +299,32 @@ export function CalendarModule() {
                           </span>
                         </div>
 
-                        {/* Events */}
-                        <div className="flex flex-col gap-1 overflow-hidden">
+                        {/* Events - FULL WIDTH OF CELL - NO HORIZONTAL PADDING */}
+                        <div className="flex flex-col gap-[var(--calendar-event-gap)] pb-[var(--space-1)] overflow-hidden">
                           {day.events.map((event) => {
-                            // Map event color to token classes
-                            const eventColorClass = 
-                              event.color === 'var(--primary)' ? 'bg-[var(--event-blue-bg)] text-[color:var(--event-blue-text)] hover:bg-[var(--event-blue-hover)]' :
-                              event.color === 'var(--info)' ? 'bg-[var(--event-teal-bg)] text-[color:var(--event-teal-text)] hover:bg-[var(--event-teal-hover)]' :
-                              event.color === 'var(--success)' ? 'bg-[var(--event-green-bg)] text-[color:var(--event-green-text)] hover:bg-[var(--event-green-hover)]' :
-                              'bg-[var(--event-orange-bg)] text-[color:var(--event-orange-text)] hover:bg-[var(--event-orange-hover)]';
-                            
-                            const hasTime = event.time && event.time !== 'All day';
+                            // Map legacy color to simple color name
+                            const mapEventColor = (legacyColor: string) => {
+                              const colorMap: Record<string, 'blue' | 'green' | 'teal' | 'orange'> = {
+                                'var(--primary)': 'blue',
+                                'var(--info)': 'teal',
+                                'var(--success)': 'green',
+                                'var(--warning)': 'orange',
+                              };
+                              return colorMap[legacyColor] || 'blue';
+                            };
                             
                             return (
-                              <div
+                              <CalendarEvent
                                 key={event.id}
-                                className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[color:color-mix(in_oklab,var(--accent-coral)_10%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--accent-coral)_15%,transparent)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] truncate cursor-pointer motion-safe:transition-colors duration-[var(--duration-fast)]"
-                                title={`${event.title} - ${event.time}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                                title={event.title}
+                                time={event.time !== 'All day' ? event.time : undefined}
+                                color={mapEventColor(event.color)}
+                                density="compact"
+                                onClick={() => {
                                   setSelectedEvent(event);
                                   setIsEditModalOpen(true);
                                 }}
-                              >
-                                {hasTime && (
-                                  <span className="font-semibold">{event.time}</span>
-                                )}
-                                <span className="truncate">{event.title}</span>
-                              </div>
+                              />
                             );
                           })}
                         </div>

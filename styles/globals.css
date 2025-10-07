@@ -374,6 +374,12 @@
   --calendar-event-radius: var(--radius-md);
   --calendar-rail-shadow: var(--elevation-sm);
   
+  /* Calendar — event layout (shared) */
+  --calendar-event-pad-x: var(--space-3);  /* internal left/right padding */
+  --calendar-event-pad-y: calc(var(--space-2) - 2px); /* top/btm padding */
+  --calendar-event-gap: var(--space-2);    /* gap between stacked events */
+  --calendar-event-focus: color-mix(in oklab, var(--primary) 36%, transparent);
+  
   /* Tasks Rail - Compact spacing system */
   --tasks-rail-padding: var(--space-4);   /* 16px outer padding */
   --tasks-rail-gap: var(--space-4);       /* 16px between sections */
@@ -404,22 +410,22 @@
   --due-today: var(--primary);
   --due-overdue: var(--danger);
   
-  /* Calendar Event Colors - Updated with proper tints and hover states */
-  --event-green-bg: rgb(209, 250, 229); /* emerald-100 */
-  --event-green-text: rgb(4, 120, 87); /* emerald-700 */
-  --event-green-hover: rgb(167, 243, 208); /* emerald-200 */
+  /* Calendar Event Colors - TRUE LOW-INK (5-10% opacity) */
+  --event-green-bg: color-mix(in oklab, rgb(34, 197, 94) 8%, transparent); /* 8% green */
+  --event-green-text: color-mix(in oklab, rgb(34, 197, 94) 85%, transparent); /* 85% green */
+  --event-green-hover: color-mix(in oklab, rgb(34, 197, 94) 12%, transparent); /* 12% green hover */
   
-  --event-blue-bg: rgb(219, 234, 254); /* blue-100 */
-  --event-blue-text: rgb(29, 78, 216); /* blue-700 */
-  --event-blue-hover: rgb(191, 219, 254); /* blue-200 */
+  --event-blue-bg: color-mix(in oklab, rgb(59, 130, 246) 8%, transparent); /* 8% blue */
+  --event-blue-text: color-mix(in oklab, rgb(59, 130, 246) 85%, transparent); /* 85% blue */
+  --event-blue-hover: color-mix(in oklab, rgb(59, 130, 246) 12%, transparent); /* 12% blue hover */
   
-  --event-teal-bg: rgb(204, 251, 241); /* teal-100 */
-  --event-teal-text: rgb(15, 118, 110); /* teal-700 */
-  --event-teal-hover: rgb(153, 246, 228); /* teal-200 */
+  --event-teal-bg: color-mix(in oklab, rgb(20, 184, 166) 8%, transparent); /* 8% teal */
+  --event-teal-text: color-mix(in oklab, rgb(20, 184, 166) 85%, transparent); /* 85% teal */
+  --event-teal-hover: color-mix(in oklab, rgb(20, 184, 166) 12%, transparent); /* 12% teal hover */
   
-  --event-orange-bg: rgb(254, 215, 170); /* orange-100 */
-  --event-orange-text: rgb(194, 65, 12); /* orange-700 */
-  --event-orange-hover: rgb(253, 186, 116); /* orange-200 */
+  --event-orange-bg: color-mix(in oklab, rgb(251, 146, 60) 8%, transparent); /* 8% orange */
+  --event-orange-text: color-mix(in oklab, rgb(251, 146, 60) 85%, transparent); /* 85% orange */
+  --event-orange-hover: color-mix(in oklab, rgb(251, 146, 60) 12%, transparent); /* 12% orange hover */
 
   /* Inline reply */
   --reply-editor-min-h: 160px;

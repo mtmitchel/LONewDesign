@@ -1,4 +1,5 @@
 import React from 'react';
+import { CalendarEvent } from '../../calendar/CalendarEvent';
 import { cn } from '../../ui/utils';
 
 interface CalendarEvent {
@@ -43,33 +44,7 @@ function parseDuration(durationStr: string): number {
   return 0.5; // default 30 minutes
 }
 
-// Get color styles based on event color
-function getEventColors(color: string) {
-  const colorMap: Record<string, { bg: string; text: string; border: string }> = {
-    'var(--primary)': {
-      bg: 'var(--event-blue-bg)',
-      text: 'var(--event-blue-text)',
-      border: 'var(--primary)',
-    },
-    'var(--info)': {
-      bg: 'var(--event-teal-bg)',
-      text: 'var(--event-teal-text)',
-      border: 'rgb(20, 184, 166)',
-    },
-    'var(--success)': {
-      bg: 'var(--event-green-bg)',
-      text: 'var(--event-green-text)',
-      border: 'rgb(34, 197, 94)',
-    },
-    'var(--warning)': {
-      bg: 'var(--event-orange-bg)',
-      text: 'var(--event-orange-text)',
-      border: 'rgb(251, 146, 60)',
-    },
-  };
-  
-  return colorMap[color] || colorMap['var(--primary)'];
-}
+
 
 export function CalendarWeekView({ currentDate, events, onEventClick }: CalendarWeekViewProps) {
   const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -180,23 +155,31 @@ export function CalendarWeekView({ currentDate, events, onEventClick }: Calendar
                 >
                   {/* Events positioned absolutely (only render in first hour to avoid duplicates) */}
                   {hour === 0 && getPositionedEvents(dayIndex).map((event) => {
-                    const colors = getEventColors(event.color);
+                    // Map legacy color to simple color name
+                    const mapEventColor = (legacyColor: string): 'blue' | 'green' | 'teal' | 'orange' => {
+                      const colorMap: Record<string, 'blue' | 'green' | 'teal' | 'orange'> = {
+                        'var(--primary)': 'blue',
+                        'var(--info)': 'teal',
+                        'var(--success)': 'green',
+                        'var(--warning)': 'orange',
+                      };
+                      return colorMap[legacyColor] || 'blue';
+                    };
+                    
                     return (
-                      <div
+                      <CalendarEvent
                         key={event.id}
-                        className="absolute left-[2px] right-[2px] p-[var(--space-1)] px-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] cursor-pointer overflow-hidden text-ellipsis whitespace-nowrap transition-all duration-[var(--duration-fast)] motion-safe:transition-all hover:shadow-[var(--elevation-sm)] hover:z-10"
+                        title={event.title}
+                        time={event.time}
+                        color={mapEventColor(event.color)}
+                        density="compact"
+                        className="absolute left-0 right-0 text-[length:var(--text-xs)] overflow-hidden text-ellipsis whitespace-nowrap hover:shadow-[var(--elevation-sm)] hover:z-10"
                         style={{
                           top: `${event.top}px`,
                           height: `${event.height}px`,
-                          backgroundColor: colors.bg,
-                          color: colors.text,
-                          borderLeft: `2px solid ${colors.border}`,
                         }}
                         onClick={() => onEventClick(event)}
-                        title={`${event.title} - ${event.time}`}
-                      >
-                        {event.title}
-                      </div>
+                      />
                     );
                   })}
                 </div>
