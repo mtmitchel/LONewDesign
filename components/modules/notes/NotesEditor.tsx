@@ -9,9 +9,7 @@ import { Card } from '../../ui/card';
 import type { ToolbarAction } from './types';
 
 interface NotesEditorProps {
-  title: string;
   content: string;
-  onTitleChange: (value: string) => void;
   onContentChange: (value: string) => void;
   onToolbarAction: (action: ToolbarAction) => void;
   isSaving: boolean;
@@ -44,9 +42,7 @@ const slashMenuItems: SlashMenuItem[] = [
 ];
 
 export function NotesEditor({
-  title,
   content,
-  onTitleChange,
   onContentChange,
   onToolbarAction,
   isSaving,
@@ -81,23 +77,7 @@ export function NotesEditor({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-4)] py-[var(--space-3)]">
-        <div className="flex items-center justify-between gap-[var(--space-3)]">
-          <Input
-            value={title}
-            onChange={event => onTitleChange(event.target.value)}
-            placeholder="Untitled note"
-            className="h-auto border-none bg-transparent p-0 text-lg font-semibold text-[var(--text-primary)] focus-visible:ring-0"
-          />
-          <div className="flex items-center gap-[var(--space-2)] text-xs text-[var(--text-secondary)]">
-            {autoSaveEnabled && (
-              <span className="text-[var(--text-tertiary)]">
-                {isSaving ? 'Saving…' : lastSavedLabel ? `Saved ${lastSavedLabel}` : 'Auto-save on'}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
+
 
       <div className="border-b border-[var(--border-subtle)] bg-[var(--bg-surface)]">
         <FormattingToolbar

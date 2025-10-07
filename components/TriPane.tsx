@@ -23,7 +23,7 @@ interface TriPaneProps {
 
 export function TriPane({
   leftWidth = "18rem",
-  rightWidth = "22rem", 
+  rightWidth = "22rem",
   left,
   center,
   right,
@@ -32,12 +32,11 @@ export function TriPane({
   rightHeader,
   hideRightOnMobile = true,
   className
-}: TriPaneProps) {
-  return (
+}: TriPaneProps) {  return (
     <div className={cn("flex h-full bg-[var(--bg-canvas)]", className)}>
       {/* Left Pane */}
       {left && (
-        <div 
+        <div
           className="border-r border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col"
           style={{ width: leftWidth }}
         >
@@ -46,27 +45,25 @@ export function TriPane({
               {leftHeader}
             </div>
           )}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             {left}
           </div>
         </div>
-      )}
-      
-      {/* Center Pane */}
+      )}      {/* Center Pane */}
       <div id="center-pane" className="relative flex-1 flex flex-col min-w-0 overflow-visible">
         {centerHeader && (
           <div className="sticky top-0 z-10 bg-[var(--bg-surface)] border-b border-[var(--border-default)]">
             {centerHeader}
           </div>
         )}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {center}
         </div>
       </div>
       
       {/* Right Pane */}
       {right && (
-        <div 
+        <div
           className={cn(
             "border-l border-[var(--border-default)] bg-[var(--bg-surface)] flex flex-col",
             hideRightOnMobile && "hidden xl:flex"
@@ -78,12 +75,11 @@ export function TriPane({
               {rightHeader}
             </div>
           )}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             {right}
           </div>
         </div>
-      )}
-    </div>
+      )}    </div>
   );
 }
 

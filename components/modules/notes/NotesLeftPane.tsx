@@ -1,153 +1,69 @@
 "use client";
 
 import React, { useMemo } from 'react';
-import { Folder, FolderOpen, Edit, Move, Download, Copy, Trash } from 'lucide-react';
+import { Folder, FolderOpen, Edit, Move, Download, Copy, Trash, Search } from 'lucide-react';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from '../../ui/context-menu';
 import { Badge } from '../../ui/badge';
 import { SearchInput } from '../../extended';
+import { Input } from '../../ui/input';
 import type { NoteFolder } from './types';
 
-type FolderAction = 'rename' | 'move' | 'export-pdf' | 'export-word' | 'export-text' | 'delete';
+
+
+import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
 
 interface NotesLeftPaneProps {
   folders: NoteFolder[];
   selectedFolderId: string | null;
   searchQuery: string;
-  onSearchChange: (value: string) => void;
+  onSearchChange: (query: string) => void;
   onSelectFolder: (folderId: string) => void;
-  onFolderAction?: (folderId: string, action: FolderAction) => void;
+  onHidePane: () => void;
+  className?: string;
 }
 
-interface FolderNode extends NoteFolder {
-  children: FolderNode[];
-}
-
-function buildFolderTree(folders: NoteFolder[]): FolderNode[] {
-  const map = new Map<string, FolderNode>();
-  const roots: FolderNode[] = [];
-
-  folders.forEach(folder => {
-    map.set(folder.id, { ...folder, children: [] });
-  });
-
-  map.forEach(folder => {
-    if (folder.parentId && map.has(folder.parentId)) {
-      map.get(folder.parentId)!.children.push(folder);
-    } else {
-      roots.push(folder);
-    }
-  });
-
-  const sortTree = (nodes: FolderNode[]) => {
-    nodes.sort((a, b) => a.name.localeCompare(b.name));
-    nodes.forEach(node => sortTree(node.children));
-  };
-
-  sortTree(roots);
-  return roots;
-}
-
-export function NotesLeftPane({
-  folders,
-  selectedFolderId,
-  searchQuery,
-  onSearchChange,
-  onSelectFolder,
-  onFolderAction
-}: NotesLeftPaneProps) {
-  const tree = useMemo(() => buildFolderTree(folders), [folders]);
-
-  const renderFolder = (folder: FolderNode, depth: number) => {
-    const paddingLeft = `calc(var(--space-3) + ${depth} * var(--space-3))`;
-    const isActive = folder.id === selectedFolderId;
-
-    const handleAction = (action: FolderAction) => {
-      onFolderAction?.(folder.id, action);
-    };
-
-    return (
-      <React.Fragment key={folder.id}>
-        <ContextMenu>
-          <ContextMenuTrigger asChild>
-            <button
-              type="button"
+export function NotesLeftPane({ folders, selectedFolderId, searchQuery, onSearchChange, onSelectFolder, onHidePane, className }: NotesLeftPaneProps) {
+  return (
+    <div className={`flex h-full flex-col bg-[var(--bg-surface-elevated)] ${className || ''}`}>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-tertiary)]" />
+          <Input
+            type="text"
+            placeholder="Search notes..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="h-9 w-full pl-9 pr-3"
+          />
+        </div>
+        <div className="space-y-1">
+          {folders.map((folder) => (
+            <div
+              key={folder.id}
               onClick={() => onSelectFolder(folder.id)}
-              className={`w-full flex items-center justify-between rounded-[var(--radius-md)] text-left hover:bg-[color-mix(in_oklab,_var(--primary)_12%,_transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)] transition-colors duration-[var(--duration-base)] ${
-                isActive ? 'bg-[color-mix(in_oklab,_var(--primary)_16%,_transparent)] text-[var(--primary)]' : 'text-[var(--text-primary)]'
+              className={`flex items-center justify-between rounded-lg p-2 cursor-pointer transition-colors hover:bg-[var(--bg-surface-hover)] ${
+                selectedFolderId === folder.id ? 'bg-[var(--bg-surface-active)] text-[var(--text-primary)]' : ''
               }`}
-              style={{ paddingLeft }}
             >
-              <span className="flex items-center gap-[var(--space-2)] py-[var(--space-2)]">
-                {isActive ? (
-                  <FolderOpen size={16} className="shrink-0" />
-                ) : (
-                  <Folder size={16} className="shrink-0 text-[var(--text-secondary)]" />
-                )}
-                <span className="text-sm font-medium leading-tight line-clamp-1">{folder.name}</span>
-              </span>
-              <Badge
-                variant="secondary"
-                className="mr-[var(--space-3)] text-[12px] font-normal bg-[color-mix(in_oklab,_var(--chip-label-bg)_60%,_transparent)] text-[var(--text-secondary)]"
-              >
+              <div className="flex items-center gap-2">
+                <Folder size={16} />
+                <span className="text-sm">{folder.name}</span>
+              </div>
+              <Badge variant="secondary" className="text-xs">
                 {folder.noteCount}
               </Badge>
-            </button>
-          </ContextMenuTrigger>
-          <ContextMenuContent className="w-48">
-            <ContextMenuItem onSelect={() => handleAction('rename')}>
-              <Edit size={14} className="mr-[var(--space-2)]" />
-              Rename
-            </ContextMenuItem>
-            <ContextMenuItem onSelect={() => handleAction('move')}>
-              <Move size={14} className="mr-[var(--space-2)]" />
-              Move To
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem onSelect={() => handleAction('export-pdf')}>
-              <Download size={14} className="mr-[var(--space-2)]" />
-              Export as PDF
-            </ContextMenuItem>
-            <ContextMenuItem onSelect={() => handleAction('export-word')}>
-              <Download size={14} className="mr-[var(--space-2)]" />
-              Export as Word
-            </ContextMenuItem>
-            <ContextMenuItem onSelect={() => handleAction('export-text')}>
-              <Copy size={14} className="mr-[var(--space-2)]" />
-              Export as Text
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-            <ContextMenuItem onSelect={() => handleAction('delete')} className="text-[var(--error)]">
-              <Trash size={14} className="mr-[var(--space-2)]" />
-              Delete
-            </ContextMenuItem>
-          </ContextMenuContent>
-        </ContextMenu>
-        {folder.children.length > 0 && (
-          <div className="space-y-[var(--space-1)]">
-            {folder.children.map(child => renderFolder(child, depth + 1))}
-          </div>
-        )}
-      </React.Fragment>
-    );
-  };
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="px-[var(--space-3)] pt-[var(--space-3)]">
-        <SearchInput
-          value={searchQuery}
-          onChange={onSearchChange}
-          placeholder="Search notes"
-          className="[&>div:first-child>input]:h-9"
-        />
-      </div>
-      <div className="mt-[var(--space-2)] flex-1 overflow-y-auto px-[var(--space-2)] pb-[var(--space-4)]">
-        <div className="space-y-[var(--space-1)]">
-          {tree.map(folder => renderFolder(folder, 0))}
+            </div>
+          ))}
         </div>
       </div>
+      <PaneFooter>
+        <PaneCaret
+          direction="left"
+          onClick={onHidePane}
+          tooltipText="Hide sidebar"
+          shortcut="["
+        />
+      </PaneFooter>
     </div>
   );
 }
-
-export type { FolderAction };

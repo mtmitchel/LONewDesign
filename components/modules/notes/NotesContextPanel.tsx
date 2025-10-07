@@ -110,8 +110,9 @@ export function NotesContextPanel({
             </p>
           )}
         </section>
-        )
+        )}
 
+        {(showSections?.tags ?? true) && (
         <section className="space-y-[var(--space-3)]">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-[var(--text-primary)]">Tags</h3>
@@ -152,7 +153,9 @@ export function NotesContextPanel({
             </Button>
           </form>
         </section>
+        )}
 
+        {(showSections?.view ?? true) && (
         <section className="space-y-[var(--space-3)]">
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">View settings</h3>
           <div className="space-y-[var(--space-3)]">
@@ -182,7 +185,9 @@ export function NotesContextPanel({
             />
           </div>
         </section>
+        )}
 
+        {(showSections?.sort ?? true) && (
         <section className="space-y-[var(--space-3)]">
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">Sort notes</h3>
           <div className="grid grid-cols-1 gap-[var(--space-2)]">
@@ -220,7 +225,9 @@ export function NotesContextPanel({
             </div>
           </div>
         </section>
+        )}
 
+        {(showSections?.actions ?? true) && (
         <section className="space-y-[var(--space-3)]">
           <h3 className="text-sm font-semibold text-[var(--text-primary)]">Actions</h3>
           <div className="space-y-[var(--space-2)]">
@@ -253,14 +260,17 @@ export function NotesContextPanel({
             </Button>
           </div>
         </section>
+        )}
       </div>
 
+      {(showSections?.footer ?? true) && (
       <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-[var(--space-4)] py-[var(--space-3)]">
         <div className="flex items-center gap-[var(--space-3)] text-xs text-[var(--text-secondary)]">
           <Sparkles size={16} className="text-[var(--text-tertiary)]" />
           <span>Focus on writing—LibreOllama keeps everything synced and organized.</span>
         </div>
       </div>
+      )}
     </div>
   );
 }
