@@ -122,8 +122,8 @@ function DayTimedEvent({ event, allEvents }: { event: TimedEvent; allEvents: Tim
                  bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]
                  px-[var(--event-pill-px)] py-[var(--event-pill-py)]
                  text-[var(--text-xs)] leading-tight
-                 hover:bg-[var(--cal-hover)] focus-visible:ring-1 ring-[var(--cal-ring)] outline-none"
-      style={{ top: s.top, height: s.height, left: `${s.leftPct}%`, width: `${s.widthPct}%` }}
+                 hover:bg-[var(--primary-tint-5)] focus-visible:ring-1 ring-[var(--cal-ring)] outline-none"
+      style={{ top: s.top, height: s.height, left: `${s.leftPct ?? 0}%`, width: `${s.widthPct ?? 100}%` }}
       title={event.title || event.label}
       role="button"
       tabIndex={0}
@@ -161,8 +161,7 @@ export function DayView({
         <div className="flex flex-col border-t border-[var(--cal-gridline)]">
           {times.map(t => (
             <div key={t.key}
-                 className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)]
-                            border-b last:border-b-0 border-[var(--cal-gridline-subtle)]">
+                 className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)]">
               {t.label}
             </div>
           ))}
@@ -172,7 +171,7 @@ export function DayView({
           {/* hour lines */}
           <div className="pointer-events-none absolute inset-0">
             {times.map(t => (
-              <div key={t.key} className="h-[var(--cal-hour-row-h)] border-b last:border-b-0 border-[var(--cal-gridline-subtle)]" />
+              <div key={t.key} className="h-[var(--cal-hour-row-h)] border-b last:border-b-0 border-[var(--cal-gridline)]" />
             ))}
           </div>
 

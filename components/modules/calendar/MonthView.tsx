@@ -30,10 +30,9 @@ export function MonthView({
 }: Props) {
   return (
     <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
-                    bg-[var(--cal-bg)] overflow-hidden min-h-[var(--calendar-min-h)]
-                    py-[var(--cal-month-vpad)]">
+                    overflow-hidden bg-[var(--cal-bg)] h-full flex flex-col">
       {/* header */}
-      <div className="grid grid-cols-7 h-[var(--cal-header-h)]">
+      <div className="grid grid-cols-7 h-[var(--cal-header-h)] flex-shrink-0">
         {weekdays.map(w => (
           <div key={w}
                className="grid place-items-center text-[var(--text-xs)] font-medium
@@ -44,7 +43,7 @@ export function MonthView({
       </div>
 
       {/* grid */}
-      <div className="grid grid-cols-7">
+      <div className="grid grid-cols-7 grid-rows-6 flex-1">
         {days.map((d, i) => {
           const firstRow = i < 7;
           const lastCol  = (i % 7) === 6;
@@ -55,7 +54,7 @@ export function MonthView({
               aria-pressed={d.isSelected || undefined}
               aria-label={`${d.date.toDateString()}, ${d.events.length} events`}
               className={[
-                "relative h-[var(--cal-cell-min-h)] text-left align-top",
+                "relative min-h-0 text-left align-top",
                 "border-[var(--cal-gridline)] border-b border-r",
                 firstRow && "border-t",
                 lastCol  && "border-r-0",
@@ -72,7 +71,7 @@ export function MonthView({
 
               {/* events: top stack */}
               <div className="mt-[var(--space-6)] px-[var(--space-2)] flex flex-col gap-[var(--event-gap)]">
-                {d.events.map(ev => <EventPill key={ev.id} label={ev.title || ev.label} tone={ev.tone ?? "neutral"} />)}
+                {d.events.map(ev => <EventPill key={ev.id} label={`${ev.time ? ev.time + ' ' : ''}${ev.title || ev.label}`} tone={ev.tone ?? "neutral"} />)}
               </div>
 
               {d.isToday    && <span className="pointer-events-none absolute inset-0 ring-1 ring-[var(--cal-ring-today)]" />}

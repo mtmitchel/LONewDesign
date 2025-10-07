@@ -138,7 +138,8 @@ export function CalendarModule() {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 flex flex-col overflow-hidden p-[var(--space-3)]">
           {viewMode === 'month' && (
-            <MonthView
+            <div className="flex-1 flex flex-col">
+              <MonthView
               days={(() => {
                 // Ensure exactly 42 cells (6 rows × 7 columns) as per spec
                 const cells = engine.monthCells.slice(0, 42);
@@ -176,7 +177,8 @@ export function CalendarModule() {
                 const evt = unifiedEvents.find(e => e.id === id);
                 if (evt) setSelectedEvent(evt);
               }}
-            />
+              />
+            </div>
           )}
           {viewMode === 'week' && (
             <WeekView
