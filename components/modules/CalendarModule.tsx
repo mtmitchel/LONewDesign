@@ -213,28 +213,28 @@ export function CalendarModule() {
             </PopoverContent>
           </Popover>
 
-          {/* View toggle */}
+          {/* View toggle - Segmented control */}
           <ToggleGroup 
             type="single" 
             value={viewMode}
             onValueChange={(value) => value && setViewMode(value as 'month' | 'week' | 'day')}
-            className="border border-[var(--border-default)] rounded-[var(--radius-sm)] p-0.5 bg-[var(--bg-surface)]"
+            className="inline-flex rounded-[var(--radius-pill)] border border-[var(--border-subtle)] p-[2px] bg-[var(--bg-surface)]"
           >
             <ToggleGroupItem 
               value="month"
-              className="h-7 px-3 text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary)] data-[state=on]:text-white rounded-[var(--radius-sm)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+              className="px-[var(--space-3)] h-[32px] rounded-[var(--radius-pill)] text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary-tint-10)] data-[state=on]:text-[var(--primary)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
             >
               Month
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="week"
-              className="h-7 px-3 text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary)] data-[state=on]:text-white rounded-[var(--radius-sm)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+              className="px-[var(--space-3)] h-[32px] rounded-[var(--radius-pill)] text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary-tint-10)] data-[state=on]:text-[var(--primary)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
             >
               Week
             </ToggleGroupItem>
             <ToggleGroupItem 
               value="day"
-              className="h-7 px-3 text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary)] data-[state=on]:text-white rounded-[var(--radius-sm)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+              className="px-[var(--space-3)] h-[32px] rounded-[var(--radius-pill)] text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary-tint-10)] data-[state=on]:text-[var(--primary)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
             >
               Day
             </ToggleGroupItem>
@@ -242,10 +242,10 @@ export function CalendarModule() {
 
           {/* New event button */}
           <Button 
-            className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)]"
+            className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] ml-[var(--space-3)]"
             onClick={() => setIsNewEventModalOpen(true)}
           >
-            <Plus className="h-4 w-4 mr-1.5" />
+            <Plus className="w-4 h-4 mr-1.5" />
             New event
           </Button>
         </div>
@@ -258,13 +258,13 @@ export function CalendarModule() {
           {viewMode === 'month' && (
             <>
               {/* Day Headers - cleaner minimal style */}
-              <div className="grid grid-cols-7 bg-[var(--bg-surface)] border-b border-[var(--border-divider)]">
+              <div className="grid grid-cols-7 bg-[var(--bg-surface)] border-b border-[var(--border-subtle)]">
                 {dayNames.map((day) => (
                   <div 
                     key={day} 
-                    className="h-10 flex items-center justify-center"
+                    className="px-[var(--space-3)] py-[var(--space-2)] flex items-center justify-center"
                   >
-                    <span className="text-[10px] font-semibold text-[color:var(--text-tertiary)] uppercase tracking-wider">
+                    <span className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
                       {day}
                     </span>
                   </div>
@@ -279,8 +279,8 @@ export function CalendarModule() {
                       <div
                         key={dayIdx}
                         className={cn(
-                          'border-r border-b border-[var(--border-divider)] last:border-r-0 p-2',
-                          'hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer',
+                          'p-[var(--space-3)] border-b border-r border-[var(--border-subtle)] align-top',
+                          'hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer',
                           'flex flex-col',
                           day.isCurrentMonth ? 'bg-[var(--bg-surface)]' : 'bg-[var(--bg-canvas)]'
                         )}
@@ -289,7 +289,7 @@ export function CalendarModule() {
                         {/* Date number */}
                         <div className="flex items-start mb-1">
                           <span className={cn(
-                            'text-[13px] font-medium',
+                            'text-[length:var(--text-xs)] text-[color:var(--text-secondary)]',
                             day.isToday && 'inline-flex items-center justify-center min-w-[24px] h-[24px] bg-[var(--primary)] text-white rounded-full font-semibold',
                             !day.isToday && day.isCurrentMonth && 'text-[color:var(--text-primary)]',
                             !day.isCurrentMonth && 'text-[color:var(--text-tertiary)]'
@@ -313,11 +313,7 @@ export function CalendarModule() {
                             return (
                               <div
                                 key={event.id}
-                                className={cn(
-                                  'px-1.5 py-0.5 rounded text-[11px] font-medium truncate cursor-pointer',
-                                  'transition-colors duration-[var(--duration-fast)]',
-                                  eventColorClass
-                                )}
+                                className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[color:color-mix(in_oklab,var(--accent-coral)_10%,transparent)] hover:bg-[color:color-mix(in_oklab,var(--accent-coral)_15%,transparent)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] truncate cursor-pointer motion-safe:transition-colors duration-[var(--duration-fast)]"
                                 title={`${event.title} - ${event.time}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -326,9 +322,9 @@ export function CalendarModule() {
                                 }}
                               >
                                 {hasTime && (
-                                  <span className="font-semibold">{event.time} </span>
+                                  <span className="font-semibold">{event.time}</span>
                                 )}
-                                {event.title}
+                                <span className="truncate">{event.title}</span>
                               </div>
                             );
                           })}

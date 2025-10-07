@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { X, Clock, Repeat, MapPin, FileText } from 'lucide-react';
+import { X, Clock, Repeat, MapPin, FileText, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '../../ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
+import { Calendar } from '../../ui/calendar';
+import { format } from 'date-fns';
 
 interface NewEventModalProps {
   isOpen: boolean;
@@ -12,13 +15,28 @@ interface NewEventModalProps {
 export function NewEventModal({ isOpen, onClose, onSave, defaultDate }: NewEventModalProps) {
   const [title, setTitle] = useState('');
   const [allDay, setAllDay] = useState(false);
-  const [startDate, setStartDate] = useState(defaultDate?.toISOString().split('T')[0] || '');
+  const [startDate, setStartDate] = useState<Date>(defaultDate || new Date());
   const [startTime, setStartTime] = useState('09:00');
-  const [endDate, setEndDate] = useState(defaultDate?.toISOString().split('T')[0] || '');
+  const [endDate, setEndDate] = useState<Date>(defaultDate || new Date());
   const [endTime, setEndTime] = useState('10:00');
   const [repeat, setRepeat] = useState('Does not repeat');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
+
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
+    }
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -26,9 +44,9 @@ export function NewEventModal({ isOpen, onClose, onSave, defaultDate }: NewEvent
     onSave({
       title,
       allDay,
-      startDate,
+      startDate: format(startDate, 'yyyy-MM-dd'),
       startTime,
-      endDate,
+      endDate: format(endDate, 'yyyy-MM-dd'),
       endTime,
       repeat,
       location,
@@ -37,10 +55,23 @@ export function NewEventModal({ isOpen, onClose, onSave, defaultDate }: NewEvent
     onClose();
   };
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 grid place-items-center p-[var(--overlay-gutter)] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)] z-[var(--z-overlay)]">
+    <div 
+      className="fixed inset-0 grid place-items-center p-[var(--overlay-gutter)] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)] z-[var(--z-overlay)]"
+      onClick={handleBackdropClick}
+      onMouseDown={handleBackdropClick}
+    >
       
-      <div className="w-full max-w-[600px] max-h-[var(--modal-max-h)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--modal-radius)] shadow-[var(--modal-elevation)] flex flex-col overflow-hidden">
+      <div 
+        className="w-full max-w-[600px] max-h-[var(--modal-max-h)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--modal-radius)] shadow-[var(--modal-elevation)] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header */}
         <div className="flex items-center justify-between px-[var(--space-4)] py-[var(--space-3)] border-b border-[var(--border-divider)]">
@@ -86,12 +117,34 @@ export function NewEventModal({ isOpen, onClose, onSave, defaultDate }: NewEvent
               </label>
 
               <div className="flex gap-[var(--space-3)]">
-                <input 
-                  type="date" 
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="flex-1 h-10 px-[var(--space-3)] bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[length:var(--text-base)] text-[color:var(--text-primary)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]" 
-                />
+                <Popover modal={false} open={startDateOpen} onOpenChange={setStartDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 h-10 justify-between px-[var(--space-3)] bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] text-[length:var(--text-base)] text-[color:var(--text-primary)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+                    >
+                      <span>{startDate ? format(startDate, 'MMM d, yyyy') : 'Select start date'}</span>
+                      <CalendarIcon className="h-4 w-4 text-[color:var(--text-secondary)]" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[80]" align="start" sideOffset={8}>
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => {
+                        if (!date) return;
+                        setStartDate(date);
+                        if (date > endDate) {
+                          setEndDate(date);
+                        }
+                        setStartDateOpen(false);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
                 {!allDay && (
                   <input 
                     type="time" 
@@ -102,15 +155,34 @@ export function NewEventModal({ isOpen, onClose, onSave, defaultDate }: NewEvent
                 )}
               </div>
 
-              <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)] px-[var(--space-2)]">to</span>
+                            <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)] px-[var(--space-2)]">to</span>
 
               <div className="flex gap-[var(--space-3)]">
-                <input 
-                  type="date" 
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="flex-1 h-10 px-[var(--space-3)] bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[length:var(--text-base)] text-[color:var(--text-primary)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]" 
-                />
+                <Popover modal={false} open={endDateOpen} onOpenChange={setEndDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="lg"
+                      className="flex-1 h-10 justify-between px-[var(--space-3)] bg-[var(--bg-surface-elevated)] border border-[var(--border-default)] text-[length:var(--text-base)] text-[color:var(--text-primary)] motion-safe:transition-all motion-safe:duration-[var(--duration-fast)]"
+                    >
+                      <span>{endDate ? format(endDate, 'MMM d, yyyy') : 'Select end date'}</span>
+                      <CalendarIcon className="h-4 w-4 text-[color:var(--text-secondary)]" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[80]" align="start" sideOffset={8}>
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => {
+                        if (!date) return;
+                        setEndDate(date < startDate ? startDate : date);
+                        setEndDateOpen(false);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
                 {!allDay && (
                   <input 
                     type="time" 

@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Copy,
   EllipsisVertical,
+  Flag,
   MoreHorizontal,
   PanelRight,
   Pencil,
@@ -180,6 +181,9 @@ export function CalendarTasksRail({
   const [composerActive, setComposerActive] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftDueDate, setDraftDueDate] = useState<Date | undefined>(undefined);
+  const [draftPriority, setDraftPriority] = useState<'low' | 'medium' | 'high' | 'none'>('none');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   const [liveMessage, setLiveMessage] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inlineOpen, setInlineOpen] = useState(true);
@@ -307,6 +311,9 @@ export function CalendarTasksRail({
   const resetDraft = () => {
     setDraftTitle('');
     setDraftDueDate(undefined);
+    setDraftPriority('none');
+    setShowDatePicker(false);
+    setShowPriorityPicker(false);
     setComposerActive(false);
   };
 
@@ -338,11 +345,12 @@ export function CalendarTasksRail({
   const handleCreateTask = () => {
     if (!draftTitle.trim()) return;
     const dueDate = draftDueDate ? format(draftDueDate, 'yyyy-MM-dd') : undefined;
+    const priority = draftPriority !== 'none' ? draftPriority : 'none';
     const payload: Partial<Task> = {
       title: draftTitle.trim(),
       status: 'todo',
       listId: 'todo',
-      priority: 'none',
+      priority,
       dueDate,
       isCompleted: false,
       labels: []
@@ -352,7 +360,7 @@ export function CalendarTasksRail({
       title: draftTitle.trim(),
       status: 'todo',
       listId: 'todo',
-      priority: 'none',
+      priority,
       dueDate,
       labels: [],
       isCompleted: false,
@@ -491,11 +499,11 @@ export function CalendarTasksRail({
     <section
       role="region"
       aria-labelledby="tasks-rail-heading"
-      className="flex min-w-0 flex-col gap-[var(--tasks-rail-gap)] rounded-[var(--tasks-rail-radius)] border border-[var(--tasks-rail-border)] bg-[var(--tasks-rail-card-bg)] p-[var(--tasks-rail-padding)] shadow-[var(--tasks-rail-shadow)]"
+      className="flex min-w-0 flex-col rounded-[var(--tasks-rail-radius)] border border-[var(--tasks-rail-border)] bg-[var(--tasks-rail-card-bg)] shadow-[var(--tasks-rail-shadow)]"
     >
       {/* Header - 60px to match calendar header */}
-      <div className="flex h-[var(--calendar-header-h)] items-center justify-between border-b border-[var(--border-subtle)] -mx-[var(--tasks-rail-padding)] -mt-[var(--tasks-rail-padding)] px-[var(--tasks-rail-padding)] mb-[var(--space-4)]">
-        <div className="flex items-center gap-[var(--space-2)]">
+      <div className="flex h-[60px] items-center justify-between border-b border-[var(--border-divider)] px-4">
+        <div className="flex items-center gap-2">
           <h2 id="tasks-rail-heading" className="text-[length:var(--text-base)] font-[var(--font-weight-semibold)] text-[color:var(--text-primary)]">
             Tasks
           </h2>
@@ -503,13 +511,13 @@ export function CalendarTasksRail({
             {tasks.length}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {/* Sort Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="Sort tasks">
+              <button className="p-1 hover:bg-[var(--bg-surface-elevated)] rounded" title="Sort tasks">
                 <ArrowUpDown className="h-4 w-4 text-[color:var(--text-tertiary)]" />
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem
@@ -550,9 +558,9 @@ export function CalendarTasksRail({
           {/* More Options Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" title="More options">
+              <button className="p-1 hover:bg-[var(--bg-surface-elevated)] rounded" title="More options">
                 <MoreHorizontal className="h-4 w-4 text-[color:var(--text-tertiary)]" />
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => console.log('Toggle completed tasks')}>
@@ -570,117 +578,177 @@ export function CalendarTasksRail({
         </div>
       </div>
 
-      {/* Filter */}
-      <Select value={filter} onValueChange={(value) => setFilterValue(value as TaskFilterKey)}>
-        <SelectTrigger className="h-8 w-full border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[length:var(--text-sm)]">
-          <SelectValue placeholder="Filter tasks" />
-        </SelectTrigger>
-        <SelectContent align="end">
-          {filterOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-        {/* Add Task Input */}
-        <div className="flex items-center gap-[var(--space-2)]">
-          <div className="relative flex-1">
-            <Plus className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--text-muted)]" />
-            <Input
-              ref={captureInputRef}
-              value={draftTitle}
-              onChange={(event) => {
-                setDraftTitle(event.target.value);
-                setComposerActive(true);
-              }}
-              onFocus={() => setComposerActive(true)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  handleCreateTask();
-                }
-                if (event.key === 'Escape') {
-                  event.preventDefault();
-                  resetDraft();
-                }
-              }}
-              placeholder="Add task"
-              aria-label="Add task"
-              className="h-9 pl-9 text-[length:var(--text-sm)]"
-            />
-          </div>
-          <Popover open={!!draftDueDate} onOpenChange={(open) => !open && setDraftDueDate(undefined)}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Set due date"
-                aria-keyshortcuts="Ctrl+D"
-                className="h-9 w-9 shrink-0"
-              >
-                <CalendarIcon className="h-4 w-4" />
-                <span className="sr-only">Set due date</span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="p-[var(--space-2)]">
-              <DatePicker
-                mode="single"
-                selected={draftDueDate}
-                onSelect={(date) => setDraftDueDate(date ?? undefined)}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+      {/* Content area with proper spacing */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Filter - reduce top margin */}
+        <div className="px-4 pt-4 pb-3">
+          <Select value={filter} onValueChange={(value) => setFilterValue(value as TaskFilterKey)}>
+            <SelectTrigger className="h-9 w-full border-[var(--border-default)] bg-[var(--bg-surface)] text-[length:var(--text-sm)]">
+              <SelectValue placeholder="Filter tasks" />
+            </SelectTrigger>
+            <SelectContent align="end">
+              {filterOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
-        {(composerActive || draftTitle || draftDueDate) && (
-          <div className="flex items-center gap-[var(--space-2)]">
-            <Button
-              size="sm"
-              onClick={handleCreateTask}
-              className="h-8 text-[length:var(--text-sm)]"
-              aria-keyshortcuts="Enter"
-            >
-              Add task
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={resetDraft}
-              aria-keyshortcuts="Escape"
-              className="h-8"
-            >
-              Cancel
-            </Button>
-          </div>
+        {/* Add Task Input - reduce margins */}
+        <div className="px-4 pb-2">
+        {!composerActive && !draftTitle && !draftDueDate && draftPriority === 'none' ? (
+          <button
+            onClick={() => setComposerActive(true)}
+            className="w-full bg-white rounded-[var(--radius-sm)] border border-[var(--border-subtle)] shadow-[var(--elevation-sm)] p-3 text-left hover:shadow-[var(--elevation-md)] motion-safe:transition-shadow duration-[var(--duration-fast)]"
+          >
+            <div className="flex items-center gap-3">
+              <Plus className="w-4 h-4 text-[color:var(--text-tertiary)]" />
+              <span className="text-[length:var(--text-sm)] text-[var(--text-tertiary)]">Add task</span>
+            </div>
+          </button>
+        ) : (
+          <div className="bg-white rounded-[var(--radius-sm)] border-2 border-[var(--primary)] shadow-[var(--elevation-sm)] p-3">
+              <div className="flex items-start gap-3">
+                {/* Empty checkbox */}
+                <div className="w-4 h-4 mt-0.5 rounded border border-[var(--border-default)] bg-[var(--bg-surface)]"></div>
+                
+                {/* Input */}
+                <div className="flex-1">
+                  <Input
+                    ref={captureInputRef}
+                    value={draftTitle}
+                    onChange={(event) => {
+                      setDraftTitle(event.target.value);
+                      setComposerActive(true);
+                    }}
+                    onFocus={() => setComposerActive(true)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        handleCreateTask();
+                      }
+                      if (event.key === 'Escape') {
+                        event.preventDefault();
+                        resetDraft();
+                      }
+                    }}
+                    placeholder="Write a task name"
+                    aria-label="Add task"
+                    className="w-full h-auto px-0 border-0 text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              
+              {/* Action buttons */}
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-[var(--border-divider)]">
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleCreateTask}
+                    className="h-auto py-1 text-[length:var(--text-xs)] font-[var(--font-weight-medium)]"
+                    aria-keyshortcuts="Enter"
+                  >
+                    Add task
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={resetDraft}
+                    aria-keyshortcuts="Escape"
+                    className="h-auto py-1 text-[length:var(--text-xs)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={`p-1 hover:bg-[var(--bg-surface-elevated)] rounded ${
+                          draftDueDate ? 'text-[var(--text-primary)] bg-[var(--bg-surface-elevated)]' : 'text-[var(--text-tertiary)]'
+                        }`}
+                        title="Set due date"
+                        aria-keyshortcuts="Ctrl+D"
+                      >
+                        <CalendarIcon className="w-4 h-4" />
+                        <span className="sr-only">Set due date</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="p-[var(--space-2)]">
+                      <DatePicker
+                        mode="single"
+                        selected={draftDueDate}
+                        onSelect={(date) => {
+                          setDraftDueDate(date ?? undefined);
+                          setShowDatePicker(false);
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Popover open={showPriorityPicker} onOpenChange={setShowPriorityPicker}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={`p-1 hover:bg-[var(--bg-surface-elevated)] rounded ${
+                          draftPriority !== 'none' ? 'text-[var(--text-primary)] bg-[var(--bg-surface-elevated)]' : 'text-[var(--text-tertiary)]'
+                        }`}
+                        title="Set priority"
+                      >
+                        <Flag className="w-4 h-4" />
+                        <span className="sr-only">Set priority</span>
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-48 p-1.5">
+                      <div className="flex flex-col gap-0.5">
+                        {(['high', 'medium', 'low', 'none'] as const).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => {
+                              setDraftPriority(p);
+                              setShowPriorityPicker(false);
+                            }}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] capitalize hover:bg-[var(--bg-surface-elevated)] text-left ${
+                              draftPriority === p ? 'bg-[var(--bg-surface-elevated)]' : ''
+                            }`}
+                          >
+                            {p === 'high' && <span className="inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] bg-red-500 text-white">High</span>}
+                            {p === 'medium' && <span className="inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] bg-orange-500 text-white">Medium</span>}
+                            {p === 'low' && <span className="inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] bg-blue-500 text-white">Low</span>}
+                            {p === 'none' && <span>No priority</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+            </div>
         )}
+        </div>
 
-      {/* Stats Row */}
-      <div className="flex items-center justify-between text-[length:var(--text-xs)] text-[color:var(--text-secondary)]">
-        <span>{filteredTasks.length} tasks</span>
-        {completedCount > 0 && (
-          <span>{completedCount} completed</span>
-        )}
-      </div>
-
-      {/* Task List */}
-      <div className="-mx-[var(--tasks-rail-padding)] -mb-[var(--tasks-rail-padding)]">
-        <div
-          ref={listViewportRef}
-          className="max-h-[calc(100dvh-320px)] overflow-y-auto"
-          role="presentation"
-        >
-          {loading ? (
-            renderSkeleton()
-          ) : filteredTasks.length === 0 ? (
-            renderEmptyState()
-          ) : (
-            <ul
-              role="list"
-              className="divide-y divide-[var(--border-subtle)]"
-            >
+        {/* Task List - tighter card spacing */}
+        <div className="px-4 pb-4">
+          <div
+            ref={listViewportRef}
+            className="max-h-[calc(100dvh-320px)] overflow-y-auto"
+            role="presentation"
+          >
+            {loading ? (
+              renderSkeleton()
+            ) : filteredTasks.length === 0 ? (
+              renderEmptyState()
+            ) : (
+              <ul
+                role="list"
+                className="space-y-1.5"
+              >
               {filteredTasks.map((task, index) => {
                 return (
                   <TaskRow
@@ -704,6 +772,7 @@ export function CalendarTasksRail({
 
       <div aria-live="polite" className="sr-only">
         {liveMessage}
+      </div>
       </div>
     </section>
   );
@@ -810,59 +879,64 @@ function TaskRow({
       <div
         ref={registerRef}
         tabIndex={0}
+        draggable="true"
         className={cn(
-          'group grid grid-cols-[var(--control-sm)_1fr_auto] items-center gap-[var(--task-row-gap)] px-[var(--space-3)] min-h-[var(--task-row-h-1)] py-[var(--task-row-pad-y)] motion-safe:transition-colors',
-          'hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--primary)]',
+          'group bg-white rounded-[var(--radius-sm)] border border-[var(--border-subtle)] shadow-[var(--elevation-sm)] p-3 cursor-grab active:cursor-grabbing hover:shadow-[var(--elevation-md)] motion-safe:transition-shadow duration-[var(--duration-fast)]',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
           task.isCompleted && 'opacity-60'
         )}
         onKeyDown={onKeyDown}
       >
-        {/* Column 1: Checkbox */}
-        <Checkbox
-          checked={task.isCompleted}
-          onCheckedChange={onToggle}
-          aria-label={task.isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
-          className="h-[var(--control-sm)] w-[var(--control-sm)] place-self-center"
-        />
-
-        {/* Column 2: Title + Inline Metadata */}
-        <div className="flex min-w-0 items-center gap-[var(--task-badge-gap)]">
-          {editing ? (
-            <Input
-              value={titleDraft}
-              onChange={(event) => setTitleDraft(event.target.value)}
-              onBlur={commitTitle}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') commitTitle();
-                if (event.key === 'Escape') {
-                  setTitleDraft(task.title);
-                  setEditing(false);
-                }
-              }}
-              className="h-7 text-[length:var(--text-sm)]"
-              autoFocus
-            />
-          ) : (
-            <>
-              <button
-                type="button"
-                className={cn(
-                  'truncate text-left text-sm leading-[var(--text-sm-line)] text-[color:var(--text-primary)]',
-                  task.isCompleted && 'line-through opacity-60'
-                )}
-                title={task.title}
-                onClick={() => setEditing(true)}
-              >
-                {task.title}
-              </button>
-
-              {/* Inline metadata */}
-              <div className="flex shrink-0 items-center gap-[var(--task-row-gap)] text-xs leading-[var(--text-sm-line)]">
+        <div className="flex items-start gap-3">
+          {/* Checkbox */}
+          <Checkbox
+            checked={task.isCompleted}
+            onCheckedChange={onToggle}
+            aria-label={task.isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
+            className="w-4 h-4 mt-0.5 rounded border border-[var(--border-default)] text-[var(--primary)]"
+          />
+          
+          {/* Task content */}
+          <div className="flex-1 min-w-0">
+            {editing ? (
+              <Input
+                value={titleDraft}
+                onChange={(event) => setTitleDraft(event.target.value)}
+                onBlur={commitTitle}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') commitTitle();
+                  if (event.key === 'Escape') {
+                    setTitleDraft(task.title);
+                    setEditing(false);
+                  }
+                }}
+                className="h-7 text-[length:var(--text-sm)]"
+                autoFocus
+              />
+            ) : (
+              <>
+                {/* Task name */}
+                <button
+                  type="button"
+                  className={cn(
+                    'text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-primary)] text-left w-full truncate',
+                    task.isCompleted && 'line-through opacity-60'
+                  )}
+                  title={task.title}
+                  onClick={() => setEditing(true)}
+                >
+                  {task.title}
+                </button>
+                
+                {/* Date - if exists */}
                 {task.dueDate && (
                   <Popover open={dueOpen} onOpenChange={setDueOpen}>
                     <PopoverTrigger asChild>
-                      <button type="button" aria-label="Change due date">
-                        <DueChip isoDate={task.dueDate} isCompleted={task.isCompleted} />
+                      <button type="button" className="flex items-center gap-1 mt-1" aria-label="Change due date">
+                        <CalendarIcon className="w-3 h-3 text-[var(--text-tertiary)]" />
+                        <span className="text-[length:var(--text-xs)] text-[var(--text-secondary)]">
+                          {format(parseDueDate(task.dueDate) ?? new Date(), 'MMM d')}
+                        </span>
                       </button>
                     </PopoverTrigger>
                     <PopoverContent align="start" className="p-[var(--space-2)]">
@@ -878,49 +952,44 @@ function TaskRow({
                     </PopoverContent>
                   </Popover>
                 )}
-                {task.labels?.length ? (
-                  <span className="rounded-[var(--radius-sm)] bg-[var(--bg-muted)] px-[var(--space-2)] py-[calc(var(--space-1)/2)] text-[color:var(--text-muted)] capitalize">
-                    {task.labels[0]}
-                  </span>
-                ) : null}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Column 3: Actions */}
-        <div className="flex shrink-0 items-center gap-[var(--space-1)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 motion-safe:transition">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button type="button" title="More options" className="grid place-items-center h-[var(--control-sm)] w-[var(--control-sm)] text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]">
-                <EllipsisVertical className="h-[var(--icon-sm)] w-[var(--icon-sm)]" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onToggle}>
-                <CheckCircle2 className="mr-[var(--space-2)] h-4 w-4" />
-                {task.isCompleted ? 'Reopen' : 'Mark as complete'}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => onDueChange(startOfDay(new Date()))}
-              >
-                <CalendarIcon className="mr-[var(--space-2)] h-4 w-4" />
-                Set to today
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDuplicate} aria-keyshortcuts="Ctrl+D Meta+D">
-                <Copy className="mr-[var(--space-2)] h-4 w-4" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setEditing(true)}>
-                <Pencil className="mr-[var(--space-2)] h-4 w-4" />
-                Edit title
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDelete} className="text-[color:var(--task-danger)]" aria-keyshortcuts="Ctrl+Backspace Meta+Backspace">
-                <Trash2 className="mr-[var(--space-2)] h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </>
+            )}
+          </div>
+          
+          {/* Actions - hidden by default, shown on hover */}
+          <div className="opacity-0 group-hover:opacity-100 motion-safe:transition-opacity duration-[var(--duration-fast)]">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" title="More options" className="grid place-items-center h-5 w-5 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]">
+                  <EllipsisVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onToggle}>
+                  <CheckCircle2 className="mr-[var(--space-2)] h-4 w-4" />
+                  {task.isCompleted ? 'Reopen' : 'Mark as complete'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onDueChange(startOfDay(new Date()))}
+                >
+                  <CalendarIcon className="mr-[var(--space-2)] h-4 w-4" />
+                  Set to today
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onDuplicate} aria-keyshortcuts="Ctrl+D Meta+D">
+                  <Copy className="mr-[var(--space-2)] h-4 w-4" />
+                  Duplicate
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setEditing(true)}>
+                  <Pencil className="mr-[var(--space-2)] h-4 w-4" />
+                  Edit title
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onDelete} className="text-[color:var(--task-danger)]" aria-keyshortcuts="Ctrl+Backspace Meta+Backspace">
+                  <Trash2 className="mr-[var(--space-2)] h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
     </li>
