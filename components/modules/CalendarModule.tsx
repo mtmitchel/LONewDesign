@@ -5,8 +5,7 @@ import { CalendarTasksRail } from './calendar/CalendarTasksRail';
 import { EventModalModern } from './calendar/EventModalModern';
 import { CalendarPopover } from './calendar/CalendarPopover';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { ToggleGroup, ToggleGroupItem } from '../ui/toggle-group';
-import { cn } from '../ui/utils';
+import { SegmentedToggle } from '../controls/SegmentedToggle';
 
 // Unified calendar engine and views
 import { useCalendarEngine, formatRangeLabel, navigate } from './calendar/useCalendarEngine';
@@ -267,16 +266,19 @@ export function CalendarModule() {
               <CalendarPopover selectedDate={currentDate} onDateSelect={(date) => setCurrentDate(date)} />
             </PopoverContent>
           </Popover>
-          <ToggleGroup
-            type="single"
+          <SegmentedToggle
+            id="calendar-view-toggle"
+            ariaLabel="Select calendar view"
+            surface="calendar"
             value={viewMode}
-            onValueChange={(v) => v && setViewMode(v as CalendarView)}
-            className="inline-flex rounded-[var(--radius-pill)] border border-[var(--border-subtle)] p-[2px] bg-[var(--bg-surface)]"
-          >
-            <ToggleGroupItem value="month" className="px-[var(--space-3)] h-[32px] rounded-[var(--radius-pill)] text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary-tint-10)] data-[state=on]:text-[var(--primary)]">Month</ToggleGroupItem>
-            <ToggleGroupItem value="week" className="px-[var(--space-3)] h-[32px] rounded-[var(--radius-pill)] text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary-tint-10)] data-[state=on]:text-[var(--primary)]">Week</ToggleGroupItem>
-            <ToggleGroupItem value="day" className="px-[var(--space-3)] h-[32px] rounded-[var(--radius-pill)] text-[length:var(--text-sm)] font-medium data-[state=on]:bg-[var(--primary-tint-10)] data-[state=on]:text-[var(--primary)]">Day</ToggleGroupItem>
-          </ToggleGroup>
+            onChange={(next) => setViewMode(next as CalendarView)}
+            options={[
+              { value: 'month', label: 'Month', ariaKeyShortcuts: 'Alt+M' },
+              { value: 'week', label: 'Week', ariaKeyShortcuts: 'Alt+W' },
+              { value: 'day', label: 'Day', ariaKeyShortcuts: 'Alt+D' },
+            ]}
+            dense
+          />
           <Button className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] ml-[var(--space-3)]" onClick={() => setModalState({ mode: 'create', isOpen: true })}>
             <Plus className="w-4 h-4 mr-1.5" />
             New event
@@ -285,7 +287,7 @@ export function CalendarModule() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 flex flex-col overflow-hidden p-[var(--space-3)]">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {viewMode === 'month' && (
             <div className="flex-1 flex flex-col">
               <MonthView

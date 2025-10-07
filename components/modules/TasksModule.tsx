@@ -35,7 +35,7 @@ import { TaskCard } from './tasks/TaskCard';
 import { TaskComposer } from './tasks/TaskComposer';
 import { TaskSidePanel } from './tasks/TaskSidePanel';
 import { QuickTaskModal } from '../extended/QuickTaskModal';
-import { SegmentedViewToggle } from './tasks/SegmentedViewToggle';
+import { SegmentedToggle } from '../controls/SegmentedToggle';
 import { TASK_LISTS } from './tasks/constants';
 
 type TaskLabel = string | { name: string; color: string };
@@ -572,9 +572,29 @@ export function TasksModule() {
     <div className="h-full flex flex-col bg-[var(--bg-default)] text-[var(--text-primary)]">
       <header className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
-          <SegmentedViewToggle
+          <SegmentedToggle
+            id="tasks-view-toggle"
+            ariaLabel="Switch task view"
+            surface="tasks"
             value={viewMode}
-            onChange={setViewMode}
+            onChange={(next) => setViewMode(next as typeof viewMode)}
+            options={[
+              {
+                value: 'board',
+                label: 'Board',
+                icon: KanbanSquare,
+                title: 'Switch to board view',
+                ariaKeyShortcuts: 'Alt+B',
+              },
+              {
+                value: 'list',
+                label: 'List',
+                icon: List,
+                title: 'Switch to list view',
+                ariaKeyShortcuts: 'Alt+L',
+              },
+            ]}
+            dense
           />
           <h1 className="text-lg font-semibold">Tasks</h1>
         </div>

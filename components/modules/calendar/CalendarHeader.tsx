@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '../../ui/button';
-import { ToggleGroup, ToggleGroupItem } from '../../ui/toggle-group';
+import { SegmentedToggle } from '../../controls/SegmentedToggle';
 import type { CalendarView } from './types';
 import { formatRangeLabel } from './useCalendarEngine';
 
@@ -69,13 +69,19 @@ export function CalendarHeader({ view, date, onViewChange, onNavigate, onToday, 
       </div>
 
       <div className="flex items-center gap-[var(--space-3)]">
-        <ToggleGroup type="single" value={view} onValueChange={(value) => value && onViewChange(value as CalendarView)} aria-label="Select calendar view">
-          {VIEWS.map((option) => (
-            <ToggleGroupItem key={option} value={option} className="capitalize">
-              {option}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        <SegmentedToggle
+          id="calendar-view-toggle-inline"
+          ariaLabel="Select calendar view"
+          surface="calendar"
+          value={view}
+          onChange={(next) => onViewChange(next as CalendarView)}
+          options={VIEWS.map(option => ({
+            value: option,
+            label: option.charAt(0).toUpperCase() + option.slice(1),
+            title: `Switch to ${option} view`,
+          }))}
+          dense
+        />
         <Button className="bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]" onClick={onNew} title="New event" aria-keyshortcuts="N">
           <Plus size={16} className="mr-2" />
           New event

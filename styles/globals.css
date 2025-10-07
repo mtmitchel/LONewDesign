@@ -184,6 +184,15 @@
   --list-header-title: var(--list-header-title--comfortable);
 
   /* Segmented control */
+  --control-bg: var(--bg-surface-elevated);
+  --control-segment-bg: var(--bg-surface);
+  --control-segment-selected: var(--primary-tint-10);
+  --control-text: var(--text-primary);
+  --control-text-muted: var(--text-secondary);
+  --control-border: var(--border-subtle);
+  --control-ring: var(--focus-ring);
+  --duration-quick: var(--duration-fast);
+
   --seg-bg: var(--bg-muted);
   --seg-border: var(--border-subtle);
   --seg-radius: var(--radius-lg);
@@ -370,7 +379,7 @@
   --calendar-cell-min-h: 112px;
   --calendar-hour-row-h: 56px;
   /* Frame & layout */
-  --cal-frame-radius: var(--radius-lg);
+  --cal-frame-radius: 0px;
   --cal-frame-border: var(--border-subtle);
   --cal-bg: var(--bg-surface);
   --cal-header-h: 48px;               /* weekday row */
@@ -516,8 +525,8 @@
   --calendar-event-focus: color-mix(in oklab, var(--primary) 36%, transparent);
   
   /* Calendar containers */
-  --calendar-month-cell-pad-x: var(--space-2);
-  --calendar-month-cell-pad-y: var(--space-2);
+  --calendar-month-cell-pad-x: var(--space-3);
+  --calendar-month-cell-pad-y: var(--space-3);
   --calendar-week-column-pad-x: 0;          /* full stretch */
   --calendar-day-column-pad-x: 0;           /* full stretch */
 
@@ -554,7 +563,7 @@
   --tasks-rail-gap: var(--space-4);       /* 16px between sections */
   --tasks-rail-card-bg: var(--bg-surface);
   --tasks-rail-border: var(--border-subtle);
-  --tasks-rail-radius: var(--radius-lg);
+  --tasks-rail-radius: 0px;
   --tasks-rail-shadow: var(--elevation-sm);
   
   /* Controls & Type - Baseline Alignment */

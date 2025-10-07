@@ -66,19 +66,20 @@ export function MonthView({
                 "border-[var(--cal-gridline)] border-b border-r",
                 firstRow && "border-t",
                 lastCol  && "border-r-0",
+                "px-[var(--calendar-month-cell-pad-x)] py-[var(--calendar-month-cell-pad-y)]",
                 "hover:bg-[var(--cal-hover)] focus-visible:ring-1 ring-[var(--cal-ring)] focus:outline-none",
                 d.isOutside ? "opacity-[var(--cal-outside-ink)] cursor-default" : "cursor-pointer",
               ].join(" ")}
               onClick={() => !d.isOutside && onSelectDay?.(d.date)}
               disabled={d.isOutside}
             >
-              <span className="absolute top-[var(--space-2)] left-[var(--space-2)]
-                               text-[var(--text-xs)] font-medium text-[var(--cal-daynum-ink)]">
+              <span className="absolute top-[var(--calendar-month-cell-pad-y)] left-[var(--calendar-month-cell-pad-x)]
+                               text-[length:var(--text-xs)] font-medium text-[color:var(--cal-daynum-ink)]">
                 {d.dayNumber}
               </span>
 
               {/* events: top stack - positioned below day number */}
-              <div className="absolute inset-x-0 top-[calc(var(--space-2)+1.5rem)] flex flex-col gap-[var(--event-gap)]">
+              <div className="absolute left-[var(--calendar-month-cell-pad-x)] right-[var(--calendar-month-cell-pad-x)] top-[calc(var(--calendar-month-cell-pad-y)+1.5rem)] flex flex-col gap-[var(--event-gap)]">
                 {d.events.map(ev => (
                   <EventPreviewPopover
                     key={ev.id}
