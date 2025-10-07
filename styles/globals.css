@@ -198,11 +198,16 @@
   --seg-item-icon: 16px;
   --seg-item-gap: var(--space-2);
 
-  --seg-item-fg: var(--text-secondary);
-  --seg-item-fg-active: var(--text-primary);
+  --seg-thumb-bg: var(--bg-surface);
+  --seg-thumb-border: var(--border-default);
+  --seg-fg: var(--text-secondary);
+  --seg-fg-active: var(--text-primary);
+
+  --seg-item-fg: var(--seg-fg);
+  --seg-item-fg-active: var(--seg-fg-active);
   --seg-item-bg-hover: color-mix(in oklab, var(--text-secondary) 8%, transparent);
-  --seg-item-bg-active: var(--bg-surface);
-  --seg-item-border-active: var(--border-subtle);
+  --seg-item-bg-active: var(--seg-thumb-bg);
+  --seg-item-border-active: var(--seg-thumb-border);
 
   --seg-focus-ring: var(--focus-ring);
   --seg-duration: var(--duration-fast);
@@ -274,7 +279,16 @@
   --chip-radius: var(--radius-full);
   --chip-text: var(--text-secondary);
   --chip-border: var(--border-subtle);
-  --chip-inset-shadow: inset 0 0 0 1px var(--chip-border);
+  --chip-inset-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chip-border) 45%, transparent);
+  
+  /* Guard: if bg ≈ surface, add a faint outline using the chip's own hue */
+  --chip-outline-alpha: 32%;  /* stronger for edge definition on warm canvas */
+  
+  /* Per-priority hue-matched strokes for low-ink chips */
+  --chip-high-stroke: color-mix(in oklab, var(--priority-high) var(--chip-outline-alpha), transparent);
+  --chip-medium-stroke: color-mix(in oklab, var(--priority-medium) var(--chip-outline-alpha), transparent);
+  --chip-low-stroke: color-mix(in oklab, var(--priority-low) var(--chip-outline-alpha), transparent);
+  --chip-label-stroke: color-mix(in oklab, var(--label-neutral) var(--chip-outline-alpha), transparent);
   --chip-shadow: none;           /* legacy alias */
   --chip-hover-bg-boost: 6%;
 
@@ -284,35 +298,57 @@
   --priority-low: var(--info);
   --label-neutral: var(--accent);
 
-  /* Low-ink chip tints (unified for board + list) */
+  /* Low-ink chip tints (unified for board + list) - keep subtle fills, rely on strokes for definition */
   --chip-high-bg: color-mix(in oklab, var(--priority-high) 14%, transparent);
-  --chip-high-fg: color-mix(in oklab, var(--priority-high) 55%, var(--chip-text));
+  --chip-high-fg: color-mix(in oklab, var(--priority-high) 58%, var(--chip-text));
   --chip-high-text: var(--accent-coral);  /* legacy alias */
 
   /* Medium uses warning hue */
   --chip-medium-bg: color-mix(in oklab, var(--priority-medium) 16%, transparent);
-  --chip-medium-fg: color-mix(in oklab, var(--priority-medium) 52%, var(--chip-text));
+  --chip-medium-fg: color-mix(in oklab, var(--priority-medium) 56%, var(--chip-text));
   --chip-medium-text: var(--warning);  /* legacy alias */
 
   /* Low uses info blue (matches event-blue) */
   --chip-low-bg: color-mix(in oklab, var(--priority-low) 16%, transparent);
-  --chip-low-fg: color-mix(in oklab, var(--priority-low) 52%, var(--chip-text));
+  --chip-low-fg: color-mix(in oklab, var(--priority-low) 56%, var(--chip-text));
   --chip-low-text: var(--info);  /* legacy alias */
 
   /* Label chips */
   --chip-label-bg: color-mix(in oklab, var(--label-neutral) 14%, transparent);
-  --chip-label-fg: color-mix(in oklab, var(--label-neutral) 60%, var(--text-secondary));
+  --chip-label-fg: color-mix(in oklab, var(--label-neutral) 62%, var(--text-secondary));
 
   /* Neutral / no priority */
   --chip-neutral-bg: var(--bg-surface-elevated);
   --chip-neutral-text: var(--text-secondary);
 
-  /* List view density (compact) */
-  --list-row-pad-y: var(--space-2);   /* 8px vertical */
-  --list-row-pad-x: var(--space-3);   /* 12px horizontal */
+  /* List row density presets */
+  --list-row-pad-y--comfortable: var(--space-3);          /* 12px */
+  --list-row-pad-y--cozy:        var(--space-2-5, 10px);  /* fallback token */
+  --list-row-pad-y--compact:     var(--space-2);
+
+  --list-row-pad-x--comfortable: var(--space-4);          /* 16px */
+  --list-row-pad-x--cozy:        var(--space-3);
+  --list-row-pad-x--compact:     var(--space-3);
+
+  --list-row-font--comfortable: var(--text-base);
+  --list-row-font--cozy:        0.9375rem; /* 15 */
+  --list-row-font--compact:     0.875rem;  /* 14 */
+
+  --list-row-meta--comfortable: var(--text-sm);
+  --list-row-meta--cozy:        0.8125rem; /* 13 */
+  --list-row-meta--compact:     0.8125rem;
+
+  --list-row-min-h--comfortable: 44px;
+  --list-row-min-h--cozy:        40px;
+  --list-row-min-h--compact:     36px;
+
+  /* Live map (default to comfortable for list view) */
+  --list-row-pad-y: var(--list-row-pad-y--comfortable);
+  --list-row-pad-x: var(--list-row-pad-x--comfortable);
+  --list-row-font:  var(--list-row-font--comfortable);
+  --list-row-meta:  var(--list-row-meta--comfortable);
+  --list-row-min-h: var(--list-row-min-h--comfortable);
   --list-row-gap: var(--space-3);     /* 12px column gap */
-  --list-row-font: 0.9375rem;         /* 15px - task name */
-  --list-row-meta: 0.8125rem;         /* 13px - due date, etc */
 
   /* Priority neutral dot (no container, just indicator) */
   --priority-dot-size: 10px;

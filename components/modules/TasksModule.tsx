@@ -38,6 +38,8 @@ import { QuickTaskModal } from '../extended/QuickTaskModal';
 import { SegmentedViewToggle } from './tasks/SegmentedViewToggle';
 import { TASK_LISTS } from './tasks/constants';
 
+type TaskLabel = string | { name: string; color: string };
+
 interface Task {
   id: string;
   title: string;
@@ -48,9 +50,12 @@ interface Task {
   dateCreated: string;
   completedAt?: string | null;
   order?: number;
-  labels: string[];
+  labels: TaskLabel[];
   isCompleted: boolean;
 }
+
+const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
+const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--accent)' : label.color;
 
 const mockTasks: Task[] = [
   { id: '1', title: 'Dump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-01' },
@@ -117,13 +122,15 @@ export function TasksModule() {
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLabels = selectedLabels.length === 0 || 
-      task.labels.some(label => selectedLabels.includes(label));
+      task.labels.some(label => selectedLabels.includes(getLabelName(label)));
     const matchesList = selectedList === null || task.status === selectedList;
     return matchesSearch && matchesLabels && matchesList;
   });
 
   // Get all unique labels from tasks
-  const allLabels = Array.from(new Set(tasks.flatMap(task => task.labels))).sort();
+  const allLabels = Array.from(new Set(
+    tasks.flatMap(task => task.labels.map(getLabelName))
+  )).sort();
 
   const toggleLabelFilter = (label: string) => {
     setSelectedLabels(prev => 
@@ -349,7 +356,7 @@ export function TasksModule() {
         {/* Table header */}
         <div 
           className="grid items-center px-[var(--list-row-pad-x)] py-[var(--space-2)] border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
-          style={{ gridTemplateColumns: "28px 1fr 160px 140px 1fr", columnGap: "var(--list-row-gap)" }}
+          style={{ gridTemplateColumns: "28px minmax(240px, 1.5fr) 140px 110px minmax(180px, 1fr)", columnGap: "var(--list-row-gap)" }}
         >
           <div></div> {/* checkbox column */}
           <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Task name</div>
@@ -374,7 +381,13 @@ export function TasksModule() {
                     <ContextMenuTrigger>
                       <div 
                         className="grid items-center border-b border-[var(--border-divider)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
-                        style={{ gridTemplateColumns: "28px 1fr 160px 140px 1fr", columnGap: "var(--list-row-gap)" }}
+                        style={{
+                          gridTemplateColumns: "28px minmax(240px, 1.5fr) 140px 110px minmax(180px, 1fr)", 
+                          columnGap: "var(--list-row-gap)",
+                          minHeight: "var(--list-row-min-h)",
+                          paddingLeft: "var(--list-row-pad-x)",
+                          paddingRight: "var(--list-row-pad-x)",
+                        }}
                         onClick={() => setSelectedTask(task)}
                       >
                         {/* Checkbox cell */}
@@ -405,7 +418,7 @@ export function TasksModule() {
                         </div>
 
                         {/* Task name cell */}
-                        <div className="py-[var(--list-row-pad-y)] px-[var(--list-row-pad-x)]">
+                        <div className="py-[var(--list-row-pad-y)]">
                           <span className={`text-[length:var(--list-row-font)] font-[var(--font-weight-medium)] ${task.isCompleted ? 'line-through text-[var(--text-tertiary)] opacity-60' : 'text-[var(--text-primary)]'}`}>
                             {task.title}
                           </span>
@@ -417,7 +430,7 @@ export function TasksModule() {
                         </div>
 
                         {/* Priority cell */}
-                        <div className="py-[var(--list-row-pad-y)]">
+                        <div className="py-[var(--list-row-pad-y)] text-[length:var(--list-row-meta)]">
                           {task.priority !== 'none' ? (
                             <Badge variant="soft" size="sm" tone={task.priority as 'high' | 'medium' | 'low'}>
                               {task.priority[0].toUpperCase() + task.priority.slice(1)}
@@ -428,19 +441,23 @@ export function TasksModule() {
                         </div>
 
                         {/* Labels cell */}
-                        <div className="py-[var(--list-row-pad-y)] flex flex-wrap gap-[var(--chip-gap)]">
+                        <div className="py-[var(--list-row-pad-y)] flex flex-wrap gap-[var(--chip-gap)] text-[length:var(--list-row-meta)]">
                           {task.labels.length > 0 ? (
-                            task.labels.map(label => (
-                              <Badge
-                                key={label}
-                                variant="soft"
-                                size="sm"
-                                tone="label"
-                                style={{ ['--label-neutral' as any]: 'var(--accent)' }}
-                              >
-                                {label}
-                              </Badge>
-                            ))
+                            task.labels.map((label, idx) => {
+                              const labelName = getLabelName(label);
+                              const labelColor = getLabelColor(label);
+                              return (
+                                <Badge
+                                  key={`${labelName}-${idx}`}
+                                  variant="soft"
+                                  size="sm"
+                                  tone="label"
+                                  style={{ ['--label-neutral' as any]: labelColor }}
+                                >
+                                  {labelName}
+                                </Badge>
+                              );
+                            })
                           ) : (
                             <span className="text-[var(--text-tertiary)]">—</span>
                           )}

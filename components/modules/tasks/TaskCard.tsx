@@ -11,11 +11,13 @@ import {
 } from '../../ui/context-menu';
 import { Edit, Trash, Copy, CheckSquare, Check } from 'lucide-react';
 
+type TaskLabel = string | { name: string; color: string };
+
 interface TaskCardProps {
   taskTitle: string;
   dueDate?: string;
   priority?: 'low' | 'medium' | 'high' | 'none';
-  labels?: string[];
+  labels?: TaskLabel[];
   isCompleted: boolean;
   onToggleCompletion: () => void;
   onClick: () => void;
@@ -23,6 +25,9 @@ interface TaskCardProps {
   onDuplicate: () => void;
   onDelete: () => void;
 }
+
+const getTaskLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
+const getTaskLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--accent)' : label.color;
 
 export function TaskCard({ 
     taskTitle, 
@@ -103,9 +108,15 @@ export function TaskCard({
                             {priority[0].toUpperCase() + priority.slice(1)}
                           </Badge>
                         )}
-                        {labels.map(label => (
-                          <Badge key={label} variant="soft" tone="label" size="sm">
-                            {label}
+                        {labels.map((label, idx) => (
+                          <Badge
+                            key={`${getTaskLabelName(label)}-${idx}`}
+                            variant="soft"
+                            tone="label"
+                            size="sm"
+                            style={{ ['--label-neutral' as any]: getTaskLabelColor(label) }}
+                          >
+                            {getTaskLabelName(label)}
                           </Badge>
                         ))}
                       </div>

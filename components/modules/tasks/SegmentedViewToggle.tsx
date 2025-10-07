@@ -17,6 +17,52 @@ const OPTIONS: Array<{ value: ViewMode; label: string; Icon: React.ComponentType
 
 export function SegmentedViewToggle({ value, onChange, className }: Props) {
   const groupRef = React.useRef<HTMLDivElement>(null);
+  const optionRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+  const [thumbStyle, setThumbStyle] = React.useState<React.CSSProperties | null>(null);
+
+  const updateThumb = React.useCallback(() => {
+    const activeIndex = OPTIONS.findIndex(option => option.value === value);
+    const activeEl = optionRefs.current[activeIndex];
+    const groupEl = groupRef.current;
+
+    if (!activeEl || !groupEl) {
+      return;
+    }
+
+    const nextStyle: React.CSSProperties = {
+      width: `${activeEl.offsetWidth}px`,
+      height: `${activeEl.offsetHeight}px`,
+      left: `${activeEl.offsetLeft}px`,
+      top: `${activeEl.offsetTop}px`,
+    };
+
+    setThumbStyle(nextStyle);
+  }, [value]);
+
+  React.useLayoutEffect(() => {
+    updateThumb();
+  }, [updateThumb]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleResize = () => updateThumb();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateThumb]);
+
+  React.useEffect(() => {
+    const groupEl = groupRef.current;
+    if (!groupEl || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => updateThumb());
+    observer.observe(groupEl);
+    return () => observer.disconnect();
+  }, [updateThumb]);
 
   // keyboard: arrow keys/Home/End cycle options
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -52,7 +98,7 @@ export function SegmentedViewToggle({ value, onChange, className }: Props) {
       role="radiogroup"
       aria-label="View"
       className={cn(
-        "inline-flex items-center",
+        "relative inline-flex items-center",
         "bg-[var(--seg-bg)] border border-[var(--seg-border)]",
         "rounded-[var(--seg-radius)] shadow-[var(--seg-elevation)]",
         "p-[var(--seg-pad-y)] pr-[var(--seg-pad-x)] pl-[var(--seg-pad-x)]",
@@ -61,7 +107,20 @@ export function SegmentedViewToggle({ value, onChange, className }: Props) {
       )}
       onKeyDown={onKeyDown}
     >
-      {OPTIONS.map(({ value: v, label, Icon }) => {
+      <div
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute rounded-[var(--seg-item-radius)]",
+          "bg-[var(--seg-thumb-bg)] border border-[var(--seg-thumb-border)]",
+          "shadow-[0_1px_2px_rgba(0,0,0,0.06)]",
+          "transition-all motion-safe:duration-[var(--seg-duration)]"
+        )}
+        style={{
+          ...thumbStyle,
+          opacity: thumbStyle ? 1 : 0,
+        }}
+      />
+      {OPTIONS.map(({ value: v, label, Icon }, idx) => {
         const active = v === value;
         return (
           <button
@@ -69,16 +128,17 @@ export function SegmentedViewToggle({ value, onChange, className }: Props) {
             role="radio"
             aria-checked={active}
             onClick={() => onChange(v)}
+            ref={el => { optionRefs.current[idx] = el; }}
             className={cn(
-              "inline-flex items-center select-none",
-              "rounded-[var(--seg-item-radius)]",
+              "relative z-10 inline-flex items-center select-none",
+              "rounded-[var(--seg-item-radius)] border border-transparent",
               "px-[var(--seg-item-pad-x)] py-[var(--seg-item-pad-y)]",
               "gap-[var(--seg-item-gap)]",
               "text-sm font-medium",
               "transition-colors motion-safe:duration-[var(--seg-duration)]",
               active
-                ? "bg-[var(--seg-item-bg-active)] text-[var(--seg-item-fg-active)] border border-[var(--seg-item-border-active)]"
-                : "text-[var(--seg-item-fg)] hover:bg-[var(--seg-item-bg-hover)] border border-transparent",
+                ? "text-[var(--seg-fg-active)]"
+                : "text-[var(--seg-fg)] opacity-80 hover:text-[var(--seg-fg-active)]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--seg-focus-ring)] focus-visible:ring-offset-2"
             )}
             title={label}

@@ -6,6 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Calendar as CalendarComponent } from '../../ui/calendar';
 import { format } from 'date-fns';
 
+type TaskLabel = string | { name: string; color: string };
+
 export interface Subtask {
   id: string;
   title: string;
@@ -21,10 +23,12 @@ export interface Task {
   priority: 'low' | 'medium' | 'high' | 'none';
   dueDate?: string;
   dateCreated: string;
-  labels: string[];
+  labels: TaskLabel[];
   isCompleted: boolean;
   subtasks?: Subtask[];
 }
+
+const getTaskLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
 
 interface TaskSidePanelProps {
   task: Task | null;
@@ -113,10 +117,11 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
   };
 
   const handleAddLabel = () => {
-    if (newLabel.trim() && !editedTask.labels.includes(newLabel.trim())) {
+    const nextLabel = newLabel.trim();
+    if (nextLabel && !editedTask.labels.some(label => getTaskLabelName(label) === nextLabel)) {
       setEditedTask(prev => ({
         ...prev!,
-        labels: [...prev!.labels, newLabel.trim()],
+        labels: [...prev!.labels, nextLabel],
       }));
       setNewLabel('');
     }
@@ -125,7 +130,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
   const handleRemoveLabel = (labelToRemove: string) => {
     setEditedTask(prev => ({
       ...prev!,
-      labels: prev!.labels.filter(label => label !== labelToRemove),
+      labels: prev!.labels.filter(label => getTaskLabelName(label) !== labelToRemove),
     }));
   };
 
@@ -224,20 +229,23 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
             </div>
             {editedTask.labels.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {editedTask.labels.map((label) => (
+                {editedTask.labels.map((label, idx) => {
+                  const labelName = getTaskLabelName(label);
+                  return (
                   <div
-                    key={label}
-                    className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-normal)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]"
-                  >
-                    <span>{label}</span>
-                    <button
-                      onClick={() => handleRemoveLabel(label)}
-                      className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                      key={`${labelName}-${idx}`}
+                      className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-normal)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]"
                     >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+                      <span>{labelName}</span>
+                      <button
+                        onClick={() => handleRemoveLabel(labelName)}
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
             <div className="flex items-center gap-2">
