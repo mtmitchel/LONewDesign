@@ -34,7 +34,7 @@ const badgeVariants = cva(
           "before:content-[''] before:absolute before:inset-0 before:rounded-[inherit] before:pointer-events-none " +
           "before:shadow-[inset_0_0_0_1px_var(--chip-low-stroke)]",
         label:
-          "relative text-[var(--chip-label-fg)] bg-[var(--chip-label-bg)] hover:bg-[color-mix(in_oklab,var(--label-neutral)_calc(14%+var(--chip-hover-bg-boost)),transparent)] " +
+          "relative hover:bg-[color-mix(in_oklab,var(--label-neutral)_calc(20%+var(--chip-hover-bg-boost)),transparent)] " +
           "before:content-[''] before:absolute before:inset-0 before:rounded-[inherit] before:pointer-events-none " +
           "before:shadow-[inset_0_0_0_1px_var(--chip-label-stroke)]",
         neutral:

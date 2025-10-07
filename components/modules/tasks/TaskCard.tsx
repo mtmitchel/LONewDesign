@@ -112,9 +112,13 @@ export function TaskCard({
                           <Badge
                             key={`${getTaskLabelName(label)}-${idx}`}
                             variant="soft"
-                            tone="label"
                             size="sm"
-                            style={{ ['--label-neutral' as any]: getTaskLabelColor(label) }}
+                            className="relative"
+                            style={{ 
+                              backgroundColor: `color-mix(in oklab, ${getTaskLabelColor(label)} 18%, transparent)`,
+                              color: `color-mix(in oklab, ${getTaskLabelColor(label)} 85%, var(--text-primary))`,
+                              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${getTaskLabelColor(label)} 35%, transparent)`
+                            }}
                           >
                             {getTaskLabelName(label)}
                           </Badge>

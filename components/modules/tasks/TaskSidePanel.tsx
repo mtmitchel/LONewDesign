@@ -44,6 +44,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
   const [newSubtaskTitle, setNewSubtaskTitle] = React.useState('');
   const [newSubtaskDueDate, setNewSubtaskDueDate] = React.useState<string | undefined>(undefined);
   const [newLabel, setNewLabel] = React.useState('');
+  const [selectedLabelColor, setSelectedLabelColor] = React.useState('var(--label-blue)');
 
   // Helper function to parse formatted date strings like "Oct 30" or "2025-10-30" back to Date
   const parseDisplayDate = (dateStr: string): Date | undefined => {
@@ -121,7 +122,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
     if (nextLabel && !editedTask.labels.some(label => getTaskLabelName(label) === nextLabel)) {
       setEditedTask(prev => ({
         ...prev!,
-        labels: [...prev!.labels, nextLabel],
+        labels: [...prev!.labels, { name: nextLabel, color: selectedLabelColor }],
       }));
       setNewLabel('');
     }
@@ -231,15 +232,21 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
               <div className="flex flex-wrap gap-2">
                 {editedTask.labels.map((label, idx) => {
                   const labelName = getTaskLabelName(label);
+                  const labelColor = typeof label === 'string' ? 'var(--label-gray)' : label.color;
                   return (
                   <div
                       key={`${labelName}-${idx}`}
-                      className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-normal)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)]"
+                      className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)]"
+                      style={{
+                        backgroundColor: `color-mix(in oklab, ${labelColor} 18%, transparent)`,
+                        color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
+                        boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`
+                      }}
                     >
                       <span>{labelName}</span>
                       <button
                         onClick={() => handleRemoveLabel(labelName)}
-                        className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[var(--bg-surface)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                        className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[color-mix(in_oklab,currentColor_15%,transparent)] text-current opacity-70 hover:opacity-100"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -248,6 +255,35 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                 })}
               </div>
             )}
+            {/* Color picker for labels */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs text-[var(--text-secondary)]">Color:</span>
+              <div className="flex gap-1">
+                {[
+                  { name: 'Blue', value: 'var(--label-blue)' },
+                  { name: 'Purple', value: 'var(--label-purple)' },
+                  { name: 'Pink', value: 'var(--label-pink)' },
+                  { name: 'Red', value: 'var(--label-red)' },
+                  { name: 'Orange', value: 'var(--label-orange)' },
+                  { name: 'Yellow', value: 'var(--label-yellow)' },
+                  { name: 'Green', value: 'var(--label-green)' },
+                  { name: 'Teal', value: 'var(--label-teal)' },
+                  { name: 'Gray', value: 'var(--label-gray)' },
+                ].map(color => (
+                  <button
+                    key={color.value}
+                    onClick={() => setSelectedLabelColor(color.value)}
+                    className={`w-5 h-5 rounded-full border-2 transition-all ${
+                      selectedLabelColor === color.value 
+                        ? 'border-[var(--primary)] shadow-sm scale-110' 
+                        : 'border-transparent hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="text"

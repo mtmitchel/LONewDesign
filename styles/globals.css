@@ -296,7 +296,7 @@
   --priority-high: var(--danger);
   --priority-medium: var(--warning);
   --priority-low: var(--info);
-  --label-neutral: var(--accent);
+  --label-neutral: var(--text-secondary);  /* default label color */
 
   /* Low-ink chip tints (unified for board + list) - maximum contrast without looking heavy */
   --chip-high-bg: color-mix(in oklab, var(--priority-high) 28%, transparent);
@@ -316,6 +316,17 @@
   /* Label chips - using darker text-secondary for visibility on warm canvas */
   --chip-label-bg: color-mix(in oklab, var(--text-secondary) 15%, transparent);
   --chip-label-fg: var(--text-secondary);
+  
+  /* Label color presets - low-ink/soft like priority labels */
+  --label-blue: hsl(217, 70%, 50%);
+  --label-purple: hsl(280, 60%, 55%);
+  --label-pink: hsl(340, 70%, 60%);
+  --label-red: hsl(0, 70%, 55%);
+  --label-orange: hsl(25, 80%, 55%);
+  --label-yellow: hsl(45, 85%, 50%);
+  --label-green: hsl(140, 65%, 45%);
+  --label-teal: hsl(180, 65%, 45%);
+  --label-gray: hsl(220, 20%, 50%);
 
   /* Neutral / no priority */
   --chip-neutral-bg: var(--bg-surface-elevated);

@@ -353,13 +353,14 @@ export function TasksModule() {
 
     return (
       <div className="flex-1 overflow-y-auto">
-        {/* Table header */}
-        <div 
-          className="grid items-center px-[var(--list-row-pad-x)] py-[var(--space-2)] border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
-          style={{ gridTemplateColumns: "32px minmax(200px, 2fr) 140px 110px minmax(180px, 1fr)", columnGap: "var(--list-row-gap)" }}
-        >
-          <div></div> {/* checkbox column */}
-          <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Task name</div>
+        <div className="max-w-[1400px] mx-auto">
+          {/* Table header */}
+          <div 
+            className="grid items-center px-[var(--list-row-pad-x)] py-[var(--space-2)] border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
+            style={{ gridTemplateColumns: "32px minmax(280px, 1fr) 140px 110px 240px", columnGap: "var(--list-row-gap)" }}
+          >
+            <div></div> {/* checkbox column */}
+            <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Task name</div>
           <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Due date</div>
           <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Priority</div>
           <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">Labels</div>
@@ -382,7 +383,7 @@ export function TasksModule() {
                       <div 
                         className="grid items-center border-b border-[var(--border-divider)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
                         style={{
-                          gridTemplateColumns: "32px minmax(200px, 2fr) 140px 110px minmax(180px, 1fr)", 
+                          gridTemplateColumns: "32px minmax(280px, 1fr) 140px 110px 240px", 
                           columnGap: "var(--list-row-gap)",
                           minHeight: "var(--list-row-min-h)",
                           paddingLeft: "var(--list-row-pad-x)",
@@ -451,8 +452,12 @@ export function TasksModule() {
                                   key={`${labelName}-${idx}`}
                                   variant="soft"
                                   size="sm"
-                                  tone="label"
-                                  style={{ ['--label-neutral' as any]: labelColor }}
+                                  className="relative"
+                                  style={{ 
+                                    backgroundColor: `color-mix(in oklab, ${labelColor} 18%, transparent)`,
+                                    color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
+                                    boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`
+                                  }}
                                 >
                                   {labelName}
                                 </Badge>
@@ -545,6 +550,7 @@ export function TasksModule() {
             Add list
           </button>
         )}
+        </div>
       </div>
     )
   }
