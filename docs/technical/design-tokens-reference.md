@@ -1,6 +1,7 @@
 # LibreOllama Design Tokens Reference
 
 > This is a markdown reference copy of `styles/globals.css` for easy sharing and documentation purposes.
+> **Last Updated:** October 7, 2025 - Added task density system, chip tokens, segmented control tokens, and list view density tokens.
 
 ## Import & Base Setup
 
@@ -173,6 +174,208 @@
 | `--caret-disabled` | `#CBD5E1` (slate-300) | Disabled state |
 | `--caret-hover-bg` | `#F1F5F9` | Hover background |
 
+### Task Density System
+
+#### Task Checkbox ("always-check" pattern)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--check-size` | `18px` | Checkbox size (comfortable) |
+| `--check-ring` | `var(--border-subtle)` | Border color |
+| `--check-idle-bg` | `var(--bg-surface)` | Unchecked background |
+| `--check-idle-check` | `color-mix(in oklab, var(--text-tertiary) 55%, transparent)` | Unchecked checkmark |
+| `--check-hover-ring` | `var(--primary)` | Hover border |
+| `--check-active-bg` | `var(--primary)` | Checked background |
+| `--check-active-check` | `var(--primary-foreground)` | Checked checkmark |
+| `--check-disabled` | `var(--border-divider)` | Disabled state |
+
+#### Task Card Density - Comfortable (Default)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--task-card-pad-x--comfortable` | `var(--space-4)` / `16px` | Horizontal padding |
+| `--task-card-pad-y--comfortable` | `var(--space-3)` / `12px` | Vertical padding |
+| `--task-card-gap--comfortable` | `var(--space-3)` / `12px` | Gap between cards |
+| `--task-title-size--comfortable` | `1rem` / `16px` | Task title font size |
+| `--task-meta-size--comfortable` | `0.875rem` / `14px` | Metadata font size |
+| `--task-check-size--comfortable` | `18px` | Checkbox size |
+
+#### Task Card Density - Compact
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--task-card-pad-x--compact` | `var(--space-3)` / `12px` | Horizontal padding (tighter) |
+| `--task-card-pad-y--compact` | `var(--space-2)` / `8px` | Vertical padding (tighter) |
+| `--task-card-gap--compact` | `var(--space-2)` / `8px` | Gap between cards (tighter) |
+| `--task-title-size--compact` | `0.9375rem` / `15px` | Task title font size (smaller) |
+| `--task-meta-size--compact` | `0.8125rem` / `13px` | Metadata font size (smaller) |
+| `--task-check-size--compact` | `16px` | Checkbox size (smaller) |
+
+#### Active Task Card Tokens (Dynamic)
+These tokens switch based on `.density-compact` class:
+| Token | Default | Usage |
+|-------|---------|-------|
+| `--task-card-pad-x` | Comfortable value | Horizontal padding |
+| `--task-card-pad-y` | Comfortable value | Vertical padding |
+| `--task-card-gap` | Comfortable value | Card gap |
+| `--task-title-size` | Comfortable value | Title font size |
+| `--task-meta-size` | Comfortable value | Meta font size |
+
+#### Task Card Visual Tokens
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--task-card-radius` | `var(--radius-md)` / `8px` | Card corner radius |
+| `--task-card-border` | `var(--border-subtle)` | Card border |
+| `--task-card-shadow` | `none` | Card shadow (minimal) |
+
+### List Header Density
+
+#### List Header - Comfortable (Default)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--list-header-pad-x--comfortable` | `var(--space-4)` / `16px` | Horizontal padding |
+| `--list-header-pad-y--comfortable` | `var(--space-3)` / `12px` | Vertical padding |
+| `--list-header-radius--comfortable` | `var(--radius-lg)` / `12px` | Corner radius |
+| `--list-header-shadow--comfortable` | `var(--elevation-sm)` | Shadow |
+| `--list-header-title--comfortable` | `1.125rem` / `18px` | Title font size |
+
+#### List Header - Compact
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--list-header-pad-x--compact` | `var(--space-3)` / `12px` | Horizontal padding (tighter) |
+| `--list-header-pad-y--compact` | `var(--space-2)` / `8px` | Vertical padding (tighter) |
+| `--list-header-radius--compact` | `var(--radius-md)` / `8px` | Corner radius (smaller) |
+| `--list-header-shadow--compact` | `none` | No shadow (flat) |
+| `--list-header-title--compact` | `1rem` / `16px` | Title font size (smaller) |
+| `--list-header-toolbar-icon` | `16px` | Toolbar icon size |
+
+#### Active List Header Tokens (Dynamic)
+These tokens switch based on `.density-compact` class:
+| Token | Default | Usage |
+|-------|---------|-------|
+| `--list-header-pad-x` | Comfortable value | Horizontal padding |
+| `--list-header-pad-y` | Comfortable value | Vertical padding |
+| `--list-header-radius` | Comfortable value | Corner radius |
+| `--list-header-shadow` | Comfortable value | Shadow |
+| `--list-header-title` | Comfortable value | Title font size |
+
+### Segmented Control Tokens (View Toggle)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--seg-bg` | `var(--bg-muted)` | Control background |
+| `--seg-border` | `var(--border-subtle)` | Control border |
+| `--seg-radius` | `var(--radius-lg)` / `12px` | Control corners |
+| `--seg-pad-x` | `var(--space-2)` / `8px` | Horizontal padding |
+| `--seg-pad-y` | `var(--space-2)` / `8px` | Vertical padding |
+| `--seg-gap` | `var(--space-1)` / `4px` | Gap between items |
+| `--seg-elevation` | `var(--elevation-sm)` | Control shadow |
+| `--seg-item-radius` | `var(--radius-md)` / `8px` | Item corners |
+| `--seg-item-pad-x` | `var(--space-3)` / `12px` | Item horizontal padding |
+| `--seg-item-pad-y` | `var(--space-2)` / `8px` | Item vertical padding |
+| `--seg-item-icon` | `16px` | Icon size |
+| `--seg-item-gap` | `var(--space-2)` / `8px` | Gap between icon and label |
+| `--seg-item-fg` | `var(--text-secondary)` | Inactive text color |
+| `--seg-item-fg-active` | `var(--text-primary)` | Active text color |
+| `--seg-item-bg-hover` | `color-mix(in oklab, var(--text-secondary) 8%, transparent)` | Hover background |
+| `--seg-item-bg-active` | `var(--bg-surface)` | Active background |
+| `--seg-item-border-active` | `var(--border-subtle)` | Active border |
+| `--seg-focus-ring` | `var(--focus-ring)` | Focus ring color |
+| `--seg-duration` | `var(--duration-fast)` | Transition duration |
+
+### Chip & Badge Tokens (Low-Ink System)
+
+#### Chip Base Tokens
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--chip-height` | `22px` | Pill/chip height |
+| `--chip-gap` | `var(--space-2)` / `8px` | Gap between chips |
+| `--chip-px` | `var(--space-3)` / `12px` | Horizontal padding |
+| `--chip-py` | `var(--space-1)` / `4px` | Vertical padding |
+| `--chip-pad-x` | `var(--space-3)` | Legacy alias for px |
+| `--chip-radius` | `var(--radius-full)` / `9999px` | Pill shape |
+| `--chip-text` | `var(--text-secondary)` | Base text color |
+| `--chip-border` | `var(--border-subtle)` | Border color |
+| `--chip-inset-shadow` | `inset 0 0 0 1px var(--chip-border)` | Subtle inset border |
+| `--chip-shadow` | `none` | Legacy shadow alias |
+| `--chip-hover-bg-boost` | `6%` | Background darkness on hover |
+
+#### Chip Priority Colors (Semantic Sources)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--priority-high` | `var(--danger)` / Coral | High priority color source |
+| `--priority-medium` | `var(--warning)` / Yellow | Medium priority color source |
+| `--priority-low` | `var(--info)` / Blue | Low priority color source |
+| `--label-neutral` | `var(--accent)` | Label color source |
+
+#### Low-Ink Chip Tints (High Priority)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--chip-high-bg` | `color-mix(in oklab, var(--priority-high) 14%, transparent)` | High priority background (14% opacity) |
+| `--chip-high-fg` | `color-mix(in oklab, var(--priority-high) 55%, var(--chip-text))` | High priority text (55% blend) |
+| `--chip-high-text` | `var(--accent-coral)` | Legacy alias |
+
+#### Low-Ink Chip Tints (Medium Priority)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--chip-medium-bg` | `color-mix(in oklab, var(--priority-medium) 16%, transparent)` | Medium priority background (16% opacity) |
+| `--chip-medium-fg` | `color-mix(in oklab, var(--priority-medium) 52%, var(--chip-text))` | Medium priority text (52% blend) |
+| `--chip-medium-text` | `var(--warning)` | Legacy alias |
+
+#### Low-Ink Chip Tints (Low Priority)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--chip-low-bg` | `color-mix(in oklab, var(--priority-low) 16%, transparent)` | Low priority background (16% opacity) |
+| `--chip-low-fg` | `color-mix(in oklab, var(--priority-low) 52%, var(--chip-text))` | Low priority text (52% blend) |
+| `--chip-low-text` | `var(--info)` | Legacy alias |
+
+#### Low-Ink Chip Tints (Labels)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--chip-label-bg` | `color-mix(in oklab, var(--label-neutral) 14%, transparent)` | Label background (14% opacity) |
+| `--chip-label-fg` | `color-mix(in oklab, var(--label-neutral) 60%, var(--text-secondary))` | Label text (60% blend) |
+
+#### Low-Ink Chip Tints (Neutral)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--chip-neutral-bg` | `var(--bg-surface-elevated)` | Neutral background |
+| `--chip-neutral-text` | `var(--text-secondary)` | Neutral text |
+
+### List View Density Tokens
+
+#### List Row Density - Comfortable (Default)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--list-row-pad-y--comfortable` | `var(--space-3)` / `12px` | Vertical padding |
+| `--list-row-pad-x--comfortable` | `var(--space-4)` / `16px` | Horizontal padding |
+| `--list-row-font--comfortable` | `var(--text-base)` / `16px` | Task name font |
+| `--list-row-meta--comfortable` | `var(--text-sm)` / `14px` | Metadata font |
+| `--list-row-min-h--comfortable` | `44px` | Minimum row height |
+
+#### List Row Density - Cozy
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--list-row-pad-y--cozy` | `var(--space-2-5, 10px)` / `10px` | Vertical padding |
+| `--list-row-pad-x--cozy` | `var(--space-3)` / `12px` | Horizontal padding |
+| `--list-row-font--cozy` | `0.9375rem` / `15px` | Task name font |
+| `--list-row-meta--cozy` | `0.8125rem` / `13px` | Metadata font |
+| `--list-row-min-h--cozy` | `40px` | Minimum row height |
+
+#### List Row Density - Compact
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--list-row-pad-y--compact` | `var(--space-2)` / `8px` | Vertical padding (tightest) |
+| `--list-row-pad-x--compact` | `var(--space-3)` / `12px` | Horizontal padding |
+| `--list-row-font--compact` | `0.875rem` / `14px` | Task name font (smallest) |
+| `--list-row-meta--compact` | `0.8125rem` / `13px` | Metadata font |
+| `--list-row-min-h--compact` | `36px` | Minimum row height (tightest) |
+
+#### Active List Row Tokens (Dynamic)
+| Token | Default | Usage |
+|-------|---------|-------|
+| `--list-row-pad-y` | Comfortable value | Vertical padding |
+| `--list-row-pad-x` | Comfortable value | Horizontal padding |
+| `--list-row-font` | Comfortable value | Task name font |
+| `--list-row-meta` | Comfortable value | Metadata font |
+| `--list-row-min-h` | Comfortable value | Minimum row height |
+| `--list-row-gap` | `var(--space-3)` / `12px` | Column gap |
+
 ### Modal Sizing
 | Token | Value | Usage |
 |-------|-------|-------|
@@ -292,12 +495,66 @@
 ### Miscellaneous Component Tokens
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--chip-height` | `22px` | Pill/chip height |
 | `--content-measure` | `72ch` | Email body max width |
-| `--pill-radius` | `var(--radius-md)` | Pill corners |
-| `--pill-gap` | `var(--space-2)` | Pill gap |
-| `--pill-pad-x` | `var(--space-3)` | Pill padding X |
-| `--pill-pad-y` | `var(--space-2)` | Pill padding Y |
+| `--priority-dot-size` | `10px` | Priority indicator dot |
+| `--priority-dot-color` | `var(--text-tertiary)` | Dot color |
+
+### Calendar Tokens
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--calendar-gutter` | `var(--space-6)` / `24px` | Calendar padding |
+| `--calendar-cell-min-h` | `112px` | Calendar cell height |
+| `--calendar-hour-row-h` | `56px` | Hour row height |
+| `--calendar-rail-w` | `340px` | Sidebar rail width |
+| `--calendar-cell-border` | `var(--border-subtle)` | Cell borders |
+| `--calendar-event-radius` | `var(--radius-md)` | Event corners |
+| `--calendar-rail-shadow` | `var(--elevation-sm)` | Sidebar shadow |
+| `--calendar-header-h` | `60px` | Calendar header height |
+
+### Calendar Event Colors
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--event-green-bg` | `rgb(209, 250, 229)` (emerald-100) | Green event background |
+| `--event-green-text` | `rgb(4, 120, 87)` (emerald-700) | Green event text |
+| `--event-green-hover` | `rgb(167, 243, 208)` (emerald-200) | Green event hover |
+| `--event-blue-bg` | `rgb(219, 234, 254)` (blue-100) | Blue event background |
+| `--event-blue-text` | `rgb(29, 78, 216)` (blue-700) | Blue event text |
+| `--event-blue-hover` | `rgb(191, 219, 254)` (blue-200) | Blue event hover |
+| `--event-teal-bg` | `rgb(204, 251, 241)` (teal-100) | Teal event background |
+| `--event-teal-text` | `rgb(15, 118, 110)` (teal-700) | Teal event text |
+| `--event-teal-hover` | `rgb(153, 246, 228)` (teal-200) | Teal event hover |
+| `--event-orange-bg` | `rgb(254, 215, 170)` (orange-100) | Orange event background |
+| `--event-orange-text` | `rgb(194, 65, 12)` (orange-700) | Orange event text |
+| `--event-orange-hover` | `rgb(253, 186, 116)` (orange-200) | Orange event hover |
+
+### Tasks Rail Tokens (Compact Spacing)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--tasks-rail-padding` | `var(--space-4)` / `16px` | Outer padding |
+| `--tasks-rail-gap` | `var(--space-4)` / `16px` | Section gaps |
+| `--tasks-rail-card-bg` | `var(--bg-surface)` | Card background |
+| `--tasks-rail-border` | `var(--border-subtle)` | Border color |
+| `--tasks-rail-radius` | `var(--radius-lg)` | Card corners |
+| `--tasks-rail-shadow` | `var(--elevation-sm)` | Card shadow |
+
+### Task Row Tokens (Legacy/Alternative)
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--task-row-h-1` | `40px` | Single-line row |
+| `--task-row-h-2` | `56px` | Row with metadata |
+| `--task-row-pad-y` | `var(--space-2)` / `8px` | Vertical padding |
+| `--task-row-gap` | `var(--space-2)` / `8px` | Element gap |
+| `--task-row-hover` | `var(--bg-muted)` | Hover background |
+| `--task-badge-gap` | `var(--space-2)` / `8px` | Badge gap |
+| `--task-badge-radius` | `var(--radius-sm)` | Badge corners |
+| `--task-badge-text` | `var(--text-muted)` | Badge text |
+
+### Due Date State Tokens
+| Token | Value | Usage |
+|-------|-------|-------|
+| `--due-default` | `var(--text-muted)` | Default due date |
+| `--due-today` | `var(--primary)` | Due today |
+| `--due-overdue` | `var(--danger)` | Overdue date |
 
 ## Shadcn Compatibility Layer
 
@@ -342,6 +599,30 @@ input: font-size: var(--text-base), font-weight: var(--font-weight-normal)
 
 All elements use `line-height: 1.6` for comfortable reading.
 
+## Density Class Activation
+
+Apply the `.density-compact` class to activate compact density mode for tasks:
+
+```css
+.density-compact {
+  --task-card-pad-x: var(--task-card-pad-x--compact);
+  --task-card-pad-y: var(--task-card-pad-y--compact);
+  --task-card-gap: var(--task-card-gap--compact);
+  --task-title-size: var(--task-title-size--compact);
+  --task-meta-size: var(--task-meta-size--compact);
+  --check-size: var(--task-check-size--compact);
+  --list-header-pad-x: var(--list-header-pad-x--compact);
+  --list-header-pad-y: var(--list-header-pad-y--compact);
+  --list-header-radius: var(--list-header-radius--compact);
+  --list-header-shadow: var(--list-header-shadow--compact);
+  --list-header-title: var(--list-header-title--compact);
+}
+```
+
+**Usage:** Add `.density-compact` to the container element (e.g., board grid) to switch all child task cards and list headers to compact mode.
+
+## Shadcn Compatibility Layer
+
 ## Font Family
 
 ```css
@@ -352,4 +633,15 @@ Base font size: `16px`
 
 ---
 
-**Note:** This reference is auto-generated from `styles/globals.css`. For the source of truth, always refer to the actual CSS file.
+**Note:** This reference is synchronized with `styles/globals.css`. 
+
+**Last Updated:** October 7, 2025
+- Added task density system (comfortable/compact modes)
+- Added chip & badge low-ink token system with semantic color mixing
+- Added segmented control tokens for view toggles
+- Added list view density presets (comfortable/cozy/compact)
+- Added calendar event color tokens
+- Added tasks rail tokens
+- Added due date state tokens
+
+For the source of truth, always refer to the actual CSS file.
