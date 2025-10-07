@@ -661,23 +661,20 @@ export function CalendarTasksRail({
             </ul>
           )}
           </div>
-          </div> {/* Close swim lane div */}
-        </div>
-
-        {/* Add Task at Bottom */}
-        <div className="px-[var(--space-4)] py-[var(--space-3)]">
-        {!composerActive && !draftTitle && !draftDueDate && draftPriority === 'none' ? (
-          <div className="pb-1">
-            <button
-              onClick={() => setComposerActive(true)}
-              className="w-full inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)]"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add task</span>
-            </button>
-          </div>
-        ) : (
-          <div className="rounded-[var(--radius-md)] bg-[var(--bg-surface)] border-2 border-[var(--primary)] px-[var(--space-3)] py-[var(--space-3)]">
+          
+          {/* Add Task Button inside swim lane */}
+          {!composerActive && !draftTitle && !draftDueDate && draftPriority === 'none' ? (
+            <div className="mt-2">
+              <button
+                onClick={() => setComposerActive(true)}
+                className="w-full inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] motion-safe:transition-colors duration-[var(--duration-fast)]"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add task</span>
+              </button>
+            </div>
+          ) : (
+          <div className="rounded-[var(--radius-md)] bg-[var(--bg-surface)] border-2 border-[var(--primary)] px-[var(--space-3)] py-[var(--space-3)] mt-3">
               <div className="flex items-start gap-3">
                 {/* Empty circular checkbox */}
                 <div className="w-4 h-4 mt-0.5 rounded-full border border-[var(--border-default)] bg-[var(--bg-surface)]"></div>
@@ -808,7 +805,8 @@ export function CalendarTasksRail({
                 </div>
               </div>
             </div>
-        )}
+          )}
+          </div> {/* Close swim lane div */}
         </div>
       </div>
 

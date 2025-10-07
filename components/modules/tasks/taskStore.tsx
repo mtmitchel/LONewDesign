@@ -10,7 +10,7 @@ type TaskSourceMeta = {
 export type TaskInput = Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'labels' | 'checklist' | 'isPinned'>> & {
   title: string;
   listId?: string;
-  labels?: string[];
+  labels?: Task['labels'];
   checklist?: Task['checklist'];
   isPinned?: boolean;
 } & TaskSourceMeta;
@@ -50,7 +50,7 @@ const initialTasks: Task[] = [
     createdAt: '2025-10-03T09:00:00.000Z',
     dateCreated: '2025-10-03T09:00:00.000Z',
     updatedAt: '2025-10-03T09:00:00.000Z',
-    labels: ['errands'],
+    labels: [{ name: 'errands', color: 'var(--label-orange)' }],
     listId: 'todo',
     isCompleted: false,
   },
@@ -63,7 +63,7 @@ const initialTasks: Task[] = [
     createdAt: '2025-10-07T10:00:00.000Z',
   dateCreated: '2025-10-07T10:00:00.000Z',
     updatedAt: '2025-10-07T10:00:00.000Z',
-    labels: ['errands'],
+    labels: [{ name: 'errands', color: 'var(--label-orange)' }],
     listId: 'in-progress',
     isCompleted: false,
   },
@@ -76,7 +76,7 @@ const initialTasks: Task[] = [
     createdAt: '2025-10-04T12:30:00.000Z',
   dateCreated: '2025-10-04T12:30:00.000Z',
     updatedAt: '2025-10-04T12:30:00.000Z',
-    labels: ['personal'],
+    labels: [{ name: 'personal', color: 'var(--label-purple)' }],
     listId: 'todo',
     isCompleted: false,
   },
@@ -89,7 +89,7 @@ const initialTasks: Task[] = [
     createdAt: '2025-10-09T15:00:00.000Z',
   dateCreated: '2025-10-09T15:00:00.000Z',
     updatedAt: '2025-10-09T15:00:00.000Z',
-    labels: ['work'],
+    labels: [{ name: 'work', color: 'var(--label-blue)' }],
     listId: 'in-progress',
     isCompleted: false,
   },

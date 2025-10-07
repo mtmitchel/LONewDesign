@@ -1,5 +1,7 @@
 export type Priority = 'low' | 'medium' | 'high' | 'none';
 
+export type TaskLabel = string | { name: string; color: string };
+
 export interface Task {
   id: string;
   title: string;
@@ -11,7 +13,7 @@ export interface Task {
   dateCreated?: string;
   updatedAt?: string;
   assignee?: string;
-  labels: string[];
+  labels: TaskLabel[];
   listId: string;
   notes?: string;
   isCompleted: boolean;
