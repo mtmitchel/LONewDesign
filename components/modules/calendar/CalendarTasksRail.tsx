@@ -53,6 +53,7 @@ import { cn } from '../../ui/utils';
 import { useTaskStore, TaskInput } from '../tasks/taskStore';
 import { TASK_LISTS } from '../tasks/constants';
 import type { Task } from '../tasks/types';
+import { TaskCard } from '../tasks/TaskCard';
 
 // Chip utility classes for soft priority badges
 const chipBase =
@@ -606,8 +607,10 @@ export function CalendarTasksRail({
       </div>
 
       {/* Content area with lane wrapper */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg-canvas)]">
         <div className="flex-1 overflow-y-auto px-[var(--space-4)] py-[var(--space-3)]">
+          {/* Swim lane background */}
+          <div className="bg-[var(--bg-surface-elevated)] rounded-[var(--radius-lg)] p-[var(--space-3)]">
           {/* Filter */}
           <div className="mb-3">
             <Select value={filter} onValueChange={(value) => setFilterValue(value as TaskFilterKey)}>
@@ -638,24 +641,27 @@ export function CalendarTasksRail({
                 className="flex flex-col gap-2"
               >
               {filteredTasks.map((task, index) => {
+                const dueDate = task.dueDate ? format(parseDueDate(task.dueDate) ?? new Date(), 'MMM d') : undefined;
                 return (
-                  <TaskRow
+                  <TaskCard
                     key={task.id}
-                    task={task}
-                    onToggle={() => handleToggleCompletion(task)}
-                    onTitleCommit={(title) => handleTitleCommit(task, title)}
-                    onDueChange={(date) => handleDueDateChange(task, date)}
-                    onDelete={() => handleDelete(task.id)}
+                    taskTitle={task.title}
+                    dueDate={dueDate}
+                    priority={task.priority}
+                    labels={task.labels}
+                    isCompleted={task.isCompleted}
+                    onToggleCompletion={() => handleToggleCompletion(task)}
+                    onClick={() => console.log('Open task:', task.id)}
+                    onEdit={() => console.log('Edit task:', task.id)}
                     onDuplicate={() => handleDuplicate(task.id)}
-                    onPinToggle={() => handlePinToggle(task)}
-                    onKeyDown={(event) => handleRowKeyDown(event, index, task)}
-                    registerRef={(node) => registerTaskNode(task.id, node)}
+                    onDelete={() => handleDelete(task.id)}
                   />
                 );
               })}
             </ul>
           )}
           </div>
+          </div> {/* Close swim lane div */}
         </div>
 
         {/* Add Task at Bottom */}
@@ -663,10 +669,10 @@ export function CalendarTasksRail({
         {!composerActive && !draftTitle && !draftDueDate && draftPriority === 'none' ? (
           <button
             onClick={() => setComposerActive(true)}
-            className="inline-flex items-center gap-2 text-[var(--primary)] rounded-[var(--radius-md)] px-3 py-2 hover:bg-[var(--bg-surface-elevated)] transition-colors"
+            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span className="text-sm font-medium">Add task</span>
+            <span>Add task</span>
           </button>
         ) : (
           <div className="rounded-[var(--radius-md)] bg-[var(--bg-surface)] border-2 border-[var(--primary)] px-[var(--space-3)] py-[var(--space-3)]">
@@ -871,166 +877,4 @@ export function CalendarTasksRail({
   );
 }
 
-type TaskRowProps = {
-  task: Task;
-  onToggle: () => void;
-  onTitleCommit: (title: string) => void;
-  onDueChange: (date: Date | undefined) => void;
-  onDelete: () => void;
-  onDuplicate: () => void;
-  onPinToggle: () => void;
-  onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
-  registerRef: (node: HTMLDivElement | null) => void;
-};
-
-function TaskRow({
-  task,
-  onToggle,
-  onTitleCommit,
-  onDueChange,
-  onDelete,
-  onDuplicate,
-  onPinToggle,
-  onKeyDown,
-  registerRef
-}: TaskRowProps) {
-  const [editing, setEditing] = useState(false);
-  const [titleDraft, setTitleDraft] = useState(task.title);
-  const [dueOpen, setDueOpen] = useState(false);
-
-  useEffect(() => {
-    setTitleDraft(task.title);
-  }, [task.title]);
-
-  const commitTitle = () => {
-    onTitleCommit(titleDraft);
-    setEditing(false);
-  };
-
-  return (
-    <li role="listitem">
-      <div
-        ref={registerRef}
-        tabIndex={0}
-        draggable="true"
-        className={cn(
-          'group rounded-[var(--radius-md)] bg-[var(--bg-surface)] border border-[var(--border-default)] p-[var(--space-2)] cursor-grab active:cursor-grabbing hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] first:mt-0 last:mb-0',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-0',
-          task.isCompleted && 'relative bg-[var(--primary-tint-5)] opacity-85 before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[var(--border-subtle)] before:rounded-l-[var(--radius-md)]'
-        )}
-        onKeyDown={onKeyDown}
-      >
-        <div className="flex items-start">
-          {/* Circular Checkbox with Check */}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onToggle(); }}
-            className="shrink-0 w-5 h-5 mr-[var(--space-3)] mt-0.5 rounded-full border border-[var(--border-default)] flex items-center justify-center transition-all hover:border-[var(--primary)]"
-            style={{
-              backgroundColor: task.isCompleted ? 'var(--primary)' : 'transparent',
-              borderColor: task.isCompleted ? 'var(--primary)' : undefined
-            }}
-            aria-label={task.isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
-          >
-            {task.isCompleted && <Check className="w-3 h-3 text-white" />}
-          </button>
-          
-          {/* Task content */}
-          <div className="flex-1 min-w-0">
-            {editing ? (
-              <Input
-                value={titleDraft}
-                onChange={(event) => setTitleDraft(event.target.value)}
-                onBlur={commitTitle}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') commitTitle();
-                  if (event.key === 'Escape') {
-                    setTitleDraft(task.title);
-                    setEditing(false);
-                  }
-                }}
-                className="h-7 text-[length:var(--text-sm)]"
-                autoFocus
-              />
-            ) : (
-              <>
-                {/* Task name */}
-                <button
-                  type="button"
-                  className={cn(
-                    'text-[length:var(--text-base)] font-[var(--font-weight-medium)] text-[var(--text-primary)] text-left w-full truncate',
-                    task.isCompleted && 'line-through text-[var(--text-secondary)]'
-                  )}
-                  title={task.title}
-                  onClick={() => setEditing(true)}
-                >
-                  {task.title}
-                </button>
-                
-                {/* Date - if exists */}
-                {task.dueDate && (
-                  <Popover open={dueOpen} onOpenChange={setDueOpen}>
-                    <PopoverTrigger asChild>
-                      <button type="button" className="flex items-center gap-1 mt-[var(--space-2)]" aria-label="Change due date">
-                        <CalendarIcon className="w-3 h-3 text-[var(--text-tertiary)]" />
-                        <span className="text-[length:var(--text-xs)] text-[var(--text-secondary)]">
-                          {format(parseDueDate(task.dueDate) ?? new Date(), 'MMM d')}
-                        </span>
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="p-[var(--space-2)]">
-                      <DatePicker
-                        mode="single"
-                        selected={parseDueDate(task.dueDate)}
-                        onSelect={(date) => {
-                          onDueChange(date ?? undefined);
-                          setDueOpen(false);
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </>
-            )}
-          </div>
-          
-          {/* Actions - hidden by default, shown on hover */}
-          <div className="opacity-0 group-hover:opacity-100 motion-safe:transition-opacity duration-[var(--duration-fast)]">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" title="More options" className="grid place-items-center h-5 w-5 text-[color:var(--text-muted)] hover:text-[color:var(--text-primary)]">
-                  <EllipsisVertical className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onToggle}>
-                  <CheckCircle2 className="mr-[var(--space-2)] h-4 w-4" />
-                  {task.isCompleted ? 'Reopen' : 'Mark as complete'}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDueChange(startOfDay(new Date()))}
-                >
-                  <CalendarIcon className="mr-[var(--space-2)] h-4 w-4" />
-                  Set to today
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDuplicate} aria-keyshortcuts="Ctrl+D Meta+D">
-                  <Copy className="mr-[var(--space-2)] h-4 w-4" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setEditing(true)}>
-                  <Pencil className="mr-[var(--space-2)] h-4 w-4" />
-                  Edit title
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDelete} className="text-[color:var(--task-danger)]" aria-keyshortcuts="Ctrl+Backspace Meta+Backspace">
-                  <Trash2 className="mr-[var(--space-2)] h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </div>
-    </li>
-  );
-}
+// TaskRow component removed - now using TaskCard from tasks module
