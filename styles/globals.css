@@ -407,38 +407,42 @@
   --event-title-weight: 500;       /* medium */
   --event-meta-ink: var(--text-tertiary);
   
-  /* Calendar colors - Aligned with design system accent colors */
-  /* Primary blue (default) */
-  --cal-color-blue-bg: color-mix(in oklab, var(--primary) 18%, var(--bg-surface));      
-  --cal-color-blue-text: var(--primary);    
-  
-  /* Coral (urgent/important) */
-  --cal-color-coral-bg: color-mix(in oklab, var(--accent-coral) 20%, var(--bg-surface));         
-  --cal-color-coral-text: color-mix(in oklab, var(--accent-coral) 80%, var(--text-primary));
-  
-  /* Yellow (warning/attention) */
-  --cal-color-yellow-bg: color-mix(in oklab, var(--warning) 22%, var(--bg-surface));     
-  --cal-color-yellow-text: color-mix(in oklab, var(--warning) 85%, var(--text-primary));   
-  
-  /* Green (success/personal) */
-  --cal-color-green-bg: color-mix(in oklab, var(--success) 20%, var(--bg-surface));     
-  --cal-color-green-text: color-mix(in oklab, var(--success) 75%, var(--text-primary));   
-  
-  /* Purple (creative/special) */
-  --cal-color-purple-bg: color-mix(in oklab, hsl(275, 70%, 60%) 20%, var(--bg-surface));    
-  --cal-color-purple-text: color-mix(in oklab, hsl(275, 70%, 45%) 85%, var(--text-primary));  
-  
-  /* Orange (meetings/collaboration) */
-  --cal-color-orange-bg: color-mix(in oklab, hsl(25, 85%, 63%) 20%, var(--bg-surface));     
-  --cal-color-orange-text: color-mix(in oklab, hsl(25, 85%, 45%) 85%, var(--text-primary));   
-  
-  /* Teal (info/learning) */
-  --cal-color-teal-bg: color-mix(in oklab, var(--info) 20%, var(--bg-surface));      
-  --cal-color-teal-text: color-mix(in oklab, var(--info) 75%, var(--text-primary));
-  
-  /* Pink (social/fun) */
-  --cal-color-pink-bg: color-mix(in oklab, hsl(340, 75%, 65%) 20%, var(--bg-surface));      
-  --cal-color-pink-text: color-mix(in oklab, hsl(340, 75%, 45%) 85%, var(--text-primary));
+  /* Calendar colors - fallback values with color-mix overrides when supported */
+  --cal-color-blue-bg: rgba(93, 194, 240, 0.32);
+  --cal-color-blue-text: #1d6fb3;
+  --cal-color-coral-bg: rgba(244, 99, 85, 0.34);
+  --cal-color-coral-text: #c53d30;
+  --cal-color-yellow-bg: rgba(244, 190, 81, 0.38);
+  --cal-color-yellow-text: #a56914;
+  --cal-color-green-bg: rgba(66, 211, 153, 0.34);
+  --cal-color-green-text: #178552;
+  --cal-color-purple-bg: rgba(149, 118, 244, 0.32);
+  --cal-color-purple-text: #5f3fc4;
+  --cal-color-orange-bg: rgba(252, 148, 94, 0.36);
+  --cal-color-orange-text: #c66022;
+  --cal-color-teal-bg: rgba(73, 209, 200, 0.32);
+  --cal-color-teal-text: #138a86;
+  --cal-color-pink-bg: rgba(244, 128, 172, 0.34);
+  --cal-color-pink-text: #b03b6c;
+
+  @supports (color: color-mix(in oklab, white 50%, black)) {
+    --cal-color-blue-bg: color-mix(in oklab, var(--event-blue) 34%, transparent);
+    --cal-color-blue-text: color-mix(in oklab, var(--event-blue) 82%, var(--text-primary));
+    --cal-color-coral-bg: color-mix(in oklab, var(--accent-coral) 34%, transparent);
+    --cal-color-coral-text: color-mix(in oklab, var(--accent-coral) 84%, var(--text-primary));
+    --cal-color-yellow-bg: color-mix(in oklab, var(--warning) 36%, transparent);
+    --cal-color-yellow-text: color-mix(in oklab, var(--warning) 86%, var(--text-primary));
+    --cal-color-green-bg: color-mix(in oklab, var(--event-green) 34%, transparent);
+    --cal-color-green-text: color-mix(in oklab, var(--event-green) 84%, var(--text-primary));
+    --cal-color-purple-bg: color-mix(in oklab, hsl(275, 70%, 60%) 34%, transparent);
+    --cal-color-purple-text: color-mix(in oklab, hsl(275, 70%, 45%) 86%, var(--text-primary));
+    --cal-color-orange-bg: color-mix(in oklab, var(--event-orange) 36%, transparent);
+    --cal-color-orange-text: color-mix(in oklab, var(--event-orange) 86%, var(--text-primary));
+    --cal-color-teal-bg: color-mix(in oklab, var(--event-teal) 34%, transparent);
+    --cal-color-teal-text: color-mix(in oklab, var(--event-teal) 84%, var(--text-primary));
+    --cal-color-pink-bg: color-mix(in oklab, hsl(340, 75%, 65%) 34%, transparent);
+    --cal-color-pink-text: color-mix(in oklab, hsl(340, 75%, 45%) 86%, var(--text-primary));
+  }
   
   /* Event surfaces - map to calendar colors for visibility */
   --event-neutral-bg: var(--cal-color-green-bg);   /* Use green instead of gray */
@@ -677,6 +681,8 @@
   --event-green: var(--success);
   --event-orange: var(--warning);
   --event-purple: hsl(275 70% 60%);
+  --event-teal: var(--h-teal, #12b3ad);
+  --event-pink: hsl(340 75% 60%);
   --error: var(--danger); /* Alias for compatibility */
   --success-tint-20: hsl(160 50% 60% / 0.2);
   --warning-tint-20: hsl(38 85% 63% / 0.2);

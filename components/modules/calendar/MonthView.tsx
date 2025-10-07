@@ -70,7 +70,7 @@ export function MonthView({
               </span>
 
               {/* events: top stack - positioned below day number */}
-              <div className="absolute top-[calc(var(--space-2)+1.5rem)] left-[var(--space-2)] right-[var(--space-2)] flex flex-col gap-[var(--event-gap)]">
+              <div className="absolute inset-x-0 top-[calc(var(--space-2)+1.5rem)] flex flex-col gap-[var(--event-gap)]">
                 {d.events.map(ev => (
                   <EventPill
                     key={ev.id}

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Calendar visual consistency (2025-10-07)
+- Removed legacy `components/calendar/CalendarEvent.tsx` and `CalendarTaskRail.tsx` to prevent stale inline-flex + gray color imports from leaking into the new module system.
+- Adjusted the month-view event stack to use `inset-x-0` (instead of padded left/right offsets) so every `EventPill` now spans the full cell width on all browsers.
+- Reworked calendar color fallbacks to use RGBA tones derived from the shared `--event-*` palette, ensuring month/week/day pills match the Tasks rail even where `color-mix` isn’t supported.
+- Added explicit `--event-teal`/`--event-pink` tokens for parity with Tasks chips and regenerated the build so neutral/personal events render in green rather than gray.
+- Confirmed the unified `EventPill` font token (`--event-pill-fs: 0.75rem`) applies consistently across all views after the rebuild.
+
 ### Calendar & Tasks UI Overhaul (2025-01-17)
 
 #### Event Pill System Implementation

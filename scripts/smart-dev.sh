@@ -8,7 +8,7 @@ echo "🚀 Starting LibreOllama Desktop development..."
 find_available_port() {
     local port=5173
     while lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; do
-        echo "⚠️  Port $port is busy, trying $((port + 1))..."
+        echo "⚠️  Port $port is busy, trying $((port + 1))..." >&2
         ((port++))
     done
     echo $port
@@ -28,4 +28,4 @@ fi
 
 # Start Vite with the available port
 echo "🌐 Starting Vite dev server on port $AVAILABLE_PORT..."
-exec vite --port $AVAILABLE_PORT --host localhost
+exec npx vite --port $AVAILABLE_PORT --host localhost
