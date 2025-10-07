@@ -298,24 +298,24 @@
   --priority-low: var(--info);
   --label-neutral: var(--accent);
 
-  /* Low-ink chip tints (unified for board + list) - enhanced contrast for warm canvas */
-  --chip-high-bg: color-mix(in oklab, var(--priority-high) 22%, transparent);
-  --chip-high-fg: color-mix(in oklab, var(--priority-high) 78%, var(--chip-text));
+  /* Low-ink chip tints (unified for board + list) - maximum contrast without looking heavy */
+  --chip-high-bg: color-mix(in oklab, var(--priority-high) 28%, transparent);
+  --chip-high-fg: var(--priority-high);
   --chip-high-text: var(--accent-coral);  /* legacy alias */
 
   /* Medium uses warning hue */
-  --chip-medium-bg: color-mix(in oklab, var(--priority-medium) 24%, transparent);
-  --chip-medium-fg: color-mix(in oklab, var(--priority-medium) 74%, var(--chip-text));
+  --chip-medium-bg: color-mix(in oklab, var(--priority-medium) 30%, transparent);
+  --chip-medium-fg: color-mix(in oklab, var(--priority-medium) 85%, var(--chip-text));
   --chip-medium-text: var(--warning);  /* legacy alias */
 
   /* Low uses info blue (matches event-blue) */
-  --chip-low-bg: color-mix(in oklab, var(--priority-low) 24%, transparent);
-  --chip-low-fg: color-mix(in oklab, var(--priority-low) 74%, var(--chip-text));
+  --chip-low-bg: color-mix(in oklab, var(--priority-low) 28%, transparent);
+  --chip-low-fg: color-mix(in oklab, var(--priority-low) 85%, var(--chip-text));
   --chip-low-text: var(--info);  /* legacy alias */
 
   /* Label chips */
-  --chip-label-bg: color-mix(in oklab, var(--label-neutral) 22%, transparent);
-  --chip-label-fg: color-mix(in oklab, var(--label-neutral) 80%, var(--text-secondary));
+  --chip-label-bg: color-mix(in oklab, var(--label-neutral) 26%, transparent);
+  --chip-label-fg: color-mix(in oklab, var(--label-neutral) 90%, var(--text-primary));
 
   /* Neutral / no priority */
   --chip-neutral-bg: var(--bg-surface-elevated);
