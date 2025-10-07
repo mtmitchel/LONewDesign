@@ -313,9 +313,9 @@
   --chip-low-fg: color-mix(in oklab, var(--priority-low) 85%, var(--chip-text));
   --chip-low-text: var(--info);  /* legacy alias */
 
-  /* Label chips - much stronger for visibility */
-  --chip-label-bg: color-mix(in oklab, var(--accent) 35%, transparent);
-  --chip-label-fg: var(--accent);
+  /* Label chips - using darker text-secondary for visibility on warm canvas */
+  --chip-label-bg: color-mix(in oklab, var(--text-secondary) 15%, transparent);
+  --chip-label-fg: var(--text-secondary);
 
   /* Neutral / no priority */
   --chip-neutral-bg: var(--bg-surface-elevated);
