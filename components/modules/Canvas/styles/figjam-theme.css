@@ -1,0 +1,295 @@
+/* Canvas Container */
+.canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: var(--canvas-surface);
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--canvas-grid-dot-strong) 1px, transparent 1px),
+    radial-gradient(circle at 11px 11px, var(--canvas-grid-dot-soft) 1px, transparent 1px);
+  background-size: 22px 22px, 22px 22px;
+  background-position: 0 0, 0 0;
+}
+
+/* Toolbar Styles */
+.toolbar-container {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--canvas-toolbar-bg);
+  border-radius: var(--canvas-radius-lg);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-shadow: var(--canvas-shadow-md);
+  border: 1px solid var(--canvas-toolbar-border);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+  z-index: 100;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 var(--space-1);
+  position: relative;
+}
+
+.toolbar-group:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(to bottom, transparent, var(--canvas-toolbar-border), transparent);
+}
+
+.tool-button {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--canvas-radius-pill);
+  color: var(--canvas-text-secondary);
+  cursor: pointer;
+  position: relative;
+  font-size: 24px;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tool-button:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--canvas-text-primary);
+  box-shadow: var(--canvas-shadow-xs);
+  transform: translateY(-1px);
+}
+
+.tool-button.active {
+  background: linear-gradient(135deg, var(--canvas-accent-indigo), var(--canvas-accent-iris)) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 28px rgba(93, 90, 255, 0.32) !important;
+  transform: translateY(-2px) !important;
+}
+
+.tool-button.active:hover {
+  background: linear-gradient(135deg, #5451ff, #8578ff) !important;
+}
+
+.tool-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.tool-button:focus-visible {
+  outline: 3px solid var(--canvas-focus-ring);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-button,
+  .tool-button:hover,
+  .tool-button.active {
+    transition: none;
+    transform: none !important;
+  }
+}
+
+/* Tooltip */
+.tool-tooltip {
+  position: absolute;
+  bottom: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 28, 61, 0.85);
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: var(--canvas-radius-sm);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 8px 18px rgba(23, 20, 48, 0.22);
+}
+
+.tool-button:hover .tool-tooltip {
+  opacity: 1;
+}
+
+/* Zoom Controls */
+.zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: var(--canvas-toolbar-bg);
+  border-radius: var(--canvas-radius-lg);
+  padding: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-shadow: var(--canvas-shadow-md);
+  border: 1px solid var(--canvas-toolbar-border);
+}
+
+.zoom-button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--canvas-radius-md);
+  color: var(--canvas-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.zoom-button:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--canvas-text-primary);
+}
+
+.zoom-level {
+  min-width: 60px;
+  text-align: center;
+  color: var(--canvas-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Color Picker */
+/* Legacy color picker (deprecated path) */
+.color-picker-panel {
+  position: absolute;
+  bottom: 80px;
+  background: var(--canvas-surface-elevated);
+  border-radius: var(--canvas-radius-lg);
+  padding: var(--space-3);
+  box-shadow: var(--canvas-shadow-md);
+  border: 1px solid var(--canvas-toolbar-border);
+  display: none;
+  z-index: 200;
+}
+
+.color-picker-panel.active {
+  display: block;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--canvas-radius-pill);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.color-swatch:hover {
+  transform: scale(1.05);
+  box-shadow: var(--canvas-shadow-xs);
+}
+
+.color-swatch.selected {
+  border-color: var(--canvas-accent-indigo);
+  box-shadow: 0 0 0 4px rgba(93, 90, 255, 0.18);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: var(--space-1);
+  background: var(--canvas-surface-elevated);
+  border-radius: var(--canvas-radius-lg);
+  padding: var(--space-2);
+  box-shadow: var(--canvas-shadow-md);
+  border: 1px solid var(--canvas-toolbar-border);
+  min-width: 180px;
+  display: none;
+  z-index: 200;
+}
+
+.dropdown-menu.active {
+  display: block;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: calc(var(--space-2) + 2px) var(--space-3);
+  border-radius: var(--canvas-radius-md);
+  color: var(--canvas-text-secondary);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.menu-item:hover {
+  background: rgba(93, 90, 255, 0.12);
+  color: var(--canvas-text-primary);
+  transform: translateX(2px);
+}
+
+.menu-item svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Canvas Stage */
+.konva-stage-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  overflow: hidden;
+}
+
+.konva-stage-container.grabbing {
+  cursor: grabbing;
+}
+
+/* Selection Box */
+.selection-box {
+  stroke: var(--canvas-accent-indigo);
+  stroke-width: 2;
+  fill: rgba(93, 90, 255, 0.16);
+  stroke-dasharray: 5, 5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .toolbar-container {
+    top: 8px;
+    bottom: auto;
+    padding: 8px;
+    gap: 4px;
+  }
+
+  .tool-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .tool-button svg {
+    width: 18px;
+    height: 18px;
+  }
+}

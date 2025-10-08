@@ -8,7 +8,7 @@ import { ChatModule } from './components/modules/ChatModule';
 import { CalendarModule } from './components/modules/CalendarModule';
 import { TasksModule } from './components/modules/TasksModule';
 import { NotesModule } from './components/modules/NotesModule';
-import { CanvasModule } from './components/modules/CanvasModule';
+import { CanvasModule } from './components/modules/Canvas/CanvasModule';
 import { SettingsModule } from './components/modules/SettingsModule';
 import { MailModuleTriPane } from './components/modules/MailModuleTriPane';
 

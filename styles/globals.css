@@ -66,6 +66,36 @@
   --overlay-blur: 6px;                /* backdrop blur */
   --popover-elevation: var(--elevation-lg); /* calendar/time popovers */
 
+  /* Canvas tokens */
+  --canvas-surface: #fdfcf9;
+  --canvas-surface-elevated: rgba(255, 255, 255, 0.98);
+  --canvas-surface-alt: #ffffff;
+  --canvas-toolbar-bg: rgba(255, 255, 255, 0.92);
+  --canvas-toolbar-border: rgba(82, 88, 126, 0.14);
+  --canvas-grid-dot-strong: rgba(70, 76, 107, 0.18);
+  --canvas-grid-dot-soft: rgba(70, 76, 107, 0.08);
+  --canvas-text-primary: var(--text-primary);
+  --canvas-text-secondary: var(--text-secondary);
+  --canvas-focus-ring: #5d5aff;
+  --canvas-shadow-xs: 0 2px 6px rgba(24, 25, 32, 0.08);
+  --canvas-shadow-sm: 0 4px 10px rgba(24, 25, 32, 0.12);
+  --canvas-shadow-md: 0 10px 24px rgba(24, 25, 32, 0.14);
+  --canvas-shadow-lg: 0 18px 48px rgba(24, 25, 32, 0.18);
+  --canvas-radius-sm: 6px;
+  --canvas-radius-md: 10px;
+  --canvas-radius-lg: 16px;
+  --canvas-radius-pill: 999px;
+  --canvas-toolbar-h: 56px;
+
+  --canvas-accent-indigo: #5d5aff;
+  --canvas-accent-iris: #8b7cf7;
+  --canvas-accent-sun: #ffd262;
+  --canvas-accent-tangerine: #ff9d6c;
+  --canvas-accent-mint: #66e0b8;
+  --canvas-accent-sky: #66c6ff;
+  --canvas-accent-berry: #ff6ad5;
+  --canvas-accent-slate: #1f2544;
+
   /* Form fields */
   --field-height: 44px;               /* standard input height */
   --field-pad-y: var(--space-2);      /* textarea vertical padding */
