@@ -108,13 +108,15 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | Contact Management | 📋 | Medium | User list & search |
 | File Sharing | 📋 | Low | Attachment support |
 
-#### Notes Module 📋 PLANNED
+#### Notes Module 🚧 IN PROGRESS
 | Component | Status | Priority | Notes |
 |-----------|--------|----------|-------|
 | Note Editor | 📋 | High | Rich text editing |
-| Note Organization | 📋 | High | Folders & tags |
+| Note Organization | 🚧 | High | Folder tree with drag/drop, inline renaming in progress |
 | Search & Filter | 📋 | Medium | Full-text search |
 | Export Features | 📋 | Low | PDF, markdown export |
+| **Context Rename UX** | ✅ | Medium | Inline rename triggered from context menus with keyboard commit/cancel |
+| **Pinned Notes System** | ✅ | Medium | Pin/unpin actions keep key notes surfaced in lists |
 
 #### Calendar Module 📋 PLANNED
 | Component | Status | Priority | Notes |
@@ -187,5 +189,5 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 - ❌ **Cancelled** - No longer needed
 
 ---
-*Last Updated: December 2024*
+*Last Updated: October 2025*
 *Next Review: Weekly sprint planning*

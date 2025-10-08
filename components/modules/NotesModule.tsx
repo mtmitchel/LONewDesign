@@ -31,6 +31,7 @@ export function NotesModule() {
   const [lastSavedLabel, setLastSavedLabel] = React.useState<string | undefined>(undefined);
   const [rightPaneVisible, setRightPaneVisible] = React.useState(true);
   const [leftPaneVisible, setLeftPaneVisible] = React.useState(true);
+  const [expandFolderRequest, setExpandFolderRequest] = React.useState<string | null>(null);
 
   // Derived state from new selection model
   const selectedFolderId = selectedItem?.type === 'folder' ? selectedItem.id : null;
@@ -39,24 +40,13 @@ export function NotesModule() {
 
   const applySort = React.useCallback((arr: Note[]): Note[] => {
     const sorted = [...arr];
-    const { sortBy, sortOrder } = settings;
-    const dir = sortOrder === 'asc' ? 1 : -1;
     sorted.sort((a, b) => {
-      if (sortBy === 'modified') {
-        const ad = a.updatedAt || a.createdAt || '';
-        const bd = b.updatedAt || b.createdAt || '';
-        return (new Date(ad).getTime() - new Date(bd).getTime()) * dir;
-      }
-      if (sortBy === 'created') {
-        const ad = a.createdAt || '';
-        const bd = b.createdAt || '';
-        return (new Date(ad).getTime() - new Date(bd).getTime()) * dir;
-      }
-      // title or alphabetical
-      return a.title.localeCompare(b.title) * dir;
+      const pinnedDiff = Number(!!b.isPinned) - Number(!!a.isPinned);
+      if (pinnedDiff !== 0) return pinnedDiff;
+      return (a.order ?? 0) - (b.order ?? 0);
     });
     return sorted;
-  }, [settings]);
+  }, []);
 
   const filteredNotes = React.useMemo(() => {
     const base = notes.filter(n => {
@@ -84,10 +74,14 @@ export function NotesModule() {
   // Create folder function
   const createFolder = (parentFolderId?: string | null) => {
     const id = generateId();
+    const siblingOrder = folders
+      .filter(f => (f.parentId || null) === (parentFolderId || null))
+      .reduce((max, f) => Math.max(max, f.order ?? 0), -1) + 1;
     const newFolder: NoteFolder = {
       id,
       name: 'New Folder',
       parentId: parentFolderId || null,
+      order: siblingOrder,
       noteCount: 0,
     };
     setFolders(prev => [...prev, newFolder]);
@@ -110,14 +104,25 @@ export function NotesModule() {
         return prev;
       }
 
-      const updated = prev.map(folder => {
+      const siblings = prev
+        .filter(f => (f.parentId || null) === (newParentId || null) && f.id !== folderId)
+        .sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+      const clampedIndex = Math.max(0, Math.min(newIndex, siblings.length));
+      const ids = siblings.map(f => f.id);
+      const idx = clampedIndex;
+      ids.splice(idx, 0, folderId);
+      const orderMap = new Map<string, number>();
+      ids.forEach((id, i) => orderMap.set(id, i));
+
+      return prev.map(folder => {
         if (folder.id === folderId) {
-          return { ...folder, parentId: newParentId };
+          return { ...folder, parentId: newParentId, order: orderMap.get(folderId) ?? 0 };
+        }
+        if (orderMap.has(folder.id)) {
+          return { ...folder, order: orderMap.get(folder.id)! };
         }
         return folder;
       });
-      console.log(`Moved folder ${folderId} to parent ${newParentId || 'root'}`);
-      return updated;
     });
   };
 
@@ -126,13 +131,18 @@ export function NotesModule() {
     const id = generateId();
     const now = new Date().toISOString();
     const folderId = targetFolderId !== undefined ? targetFolderId : null; // Always create in root when using + button
+    const siblingOrder = notes
+      .filter(n => (n.folderId || null) === (folderId || null))
+      .reduce((max, n) => Math.max(max, n.order ?? 0), -1) + 1;
     const newNote: Note = {
       id,
       title: 'Untitled Note',
       content: '',
       folderId,
+      order: siblingOrder,
       tags: [],
       isStarred: false,
+      isPinned: false,
       lastModified: 'just now',
       wordCount: 0,
       createdAt: now,
@@ -147,6 +157,13 @@ export function NotesModule() {
   const handleSelectFolder = (folderId: string) => setSelectedItem({id: folderId, type: 'folder'});
   const handleToggleStar = (noteId: string) => {
     setNotes(prev => prev.map(n => (n.id === noteId ? { ...n, isStarred: !n.isStarred } : n)));
+  };
+  const handleTogglePin = (noteId: string, force?: boolean) => {
+    setNotes(prev => prev.map(n => {
+      if (n.id !== noteId) return n;
+      const nextPinned = typeof force === 'boolean' ? force : !n.isPinned;
+      return { ...n, isPinned: nextPinned };
+    }));
   };
   const withSavingTick = () => {
     setIsSaving(true);
@@ -239,7 +256,10 @@ export function NotesModule() {
     setNotes(prev => prev.map(n => (n.id === selectedNoteId ? { ...n, title: value, updatedAt: new Date().toISOString() } : n)));
     withSavingTick();
   };
-  const handleCreateNote = () => createNote();
+  const handleCreateNote = () => {
+    createNote(selectedFolderId);
+    if (selectedFolderId) setExpandFolderRequest(selectedFolderId);
+  };
   const handleDuplicate = () => {
     if (!selectedNote) return;
     const id = generateId();
@@ -280,6 +300,73 @@ export function NotesModule() {
               onSelectNote={handleSelectNote}
               onHidePane={() => setLeftPaneVisible(false)}
               onMoveFolder={handleMoveFolder}
+              onCreateNoteAt={(folderId) => createNote(folderId)}
+              onCreateFolderAt={(parentId) => createFolder(parentId)}
+              expandFolderRequest={expandFolderRequest ?? selectedFolderId}
+              onDeleteNote={(noteId) => {
+                setNotes(prev => prev.filter(n => n.id !== noteId));
+                if (selectedItem?.type === 'note' && selectedItem.id === noteId) setSelectedItem(null);
+              }}
+              onMoveNote={(noteId, newFolderId, newIndex) => {
+                setNotes(prev => {
+                  const moving = prev.find(n => n.id === noteId);
+                  if (!moving) return prev;
+                  const targetId = newFolderId || null;
+                  // Build target siblings excluding the moving note, sorted by order
+                  const siblings = prev
+                    .filter(n => (n.folderId || null) === targetId && n.id !== noteId)
+                    .sort((a,b) => (a.order ?? 0) - (b.order ?? 0));
+                  const clampedIndex = Math.max(0, Math.min(newIndex ?? 0, siblings.length));
+                  const ids = siblings.map(n => n.id);
+                  ids.splice(clampedIndex, 0, noteId);
+                  const orderMap = new Map<string, number>();
+                  ids.forEach((id, idx) => orderMap.set(id, idx));
+                  return prev.map(n => {
+                    if (n.id === noteId) {
+                      return { ...n, folderId: targetId, order: orderMap.get(noteId) ?? 0 };
+                    }
+                    if (orderMap.has(n.id)) {
+                      return { ...n, order: orderMap.get(n.id)! };
+                    }
+                    return n;
+                  });
+                });
+                if (newFolderId) {
+                  setExpandFolderRequest(newFolderId);
+                }
+              }}
+              onNoteAction={(noteId, action) => {
+                switch (action) {
+                  case 'rename':
+                    console.log('Rename note (left pane):', noteId);
+                    break;
+                  case 'move':
+                    console.log('Move note (left pane):', noteId);
+                    break;
+                  case 'duplicate': {
+                    const original = notes.find(n => n.id === noteId);
+                    if (!original) return;
+                    const id = generateId();
+                    const now = new Date().toISOString();
+                    const copy: Note = { ...original, id, createdAt: now, updatedAt: now, title: `${original.title} (Copy)` };
+                    setNotes(prev => [copy, ...prev]);
+                    setSelectedItem({ id: copy.id, type: 'note' });
+                    break;
+                  }
+                  case 'pin':
+                    handleTogglePin(noteId, true);
+                    break;
+                  case 'unpin':
+                    handleTogglePin(noteId, false);
+                    break;
+                }
+              }}
+              onRenameNote={(noteId, newTitle) => {
+                setNotes(prev => prev.map(n => (n.id === noteId ? { ...n, title: newTitle, updatedAt: new Date().toISOString() } : n)));
+              }}
+              onRenameFolder={(folderId, newName) => {
+                setFolders(prev => prev.map(f => (f.id === folderId ? { ...f, name: newName } : f)));
+              }}
               onFolderAction={(folderId, action) => {
                 switch (action) {
                   case 'rename':
@@ -290,6 +377,7 @@ export function NotesModule() {
                     break;
                   case 'new-note':
                     createNote(folderId);
+                    setExpandFolderRequest(folderId);
                     break;
                   case 'new-subfolder':
                     createFolder(folderId);
@@ -303,14 +391,34 @@ export function NotesModule() {
                   case 'export-text':
                     console.log('Export folder as Text:', folderId);
                     break;
-                  case 'delete':
-                    // Delete folder and all its notes
-                    setFolders(prev => prev.filter(f => f.id !== folderId && f.parentId !== folderId));
-                    setNotes(prev => prev.filter(n => n.folderId !== folderId));
-                    if (selectedItem?.type === 'folder' && selectedItem.id === folderId) {
-                      setSelectedItem(null);
+                  case 'delete': {
+                    // Delete folder and all its descendants, plus their notes
+                    const collectDescendants = (id: string, acc: Set<string>) => {
+                      const children = folders.filter(f => f.parentId === id);
+                      for (const child of children) {
+                        acc.add(child.id);
+                        collectDescendants(child.id, acc);
+                      }
+                    };
+                    const toDelete = new Set<string>([folderId]);
+                    collectDescendants(folderId, toDelete);
+
+                    // Clear selection if it points to a deleted folder or a note inside a deleted folder
+                    if (selectedItem) {
+                      if (selectedItem.type === 'folder' && toDelete.has(selectedItem.id)) {
+                        setSelectedItem(null);
+                      } else if (selectedItem.type === 'note') {
+                        const selNote = notes.find(n => n.id === selectedItem.id);
+                        if (selNote && selNote.folderId && toDelete.has(selNote.folderId)) {
+                          setSelectedItem(null);
+                        }
+                      }
                     }
+
+                    setFolders(prev => prev.filter(f => !toDelete.has(f.id)));
+                    setNotes(prev => prev.filter(n => !(n.folderId && toDelete.has(n.folderId))));
                     break;
+                  }
                   default:
                     console.log('Unknown folder action:', action, folderId);
                 }
@@ -384,7 +492,7 @@ export function NotesModule() {
                 compactView: settings.compactView,
               }}
               onSelectNote={handleSelectNote}
-              onToggleStar={handleToggleStar}
+            onToggleStar={handleToggleStar}
               onCreateNote={handleCreateNote}
               onNoteAction={(noteId, action) => {
                 switch (action) {
@@ -397,6 +505,12 @@ export function NotesModule() {
                   case 'duplicate':
                     handleDuplicate();
                     break;
+                case 'pin':
+                  handleTogglePin(noteId, true);
+                  break;
+                case 'unpin':
+                  handleTogglePin(noteId, false);
+                  break;
                   case 'export-pdf':
                     console.log('Export note as PDF:', noteId);
                     break;

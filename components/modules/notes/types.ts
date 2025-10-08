@@ -3,8 +3,10 @@ export interface Note {
   title: string;
   content: string;
   folderId: string | null;
+  order?: number; // ordering within its folder (or root when folderId is null)
   tags: string[];
   isStarred: boolean;
+  isPinned?: boolean;
   lastModified: string;
   wordCount: number;
   createdAt?: string;
@@ -15,6 +17,7 @@ export interface NoteFolder {
   id: string;
   name: string;
   parentId?: string | null;
+  order?: number; // ordering within its parent (or root when parentId is null)
   noteCount: number;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Star, MoreHorizontal, Edit, Move, Copy, Download, Trash } from 'lucide-react';
+import { Star, MoreHorizontal, Edit, Move, Copy, Download, Trash, Pin, PinOff } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Badge } from '../../ui/badge';
 import {
@@ -25,6 +25,8 @@ type NoteAction =
   | 'rename'
   | 'move'
   | 'duplicate'
+  | 'pin'
+  | 'unpin'
   | 'export-pdf'
   | 'export-word'
   | 'export-text'
@@ -69,18 +71,20 @@ export function NotesCenterPane({
   };
 
   return (
-    <div className="divide-y divide-[var(--border-subtle)]">
-      {loading && (
-        <div className="px-[var(--space-4)] py-[var(--space-3)] text-sm text-[var(--text-secondary)]">
-          Loading notes…
-        </div>
-      )}
-      {notes.map(note => {
-        const isActive = note.id === selectedNoteId;
-        return (
-          <ContextMenu key={note.id}>
-            <ContextMenuTrigger asChild>
-              <div
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div className="divide-y divide-[var(--border-subtle)]">
+          {loading && (
+            <div className="px-[var(--space-4)] py-[var(--space-3)] text-sm text-[var(--text-secondary)]">
+              Loading notes…
+            </div>
+          )}
+          {notes.map(note => {
+            const isActive = note.id === selectedNoteId;
+            return (
+              <ContextMenu key={note.id}>
+                <ContextMenuTrigger asChild>
+                  <div
                 role="button"
                 tabIndex={0}
                 onClick={() => onSelectNote(note.id)}
@@ -105,6 +109,9 @@ export function NotesCenterPane({
                       </h4>
                       {note.isStarred && (
                         <Star size={14} className="text-[var(--warning)]" fill="currentColor" />
+                      )}
+                      {note.isPinned && (
+                        <Pin size={14} className="text-[var(--primary)]" />
                       )}
                     </div>
                     {settings.showPreview && (
@@ -158,6 +165,14 @@ export function NotesCenterPane({
                           <Copy size={14} className="mr-[var(--space-2)]" />
                           Duplicate
                         </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleAction(note.id, note.isPinned ? 'unpin' : 'pin')}>
+                          {note.isPinned ? (
+                            <PinOff size={14} className="mr-[var(--space-2)]" />
+                          ) : (
+                            <Pin size={14} className="mr-[var(--space-2)]" />
+                          )}
+                          {note.isPinned ? 'Unpin from top' : 'Pin to top'}
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onSelect={() => handleAction(note.id, 'export-pdf')}>
                           <Download size={14} className="mr-[var(--space-2)]" />
@@ -203,6 +218,14 @@ export function NotesCenterPane({
                 <Copy size={14} className="mr-[var(--space-2)]" />
                 Duplicate
               </ContextMenuItem>
+              <ContextMenuItem onSelect={() => handleAction(note.id, note.isPinned ? 'unpin' : 'pin')}>
+                {note.isPinned ? (
+                  <PinOff size={14} className="mr-[var(--space-2)]" />
+                ) : (
+                  <Pin size={14} className="mr-[var(--space-2)]" />
+                )}
+                {note.isPinned ? 'Unpin from top' : 'Pin to top'}
+              </ContextMenuItem>
               <ContextMenuSeparator />
               <ContextMenuItem onSelect={() => handleAction(note.id, 'export-pdf')}>
                 <Download size={14} className="mr-[var(--space-2)]" />
@@ -225,7 +248,14 @@ export function NotesCenterPane({
           </ContextMenu>
         );
       })}
-    </div>
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-44">
+        <ContextMenuItem onSelect={onCreateNote}>
+          + New note
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 

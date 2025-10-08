@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Notes module refinements (2025-10-09)
+- Enabled context-menu-triggered inline renaming for notes and folders in the left pane, with keyboard commit/cancel behavior.
+- Added note pinning support that keeps pinned items at the top of both center and sidebar lists, plus pin/unpin actions in dropdowns and context menus.
+- Surfaced pinned state indicators alongside starred badges so priority notes remain visually distinct across the module.
+
 ### Event preview popover refinements (2025-10-08)
 - Updated calendar event preview popover to sit on `--bg-surface-raised` with an emphasized border + inset hairline for clearer separation from the grid.
 - Swapped the elevation to `--elevation-lg`, added calm open motion, and tuned icon buttons to stay low-ink until hovered/focused.
