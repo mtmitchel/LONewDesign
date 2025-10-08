@@ -169,47 +169,46 @@ export const ChatLeftPane = React.forwardRef<ChatLeftPaneHandle, ChatLeftPanePro
                   }}
                   onContextMenu={() => focusRow(index)}
                   className={cn(
-                    'group relative grid min-h-[var(--list-row-min-h)] grid-cols-[var(--chat-rail-w)_1fr] items-start px-[var(--list-row-pad-x)] py-[var(--list-row-pad-y)]',
-                    'cursor-pointer motion-safe:transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
+                    'group relative flex min-h-[var(--list-row-min-h)] items-center justify-between rounded-[var(--radius-md)] border border-transparent px-[var(--list-row-pad-x)] py-[var(--space-2-5,10px)]',
+                    'cursor-pointer motion-safe:transition-all duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
                     isActive
-                      ? 'bg-[color-mix(in_oklab,var(--primary-tint-5) 55%, transparent)] text-[color:var(--text-primary)]'
-                      : 'bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)]'
+                      ? 'bg-[var(--primary)] text-white shadow-[inset_0_0_0_1px_hsla(0,0%,100%,0.18)]'
+                      : 'hover:bg-[var(--primary-tint-10)]'
                   )}
                 >
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'block h-full w-full rounded-l-[var(--radius-md)] transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
-                      isActive ? 'bg-[var(--primary)]' : 'bg-transparent'
-                    )}
-                  />
-                  <div className="min-w-0">
-                    <div className="flex items-center justify-between gap-[var(--space-2)]">
-                      <div className="flex min-w-0 items-center gap-[var(--space-2)]">
-                        <div className="truncate text-[length:var(--list-row-font)] font-medium text-[color:var(--text-primary)]">
-                          {conversation.title}
-                        </div>
-                        {conversation.pinned ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="inline-flex items-center text-[color:var(--text-tertiary)]">
-                                <Pin className="h-3.5 w-3.5" aria-hidden="true" />
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">Pinned</TooltipContent>
-                          </Tooltip>
-                        ) : null}
-                      </div>
-                      {!isActive && conversation.unread ? (
-                        <span
-                          aria-hidden="true"
-                          className="mt-[var(--space-1)] inline-flex shrink-0 rounded-full bg-[var(--primary-tint-5)] opacity-60"
-                          style={{ width: 'var(--space-2)', height: 'var(--space-2)' }}
-                        />
-                      ) : null}
+                  <div className="flex min-w-0 flex-1 items-center gap-[var(--space-2)]">
+                    <div
+                      className={cn(
+                        'truncate text-[length:var(--list-row-font)] font-medium text-[color:var(--text-primary)]',
+                        isActive && 'text-white'
+                      )}
+                    >
+                      {conversation.title}
                     </div>
+                    {conversation.pinned ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className={cn(
+                              'inline-flex items-center text-[color:var(--text-tertiary)]',
+                              isActive && 'text-white/80'
+                            )}
+                          >
+                            <Pin className="h-3.5 w-3.5" aria-hidden="true" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">Pinned</TooltipContent>
+                      </Tooltip>
+                    ) : null}
                   </div>
+                  {!isActive && conversation.unread ? (
+                    <span
+                      aria-hidden="true"
+                      className="inline-flex shrink-0 rounded-full bg-[var(--primary-tint-5)] opacity-60"
+                      style={{ width: 'var(--space-2)', height: 'var(--space-2)' }}
+                    />
+                  ) : null}
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent className="w-48">

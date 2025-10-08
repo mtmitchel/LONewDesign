@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Left pane selection styling unification (2025-10-08)
+- Standardized active row highlighting across chat, mail, and notes modules with consistent blue accent treatment.
+- Applied solid primary background (`var(--primary)`) with white text for selected items, replacing mixed transparency approaches.
+- Updated mail compose button to full-width left-aligned layout for better visual consistency with folder list.
+- Enhanced icon and badge readability in active states by switching to white/translucent colors when rows are selected.
+- Centralized styling patterns in notes module with shared `ACTIVE_LEFT_PANE_ROW` and `HOVER_LEFT_PANE_ROW` constants.
+
 ### Chat tri-pane polish (2025-10-08)
 - Tokenized the conversation rail width and pared conversation rows back to titles only so the left pane stays calm while still honoring pinned and unread states.
 - Rebuilt the chat center pane with timestamp-above bubbles, icon-only copy/regenerate/edit affordances, and hover-only actions for user messages.

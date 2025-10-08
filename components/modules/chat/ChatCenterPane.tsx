@@ -204,8 +204,6 @@ export function ChatCenterPane({
     const formattedTime = Number.isNaN(timestamp.getTime())
       ? message.timestamp
       : new Intl.DateTimeFormat(undefined, {
-          month: 'short',
-          day: 'numeric',
           hour: 'numeric',
           minute: '2-digit',
         }).format(timestamp);
@@ -214,9 +212,6 @@ export function ChatCenterPane({
 
     return (
       <div key={message.id} className={cn('group flex flex-col gap-[var(--space-1)]', alignment)}>
-        <span className="text-xs text-[color:var(--text-tertiary)]">
-          {formattedTime}{message.pending ? ' · Sending…' : ''}
-        </span>
         <div className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}>
           <div className={bubbleClasses}>{message.text}</div>
         </div>

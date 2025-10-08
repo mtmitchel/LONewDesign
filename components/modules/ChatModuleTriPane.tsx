@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Button } from "../ui/button";
 
 const MODEL_OPTIONS = [
   { value: "gpt-4", label: "GPT-4" },
@@ -103,38 +104,72 @@ export function ChatModuleTriPane() {
     [selectedModelLabel]
   );
   const [conversations, setConversations] = React.useState<Conversation[]>([
-    { id: 'c1', title: 'Design sync', lastMessageSnippet: 'Let\'s review the new mocks', updatedAt: '2025-01-15T10:30:00Z', unread: true, participants: ['You','Alex'] },
-    { id: 'c2', title: 'Changelog', lastMessageSnippet: 'Published 0.9.3', updatedAt: '2025-01-14T08:12:00Z', participants: ['You'] },
-    { id: 'c3', title: 'Support chat', lastMessageSnippet: 'Issue resolved ✅', updatedAt: '2025-01-13T13:45:00Z', participants: ['You','Sam'] },
+    {
+      id: 'c1',
+      title: 'Summarize strategy brief',
+      lastMessageSnippet: 'Here’s the executive summary you asked for.',
+      updatedAt: '2025-01-15T10:30:00Z',
+      unread: true,
+      pinned: true,
+      participants: ['You', 'LibreOllama'],
+    },
+    {
+      id: 'c2',
+      title: 'Draft release notes',
+      lastMessageSnippet: 'Release notes for 0.9.3 are ready to review.',
+      updatedAt: '2025-01-14T08:12:00Z',
+      participants: ['You', 'LibreOllama'],
+    },
+    {
+      id: 'c3',
+      title: 'Customer follow-up reply',
+      lastMessageSnippet: 'Prepared a calm response about the sync fix.',
+      updatedAt: '2025-01-13T13:45:00Z',
+      participants: ['You', 'LibreOllama'],
+    },
   ]);
   const [messages, setMessages] = React.useState<ChatMessage[]>([
     {
       id: 'm1',
       conversationId: 'c1',
-      author: 'assistant',
-      text: 'Sharing the latest component guidelines for review.',
-      timestamp: '2025-01-15T09:38:00Z',
+      author: 'user',
+      text: 'Summarize the attached strategy brief into a concise executive summary with three key takeaways.',
+      timestamp: '2025-01-15T09:34:00Z',
     },
     {
       id: 'm2',
       conversationId: 'c1',
-      author: 'user',
-      text: 'Thanks! I will add my comments shortly.',
-      timestamp: '2025-01-15T09:39:00Z',
+      author: 'assistant',
+      text: 'Here’s a concise executive summary:\n• Growth focus shifts to onboarding enterprise teams.\n• Automation program reduces manual triage by ~35%.\n• New privacy commitments unlock regulated vertical pilots.',
+      timestamp: '2025-01-15T09:35:00Z',
     },
     {
       id: 'm3',
       conversationId: 'c2',
-      author: 'assistant',
-      text: 'Here is the summary for release 0.9.3.',
-      timestamp: '2025-01-14T08:14:00Z',
+      author: 'user',
+      text: 'Draft release notes for LibreOllama Desktop 0.9.3. Highlight the chat refinements and any notable bug fixes in a friendly tone.',
+      timestamp: '2025-01-14T08:10:00Z',
     },
     {
       id: 'm4',
+      conversationId: 'c2',
+      author: 'assistant',
+      text: 'Release notes — LibreOllama Desktop 0.9.3\n1. Chat tri-pane polish with smarter composer and quick actions.\n2. Calmer conversation list that keeps pinned threads in view.\n3. Bug fixes for token namespace drift and attachment previews.',
+      timestamp: '2025-01-14T08:12:00Z',
+    },
+    {
+      id: 'm5',
       conversationId: 'c3',
       author: 'user',
-      text: 'Customer reported the sync bug resolved after patch.',
-      timestamp: '2025-01-13T13:40:00Z',
+      text: 'Help me draft a calm reply letting the customer know the sync bug is fixed and we’re still monitoring.',
+      timestamp: '2025-01-13T13:38:00Z',
+    },
+    {
+      id: 'm6',
+      conversationId: 'c3',
+      author: 'assistant',
+      text: 'Here’s a friendly response you can send:\n---\nHi Sam,\nThanks for the detailed report last week. We identified the sync break and shipped a fix this morning. Your workspace is already on the patched build, and early telemetry shows the queues clearing. Please keep me posted if you notice anything else—we’ll continue monitoring through Friday.\n---',
+      timestamp: '2025-01-13T13:41:00Z',
     },
   ]);
 
@@ -368,15 +403,17 @@ export function ChatModuleTriPane() {
             <PaneHeader>
               <div className="flex items-center justify-between w-full">
                 <div className="font-medium">Conversations</div>
-                <button
+                <Button
                   type="button"
-                  className="px-[var(--space-2)] py-[var(--space-1)] rounded bg-transparent text-[color:var(--text-primary)] hover:bg-[var(--hover-bg)]"
+                  size="sm"
+                  variant="outline"
+                  className="gap-[var(--space-1)] border-[color-mix(in_oklab,var(--primary) 35%, transparent)] text-[color:var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary) 12%, transparent)] hover:text-[color:var(--primary)]"
                   onClick={onStartNewConversation}
                   title="New chat (N)"
                   aria-keyshortcuts="KeyN"
                 >
                   + New
-                </button>
+                </Button>
               </div>
             </PaneHeader>
           ) : undefined

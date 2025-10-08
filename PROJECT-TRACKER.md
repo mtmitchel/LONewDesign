@@ -1,7 +1,14 @@
 # LibreOllama Desktop - Project Implementation Tracker
 
 ## 🎯 Project Overview
-Converting LibreOllama UI from web to desktop application using Tauri + React, with a focus on the TriPane Mail module and comprehensive design system implementation.
+Converting LibreOllama UI from w#### Chat Module ✅ IN PROGRESS
+| Component | Status | Priority | Notes |
+|-----------|--------|----------|-------|
+| Chat Interface | ✅ | High | Conversation rail tokenized, timestamps above bubbles, icon affordances for copy/regenerate/edit with hover treatment for user messages. |
+| Message Composer | ✅ | High | Auto-grow up to 8 lines, reserved scroll padding, attachment shortcut, keyboard shortcut tooltip, and send-state styling. |
+| Contact Management | 📋 | Medium | User list & search |
+| File Sharing | 📋 | Low | Drop handler scaffolded; full upload flow pending |
+| Left pane highlighting | ✅ | High | Consistent blue accent selection styling with white text and proper icon contrast. |esktop application using Tauri + React, with a focus on the TriPane Mail module and comprehensive design system implementation.
 
 ## 📋 Implementation Status
 
@@ -38,6 +45,7 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | Shared primitives alignment | ✅ | Updated `badge`, `button`, `card`, `toggle-group`, and `checkbox` primitives to the new convention, eliminating duplicate-property warnings. |
 | Send button refresh | ✅ | Expanded `SendButton.tsx` props so compose and reply surfaces share the same keyboard shortcuts and class hooks. |
 | Documentation update | ✅ | Added Tailwind helper guidance to `docs/technical/design-tokens-reference.md` so future UI work keeps tokens namespaced. |
+| Left pane styling unification | ✅ | Standardized active row highlighting with solid primary blue background and white text across chat, mail, and notes modules. Enhanced readability of icons/badges in selected states. |
 
 #### Tasks Module 🚧 IN PROGRESS
 | Component | Status | Priority | Notes |
@@ -74,6 +82,7 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | TriPane Header Fix | ✅ | Low | **Fixed to h-[60px] for perfect border alignment** |
 | Design Tokens Docs | ✅ | Low | **Created docs/technical/design-tokens-reference.md** |
 | Pane Controls Polish | ✅ | Medium | **Caret hover states, elevated collapsed rails, and center-width guard for responsive safety** |
+| **Left pane highlighting** | ✅ | Medium | **Consistent blue accent selection styling with full-width compose button and proper badge contrast** |
 
 #### Compose Module ✅ COMPLETE (Baseline v1.0 Locked)
 
@@ -125,6 +134,7 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | Export Features | 📋 | Low | PDF, markdown export |
 | **Context Rename UX** | ✅ | Medium | Inline rename triggered from context menus with keyboard commit/cancel |
 | **Pinned Notes System** | ✅ | Medium | Pin/unpin actions keep key notes surfaced in lists |
+| **Left pane highlighting** | ✅ | Medium | Consistent blue accent selection styling with shared row constants and proper icon contrast |
 
 #### Calendar Module 📋 PLANNED
 | Component | Status | Priority | Notes |

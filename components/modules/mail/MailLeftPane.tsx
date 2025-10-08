@@ -15,6 +15,7 @@ import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
 import { PaneColumn } from '../../layout/PaneColumn';
 import { PaneHeader } from '../../layout/PaneHeader';
 import { Folder, Label } from './types';
+import { cn } from '../../ui/utils';
 
 interface MailLeftPaneProps {
   folders: Folder[];
@@ -104,11 +105,11 @@ export function MailLeftPane({
       </PaneHeader>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
-        <div className="flex flex-col items-center space-y-[var(--space-6)]">
+        <div className="flex flex-col items-stretch space-y-[var(--space-6)]">
           {/* Compose Button */}
           <Button
             variant="solid"
-            className="justify-start gap-[var(--space-2)] px-[var(--space-3)]"
+            className="w-full justify-start gap-[var(--space-2)] px-[var(--space-3)]"
             onClick={onComposeClick}
           >
             <Plus className="w-4 h-4" />
@@ -139,20 +140,28 @@ export function MailLeftPane({
                     <button
                       key={folder.id}
                       onClick={() => onFolderSelect(folder.id)}
-                      className={`w-full flex items-center justify-between px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-sm transition-all ${
+                      className={`w-full flex items-center justify-between rounded-[var(--radius-sm)] border border-transparent px-[var(--space-3)] py-[var(--space-2)] text-sm transition-all ${
                         isActive 
-                          ? 'bg-[var(--primary-tint-10)] text-[color:var(--primary)]' 
-                          : 'text-[color:var(--text-primary)] hover:bg-[var(--primary-tint-5)]'
+                          ? 'bg-[var(--primary)] text-white shadow-[inset_0_0_0_1px_hsla(0,0%,100%,0.18)]' 
+                          : 'text-[color:var(--text-primary)] hover:bg-[var(--primary-tint-10)]'
                       }`}
                     >
                       <div className="flex items-center gap-[var(--space-3)]">
-                        <Icon className="w-4 h-4" style={{ color: folder.color }} />
+                        <Icon
+                          className="w-4 h-4"
+                          style={{ color: isActive ? 'currentColor' : folder.color }}
+                        />
                         <span>{folder.name}</span>
                       </div>
                       {folder.count > 0 && (
                         <Badge 
                           variant="secondary" 
-                          className="text-xs px-2 py-0 bg-[var(--primary-tint-15)] text-[color:var(--primary)]"
+                          className={cn(
+                            'text-xs px-2 py-0',
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : 'bg-[var(--primary-tint-15)] text-[color:var(--primary)]'
+                          )}
                         >
                           {folder.count}
                         </Badge>

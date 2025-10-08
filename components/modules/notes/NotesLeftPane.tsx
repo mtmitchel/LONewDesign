@@ -7,6 +7,7 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { Badge } from '../../ui/badge';
 import { SearchInput } from '../../extended';
 import { Input } from '../../ui/input';
+import { cn } from '../../ui/utils';
 import type { NoteFolder } from './types';
 
 
@@ -18,6 +19,10 @@ const compareNotesByPinned = (a: Note, b: Note) => {
   if (pinnedDiff !== 0) return pinnedDiff;
   return (a.order ?? 0) - (b.order ?? 0);
 };
+
+const ACTIVE_LEFT_PANE_ROW =
+  'bg-[var(--primary)] text-white shadow-[inset_0_0_0_1px_hsla(0,0%,100%,0.18)]';
+const HOVER_LEFT_PANE_ROW = 'hover:bg-[var(--primary-tint-10)]';
 
 export type FolderAction = 'rename' | 'move' | 'new-note' | 'new-subfolder' | 'export-pdf' | 'export-word' | 'export-text' | 'delete';
 
@@ -217,11 +222,10 @@ export function NotesLeftPane({ folders, notes, selectedFolderId, selectedNoteId
                     if (editingNoteId !== note.id) onSelectNote(note.id);
                   }}
                   onContextMenu={() => onSelectNote(note.id)}
-                  className={`relative flex items-center justify-between rounded-lg p-2 cursor-pointer transition-colors ${
-                    selectedNoteId === note.id 
-                      ? 'bg-[var(--primary)] text-white border-2 border-[var(--primary)]' 
-                      : 'border-2 border-transparent hover:bg-[var(--bg-surface-hover)]'
-                  }`}
+                  className={cn(
+                    'relative flex items-center justify-between rounded-lg border border-transparent p-2 cursor-pointer transition-colors',
+                    selectedNoteId === note.id ? ACTIVE_LEFT_PANE_ROW : HOVER_LEFT_PANE_ROW
+                  )}
                 >
                   {/* Drop indicator for root notes */}
                   {rootNoteDrop?.noteId === note.id && rootNoteDrop.position === 'above' && (
@@ -260,7 +264,12 @@ export function NotesLeftPane({ folders, notes, selectedFolderId, selectedNoteId
                       <span className="text-sm">{note.title}</span>
                     )}
                     {note.isStarred && <Star size={12} className="text-yellow-500" fill="currentColor" />}
-                    {note.isPinned && <Pin size={12} className="text-[color:var(--primary)]" />}
+                    {note.isPinned && (
+                      <Pin
+                        size={12}
+                        className={cn('text-[color:var(--primary)]', selectedNoteId === note.id && 'text-white')}
+                      />
+                    )}
                   </div>
                 </div>
               </ContextMenuTrigger>
@@ -608,15 +617,12 @@ function FolderTreeItem({
             onClick={() => onSelectFolder(folder.id)}
             onDoubleClick={() => onDoubleClick(folder.id)}
             onContextMenu={() => onSelectFolder(folder.id)}
-            className={`group flex items-center justify-between rounded-lg p-2 cursor-pointer transition-colors relative ${
-              isSelected 
-                ? 'bg-[var(--primary)] text-white border-2 border-[var(--primary)]' 
-                : 'border-2 border-transparent hover:bg-[var(--bg-surface-hover)]'
-            } ${
-              isDragging ? 'opacity-50' : ''
-            } ${
-              isDropTarget && dropTarget?.position === 'inside' ? 'bg-blue-100 border-blue-300' : ''
-            }`}
+            className={cn(
+              'group relative flex items-center justify-between rounded-lg border border-transparent p-2 cursor-pointer transition-colors',
+              isSelected ? ACTIVE_LEFT_PANE_ROW : HOVER_LEFT_PANE_ROW,
+              isDragging && 'opacity-50',
+              isDropTarget && dropTarget?.position === 'inside' && 'bg-blue-100 border-blue-300'
+            )}
             style={{ marginLeft: `${indentLevel}px` }}
           >
             <div className="flex items-center gap-2">
@@ -747,11 +753,10 @@ function FolderTreeItem({
                       if (!isEditing) onSelectNote(note.id);
                     }}
                     onContextMenu={() => onSelectNote(note.id)}
-                    className={`ml-6 flex items-center justify-between rounded-lg p-2 cursor-pointer transition-colors ${
-                      isActive
-                        ? 'bg-[var(--primary)] text-white border-2 border-[var(--primary)]'
-                        : 'border-2 border-transparent hover:bg-[var(--bg-surface-hover)]'
-                    }`}
+                    className={cn(
+                      'ml-6 flex items-center justify-between rounded-lg border border-transparent p-2 cursor-pointer transition-colors',
+                      isActive ? ACTIVE_LEFT_PANE_ROW : HOVER_LEFT_PANE_ROW
+                    )}
                     style={{ marginLeft: `${(depth + 1) * 16}px` }}
                   >
                     {/* Drop indicator for notes */}
@@ -790,7 +795,12 @@ function FolderTreeItem({
                       ) : (
                         <span className="text-sm">{note.title}</span>
                       )}
-                      {note.isPinned && <Pin size={12} className="text-[color:var(--primary)]" />}
+                      {note.isPinned && (
+                        <Pin
+                          size={12}
+                          className={cn('text-[color:var(--primary)]', isActive && 'text-white')}
+                        />
+                      )}
                     </div>
                   </div>
                 </ContextMenuTrigger>
