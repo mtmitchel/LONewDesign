@@ -1,8 +1,8 @@
 import React from 'react';
-import SettingsPage from './settings/SettingsPage';
+import SettingsV2 from './settings/SettingsV2';
 
 export function SettingsModule(): JSX.Element {
-  return <SettingsPage />;
+  return <SettingsV2 />;
 }
 
 export default SettingsModule;

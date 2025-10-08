@@ -24,6 +24,9 @@
 
 :root {
   /* Radius & Motion */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   --radius-full: 9999px;
   --duration-fast: 120ms;
   --duration-base: 200ms;
@@ -107,11 +110,19 @@
   --modal-inner-x: var(--space-6);  /* 24 */
 
   /* Settings design tokens */
-  --settings-nav-w: 280px;
+  --settings-nav-w: 272px;
+  --settings-content-w: 72ch;
+  --settings-sheet-w: 520px;
+  --settings-card-gap: 24px;
+  --form-row-gap: 12px;
   --settings-surface-bg: var(--bg-surface);
   --settings-surface-border: var(--border-subtle);
   --settings-surface-radius: var(--radius-lg);
   --settings-surface-elevation: var(--elevation-sm);
+  --ring-focus: 0 0 0 3px var(--primary-20);
+  --status-ok: var(--accent-ok);
+  --status-warn: var(--accent-warn);
+  --status-danger: var(--accent-danger);
 
   /* Task board column tokens */
   --task-col-gap: var(--space-4);
