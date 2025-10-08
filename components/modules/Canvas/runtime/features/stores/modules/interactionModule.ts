@@ -165,7 +165,7 @@ export const createInteractionModule: StoreSlice<InteractionModuleSlice> = (set,
   colors: {
     stroke: '#1F2544', // deep slate
     fill: '#5D5AFF',   // indigo accent
-    stickyNote: '#FFD262', // sunny yellow (default sticky note color)
+  stickyNote: '#FFEFC8', // low-ink sun (default sticky note color)
   },
 
   colorPicker: {

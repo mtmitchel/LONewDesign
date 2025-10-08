@@ -153,7 +153,7 @@ export default function UnifiedColorPicker({
   onSelect,
 }: UnifiedColorPickerProps) {
   // Handle backward compatibility
-  const color = propColor ?? selected ?? '#FFD262';
+  const color = propColor ?? selected ?? '#FFEFC8';
   const onChange = useCallback(
     (color: string) => {
       if (propOnChange) {

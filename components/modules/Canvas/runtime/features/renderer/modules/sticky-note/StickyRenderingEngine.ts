@@ -133,7 +133,7 @@ export class StickyRenderingEngine {
       y: 0,
       width: sticky.width,
       height: sticky.height,
-      fill: sticky.fill || "#FFD262",
+  fill: sticky.fill || "#FFEFC8",
       cornerRadius: 12,
       stroke: "rgba(31, 37, 68, 0.12)",
       strokeWidth: 1,
@@ -189,7 +189,7 @@ export class StickyRenderingEngine {
       rect.setAttrs({
         width: sticky.width,
         height: sticky.height,
-        fill: sticky.fill || "#FFD262",
+  fill: sticky.fill || "#FFEFC8",
         stroke: "rgba(31, 37, 68, 0.12)",
       });
     }

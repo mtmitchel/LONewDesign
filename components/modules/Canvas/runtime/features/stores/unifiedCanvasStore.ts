@@ -419,7 +419,7 @@ export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
             strokeColor: DEFAULT_UI.strokeColor,
             fillColor: DEFAULT_UI.fillColor,
             strokeWidth: DEFAULT_UI.strokeWidth,
-            stickyNoteColor: "#FFF59D",
+            stickyNoteColor: "#FFEFC8",
             setSelectedTool: (tool: string) =>
               set((state) => {
                 if (state.ui) {

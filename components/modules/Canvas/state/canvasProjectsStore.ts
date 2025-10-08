@@ -9,6 +9,7 @@ interface CanvasProject {
   createdAt: string;
   updatedAt: string;
   snapshot?: CanvasSnapshot | null;
+  pinned?: boolean;
 }
 
 interface CanvasProjectsState {
@@ -18,6 +19,8 @@ interface CanvasProjectsState {
   selectProject: (id: string) => void;
   renameProject: (id: string, title: string) => void;
   touchActiveSnapshot: () => void;
+  togglePinned: (id: string) => void;
+  deleteProject: (id: string) => void;
 }
 
 function createId() {
@@ -41,6 +44,19 @@ function getDefaultTitle(existing: CanvasProject[]) {
   return numbers.length ? `${prefix} ${nextNumber}` : prefix;
 }
 
+function sortProjects(projects: CanvasProject[]) {
+  return [...projects].sort((a, b) => {
+    const pinnedA = a.pinned ? 1 : 0;
+    const pinnedB = b.pinned ? 1 : 0;
+    if (pinnedA !== pinnedB) {
+      return pinnedB - pinnedA;
+    }
+    const timeA = Date.parse(a.updatedAt ?? '');
+    const timeB = Date.parse(b.updatedAt ?? '');
+    return timeB - timeA;
+  });
+}
+
 const useCanvasProjectsStore = create<CanvasProjectsState>()(
   persist(
     (set, get) => {
@@ -50,6 +66,7 @@ const useCanvasProjectsStore = create<CanvasProjectsState>()(
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         snapshot: null,
+        pinned: false,
       };
 
       return {
@@ -59,14 +76,18 @@ const useCanvasProjectsStore = create<CanvasProjectsState>()(
           const stateBefore = get();
           const now = new Date().toISOString();
           if (stateBefore.activeId) {
-            const previousSnapshot = captureCanvasSnapshot({ id: stateBefore.activeId, title: stateBefore.projects.find(p => p.id === stateBefore.activeId)?.title });
-            set(current => ({
-              projects: current.projects.map(project =>
+            const previousSnapshot = captureCanvasSnapshot({
+              id: stateBefore.activeId,
+              title: stateBefore.projects.find(p => p.id === stateBefore.activeId)?.title,
+            });
+            set(current => {
+              const updated = current.projects.map(project =>
                 project.id === stateBefore.activeId
                   ? { ...project, snapshot: previousSnapshot, updatedAt: now }
                   : project
-              ),
-            }));
+              );
+              return { projects: sortProjects(updated) };
+            });
           }
 
           const projectTitle = title ?? getDefaultTitle(get().projects);
@@ -76,10 +97,11 @@ const useCanvasProjectsStore = create<CanvasProjectsState>()(
             createdAt: now,
             updatedAt: now,
             snapshot: null,
+            pinned: false,
           };
 
           set(current => ({
-            projects: [newProject, ...current.projects],
+            projects: sortProjects([newProject, ...current.projects]),
             activeId: newProject.id,
           }));
 
@@ -95,33 +117,38 @@ const useCanvasProjectsStore = create<CanvasProjectsState>()(
               id: stateBefore.activeId,
               title: stateBefore.projects.find(project => project.id === stateBefore.activeId)?.title,
             });
-            set(current => ({
-              projects: current.projects.map(project =>
+            set(current => {
+              const updated = current.projects.map(project =>
                 project.id === stateBefore.activeId
                   ? { ...project, snapshot, updatedAt: now }
                   : project
-              ),
-            }));
+              );
+              return { projects: sortProjects(updated) };
+            });
           }
 
-          set(current => ({
-            projects: current.projects.map(project =>
+          set(current => {
+            const updated = current.projects.map(project =>
               project.id === id
                 ? { ...project, updatedAt: now }
                 : project
-            ),
-            activeId: id,
-          }));
+            );
+            return { projects: sortProjects(updated), activeId: id };
+          });
 
           const next = get().projects.find(project => project.id === id);
           applyCanvasSnapshot(next?.snapshot ?? null);
         },
         renameProject: (id: string, title: string) => {
-          set(current => ({
-            projects: current.projects.map(project =>
-              project.id === id ? { ...project, title, updatedAt: new Date().toISOString() } : project
-            ),
-          }));
+          const safeTitle = title.trim().length ? title.trim() : getDefaultTitle(get().projects);
+          set(current => {
+            const updated = current.projects.map(project =>
+              project.id === id
+                ? { ...project, title: safeTitle, updatedAt: new Date().toISOString() }
+                : project
+            );
+            return { projects: sortProjects(updated) };
+          });
         },
         touchActiveSnapshot: () => {
           const stateNow = get();
@@ -130,11 +157,56 @@ const useCanvasProjectsStore = create<CanvasProjectsState>()(
             id: stateNow.activeId,
             title: stateNow.projects.find(project => project.id === stateNow.activeId)?.title,
           });
-          set(current => ({
-            projects: current.projects.map(project =>
-              project.id === stateNow.activeId ? { ...project, snapshot, updatedAt: new Date().toISOString() } : project
-            ),
-          }));
+          set(current => {
+            const updated = current.projects.map(project =>
+              project.id === stateNow.activeId
+                ? { ...project, snapshot, updatedAt: new Date().toISOString() }
+                : project
+            );
+            return { projects: sortProjects(updated) };
+          });
+        },
+        togglePinned: (id: string) => {
+          set(current => {
+            const updated = current.projects.map(project =>
+              project.id === id
+                ? { ...project, pinned: !project.pinned, updatedAt: new Date().toISOString() }
+                : project
+            );
+            return { projects: sortProjects(updated) };
+          });
+        },
+        deleteProject: (id: string) => {
+          const stateBefore = get();
+          const remaining = stateBefore.projects.filter(project => project.id !== id);
+
+          if (!remaining.length) {
+            const now = new Date().toISOString();
+            const newProject: CanvasProject = {
+              id: createId(),
+              title: 'Untitled canvas',
+              createdAt: now,
+              updatedAt: now,
+              snapshot: null,
+              pinned: false,
+            };
+            set({ projects: [newProject], activeId: newProject.id });
+            clearCanvasState();
+            return;
+          }
+
+          const sorted = sortProjects(remaining);
+          const nextActiveId = stateBefore.activeId === id ? sorted[0].id : stateBefore.activeId;
+
+          set({
+            projects: sorted,
+            activeId: nextActiveId ?? null,
+          });
+
+          if (stateBefore.activeId === id) {
+            const nextProject = sorted[0];
+            applyCanvasSnapshot(nextProject?.snapshot ?? null);
+          }
         },
       };
     },

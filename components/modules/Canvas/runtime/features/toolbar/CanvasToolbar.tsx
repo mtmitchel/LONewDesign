@@ -32,6 +32,13 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { cn } from "../../../../../ui/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../../../../ui/dropdown-menu";
 
 type ToolbarProps = {
   selectedTool?: string;
@@ -308,11 +315,21 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     setShapesOpen((prev) => !prev);
   }, []);
 
-  const toggleConnectorDropdown = useCallback(() => {
-    setStickyNoteColorsOpen(false);
-    setShapesOpen(false);
-    setConnectorsOpen((prev) => !prev);
+  const handleConnectorOpenChange = useCallback((open: boolean) => {
+    setConnectorsOpen(open);
+    if (open) {
+      setShapesOpen(false);
+      setStickyNoteColorsOpen(false);
+    }
   }, []);
+
+  const handleConnectorSelect = useCallback(
+    (toolId: string) => {
+      handleToolSelect(toolId);
+      setConnectorsOpen(false);
+    },
+    [handleToolSelect],
+  );
 
   const applyStickyColorToSelection = useCallback((color: string) => {
     const state = useUnifiedCanvasStore.getState();
@@ -415,13 +432,39 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     setStickyNoteColorsOpen(false);
   }, [applyStickyColorToSelection]);
 
-  // Removed buttonStyle - now using CSS classes
+  const baseButtonClass =
+    "group inline-flex items-center justify-center rounded-[var(--radius-md)] border border-[color:var(--border-subtle)] bg-transparent text-[color:var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)] hover:border-[color:var(--border-default)] hover:bg-[color:var(--primary-tint-10)] hover:text-[color:var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--canvas-toolbar-bg)]";
+
+  const iconButtonClass = (isActive: boolean) =>
+    cn(
+      baseButtonClass,
+      "h-11 w-11",
+      isActive &&
+        "border-transparent bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-[0_12px_28px_rgba(15,23,42,0.18)]",
+    );
+
+  const destructiveButtonClass = cn(
+    baseButtonClass,
+    "h-11 w-11 text-[color:var(--danger)] hover:border-[color:var(--danger)]/30 hover:bg-[color:var(--danger)]/12 hover:text-[color:var(--danger)] focus-visible:ring-[var(--danger)] focus-visible:ring-offset-[var(--canvas-toolbar-bg)]",
+  );
+
+  const zoomLabelButtonClass = cn(
+    baseButtonClass,
+    "h-11 min-w-[72px] px-[var(--space-3)] text-[length:var(--text-sm)] font-medium tracking-tight justify-center text-[color:var(--text-primary)]",
+  );
+
+  const Divider = () => (
+    <span
+      aria-hidden="true"
+      className="h-8 w-px rounded-full bg-[color:var(--border-subtle)]/80"
+    />
+  );
 
   const toolBtn = (id: string, title: string) => (
     <button
       key={id}
       type="button"
-      className={`tool-button ${currentTool === id ? "active" : ""}`}
+      className={iconButtonClass(currentTool === id)}
       aria-pressed={currentTool === id}
       aria-label={title}
       title={title}
@@ -432,242 +475,162 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     </button>
   );
 
-  const connectorMenuStyle: React.CSSProperties = {
-    position: "absolute" as const,
-    bottom: "48px",
-    left: 0,
-    minWidth: 180,
-    background: "var(--bg-panel, rgba(255,255,255,0.98))",
-    color: "var(--text-primary, #1f2544)",
-    border: "1px solid var(--border-subtle, rgba(82,88,126,0.16))",
-    borderRadius: 14,
-    padding: 8,
-    boxShadow: "0 18px 36px rgba(24,25,32,0.18)",
-    backdropFilter: "blur(12px) saturate(1.05)",
-    WebkitBackdropFilter: "blur(12px) saturate(1.05)",
-    zIndex: 60,
-  };
-
-  const connectorItemStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 10,
-    border: "none",
-    background: "transparent",
-    color: "inherit",
-    fontSize: 14,
-    fontWeight: 500,
-    cursor: "pointer",
-    transition: "background 0.2s ease, color 0.2s ease, transform 0.2s ease",
-    outline: "none",
-  };
+  const stickySwatchColor =
+    store.ui?.stickyNoteColor || store.colors?.stickyNote || "#FFEFC8";
 
   return (
     <>
-      {/* Core tools */}
-      <div className="toolbar-group">
-        {toolBtn("select", "Select")}
-        {toolBtn("pan", "Pan")}
-      </div>
-
-      {/* Content tools */}
-      <div className="toolbar-group">
-        {/* Sticky Note with color dropdown */}
-        <button
-          type="button"
-          ref={stickyNoteBtnRef}
-          className={`tool-button ${currentTool === "sticky-note" ? "active" : ""}`}
-          aria-expanded={stickyNoteColorsOpen}
-          aria-haspopup="menu"
-          aria-label="Sticky Note Colors"
-          title="Sticky Note"
-          data-testid="tool-sticky-note"
-          onClick={handleStickyClick}
-        >
-          {getIcon("sticky-note")}
-          <div
-            style={{
-              position: "absolute" as const,
-              bottom: "2px",
-              right: "2px",
-              width: "8px",
-              height: "8px",
-              borderRadius: "50%",
-              backgroundColor:
-                store.ui?.stickyNoteColor || store.colors?.stickyNote || "#FDE68A",
-              border: "1px solid rgba(255,255,255,0.5)",
-            }}
-          />
-        </button>
-        {toolBtn("text", "Text")}
-        {toolBtn("table", "Table")}
-        {toolBtn("image", "Image")}
-
-        {/* Shapes dropdown */}
-        <button
-          type="button"
-          ref={shapesBtnRef}
-          className="tool-button"
-          aria-expanded={shapesOpen}
-          aria-haspopup="menu"
-          aria-label="Shapes"
-          title="Shapes"
-          onClick={toggleShapesDropdown}
-        >
-          {getIcon("shapes")}
-        </button>
-
-        {/* Connector dropdown */}
-        <div style={{ position: "relative" as const, display: "inline-flex" }}>
+      <div
+        role="toolbar"
+        aria-label="Canvas tools"
+        className="flex items-center gap-[var(--space-2)]"
+      >
+        <div className="flex items-center gap-[var(--space-1)]">
+          {toolBtn("select", "Select")}
+          {toolBtn("pan", "Pan")}
+        </div>
+        <Divider />
+        <div className="flex items-center gap-[var(--space-1)]">
           <button
             type="button"
-            className={`tool-button ${
-              currentTool === "connector-line" ||
-              currentTool === "connector-arrow"
-                ? "active"
-                : ""
-            }`}
+            ref={stickyNoteBtnRef}
+            className={iconButtonClass(currentTool === "sticky-note")}
+            aria-expanded={stickyNoteColorsOpen}
             aria-haspopup="menu"
-            aria-label="Connector"
-            title="Connector"
-            onClick={toggleConnectorDropdown}
+            aria-pressed={currentTool === "sticky-note"}
+            aria-label="Sticky note colors"
+            title="Sticky Note"
+            data-testid="tool-sticky-note"
+            onClick={handleStickyClick}
           >
-            {getIcon("mindmap")}
+            {getIcon("sticky-note")}
+            <span
+              aria-hidden="true"
+              className="absolute bottom-1.5 right-1.5 h-2.5 w-2.5 rounded-full border border-white/70 shadow-[0_1px_2px_rgba(15,23,42,0.18)]"
+              style={{ backgroundColor: stickySwatchColor }}
+            />
           </button>
-          {connectorsOpen && (
-            <div
-              role="menu"
-              style={connectorMenuStyle}
-            >
+          {toolBtn("text", "Text")}
+          {toolBtn("table", "Table")}
+          {toolBtn("image", "Image")}
+          <button
+            type="button"
+            ref={shapesBtnRef}
+            className={iconButtonClass(false)}
+            aria-expanded={shapesOpen}
+            aria-haspopup="menu"
+            aria-label="Shapes"
+            title="Shapes"
+            onClick={toggleShapesDropdown}
+          >
+            {getIcon("shapes")}
+          </button>
+          <DropdownMenu open={connectorsOpen} onOpenChange={handleConnectorOpenChange}>
+            <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                style={connectorItemStyle}
-                onClick={() => {
-                  handleToolSelect("connector-line");
-                  setConnectorsOpen(false);
-                }}
-                title="Connector (Line)"
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.background = "rgba(93, 90, 255, 0.12)";
-                  event.currentTarget.style.transform = "translateX(2px)";
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.background = "transparent";
-                  event.currentTarget.style.transform = "translateX(0)";
-                }}
-                onFocus={(event) => {
-                  event.currentTarget.style.background = "rgba(93, 90, 255, 0.12)";
-                  event.currentTarget.style.transform = "translateX(2px)";
-                }}
-                onBlur={(event) => {
-                  event.currentTarget.style.background = "transparent";
-                  event.currentTarget.style.transform = "translateX(0)";
-                }}
+                className={iconButtonClass(
+                  currentTool === "connector-line" || currentTool === "connector-arrow",
+                )}
+                aria-haspopup="menu"
+                aria-expanded={connectorsOpen}
+                aria-pressed={currentTool === "connector-line" || currentTool === "connector-arrow"}
+                aria-label="Connector"
+                title="Connector"
+              >
+                {getIcon("mindmap")}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              sideOffset={8}
+              className="min-w-[11rem] rounded-[var(--radius-md)] border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-1 shadow-[var(--elevation-lg)]"
+            >
+              <DropdownMenuItem
+                onSelect={() => handleConnectorSelect("connector-line")}
+                className="text-[length:var(--text-sm)]"
               >
                 Line
-              </button>
-              <button
-                type="button"
-                style={connectorItemStyle}
-                onClick={() => {
-                  handleToolSelect("connector-arrow");
-                  setConnectorsOpen(false);
-                }}
-                title="Connector (Arrow)"
-                onMouseEnter={(event) => {
-                  event.currentTarget.style.background = "rgba(93, 90, 255, 0.12)";
-                  event.currentTarget.style.transform = "translateX(2px)";
-                }}
-                onMouseLeave={(event) => {
-                  event.currentTarget.style.background = "transparent";
-                  event.currentTarget.style.transform = "translateX(0)";
-                }}
-                onFocus={(event) => {
-                  event.currentTarget.style.background = "rgba(93, 90, 255, 0.12)";
-                  event.currentTarget.style.transform = "translateX(2px)";
-                }}
-                onBlur={(event) => {
-                  event.currentTarget.style.background = "transparent";
-                  event.currentTarget.style.transform = "translateX(0)";
-                }}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => handleConnectorSelect("connector-arrow")}
+                className="text-[length:var(--text-sm)]"
               >
                 Arrow
-              </button>
-            </div>
-          )}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </div>
-
-      {/* Drawing tools */}
-      <div className="toolbar-group">
-        {toolBtn("pen", "Pen")}
-        {toolBtn("marker", "Marker")}
-        {toolBtn("highlighter", "Highlighter")}
-        {toolBtn("eraser", "Eraser")}
-      </div>
-
-      {/* Undo/Redo/Clear */}
-      <div className="toolbar-group">
-        <button
-          type="button"
-          className="tool-button"
-          title="Undo"
-          onClick={handleUndo}
-        >
-          {getIcon("undo")}
-        </button>
-        <button
-          type="button"
-          className="tool-button"
-          title="Redo"
-          onClick={handleRedo}
-        >
-          {getIcon("redo")}
-        </button>
-        <button
-          type="button"
-          className="tool-button"
-          title="Clear Canvas"
-          onClick={handleClearCanvas}
-        >
-          {getIcon("clear")}
-        </button>
-      </div>
-
-      {/* Zoom Controls */}
-      <div className="toolbar-group">
-        <button
-          type="button"
-          className="tool-button"
-          title="Zoom In"
-          onClick={handleZoomIn}
-          data-testid="zoom-in"
-        >
-          {getIcon("zoom-in")}
-        </button>
-        <button
-          type="button"
-          className="tool-button"
-          title="Reset Zoom (100%)"
-          onClick={handleZoomReset}
-          aria-label="Reset Zoom"
-          data-testid="zoom-reset"
-          style={{ minWidth: 56 }}
-        >
-          {Math.round((viewportScale ?? 1) * 100)}%
-        </button>
-        <button
-          type="button"
-          className="tool-button"
-          title="Zoom Out"
-          onClick={handleZoomOut}
-          data-testid="zoom-out"
-        >
-          {getIcon("zoom-out")}
-        </button>
+        <Divider />
+        <div className="flex items-center gap-[var(--space-1)]">
+          {toolBtn("pen", "Pen")}
+          {toolBtn("marker", "Marker")}
+          {toolBtn("highlighter", "Highlighter")}
+          {toolBtn("eraser", "Eraser")}
+        </div>
+        <Divider />
+        <div className="flex items-center gap-[var(--space-1)]">
+          <button
+            type="button"
+            className={iconButtonClass(false)}
+            title="Undo"
+            aria-label="Undo"
+            onClick={handleUndo}
+          >
+            {getIcon("undo")}
+          </button>
+          <button
+            type="button"
+            className={iconButtonClass(false)}
+            title="Redo"
+            aria-label="Redo"
+            onClick={handleRedo}
+          >
+            {getIcon("redo")}
+          </button>
+          <button
+            type="button"
+            className={destructiveButtonClass}
+            title="Clear canvas"
+            aria-label="Clear canvas"
+            onClick={handleClearCanvas}
+          >
+            {getIcon("clear")}
+          </button>
+        </div>
+        <Divider />
+        <div className="flex items-center gap-[var(--space-1)]">
+          <button
+            type="button"
+            className={iconButtonClass(false)}
+            title="Zoom in"
+            aria-label="Zoom in"
+            onClick={handleZoomIn}
+            data-testid="zoom-in"
+          >
+            {getIcon("zoom-in")}
+          </button>
+          <button
+            type="button"
+            className={zoomLabelButtonClass}
+            title="Reset zoom (100%)"
+            aria-label="Reset zoom"
+            onClick={handleZoomReset}
+            data-testid="zoom-reset"
+          >
+            {Math.round((viewportScale ?? 1) * 100)}%
+          </button>
+          <button
+            type="button"
+            className={iconButtonClass(false)}
+            title="Zoom out"
+            aria-label="Zoom out"
+            onClick={handleZoomOut}
+            data-testid="zoom-out"
+          >
+            {getIcon("zoom-out")}
+          </button>
+        </div>
       </div>
 
       {/* Popovers/Portals */}
@@ -683,7 +646,7 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
         anchorRect={stickyNoteAnchorRect}
         onClose={() => setStickyNoteColorsOpen(false)}
         onChange={handleSelectStickyColor}
-        color={store.ui?.stickyNoteColor || store.colors?.stickyNote || "#FDE68A"}
+        color={stickySwatchColor}
       />
       {confirmingClear && typeof document !== "undefined"
         ? createPortal(

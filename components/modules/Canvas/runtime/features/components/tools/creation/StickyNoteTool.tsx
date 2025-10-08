@@ -19,7 +19,7 @@ export interface StickyNoteToolProps {
 
 const DEFAULT_WIDTH = 240;
 const DEFAULT_HEIGHT = 180;
-const DEFAULT_FILL = "#FFF59D"; // light yellow
+const DEFAULT_FILL = "#FFEFC8"; // low-ink sun
 const DEFAULT_TEXT = "";
 const DEFAULT_FONT_SIZE = 16;
 

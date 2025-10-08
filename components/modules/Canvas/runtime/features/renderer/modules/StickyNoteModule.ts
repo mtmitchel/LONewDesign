@@ -147,7 +147,7 @@ export class StickyNoteModule implements RendererModule {
               y: element.y || 0,
               width: element.width || 240,
               height: element.height || 180,
-              fill: element.fill || element.style?.fill || "#FFF59D",
+              fill: element.fill || element.style?.fill || "#FFEFC8",
               text:
                 (typeof element.text === "string" ? element.text : "") ||
                 (typeof element.data?.text === "string"

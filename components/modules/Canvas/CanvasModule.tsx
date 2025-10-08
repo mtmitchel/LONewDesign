@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TriPane } from '../../TriPane';
 import { PaneCaret } from '../../dev/PaneCaret';
-import CanvasLeftPane from './components/CanvasLeftPane';
+import { PaneHeader } from '../../layout/PaneHeader';
+import { Button } from '../../ui/button';
+import CanvasLeftPane, { CanvasLeftPaneHandle } from './components/CanvasLeftPane';
 import CanvasEditor from './components/CanvasEditor';
 import { installStoreBridge } from './runtime/bootstrap/storeBridge';
 import { useUnifiedCanvasStore } from './runtime/features/stores/unifiedCanvasStore';
+import { useCanvasProjectsStore } from './state/canvasProjectsStore';
 
 export function CanvasModule() {
   const [leftPaneVisible, setLeftPaneVisible] = useState(true);
@@ -12,6 +15,9 @@ export function CanvasModule() {
   const redo = useUnifiedCanvasStore((state) => state.redo);
   const canUndo = useUnifiedCanvasStore((state) => state.canUndo?.() ?? false);
   const canRedo = useUnifiedCanvasStore((state) => state.canRedo?.() ?? false);
+
+  const createProject = useCanvasProjectsStore((state) => state.createProject);
+  const leftPaneRef = useRef<CanvasLeftPaneHandle | null>(null);
 
   useEffect(() => {
     installStoreBridge();
@@ -37,6 +43,13 @@ export function CanvasModule() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  const handleCreateCanvas = () => {
+    createProject();
+    requestAnimationFrame(() => {
+      leftPaneRef.current?.focusSearch();
+    });
+  };
+
   return (
     <div className="flex h-full w-full flex-col bg-[color:var(--canvas-surface)]">
       <TriPane
@@ -44,7 +57,7 @@ export function CanvasModule() {
         leftWidth={leftPaneVisible ? 'var(--tripane-left-width)' : '20px'}
         left={
           leftPaneVisible ? (
-            <CanvasLeftPane onHidePane={() => setLeftPaneVisible(false)} />
+            <CanvasLeftPane ref={leftPaneRef} onHidePane={() => setLeftPaneVisible(false)} />
           ) : (
             <div className="flex h-full w-5 min-w-[20px] max-w-[20px] cursor-pointer items-center justify-center bg-[var(--bg-surface-elevated)] shadow-[1px_0_0_var(--border-subtle)]">
               <PaneCaret
@@ -57,7 +70,22 @@ export function CanvasModule() {
           )
         }
         center={<CanvasEditor />}
-        leftHeader={null}
+        leftHeader={
+          leftPaneVisible ? (
+            <PaneHeader className="justify-between">
+              <div className="min-w-0 truncate font-medium text-[color:var(--text-primary)]">Canvas</div>
+              <Button
+                type="button"
+                size="sm"
+                variant="solid"
+                onClick={handleCreateCanvas}
+                className="gap-[var(--space-1)] px-[var(--space-3)]"
+              >
+                + New
+              </Button>
+            </PaneHeader>
+          ) : undefined
+        }
         centerHeader={null}
       />
       <div className="flex items-center gap-[var(--space-3)] border-t border-[color:var(--canvas-toolbar-border)] px-[var(--space-5)] py-[var(--space-3)] text-xs text-[color:var(--canvas-text-secondary)]">

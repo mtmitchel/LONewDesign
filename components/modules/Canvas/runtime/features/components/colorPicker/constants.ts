@@ -30,32 +30,32 @@ export interface UnifiedColorPickerProps {
 
 // Default FigJam-like sticky note palette
 export const DEFAULT_PALETTE: string[] = [
-  '#FFD262', // Sun yellow
-  '#FF9B71', // Tangerine
-  '#FF6AD5', // Berry pink
-  '#CBA9FF', // Lavender
-  '#8FA7FF', // Cornflower
-  '#66C6FF', // Sky blue
-  '#66E0B8', // Mint
-  '#A7F3D0', // Pastel teal
-  '#FFEAD7', // Peach haze
-  '#F8F0FF', // Soft lilac
-  '#5D5AFF', // Indigo accent
-  '#2F2A4A', // Deep slate
+  '#FFEFC8', // Low-ink sun
+  '#FFDCCD', // Low-ink tangerine
+  '#FFCBF0', // Low-ink berry
+  '#EDE1FF', // Soft lavender
+  '#D8E0FF', // Powder cornflower
+  '#C9EBFF', // Mist sky
+  '#C9F4E6', // Mint frost
+  '#E0FBEF', // Pastel teal
+  '#FFF8F1', // Peach paper
+  '#FDFBFF', // Whisper lilac
+  '#C6C5FF', // Indigo haze
+  '#B6B4C0', // Slate veil
   '#FFFFFF', // White
-  '#1F2937', // Charcoal (high contrast)
+  '#B1B4B9', // Soft graphite
 ];
 
 // FigJam-style horizontal palette tailored for sticky note toolbar
 export const FIGMA_HORIZONTAL_PALETTE: string[] = [
-  '#FFD262', // Sun yellow
-  '#FF9B71', // Tangerine
-  '#FF6AD5', // Berry pink
-  '#8B7CF7', // Iris
-  '#5D5AFF', // Indigo
-  '#66C6FF', // Sky blue
-  '#66E0B8', // Mint
-  '#1F2544', // Deep slate
+  '#FFEFC8', // Low-ink sun
+  '#FFDCCD', // Low-ink tangerine
+  '#FFCBF0', // Low-ink berry
+  '#D6D1FC', // Soft iris
+  '#C6C5FF', // Indigo haze
+  '#C9EBFF', // Mist sky
+  '#C9F4E6', // Mint frost
+  '#B1B3BE', // Slate mist
 ];
 
 // Additional extended palette
