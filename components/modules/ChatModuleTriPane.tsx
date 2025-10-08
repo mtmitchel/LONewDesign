@@ -6,7 +6,7 @@ import { PaneCaret } from "../dev/PaneCaret";
 import { ChatLeftPane } from "./chat/ChatLeftPane";
 import { ChatRightPane } from "./chat/ChatRightPane";
 import { ChatCenterPane } from "./chat/ChatCenterPane";
-import type { Conversation } from "./chat/types";
+import type { Conversation, ConversationAction } from "./chat/types";
 
 const CENTER_MIN_VAR = '--tripane-center-min';
 
@@ -34,8 +34,10 @@ export function ChatModuleTriPane() {
   const setRightPaneVisible = (v: boolean | ((x: boolean) => boolean)) =>
     setVisibility(prev => ({ ...prev, right: typeof v === 'function' ? (v as any)(prev.right) : v }));
 
-  const leftPaneWidth = leftPaneVisible ? 'var(--tripane-left-width)' : '8px';
-  const rightPaneWidth = rightPaneVisible ? 'var(--quick-panel-width)' : '8px';
+  const railWidth = '20px';
+  const collapsedRail = parseFloat(railWidth) || 20;
+  const leftPaneWidth = leftPaneVisible ? 'var(--tripane-left-width)' : railWidth;
+  const rightPaneWidth = rightPaneVisible ? 'var(--quick-panel-width)' : railWidth;
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isOverlayRight, setIsOverlayRight] = React.useState(false);
@@ -53,8 +55,8 @@ export function ChatModuleTriPane() {
       // When very narrow, show right pane as overlay instead of inline
       setIsOverlayRight(total < centerMin);
       // Estimate center width by subtracting pane widths when visible
-      const leftW = leftPaneVisible ? getPx('--tripane-left-width') : 8;
-      const rightW = rightPaneVisible && !isOverlayRight ? getPx('--quick-panel-width') : 8;
+      const leftW = leftPaneVisible ? getPx('--tripane-left-width') : collapsedRail;
+      const rightW = rightPaneVisible && !isOverlayRight ? getPx('--quick-panel-width') : collapsedRail;
       const center = total - leftW - rightW;
       if (center < centerMin) {
         if (rightPaneVisible && !isOverlayRight) {
@@ -72,7 +74,7 @@ export function ChatModuleTriPane() {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [leftPaneVisible, rightPaneVisible]);
+  }, [collapsedRail, isOverlayRight, leftPaneVisible, rightPaneVisible]);
 
   // Keyboard shortcuts (scoped to Chat viewport)
   React.useEffect(() => {
@@ -112,6 +114,11 @@ export function ChatModuleTriPane() {
     { id: 'c3', title: 'Support chat', lastMessageSnippet: 'Issue resolved ✅', updatedAt: '2025-01-13T13:45:00Z', participants: ['You','Sam'] },
   ]);
 
+  const activeConversation = React.useMemo(
+    () => conversations.find(conversation => conversation.id === activeConversationId) ?? null,
+    [conversations, activeConversationId]
+  );
+
   const onOpenConversation = (id: string) => {
     setActiveConversationId(id);
     console.debug('chat:conversation:open', { id, via: 'pointer' });
@@ -125,6 +132,43 @@ export function ChatModuleTriPane() {
     setSelectedModel(model);
     console.debug('chat:model:change', { model });
   };
+
+  const onConversationAction = React.useCallback(
+    (id: string, action: ConversationAction) => {
+      console.debug('chat:conversation:context-action', { id, action });
+
+      if (action === 'delete') {
+        setConversations(prev => prev.filter(conversation => conversation.id !== id));
+        setActiveConversationId(prev => (prev === id ? null : prev));
+        return;
+      }
+
+      if (action === 'pin' || action === 'unpin') {
+        setConversations(prev =>
+          prev.map(conversation =>
+            conversation.id === id ? { ...conversation, pinned: action === 'pin' } : conversation
+          )
+        );
+        return;
+      }
+
+      if (action === 'rename') {
+        if (typeof window === 'undefined') return;
+        const current = conversations.find(conversation => conversation.id === id);
+        const nextTitle = window.prompt('Rename conversation', current?.title ?? '');
+        if (!nextTitle) return;
+        setConversations(prev =>
+          prev.map(conversation =>
+            conversation.id === id ? { ...conversation, title: nextTitle } : conversation
+          )
+        );
+        return;
+      }
+
+      console.debug('chat:conversation:export', { id, format: action });
+    },
+    [conversations, setActiveConversationId, setConversations]
+  );
 
   // Focus trap for overlay right pane
   React.useEffect(() => {
@@ -172,14 +216,17 @@ export function ChatModuleTriPane() {
               activeId={activeConversationId} 
               onSelect={onOpenConversation}
               onHidePane={() => setLeftPaneVisible(false)}
+              onConversationAction={onConversationAction}
             />
           ) : (
-            <PaneCaret
-              side="left"
-              label="Show conversations"
-              ariaKeyshortcuts="]"
-              onClick={() => setLeftPaneVisible(true)}
-            />
+            <div className="h-full w-5 min-w-[20px] max-w-[20px] bg-[var(--bg-surface-elevated)] shadow-[1px_0_0_var(--border-subtle)] flex items-center justify-center cursor-pointer">
+              <PaneCaret
+                side="left"
+                label="Show conversations"
+                ariaKeyshortcuts="]"
+                onClick={() => setLeftPaneVisible(true)}
+              />
+            </div>
           )
         }
         leftHeader={
@@ -218,14 +265,20 @@ export function ChatModuleTriPane() {
         }
         right={
           rightPaneVisible && !isOverlayRight ? (
-            <ChatRightPane onHidePane={() => setRightPaneVisible(false)} selectedModel={selectedModel} />
-          ) : (
-            <PaneCaret
-              side="right"
-              label="Show assistant info"
-              ariaKeyshortcuts="\\"
-              onClick={() => setRightPaneVisible(true)}
+            <ChatRightPane
+              onHidePane={() => setRightPaneVisible(false)}
+              selectedModel={selectedModel}
+              conversation={activeConversation}
             />
+          ) : (
+            <div className="h-full w-5 min-w-[20px] max-w-[20px] bg-[var(--bg-surface-elevated)] shadow-[-1px_0_0_var(--border-subtle)] flex items-center justify-center cursor-pointer">
+              <PaneCaret
+                side="right"
+                label="Show assistant info"
+                ariaKeyshortcuts="\\"
+                onClick={() => setRightPaneVisible(true)}
+              />
+            </div>
           )
         }
       />
@@ -242,7 +295,11 @@ export function ChatModuleTriPane() {
             className="w-[var(--quick-panel-width)] h-full bg-[var(--bg-surface)] border-l border-[var(--border-subtle)] rounded-l-[var(--radius-lg)] shadow-xl z-50 focus:outline-none"
             tabIndex={-1}
           >
-            <ChatRightPane onHidePane={() => setRightPaneVisible(false)} selectedModel={selectedModel} />
+            <ChatRightPane
+              onHidePane={() => setRightPaneVisible(false)}
+              selectedModel={selectedModel}
+              conversation={activeConversation}
+            />
           </div>
         </div>
       )}

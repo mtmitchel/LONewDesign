@@ -93,7 +93,6 @@ export function NotesEditor({
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}
-          placeholder="Capture your thoughts with structure, tags, and calm focus."
           className="h-full w-full resize-none border-none bg-transparent px-[var(--space-5)] py-[var(--space-5)] text-[var(--text-base)] leading-relaxed focus-visible:ring-0 outline-none"
         />
 

@@ -5,6 +5,7 @@ import { ComposeDocked } from './compose';
 import { MailLeftPane } from './mail/MailLeftPane';
 import { MailCenterPane } from './mail/MailCenterPane';
 import { MailRightPane } from './mail/MailRightPane';
+import { PaneCaret } from '../dev/PaneCaret';
 import { CollapsedSidebarPanel } from './mail/CollapsedSidebarPanel';
 import { useMailState } from './mail/useMailState';
 import { folders, labels, emails as initialEmails } from './mail/mockData';
@@ -290,21 +291,14 @@ export function MailModuleTriPane() {
             className="w-[var(--tripane-left-width)]"
           />
         ) : (
-          <button
-            type="button"
-            onClick={() => setLeftPaneVisible(true)}
-            aria-label="Show mail sidebar"
-            title="Show mail sidebar (])"
-            aria-keyshortcuts="]"
-            className="group h-full w-2 min-w-[8px] max-w-[8px] bg-[var(--bg-surface-elevated)] shadow-[1px_0_0_var(--border-subtle)] flex items-center justify-center cursor-pointer motion-safe:transition-all duration-[var(--duration-base)] ease-[var(--easing-standard)] hover:bg-[var(--primary-tint-5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(51,65,85,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]"
-          >
-            <span
-              aria-hidden="true"
-              className="text-[var(--caret-rest)] text-base leading-none transition-all duration-[var(--duration-base)] ease-[var(--easing-standard)] motion-safe:transition-all group-hover:text-[var(--caret-hover)] group-hover:scale-110"
-            >
-              ›
-            </span>
-          </button>
+          <div className="h-full w-5 min-w-[20px] max-w-[20px] bg-[var(--bg-surface-elevated)] shadow-[1px_0_0_var(--border-subtle)] flex items-center justify-center cursor-pointer">
+            <PaneCaret
+              side="left"
+              label="Show mail sidebar"
+              ariaKeyshortcuts="]"
+              onClick={() => setLeftPaneVisible(true)}
+            />
+          </div>
         )}
         
         {/* Center Pane */}
@@ -415,21 +409,14 @@ export function MailModuleTriPane() {
             className="w-[var(--quick-panel-width)]" 
           />
         ) : (
-          <button
-            type="button"
-            onClick={() => setRightPaneVisible(true)}
-            aria-label="Show context"
-            title="Show context (\\)"
-            aria-keyshortcuts="\\"
-            className="group h-full w-2 min-w-[8px] max-w-[8px] bg-[var(--bg-surface-elevated)] shadow-[-1px_0_0_var(--border-subtle)] flex items-center justify-center cursor-pointer motion-safe:transition-all duration-[var(--duration-base)] ease-[var(--easing-standard)] hover:bg-[var(--primary-tint-5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(51,65,85,0.4)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]"
-          >
-            <span
-              aria-hidden="true"
-              className="text-[var(--caret-rest)] text-base leading-none transition-all duration-[var(--duration-base)] ease-[var(--easing-standard)] motion-safe:transition-all group-hover:text-[var(--caret-hover)] group-hover:scale-110"
-            >
-              ‹
-            </span>
-          </button>
+          <div className="h-full w-5 min-w-[20px] max-w-[20px] bg-[var(--bg-surface-elevated)] shadow-[-1px_0_0_var(--border-subtle)] flex items-center justify-center cursor-pointer">
+            <PaneCaret
+              side="right"
+              label="Show context"
+              ariaKeyshortcuts="\\"
+              onClick={() => setRightPaneVisible(true)}
+            />
+          </div>
         )}
       </div>
 

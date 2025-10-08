@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileText, Tag, CheckSquare, FilePenLine, CalendarPlus } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { cn } from '../../ui/utils';
 import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
@@ -9,17 +10,32 @@ import { QuickTaskModal } from '../../extended/QuickTaskModal';
 import { QuickNoteModal } from '../../extended/QuickNoteModal';
 import { QuickEventModal } from '../../extended/QuickEventModal';
 import { AddLabelModal } from '../../extended/AddLabelModal';
+import type { Conversation } from './types';
 
 interface ChatRightPaneProps {
   onHidePane: () => void;
   className?: string;
   mode?: 'inline' | 'overlay';
   selectedModel?: string;
+  conversation?: Conversation | null;
 }
 
 type WhichModal = null | "task" | "note" | "event" | "label";
 
-export function ChatRightPane({ onHidePane, className, mode = 'inline', selectedModel = 'gpt-4' }: ChatRightPaneProps) {
+type RelatedItem = {
+  id: string;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+export function ChatRightPane({
+  onHidePane,
+  className,
+  mode = 'inline',
+  selectedModel = 'gpt-4',
+  conversation = null,
+}: ChatRightPaneProps) {
   const [activeTab, setActiveTab] = React.useState<'context' | 'settings'>('context');
   const [whichModal, setWhichModal] = React.useState<WhichModal>(null);
 
@@ -29,6 +45,54 @@ export function ChatRightPane({ onHidePane, className, mode = 'inline', selected
 
   // Get today's date for defaults
   const today = new Date().toISOString().slice(0, 10);
+
+  const formattedUpdatedAt = React.useMemo(() => {
+    if (!conversation?.updatedAt) return null;
+    try {
+      return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(conversation.updatedAt));
+    } catch {
+      return null;
+    }
+  }, [conversation?.updatedAt]);
+
+  const relatedItems = React.useMemo<RelatedItem[]>(() => {
+    if (!conversation) return [];
+    const others = (conversation.participants ?? []).filter(name => name.toLowerCase() !== 'you');
+    return [
+      {
+        id: `${conversation.id}-summary`,
+        label: `${conversation.title} summary`,
+        description: formattedUpdatedAt ? `Note · Updated ${formattedUpdatedAt}` : 'Note · Draft in progress',
+        icon: FileText,
+      },
+      {
+        id: `${conversation.id}-follow-up`,
+        label: 'Follow-up task',
+        description: others.length ? `Task · Assign to ${others[0]}` : 'Task · Assign an owner',
+        icon: CheckSquare,
+      },
+      {
+        id: `${conversation.id}-calendar`,
+        label: 'Schedule recap call',
+        description: 'Event · Block 30 minutes next week',
+        icon: CalendarPlus,
+      },
+      {
+        id: `${conversation.id}-labels`,
+        label: 'Conversation tags',
+        description: `${conversation.participants?.length ?? 1} participants`,
+        icon: Tag,
+      },
+    ];
+  }, [conversation, formattedUpdatedAt]);
+
+  const handleRelatedItemSelect = React.useCallback(
+    (itemId: string) => {
+      if (!conversation) return;
+      console.debug('chat:related-item:open', { conversationId: conversation.id, itemId });
+    },
+    [conversation]
+  );
 
   return (
     <PaneColumn className={`h-full ${className || ''}`} showLeftDivider showRightDivider={false}>
@@ -107,14 +171,49 @@ export function ChatRightPane({ onHidePane, className, mode = 'inline', selected
               </div>
             </div>
 
-            <div className="text-center py-[var(--space-8)]">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-[var(--text-secondary)] opacity-30" />
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">
-                No active conversation
+            <div>
+              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
+                Related items
               </h4>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                Select a conversation to see context and actions
-              </p>
+              {relatedItems.length ? (
+                <div className="space-y-[var(--space-2)]">
+                  {relatedItems.map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleRelatedItemSelect(item.id)}
+                      className="group w-full rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-3)] text-left shadow-none transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)] hover:bg-[var(--bg-surface-elevated)] hover:shadow-[var(--elevation-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]"
+                    >
+                      <div className="flex items-center gap-[var(--space-3)]">
+                        <span className="grid size-8 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)] text-[var(--primary)] opacity-80 group-hover:opacity-100">
+                          <item.icon className="size-4" aria-hidden="true" />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="truncate text-sm font-medium text-[var(--text-primary)]">
+                            {item.label}
+                          </div>
+                          <div className="mt-[var(--space-1)] truncate text-xs text-[var(--text-secondary)]">
+                            {item.description}
+                          </div>
+                        </div>
+                        <span className="text-xs font-medium text-[var(--primary)] opacity-0 transition-opacity duration-[var(--duration-fast)] group-hover:opacity-100">
+                          View
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-[var(--space-8)]">
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-[var(--text-secondary)] opacity-30" />
+                  <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">
+                    No related items
+                  </h4>
+                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                    Select a conversation to see related items
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -221,6 +320,7 @@ export function ChatRightPane({ onHidePane, className, mode = 'inline', selected
             console.debug('chat:pane:right:toggle', { visible: false, source: 'footer' });
             onHidePane();
           }}
+          variant="button"
         />
       </PaneFooter>
 

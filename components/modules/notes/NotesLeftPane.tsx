@@ -160,7 +160,7 @@ export function NotesLeftPane({ folders, notes, selectedFolderId, selectedNoteId
     return notes.filter(note => note.folderId === null);
   }, [notes]);
   return (
-    <div className={`flex h-full flex-col bg-[var(--bg-surface-elevated)] ${className || ''}`}>
+    <div className={`flex h-full flex-col bg-[var(--bg-surface)] ${className || ''}`}>
       <div className="flex-1 overflow-y-auto p-4">
         <ContextMenu>
           <ContextMenuTrigger asChild>
@@ -172,7 +172,7 @@ export function NotesLeftPane({ folders, notes, selectedFolderId, selectedNoteId
                   placeholder="Search notes..."
                   value={searchQuery}
                   onChange={(e) => onSearchChange(e.target.value)}
-                  className="h-9 w-full pl-9 pr-3"
+                  className="h-9 w-full pl-9 pr-3 bg-[var(--bg-surface)] border border-[var(--border-default)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary-tint-10)]"
                 />
               </div>
               <div className="space-y-1">

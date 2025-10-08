@@ -1,8 +1,16 @@
 import * as React from 'react';
 import { Input } from '../../ui/input';
 import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '../../ui/context-menu';
+import { FileText, FileType, Pencil, Pin, PinOff, Trash2, Braces } from 'lucide-react';
 import { cn } from '../../ui/utils';
-import type { Conversation } from './types';
+import type { Conversation, ConversationAction } from './types';
 
 interface ChatLeftPaneProps {
   conversations?: Conversation[];
@@ -10,6 +18,7 @@ interface ChatLeftPaneProps {
   onSelect: (id: string) => void;
   onHidePane?: () => void;
   className?: string;
+  onConversationAction?: (id: string, action: ConversationAction) => void;
 }
 
 export function ChatLeftPane({
@@ -18,6 +27,7 @@ export function ChatLeftPane({
   onSelect,
   onHidePane,
   className,
+  onConversationAction,
 }: ChatLeftPaneProps) {
   const [query, setQuery] = React.useState('');
   const [activeIndex, setActiveIndex] = React.useState(0);
@@ -74,6 +84,14 @@ export function ChatLeftPane({
     }
   };
 
+  const handleAction = React.useCallback(
+    (conversationId: string, action: ConversationAction) => {
+      console.debug('chat:conversation:action', { conversationId, action });
+      onConversationAction?.(conversationId, action);
+    },
+    [onConversationAction]
+  );
+
   return (
     <div className={cn('flex h-full flex-col bg-[var(--bg-surface)]', className)}>
       <div className="px-[var(--space-4)] pt-[var(--space-3)] pb-[var(--space-2)]">
@@ -81,7 +99,7 @@ export function ChatLeftPane({
           value={query}
           onChange={event => setQuery(event.target.value)}
           placeholder="Search conversations"
-          className="h-[var(--field-height)]"
+          className="h-[var(--field-height)] bg-[var(--bg-surface)] border border-[var(--border-default)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary-tint-10)]"
         />
       </div>
       <div
@@ -95,45 +113,89 @@ export function ChatLeftPane({
         {filtered.map((conversation, index) => {
           const isActive = conversation.id === activeId;
           const isFocused = index === activeIndex;
+          const pinAction = conversation.pinned ? 'unpin' : 'pin';
           return (
-            <div
-              key={conversation.id}
-              id={`chat-conversation-${conversation.id}`}
-              role="option"
-              aria-selected={isActive}
-              tabIndex={isFocused ? 0 : -1}
-              ref={node => {
-                itemRefs.current[index] = node;
-              }}
-              onFocus={() => focusRow(index)}
-              onClick={() => {
-                focusRow(index);
-                console.debug('chat:conversation:open', { id: conversation.id, via: 'pointer' });
-                onSelect(conversation.id);
-              }}
-              className={cn(
-                'min-h-[var(--list-row-min-h)] px-[var(--list-row-pad-x)] py-[var(--list-row-pad-y)]',
-                'border-b border-[var(--border-subtle)] cursor-pointer motion-safe:transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
-                isActive
-                  ? 'bg-[color-mix(in_oklab,var(--primary-tint-5) 55%, transparent)] text-[var(--text-primary)]'
-                  : 'bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)]'
-              )}
-            >
-              <div className="flex items-center justify-between gap-[var(--space-2)]">
-                <div className="font-medium text-[var(--text-primary)] truncate">{conversation.title}</div>
-                {conversation.unread && (
-                  <span
-                    aria-hidden="true"
-                    className="inline-flex shrink-0 rounded-full bg-[var(--primary-tint-5)]"
-                    style={{ width: 'var(--space-2)', height: 'var(--space-2)' }}
-                  />
-                )}
-              </div>
-              <div className="mt-[var(--space-1)] text-sm text-[var(--text-tertiary)] truncate">
-                {conversation.lastMessageSnippet}
-              </div>
-            </div>
+            <ContextMenu key={conversation.id}>
+              <ContextMenuTrigger asChild>
+                <div
+                  id={`chat-conversation-${conversation.id}`}
+                  role="option"
+                  aria-selected={isActive}
+                  tabIndex={isFocused ? 0 : -1}
+                  ref={node => {
+                    itemRefs.current[index] = node;
+                  }}
+                  onFocus={() => focusRow(index)}
+                  onClick={() => {
+                    focusRow(index);
+                    console.debug('chat:conversation:open', { id: conversation.id, via: 'pointer' });
+                    onSelect(conversation.id);
+                  }}
+                  onContextMenu={() => focusRow(index)}
+                  className={cn(
+                    'min-h-[var(--list-row-min-h)] px-[var(--list-row-pad-x)] py-[var(--list-row-pad-y)]',
+                    'border-b border-[var(--border-subtle)] cursor-pointer motion-safe:transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
+                    isActive
+                      ? 'bg-[color-mix(in_oklab,var(--primary-tint-5) 55%, transparent)] text-[var(--text-primary)]'
+                      : 'bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)]'
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-[var(--space-2)]">
+                    <div className="font-medium text-[var(--text-primary)] truncate">{conversation.title}</div>
+                    {conversation.unread && (
+                      <span
+                        aria-hidden="true"
+                        className="inline-flex shrink-0 rounded-full bg-[var(--primary-tint-5)]"
+                        style={{ width: 'var(--space-2)', height: 'var(--space-2)' }}
+                      />
+                    )}
+                  </div>
+                  <div className="mt-[var(--space-1)] text-sm text-[var(--text-tertiary)] truncate">
+                    {conversation.lastMessageSnippet}
+                  </div>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-48">
+                <ContextMenuItem onSelect={() => handleAction(conversation.id, pinAction)}>
+                  {conversation.pinned ? (
+                    <PinOff className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Pin className="mr-2 h-4 w-4" />
+                  )}
+                  {conversation.pinned ? 'Unpin' : 'Pin'}
+                </ContextMenuItem>
+                <ContextMenuItem onSelect={() => handleAction(conversation.id, 'rename')}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Rename
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onSelect={() => handleAction(conversation.id, 'export-text')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Export as Text
+                </ContextMenuItem>
+                <ContextMenuItem onSelect={() => handleAction(conversation.id, 'export-markdown')}>
+                  <FileType className="mr-2 h-4 w-4" />
+                  Export as Markdown
+                </ContextMenuItem>
+                <ContextMenuItem onSelect={() => handleAction(conversation.id, 'export-json')}>
+                  <Braces className="mr-2 h-4 w-4" />
+                  Export as JSON
+                </ContextMenuItem>
+                <ContextMenuItem onSelect={() => handleAction(conversation.id, 'export-pdf')}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Export as PDF
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onSelect={() => handleAction(conversation.id, 'delete')}
+                  variant="destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })}
       </div>
@@ -144,6 +206,7 @@ export function ChatLeftPane({
             label="Hide conversations"
             ariaKeyshortcuts="["
             onClick={onHidePane}
+            variant="button"
           />
         </PaneFooter>
       )}

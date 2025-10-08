@@ -7,3 +7,13 @@ export type Conversation = {
   pinned?: boolean;
   participants?: string[];
 };
+
+export type ConversationAction =
+  | 'pin'
+  | 'unpin'
+  | 'rename'
+  | 'export-text'
+  | 'export-markdown'
+  | 'export-json'
+  | 'export-pdf'
+  | 'delete';

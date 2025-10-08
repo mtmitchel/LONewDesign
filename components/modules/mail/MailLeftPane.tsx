@@ -217,10 +217,11 @@ export function MailLeftPane({
 
       <PaneFooter>
         <PaneCaret
-          direction="left"
+          side="right"
+          label="Hide mail sidebar"
+          ariaKeyshortcuts="["
           onClick={onHidePane}
-          tooltipText="Hide mail sidebar"
-          shortcut="["
+          variant="button"
         />
       </PaneFooter>
 

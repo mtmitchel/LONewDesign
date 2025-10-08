@@ -116,7 +116,7 @@ export function MailRightPane({ onHidePane, className }: MailRightPaneProps) {
                 No related items
               </h4>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                Select a note to see related items
+                Select a message to see related items
               </p>
             </div>
           </div>
