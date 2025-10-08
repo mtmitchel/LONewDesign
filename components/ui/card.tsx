@@ -8,7 +8,7 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="card"
       className={cn(
         // Asana/Sunsama card styling - lightweight paper feel
-        "bg-[var(--bg-surface)] text-[var(--text-primary)] flex flex-col rounded-[var(--radius-card)]",
+  "bg-[var(--bg-surface)] text-[color:var(--text-primary)] flex flex-col rounded-[var(--radius-card)]",
         "border border-[var(--border-subtle)] shadow-sm",
         // Comfortable spacing for long sessions
         "gap-[var(--space-4)]",

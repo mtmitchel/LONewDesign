@@ -162,11 +162,8 @@ export function DataTable<T extends Record<string, any>>({
               {selectable && (
                 <th className="w-12 px-4 py-3 text-left">
                   <Checkbox
-                    checked={allSelected}
-                    ref={(el) => {
-                      if (el) el.indeterminate = someSelected;
-                    }}
-                    onCheckedChange={handleSelectAll}
+                    checked={someSelected ? 'indeterminate' : allSelected}
+                    onCheckedChange={(value) => handleSelectAll(value === true || value === 'indeterminate')}
                   />
                 </th>
               )}
@@ -175,7 +172,7 @@ export function DataTable<T extends Record<string, any>>({
                 <th
                   key={column.id}
                   className={cn(
-                    "px-4 py-3 text-left text-sm font-medium text-[var(--text-primary)]",
+                    "px-4 py-3 text-left text-sm font-medium text-[color:var(--text-primary)]",
                     column.sortable && sortable && "cursor-pointer hover:bg-[var(--primary-tint-10)]/30",
                     column.align === 'center' && "text-center",
                     column.align === 'right' && "text-right"
@@ -202,7 +199,7 @@ export function DataTable<T extends Record<string, any>>({
               <tr>
                 <td
                   colSpan={columns.length + (selectable ? 1 : 0) + (rowActions.length > 0 ? 1 : 0)}
-                  className="px-4 py-8 text-center text-[var(--text-secondary)]"
+                  className="px-4 py-8 text-center text-[color:var(--text-secondary)]"
                 >
                   {emptyMessage}
                 </td>
@@ -232,7 +229,7 @@ export function DataTable<T extends Record<string, any>>({
                     <td
                       key={column.id}
                       className={cn(
-                        "px-4 py-3 text-sm text-[var(--text-primary)]",
+                        "px-4 py-3 text-sm text-[color:var(--text-primary)]",
                         column.align === 'center' && "text-center",
                         column.align === 'right' && "text-right"
                       )}
@@ -280,5 +277,3 @@ export function DataTable<T extends Record<string, any>>({
     </div>
   );
 }
-
-export type { DataTableColumn, DataTableProps };

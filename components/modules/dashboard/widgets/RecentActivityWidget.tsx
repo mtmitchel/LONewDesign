@@ -91,7 +91,7 @@ export function RecentActivityWidget({ widget }: WidgetProps) {
             >
               {showAvatars && (
                 <Avatar className="w-8 h-8 flex-shrink-0">
-                  <AvatarFallback className="text-xs bg-[var(--primary-tint-15)] text-[var(--primary)]">
+                  <AvatarFallback className="text-xs bg-[var(--primary-tint-15)] text-[color:var(--primary)]">
                     {activity.user === 'You' ? 'Y' : activity.user}
                   </AvatarFallback>
                 </Avatar>
@@ -99,15 +99,15 @@ export function RecentActivityWidget({ widget }: WidgetProps) {
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon size={14} className="text-[var(--text-secondary)] flex-shrink-0" />
-                  <p className="text-sm font-medium text-[var(--text-primary)] truncate">
+                  <Icon size={14} className="text-[color:var(--text-secondary)] flex-shrink-0" />
+                  <p className="text-sm font-medium text-[color:var(--text-primary)] truncate">
                     {activity.title}
                   </p>
                 </div>
-                <p className="text-xs text-[var(--text-secondary)] truncate mb-1">
+                <p className="text-xs text-[color:var(--text-secondary)] truncate mb-1">
                   {activity.description}
                 </p>
-                <p className="text-xs text-[var(--text-secondary)]">
+                <p className="text-xs text-[color:var(--text-secondary)]">
                   {activity.timestamp}
                 </p>
               </div>

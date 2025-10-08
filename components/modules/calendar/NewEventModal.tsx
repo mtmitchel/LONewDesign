@@ -257,7 +257,7 @@ export function NewEventModal({ isOpen, onClose, onSave, defaultDate }: NewEvent
           </Button>
           <Button 
             onClick={handleSave}
-            className="h-[var(--btn-primary-height)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)]"
+            className="h-[var(--btn-primary-height)] bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)]"
           >
             Create event
           </Button>

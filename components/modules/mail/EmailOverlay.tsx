@@ -166,14 +166,14 @@ export function EmailOverlay({
             px-[var(--modal-inner-x)]"
         >
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <h1 id="email-subject" className="truncate text-lg font-semibold text-[var(--text-primary)]">
+            <h1 id="email-subject" className="truncate text-lg font-semibold text-[color:var(--text-primary)]">
               {email.subject}
             </h1>
             {email.label && (
               <span
                 className="max-[560px]:hidden inline-flex shrink-0 items-center rounded-full border
                   border-[var(--primary-tint-20)] bg-[var(--primary-tint-10)] px-2 py-0.5 text-xs font-medium
-                  text-[var(--primary)]"
+                  text-[color:var(--primary)]"
               >
                 {email.label}
               </span>
@@ -201,7 +201,7 @@ export function EmailOverlay({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-[var(--danger)]"
+              className="h-8 w-8 p-0 text-[color:var(--danger)]"
               onClick={onDelete}
               aria-label="Delete email"
             >
@@ -225,19 +225,19 @@ export function EmailOverlay({
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-sm">
-              <span className="truncate font-medium text-[var(--text-primary)]">{email.from.name}</span>
-              <span className="truncate text-[var(--text-tertiary)]">&lt;{email.from.email}&gt;</span>
+              <span className="truncate font-medium text-[color:var(--text-primary)]">{email.from.name}</span>
+              <span className="truncate text-[color:var(--text-tertiary)]">&lt;{email.from.email}&gt;</span>
             </div>
-            <div className="truncate text-xs text-[var(--text-tertiary)]">To: {email.to.join(', ')}</div>
+            <div className="truncate text-xs text-[color:var(--text-tertiary)]">To: {email.to.join(', ')}</div>
           </div>
-          <span className="shrink-0 text-sm text-[var(--text-secondary)] whitespace-nowrap">{email.timestamp}</span>
+          <span className="shrink-0 text-sm text-[color:var(--text-secondary)] whitespace-nowrap">{email.timestamp}</span>
         </section>
 
         <div className="flex-1 overflow-y-auto">
           <section className="px-[var(--modal-inner-x)] py-[var(--modal-inner-y)]">
             <div className="max-w-[var(--content-measure)]">
               <div
-                className="prose prose-sm max-w-none text-[var(--text-primary)] leading-relaxed prose-p:my-3 prose-li:my-1"
+                className="prose prose-sm max-w-none text-[color:var(--text-primary)] leading-relaxed prose-p:my-3 prose-li:my-1"
                 dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
               />
             </div>
@@ -256,12 +256,12 @@ export function EmailOverlay({
                         type="button"
                         className="group inline-flex max-w-[28ch] items-center gap-[var(--pill-gap)] truncate rounded-[var(--pill-radius)]
                           border border-[var(--border-subtle)] bg-transparent px-[var(--pill-pad-x)] py-[var(--pill-pad-y)]
-                          text-left text-sm text-[var(--text-primary)] transition-shadow hover:bg-[var(--bg-surface)]"
+                          text-left text-sm text-[color:var(--text-primary)] transition-shadow hover:bg-[var(--bg-surface)]"
                         title={`Download ${attachment.filename} (${attachment.size})`}
                       >
-                        <Paperclip className="h-4 w-4 text-[var(--text-tertiary)]" />
+                        <Paperclip className="h-4 w-4 text-[color:var(--text-tertiary)]" />
                         <span className="truncate font-medium">{attachment.filename}</span>
-                        <span className="text-xs text-[var(--text-tertiary)]">{attachment.size}</span>
+                        <span className="text-xs text-[color:var(--text-tertiary)]">{attachment.size}</span>
                       </button>
                     ))}
                   </div>

@@ -26,7 +26,7 @@ export function ChatCenterPane({ conversationId, onSend }: { conversationId: str
     <div className="h-full flex flex-col">
       <div className="flex-1 overflow-y-auto p-[var(--space-4)]">
         {!conversationId ? (
-          <div className="text-[var(--text-secondary)]">Select a conversation to start chatting.</div>
+          <div className="text-[color:var(--text-secondary)]">Select a conversation to start chatting.</div>
         ) : (
           <div className="space-y-[var(--space-3)]">
             {/* Placeholder messages */}
@@ -40,7 +40,7 @@ export function ChatCenterPane({ conversationId, onSend }: { conversationId: str
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 text-[var(--text-secondary)] hover:text-[var(--primary)] hover:bg-[var(--hover-bg)]"
+            className="h-9 w-9 text-[color:var(--text-secondary)] hover:text-[color:var(--primary)] hover:bg-[var(--hover-bg)]"
           >
             <Paperclip className="w-4 h-4" />
           </Button>

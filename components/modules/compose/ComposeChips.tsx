@@ -115,14 +115,14 @@ export function ComposeChips({
             inline-flex items-center gap-1 px-2 py-1 
             rounded-[var(--radius-pill)] text-sm
             ${chip.valid 
-              ? 'bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] border border-[var(--border-default)]'
+              ? 'bg-[var(--bg-surface-elevated)] text-[color:var(--text-primary)] border border-[var(--border-default)]'
               : 'bg-red-50 text-red-700 border border-red-200'
             }
           `}
         >
           {/* Optional avatar */}
           {chip.label !== chip.email && (
-            <div className="w-4 h-4 rounded-full bg-[var(--primary-tint-10)] flex items-center justify-center text-xs text-[var(--primary)]">
+            <div className="w-4 h-4 rounded-full bg-[var(--primary-tint-10)] flex items-center justify-center text-xs text-[color:var(--primary)]">
               {getInitials(chip.label)}
             </div>
           )}
@@ -165,7 +165,7 @@ export function ComposeChips({
         placeholder={chips.length === 0 ? placeholder : ''}
         className="
           flex-1 min-w-[120px] bg-transparent outline-none
-          text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]
+          text-[color:var(--text-primary)] placeholder:text-[color:var(--text-secondary)]
         "
         aria-label={`${field} recipients`}
         aria-describedby={`${field}-chips-help`}

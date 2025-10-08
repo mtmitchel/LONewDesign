@@ -56,20 +56,20 @@ export function TaskComposer({ onAddTask, onCancel }: TaskComposerProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="flex-1 h-8 border-0 focus:outline-none focus:ring-0 bg-transparent text-[length:var(--text-sm)] font-[var(--font-weight-normal)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)]"
+            className="flex-1 h-8 border-0 focus:outline-none focus:ring-0 bg-transparent text-[length:var(--text-sm)] font-[var(--font-weight-normal)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)]"
             autoFocus
           />
         </div>
         <div className="flex items-center gap-[var(--space-2)]">
           <button 
             onClick={handleAddTask}
-            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] h-8 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] motion-safe:transition-colors duration-[var(--duration-fast)]"
+            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] h-8 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] motion-safe:transition-colors duration-[var(--duration-fast)]"
           >
             Add task
           </button>
           <button 
             onClick={onCancel}
-            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] h-8 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)]"
+            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] h-8 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)]"
           >
             Cancel
           </button>
@@ -79,8 +79,8 @@ export function TaskComposer({ onAddTask, onCancel }: TaskComposerProps) {
               <button 
                 className={`flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] motion-safe:transition-colors duration-[var(--duration-fast)] ${
                   dueDate 
-                    ? 'text-[var(--text-primary)] bg-[var(--bg-surface-elevated)]' 
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
+                    ? 'text-[color:var(--text-primary)] bg-[var(--bg-surface-elevated)]' 
+                    : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 <Calendar className="w-4 h-4" />
@@ -103,8 +103,8 @@ export function TaskComposer({ onAddTask, onCancel }: TaskComposerProps) {
               <button 
                 className={`flex items-center justify-center w-8 h-8 rounded-[var(--radius-sm)] motion-safe:transition-colors duration-[var(--duration-fast)] ${
                   priority !== 'none'
-                    ? 'text-[var(--text-primary)] bg-[var(--bg-surface-elevated)]'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
+                    ? 'text-[color:var(--text-primary)] bg-[var(--bg-surface-elevated)]'
+                    : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
                 }`}
               >
                 <Flag className="w-4 h-4" />

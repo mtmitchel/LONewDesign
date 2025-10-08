@@ -92,7 +92,7 @@ export function BulkActionToolbar({
               aria-label="Select messages"
               className={cn(
                 'flex items-center gap-1 h-8 px-2 -ml-2 rounded-[var(--radius-sm)]',
-                'text-[length:var(--text-sm)] text-[var(--text-primary)]',
+                'text-[length:var(--text-sm)] text-[color:var(--text-primary)]',
                 'transition-colors hover:bg-[var(--bg-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2'
               )}
             >
@@ -109,7 +109,7 @@ export function BulkActionToolbar({
                   <span className="h-0.5 w-2 rounded-sm bg-white" />
                 )}
               </span>
-              <ChevronDown className="h-4 w-4 text-[var(--text-secondary)]" />
+              <ChevronDown className="h-4 w-4 text-[color:var(--text-secondary)]" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -166,7 +166,7 @@ export function BulkActionToolbar({
         )}
 
         {hasSelection && (
-          <span className="text-[length:var(--text-sm)] text-[var(--text-secondary)]">
+          <span className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)]">
             {selectedCount} selected
           </span>
         )}
@@ -207,8 +207,8 @@ function ToolbarButton({ icon: Icon, label, onClick, variant = 'default', disabl
         'flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] transition-colors',
         'focus:outline-none focus:ring-2 focus:ring-offset-2',
         variant === 'default'
-          ? 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)] focus:ring-[var(--primary)]'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--accent-coral-tint-10)] hover:text-[var(--danger)] focus:ring-[var(--danger)]',
+          ? 'text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[color:var(--text-primary)] focus:ring-[var(--primary)]'
+          : 'text-[color:var(--text-secondary)] hover:bg-[var(--accent-coral-tint-10)] hover:text-[color:var(--danger)] focus:ring-[var(--danger)]',
         disabled && 'cursor-not-allowed opacity-40'
       )}
     >
@@ -223,7 +223,7 @@ function DropdownItem({ children, onSelect }: { children: React.ReactNode; onSel
       onSelect={onSelect}
       className={cn(
         'flex h-[var(--mail-dropdown-item-height)] items-center rounded-[var(--radius-sm)]',
-        'px-[var(--mail-dropdown-item-padding-x)] text-[length:var(--text-sm)] text-[var(--text-primary)]',
+  'px-[var(--mail-dropdown-item-padding-x)] text-[length:var(--text-sm)] text-[color:var(--text-primary)]',
         'transition-colors hover:bg-[var(--bg-surface-elevated)] focus:bg-[var(--bg-surface-elevated)]'
       )}
     >

@@ -100,7 +100,7 @@ export function MailLeftPane({
   return (
     <PaneColumn className={`h-full ${className || ''}`} showRightDivider>
       <PaneHeader role="presentation">
-        <h2 className="text-sm font-semibold text-[var(--text-primary)]">Mail</h2>
+  <h2 className="text-sm font-semibold text-[color:var(--text-primary)]">Mail</h2>
       </PaneHeader>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
@@ -121,13 +121,13 @@ export function MailLeftPane({
               onClick={() => setFoldersExpanded(!foldersExpanded)}
               className="w-full flex items-center justify-between group hover:bg-[var(--primary-tint-5)] rounded-[var(--radius-sm)] px-2 py-1 transition-all mb-[var(--space-3)]"
             >
-              <h3 className="text-xs uppercase tracking-wide text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">
+              <h3 className="text-xs uppercase tracking-wide text-[color:var(--text-secondary)] group-hover:text-[color:var(--text-primary)]">
                 Folders
               </h3>
               {foldersExpanded ? (
-                <ChevronDown className="w-3 h-3 text-[#9CA3AF] group-hover:text-[var(--text-secondary)] transition-all" />
+                <ChevronDown className="w-3 h-3 text-[#9CA3AF] group-hover:text-[color:var(--text-secondary)] transition-all" />
               ) : (
-                <ChevronRight className="w-3 h-3 text-[#9CA3AF] group-hover:text-[var(--text-secondary)] transition-all" />
+                <ChevronRight className="w-3 h-3 text-[#9CA3AF] group-hover:text-[color:var(--text-secondary)] transition-all" />
               )}
             </button>
             {foldersExpanded && (
@@ -141,8 +141,8 @@ export function MailLeftPane({
                       onClick={() => onFolderSelect(folder.id)}
                       className={`w-full flex items-center justify-between px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-sm transition-all ${
                         isActive 
-                          ? 'bg-[var(--primary-tint-10)] text-[var(--primary)]' 
-                          : 'text-[var(--text-primary)] hover:bg-[var(--primary-tint-5)]'
+                          ? 'bg-[var(--primary-tint-10)] text-[color:var(--primary)]' 
+                          : 'text-[color:var(--text-primary)] hover:bg-[var(--primary-tint-5)]'
                       }`}
                     >
                       <div className="flex items-center gap-[var(--space-3)]">
@@ -152,7 +152,7 @@ export function MailLeftPane({
                       {folder.count > 0 && (
                         <Badge 
                           variant="secondary" 
-                          className="text-xs px-2 py-0 bg-[var(--primary-tint-15)] text-[var(--primary)]"
+                          className="text-xs px-2 py-0 bg-[var(--primary-tint-15)] text-[color:var(--primary)]"
                         >
                           {folder.count}
                         </Badge>
@@ -170,10 +170,10 @@ export function MailLeftPane({
               <button
                 type="button"
                 onClick={() => setLabelsExpanded(!labelsExpanded)}
-                className="flex items-center gap-2 text-xs uppercase tracking-wide text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="flex items-center gap-2 text-xs uppercase tracking-wide text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
               >
                 <span>Labels</span>
-                <span className="inline-flex items-center justify-center text-[var(--text-tertiary)]">
+                <span className="inline-flex items-center justify-center text-[color:var(--text-tertiary)]">
                   {labelsExpanded ? (
                     <ChevronDown className="w-3 h-3" />
                   ) : (
@@ -185,7 +185,7 @@ export function MailLeftPane({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="text-[var(--text-secondary)] hover:text-[var(--primary)]"
+                className="text-[color:var(--text-secondary)] hover:text-[color:var(--primary)]"
                 onClick={(event) => {
                   event.stopPropagation();
                   setLabelManagerOpen(true);
@@ -200,7 +200,7 @@ export function MailLeftPane({
                 {labelList.map((label) => (
                   <button
                     key={label.id}
-                    className="w-full flex items-center gap-[var(--space-3)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-sm text-[var(--text-primary)] hover:bg-[var(--primary-tint-5)] transition-all"
+                    className="w-full flex items-center gap-[var(--space-3)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-sm text-[color:var(--text-primary)] hover:bg-[var(--primary-tint-5)] transition-all"
                   >
                     <div 
                       className="rounded-full" 
@@ -236,11 +236,11 @@ export function MailLeftPane({
       >
         <DialogContent className="max-w-lg p-0">
           <DialogHeader className="px-6 pt-6 pb-4">
-              <div className="flex items-center gap-[var(--space-3)] text-[var(--text-primary)]">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary-tint-10)] text-[var(--primary)]">
+              <div className="flex items-center gap-[var(--space-3)] text-[color:var(--text-primary)]">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary-tint-10)] text-[color:var(--primary)]">
                   <Tag className="w-5 h-5" />
                 </span>
-                <DialogTitle className="text-base font-semibold text-[var(--text-primary)]">
+                <DialogTitle className="text-base font-semibold text-[color:var(--text-primary)]">
                   Labels
                 </DialogTitle>
               </div>
@@ -249,7 +249,7 @@ export function MailLeftPane({
           <div className="px-6 pb-6 space-y-[var(--space-4)]">
             <div className="flex items-center gap-[var(--space-3)]">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[color:var(--text-tertiary)]" />
                 <Input
                   autoFocus
                   value={labelSearch}
@@ -260,7 +260,7 @@ export function MailLeftPane({
               </div>
               <span
                 aria-live="polite"
-                className="text-xs text-[var(--text-tertiary)] whitespace-nowrap"
+                className="text-xs text-[color:var(--text-tertiary)] whitespace-nowrap"
               >
                 ({selectedLabelIds.length})
               </span>
@@ -270,7 +270,7 @@ export function MailLeftPane({
               <button
                 type="button"
                 onClick={handleCreateLabel}
-                className="w-full rounded-[var(--radius-sm)] border border-[var(--primary-tint-20)] bg-[var(--primary-tint-5)] px-[var(--space-3)] py-[var(--space-2)] text-left text-sm text-[var(--primary)] hover:bg-[var(--primary-tint-10)] transition-colors"
+                className="w-full rounded-[var(--radius-sm)] border border-[var(--primary-tint-20)] bg-[var(--primary-tint-5)] px-[var(--space-3)] py-[var(--space-2)] text-left text-sm text-[color:var(--primary)] hover:bg-[var(--primary-tint-10)] transition-colors"
               >
                 <div className="flex items-center gap-[var(--space-2)]">
                   <Plus className="w-4 h-4" />
@@ -287,7 +287,7 @@ export function MailLeftPane({
                     return (
                       <label
                         key={label.id}
-                        className="flex items-center justify-between px-[var(--space-3)] py-[var(--space-2)] text-sm text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
+                        className="flex items-center justify-between px-[var(--space-3)] py-[var(--space-2)] text-sm text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer"
                       >
                         <div className="flex items-center gap-[var(--space-3)]">
                           <Checkbox
@@ -296,7 +296,7 @@ export function MailLeftPane({
                           />
                           <div>
                             <div className="font-medium">{label.name}</div>
-                            <div className="text-xs text-[var(--text-tertiary)]">0 messages</div>
+                            <div className="text-xs text-[color:var(--text-tertiary)]">0 messages</div>
                           </div>
                         </div>
                         <span
@@ -308,8 +308,8 @@ export function MailLeftPane({
                   })
                 ) : (
                   <div className="flex flex-col items-center gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-6)] text-center">
-                    <Tag className="w-5 h-5 text-[var(--text-tertiary)]" />
-                    <span className="text-sm text-[var(--text-tertiary)]">No labels found</span>
+                    <Tag className="w-5 h-5 text-[color:var(--text-tertiary)]" />
+                    <span className="text-sm text-[color:var(--text-tertiary)]">No labels found</span>
                   </div>
                 )}
               </div>

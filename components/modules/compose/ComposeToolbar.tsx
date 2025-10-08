@@ -325,7 +325,7 @@ export function ComposeToolbar({ canSend, onSend, onDiscard, editorCommands }: C
           <div className="flex items-center gap-[var(--space-2)]">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="w-8 h-8 p-0 text-[var(--text-secondary)] hover:text-[var(--danger)]" onClick={onDiscard} aria-label="Discard">
+                <Button variant="ghost" size="sm" className="w-8 h-8 p-0 text-[color:var(--text-secondary)] hover:text-[color:var(--danger)]" onClick={onDiscard} aria-label="Discard">
                   <Trash className="w-4 h-4" />
                 </Button>
               </TooltipTrigger>

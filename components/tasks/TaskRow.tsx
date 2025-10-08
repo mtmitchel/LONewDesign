@@ -17,13 +17,13 @@ export interface TaskRowProps {
 const priorityChip = (p?: Priority) => {
   switch (p) {
     case "high":
-      return "bg-[var(--chip-high-bg)] text-[var(--chip-high-text)]";
+      return "bg-[var(--chip-high-bg)] text-[color:var(--chip-high-text)]";
     case "medium":
-      return "bg-[var(--chip-medium-bg)] text-[var(--chip-medium-text)]";
+      return "bg-[var(--chip-medium-bg)] text-[color:var(--chip-medium-text)]";
     case "low":
-      return "bg-[var(--chip-low-bg)] text-[var(--chip-low-text)]";
+      return "bg-[var(--chip-low-bg)] text-[color:var(--chip-low-text)]";
     default:
-      return "bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]";
+      return "bg-[var(--chip-neutral-bg)] text-[color:var(--chip-neutral-text)]";
   }
 };
 
@@ -65,7 +65,7 @@ export function TaskRow({
       <div className="flex-1 min-w-0">
         <div
           className={cn(
-            "truncate text-[var(--text-primary)]",
+            "truncate text-[color:var(--text-primary)]",
             completed && "line-through opacity-60"
           )}
         >
@@ -74,7 +74,7 @@ export function TaskRow({
 
         <div className="mt-1 flex flex-wrap items-center gap-[var(--chip-gap)]">
           {dueLabel && (
-            <span className="inline-flex items-center text-[var(--text-secondary)] text-xs">
+            <span className="inline-flex items-center text-[color:var(--text-secondary)] text-xs">
               {/* calendar glyph handled globally; keeping text only here per low-ink */}
               {dueLabel}
             </span>
@@ -94,7 +94,7 @@ export function TaskRow({
           {labels.map((l) => (
             <span
               key={l}
-              className="inline-flex h-[var(--chip-height)] items-center rounded-[var(--chip-radius)] px-[var(--chip-pad-x)] text-xs bg-[var(--bg-surface-elevated)] text-[var(--text-secondary)]"
+              className="inline-flex h-[var(--chip-height)] items-center rounded-[var(--chip-radius)] px-[var(--chip-pad-x)] text-xs bg-[var(--bg-surface-elevated)] text-[color:var(--text-secondary)]"
               title={l}
             >
               {l}

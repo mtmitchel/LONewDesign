@@ -64,7 +64,7 @@ export function NotesCenterPane({
 
   const densityPy = settings.compactView ? 'py-[var(--space-2)]' : 'py-[var(--space-3)]';
   const densityPx = settings.compactView ? 'px-[var(--space-3)]' : 'px-[var(--space-4)]';
-  const metaTextSize = settings.compactView ? 'text-[var(--text-xs)]' : 'text-[var(--text-sm)]';
+  const metaTextSize = settings.compactView ? 'text-[length:var(--text-xs)]' : 'text-[length:var(--text-sm)]';
 
   const handleAction = (noteId: string, action: NoteAction) => {
     onNoteAction?.(noteId, action);
@@ -75,7 +75,7 @@ export function NotesCenterPane({
       <ContextMenuTrigger asChild>
         <div className="divide-y divide-[var(--border-subtle)]">
           {loading && (
-            <div className="px-[var(--space-4)] py-[var(--space-3)] text-sm text-[var(--text-secondary)]">
+            <div className="px-[var(--space-4)] py-[var(--space-3)] text-sm text-[color:var(--text-secondary)]">
               Loading notes…
             </div>
           )}
@@ -104,39 +104,39 @@ export function NotesCenterPane({
                 <div className="flex items-start justify-between gap-[var(--space-2)]">
                   <div className="flex min-w-0 flex-col gap-[var(--space-1-5,8px)]">
                     <div className="flex items-start gap-[var(--space-2)]">
-                      <h4 className="line-clamp-1 text-[var(--text-sm)] font-medium leading-tight text-[var(--text-primary)]">
+                      <h4 className="line-clamp-1 text-[length:var(--text-sm)] font-medium leading-tight text-[color:var(--text-primary)]">
                         {note.title || 'Untitled note'}
                       </h4>
                       {note.isStarred && (
-                        <Star size={14} className="text-[var(--warning)]" fill="currentColor" />
+                        <Star size={14} className="text-[color:var(--warning)]" fill="currentColor" />
                       )}
                       {note.isPinned && (
-                        <Pin size={14} className="text-[var(--primary)]" />
+                        <Pin size={14} className="text-[color:var(--primary)]" />
                       )}
                     </div>
                     {settings.showPreview && (
-                      <p className="line-clamp-2 whitespace-pre-line text-[13px] leading-snug text-[var(--text-secondary)]">
+                      <p className="line-clamp-2 whitespace-pre-line text-[13px] leading-snug text-[color:var(--text-secondary)]">
                         {note.content || 'Start writing to see a preview here.'}
                       </p>
                     )}
-                    <div className="flex flex-wrap items-center gap-[var(--space-1)] text-[var(--text-tertiary)]">
+                    <div className="flex flex-wrap items-center gap-[var(--space-1)] text-[color:var(--text-tertiary)]">
                       {note.tags.slice(0, 3).map(tag => (
                         <Badge
                           key={tag}
                           variant="secondary"
-                          className="border border-[var(--chip-border)] bg-[color-mix(in_oklab,_var(--chip-label-bg)_50%,_transparent)] text-[11px] text-[var(--text-secondary)]"
+                          className="border border-[var(--chip-border)] bg-[color-mix(in_oklab,_var(--chip-label-bg)_50%,_transparent)] text-[11px] text-[color:var(--text-secondary)]"
                         >
                           #{tag}
                         </Badge>
                       ))}
                       {note.tags.length > 3 && (
-                        <span className="text-[11px] text-[var(--text-tertiary)]">+{note.tags.length - 3}</span>
+                        <span className="text-[11px] text-[color:var(--text-tertiary)]">+{note.tags.length - 3}</span>
                       )}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-start gap-[var(--space-2)]">
                     {settings.showWordCount && (
-                      <div className={`whitespace-nowrap text-right ${metaTextSize} text-[var(--text-tertiary)] leading-none`}>
+                      <div className={`whitespace-nowrap text-right ${metaTextSize} text-[color:var(--text-tertiary)] leading-none`}>
                         <div>{note.wordCount ?? 0} words</div>
                         <div>{note.lastModified}</div>
                       </div>
@@ -187,7 +187,7 @@ export function NotesCenterPane({
                           Export as Text
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => handleAction(note.id, 'delete')} className="text-[var(--error)]">
+                        <DropdownMenuItem onSelect={() => handleAction(note.id, 'delete')} className="text-[color:var(--error)]">
                           <Trash size={14} className="mr-[var(--space-2)]" />
                           Delete
                         </DropdownMenuItem>
@@ -240,7 +240,7 @@ export function NotesCenterPane({
                 Export as Text
               </ContextMenuItem>
               <ContextMenuSeparator />
-              <ContextMenuItem onSelect={() => handleAction(note.id, 'delete')} className="text-[var(--error)]">
+              <ContextMenuItem onSelect={() => handleAction(note.id, 'delete')} className="text-[color:var(--error)]">
                 <Trash size={14} className="mr-[var(--space-2)]" />
                 Delete
               </ContextMenuItem>

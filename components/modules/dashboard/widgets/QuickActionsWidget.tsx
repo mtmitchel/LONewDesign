@@ -49,7 +49,7 @@ export function QuickActionsWidget({ widget }: WidgetProps) {
             key={index}
             variant="outline"
             onClick={() => handleAction(action.action)}
-            className="h-auto p-4 flex flex-col items-center gap-2 hover:bg-[var(--primary-tint-10)] hover:border-[var(--primary)] hover:text-[var(--primary)]"
+            className="h-auto p-4 flex flex-col items-center gap-2 hover:bg-[var(--primary-tint-10)] hover:border-[var(--primary)] hover:text-[color:var(--primary)]"
           >
             <Icon size={20} />
             <span className="text-sm text-center leading-tight">{action.label}</span>

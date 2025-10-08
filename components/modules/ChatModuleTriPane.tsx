@@ -235,7 +235,7 @@ export function ChatModuleTriPane() {
               <div className="flex items-center justify-between w-full">
                 <div className="font-medium">Conversations</div>
                 <button
-                  className="px-[var(--space-2)] py-[var(--space-1)] rounded bg-transparent text-[var(--text-primary)] hover:bg-[var(--hover-bg)]"
+                  className="px-[var(--space-2)] py-[var(--space-1)] rounded bg-transparent text-[color:var(--text-primary)] hover:bg-[var(--hover-bg)]"
                   onClick={() => console.debug('[chat] new conversation')}
                 >
                   + New
@@ -251,7 +251,7 @@ export function ChatModuleTriPane() {
               <div className="truncate">{activeConversationId ? 'Conversation' : 'Chat'}</div>
               <div className="flex items-center gap-[var(--space-3)]">
                 <select 
-                  className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-2)] py-[var(--space-1)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                  className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-2)] py-[var(--space-1)] text-sm text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                   value={selectedModel}
                   onChange={(e) => onModelChange(e.target.value)}
                 >

@@ -69,28 +69,28 @@ export function EmailSummaryWidget({ widget }: WidgetProps) {
       {/* Email Stats */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="text-center p-2 bg-[var(--elevated)] rounded-lg">
-          <div className="text-lg font-semibold text-[var(--text-primary)]">
+          <div className="text-lg font-semibold text-[color:var(--text-primary)]">
             {mockEmails.length}
           </div>
-          <div className="text-xs text-[var(--text-secondary)]">Total</div>
+          <div className="text-xs text-[color:var(--text-secondary)]">Total</div>
         </div>
         <div className="text-center p-2 bg-[var(--elevated)] rounded-lg">
-          <div className="text-lg font-semibold text-[var(--primary)]">
+          <div className="text-lg font-semibold text-[color:var(--primary)]">
             {unreadCount}
           </div>
-          <div className="text-xs text-[var(--text-secondary)]">Unread</div>
+          <div className="text-xs text-[color:var(--text-secondary)]">Unread</div>
         </div>
         <div className="text-center p-2 bg-[var(--elevated)] rounded-lg">
-          <div className="text-lg font-semibold text-[var(--warning)]">
+          <div className="text-lg font-semibold text-[color:var(--warning)]">
             {importantCount}
           </div>
-          <div className="text-xs text-[var(--text-secondary)]">Important</div>
+          <div className="text-xs text-[color:var(--text-secondary)]">Important</div>
         </div>
       </div>
 
       {/* Recent Emails */}
       <div className="flex-1 min-h-0">
-        <div className="text-sm font-medium text-[var(--text-primary)] mb-3">
+  <div className="text-sm font-medium text-[color:var(--text-primary)] mb-3">
           Recent Emails
         </div>
         <ScrollArea className="h-full">
@@ -103,7 +103,7 @@ export function EmailSummaryWidget({ widget }: WidgetProps) {
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <Mail size={14} className="text-[var(--text-secondary)] flex-shrink-0" />
+                      <Mail size={14} className="text-[color:var(--text-secondary)] flex-shrink-0" />
                       {email.isUnread && (
                         <div className="w-2 h-2 bg-[var(--primary)] rounded-full"></div>
                       )}
@@ -111,8 +111,8 @@ export function EmailSummaryWidget({ widget }: WidgetProps) {
                     <span 
                       className={`text-sm truncate ${
                         email.isUnread 
-                          ? "font-semibold text-[var(--text-primary)]" 
-                          : "text-[var(--text-secondary)]"
+                          ? "font-semibold text-[color:var(--text-primary)]" 
+                          : "text-[color:var(--text-secondary)]"
                       }`}
                     >
                       {email.sender}
@@ -120,9 +120,9 @@ export function EmailSummaryWidget({ widget }: WidgetProps) {
                   </div>
                   <div className="flex items-center gap-1">
                     {email.isImportant && (
-                      <Star size={12} className="text-[var(--warning)] fill-current" />
+                      <Star size={12} className="text-[color:var(--warning)] fill-current" />
                     )}
-                    <span className="text-xs text-[var(--text-secondary)]">
+                    <span className="text-xs text-[color:var(--text-secondary)]">
                       {email.time}
                     </span>
                   </div>
@@ -132,15 +132,15 @@ export function EmailSummaryWidget({ widget }: WidgetProps) {
                   <span 
                     className={`text-sm truncate block ${
                       email.isUnread 
-                        ? "font-medium text-[var(--text-primary)]" 
-                        : "text-[var(--text-primary)]"
+                        ? "font-medium text-[color:var(--text-primary)]" 
+                        : "text-[color:var(--text-primary)]"
                     }`}
                   >
                     {email.subject}
                   </span>
                 </div>
                 
-                <p className="text-xs text-[var(--text-secondary)] truncate">
+                <p className="text-xs text-[color:var(--text-secondary)] truncate">
                   {email.preview}
                 </p>
               </div>

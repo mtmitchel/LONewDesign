@@ -22,15 +22,15 @@ const badgeVariants = cva(
       },
       tone: {
         high:
-          "relative text-[var(--chip-high-fg)] bg-[var(--chip-high-bg)] hover:bg-[color-mix(in_oklab,var(--priority-high)_calc(14%+var(--chip-hover-bg-boost)),transparent)] " +
+          "relative text-[color:var(--chip-high-fg)] bg-[var(--chip-high-bg)] hover:bg-[color-mix(in_oklab,var(--priority-high)_calc(14%+var(--chip-hover-bg-boost)),transparent)] " +
           "before:content-[''] before:absolute before:inset-0 before:rounded-[inherit] before:pointer-events-none " +
           "before:shadow-[inset_0_0_0_1px_var(--chip-high-stroke)]",
         medium:
-          "relative text-[var(--chip-medium-fg)] bg-[var(--chip-medium-bg)] hover:bg-[color-mix(in_oklab,var(--priority-medium)_calc(16%+var(--chip-hover-bg-boost)),transparent)] " +
+          "relative text-[color:var(--chip-medium-fg)] bg-[var(--chip-medium-bg)] hover:bg-[color-mix(in_oklab,var(--priority-medium)_calc(16%+var(--chip-hover-bg-boost)),transparent)] " +
           "before:content-[''] before:absolute before:inset-0 before:rounded-[inherit] before:pointer-events-none " +
           "before:shadow-[inset_0_0_0_1px_var(--chip-medium-stroke)]",
         low:
-          "relative text-[var(--chip-low-fg)] bg-[var(--chip-low-bg)] hover:bg-[color-mix(in_oklab,var(--priority-low)_calc(16%+var(--chip-hover-bg-boost)),transparent)] " +
+          "relative text-[color:var(--chip-low-fg)] bg-[var(--chip-low-bg)] hover:bg-[color-mix(in_oklab,var(--priority-low)_calc(16%+var(--chip-hover-bg-boost)),transparent)] " +
           "before:content-[''] before:absolute before:inset-0 before:rounded-[inherit] before:pointer-events-none " +
           "before:shadow-[inset_0_0_0_1px_var(--chip-low-stroke)]",
         label:
@@ -38,7 +38,7 @@ const badgeVariants = cva(
           "before:content-[''] before:absolute before:inset-0 before:rounded-[inherit] before:pointer-events-none " +
           "before:shadow-[inset_0_0_0_1px_var(--chip-label-stroke)]",
         neutral:
-          "text-[var(--chip-text)] bg-[color-mix(in_oklab,var(--text-secondary)_12%,transparent)] hover:bg-[color-mix(in_oklab,var(--text-secondary)_18%,transparent)]",
+          "text-[color:var(--chip-text)] bg-[color-mix(in_oklab,var(--text-secondary)_12%,transparent)] hover:bg-[color-mix(in_oklab,var(--text-secondary)_18%,transparent)]",
       },
       size: {
         sm: "text-xs",

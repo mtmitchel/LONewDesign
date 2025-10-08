@@ -18,7 +18,7 @@ interface NotesEditorProps {
 }
 
 interface SlashMenuItem {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: React.ComponentType<{ size?: number | string; className?: string }>
   label: string;
   action: ToolbarAction;
   group: string;
@@ -93,7 +93,7 @@ export function NotesEditor({
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}
-          className="h-full w-full resize-none border-none bg-transparent px-[var(--space-5)] py-[var(--space-5)] text-[var(--text-base)] leading-relaxed focus-visible:ring-0 outline-none"
+          className="h-full w-full resize-none border-none bg-transparent px-[var(--space-5)] py-[var(--space-5)] text-[length:var(--text-base)] leading-relaxed focus-visible:ring-0 outline-none"
         />
 
         {showSlashMenu && (
@@ -104,7 +104,7 @@ export function NotesEditor({
             <div className="max-h-80 overflow-y-auto">
               {Array.from(new Set(slashMenuItems.map(item => item.group))).map(group => (
                 <div key={group} className="border-b border-[var(--border-subtle)] last:border-none">
-                  <div className="px-[var(--space-3)] py-[var(--space-2)] text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+                  <div className="px-[var(--space-3)] py-[var(--space-2)] text-xs font-medium uppercase tracking-wide text-[color:var(--text-tertiary)]">
                     {group}
                   </div>
                   <div className="space-y-[var(--space-1)] px-[var(--space-2)] pb-[var(--space-2)]">
@@ -115,9 +115,9 @@ export function NotesEditor({
                           key={item.label}
                           type="button"
                           onClick={() => handleSlashAction(item.action)}
-                          className="flex w-full items-center gap-[var(--space-3)] rounded-[var(--radius-md)] px-[var(--space-2)] py-[var(--space-2)] text-left text-sm text-[var(--text-primary)] hover:bg-[color-mix(in_oklab,_var(--primary)_12%,_transparent)]"
+                          className="flex w-full items-center gap-[var(--space-3)] rounded-[var(--radius-md)] px-[var(--space-2)] py-[var(--space-2)] text-left text-sm text-[color:var(--text-primary)] hover:bg-[color-mix(in_oklab,_var(--primary)_12%,_transparent)]"
                         >
-                          <item.icon size={16} className="text-[var(--text-secondary)]" />
+                          <item.icon size={16} className="text-[color:var(--text-secondary)]" />
                           {item.label}
                         </button>
                       ))}

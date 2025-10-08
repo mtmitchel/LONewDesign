@@ -70,42 +70,42 @@ export function NotesContextPanel({
         {(showSections?.details ?? true) && (
           <section className="space-y-[var(--space-2)]">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Details</h3>
+            <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Details</h3>
             {note && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-[var(--space-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="h-8 gap-[var(--space-2)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
                 onClick={onToggleStar}
               >
-                <Star size={16} className={note.isStarred ? 'text-[var(--warning)]' : ''} fill={note.isStarred ? 'currentColor' : 'none'} />
+                <Star size={16} className={note.isStarred ? 'text-[color:var(--warning)]' : ''} fill={note.isStarred ? 'currentColor' : 'none'} />
                 {note.isStarred ? 'Starred' : 'Star note'}
               </Button>
             )}
           </div>
           {note ? (
-            <div className="space-y-[var(--space-2)] text-sm text-[var(--text-secondary)]">
+            <div className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
               <div className="flex items-center justify-between">
                 <span>Folder</span>
-                <span className="text-[var(--text-primary)]">{folderName || 'Inbox'}</span>
+                <span className="text-[color:var(--text-primary)]">{folderName || 'Inbox'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Word count</span>
-                <span className="text-[var(--text-primary)]">{note.wordCount ?? 0}</span>
+                <span className="text-[color:var(--text-primary)]">{note.wordCount ?? 0}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Last modified</span>
-                <span className="text-[var(--text-primary)]">{note.lastModified}</span>
+                <span className="text-[color:var(--text-primary)]">{note.lastModified}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Status</span>
-                <span className="text-[var(--text-primary)]">
+                <span className="text-[color:var(--text-primary)]">
                   {isSaving ? 'Saving…' : lastSavedLabel ? `Saved ${lastSavedLabel}` : 'Up to date'}
                 </span>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-[var(--text-secondary)]">
+            <p className="text-sm text-[color:var(--text-secondary)]">
               Select a note to see its details, tags, and actions.
             </p>
           )}
@@ -115,8 +115,8 @@ export function NotesContextPanel({
         {(showSections?.tags ?? true) && (
         <section className="space-y-[var(--space-3)]">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Tags</h3>
-            <TagIcon size={16} className="text-[var(--text-tertiary)]" />
+            <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Tags</h3>
+            <TagIcon size={16} className="text-[color:var(--text-tertiary)]" />
           </div>
           {note && note.tags.length > 0 ? (
             <div className="flex flex-wrap gap-[var(--space-2)]">
@@ -124,13 +124,13 @@ export function NotesContextPanel({
                 <Badge
                   key={tag}
                   variant="secondary"
-                  className="flex items-center gap-[var(--space-1)] bg-[color-mix(in_oklab,_var(--chip-label-bg)_55%,_transparent)] text-[var(--text-secondary)]"
+                  className="flex items-center gap-[var(--space-1)] bg-[color-mix(in_oklab,_var(--chip-label-bg)_55%,_transparent)] text-[color:var(--text-secondary)]"
                 >
                   #{tag}
                   <button
                     type="button"
                     onClick={() => onTagRemove(tag)}
-                    className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]"
+                    className="text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)]"
                     aria-label={`Remove tag ${tag}`}
                   >
                     ×
@@ -139,7 +139,7 @@ export function NotesContextPanel({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[var(--text-tertiary)]">No tags yet.</p>
+            <p className="text-sm text-[color:var(--text-tertiary)]">No tags yet.</p>
           )}
           <form className="flex items-center gap-[var(--space-2)]" onSubmit={handleTagSubmit}>
             <Input
@@ -157,7 +157,7 @@ export function NotesContextPanel({
 
         {(showSections?.view ?? true) && (
         <section className="space-y-[var(--space-3)]">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">View settings</h3>
+          <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">View settings</h3>
           <div className="space-y-[var(--space-3)]">
             <SettingRow
               label="Compact list view"
@@ -189,10 +189,10 @@ export function NotesContextPanel({
 
         {(showSections?.sort ?? true) && (
         <section className="space-y-[var(--space-3)]">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Sort notes</h3>
+          <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Sort notes</h3>
           <div className="grid grid-cols-1 gap-[var(--space-2)]">
             <div className="space-y-[var(--space-1)]">
-              <Label className="text-xs text-[var(--text-secondary)]">Order by</Label>
+              <Label className="text-xs text-[color:var(--text-secondary)]">Order by</Label>
               <Select
                 value={settings.sortBy}
                 onValueChange={value => onSettingsChange({ sortBy: value as NotesSettings['sortBy'] })}
@@ -209,7 +209,7 @@ export function NotesContextPanel({
               </Select>
             </div>
             <div className="space-y-[var(--space-1)]">
-              <Label className="text-xs text-[var(--text-secondary)]">Direction</Label>
+              <Label className="text-xs text-[color:var(--text-secondary)]">Direction</Label>
               <Select
                 value={settings.sortOrder}
                 onValueChange={value => onSettingsChange({ sortOrder: value as NotesSettings['sortOrder'] })}
@@ -229,7 +229,7 @@ export function NotesContextPanel({
 
         {(showSections?.actions ?? true) && (
         <section className="space-y-[var(--space-3)]">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)]">Actions</h3>
+          <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Actions</h3>
           <div className="space-y-[var(--space-2)]">
             <Button
               variant="outline"
@@ -265,8 +265,8 @@ export function NotesContextPanel({
 
       {(showSections?.footer ?? true) && (
       <div className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-[var(--space-4)] py-[var(--space-3)]">
-        <div className="flex items-center gap-[var(--space-3)] text-xs text-[var(--text-secondary)]">
-          <Sparkles size={16} className="text-[var(--text-tertiary)]" />
+        <div className="flex items-center gap-[var(--space-3)] text-xs text-[color:var(--text-secondary)]">
+          <Sparkles size={16} className="text-[color:var(--text-tertiary)]" />
           <span>Focus on writing—LibreOllama keeps everything synced and organized.</span>
         </div>
       </div>
@@ -286,8 +286,8 @@ function SettingRow({ label, description, checked, onCheckedChange }: SettingRow
   return (
     <div className="flex items-start justify-between gap-[var(--space-3)] rounded-[var(--radius-md)] bg-[color-mix(in_oklab,_var(--bg-surface)_92%,_transparent)] px-[var(--space-3)] py-[var(--space-3)]">
       <div>
-        <div className="text-sm font-medium text-[var(--text-primary)]">{label}</div>
-        <p className="text-xs text-[var(--text-secondary)]">{description}</p>
+  <div className="text-sm font-medium text-[color:var(--text-primary)]">{label}</div>
+  <p className="text-xs text-[color:var(--text-secondary)]">{description}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>

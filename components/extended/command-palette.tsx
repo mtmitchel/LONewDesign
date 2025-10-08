@@ -52,18 +52,18 @@ export function CommandPalette({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden p-0 shadow-lg border border-[var(--border-default)]">
-        <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[var(--text-secondary)] [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
+    <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-[color:var(--text-secondary)] [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5 [&_[cmdk-item]]:py-3">
           <div className="flex items-center border-b border-[var(--border-subtle)] px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
+            <Search className="mr-2 h-4 w-4 shrink-0 text-[color:var(--text-secondary)]" />
             <Command.Input
               placeholder={placeholder}
               value={search}
               onValueChange={setSearch}
-              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-[var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-[color:var(--text-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
           <Command.List className="max-h-[300px] overflow-y-auto overflow-x-hidden">
-            <Command.Empty className="py-6 text-center text-sm text-[var(--text-secondary)]">
+            <Command.Empty className="py-6 text-center text-sm text-[color:var(--text-secondary)]">
               {emptyMessage}
             </Command.Empty>
             
@@ -85,7 +85,7 @@ export function CommandPalette({
                       }}
                       className={cn(
                         "relative flex cursor-default items-center gap-3 rounded-lg px-3 py-2 text-sm outline-none",
-                        "aria-selected:bg-[var(--primary-tint-10)] aria-selected:text-[var(--primary)]",
+                        "aria-selected:bg-[var(--primary-tint-10)] aria-selected:text-[color:var(--primary)]",
                         "data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
                       )}
                     >
@@ -93,7 +93,7 @@ export function CommandPalette({
                       <div className="flex-1">
                         <div className="font-medium">{item.title}</div>
                         {item.subtitle && (
-                          <div className="text-xs text-[var(--text-secondary)]">{item.subtitle}</div>
+                          <div className="text-xs text-[color:var(--text-secondary)]">{item.subtitle}</div>
                         )}
                       </div>
                     </Command.Item>

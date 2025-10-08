@@ -124,15 +124,15 @@ export function EventPreviewPopover({ event, children, onEdit, onConfirmDelete }
         >
           <div className="flex items-start justify-between gap-[var(--space-3)]">
             <div className="min-w-0">
-              <div className="text-sm text-[var(--text-tertiary)] mb-[var(--space-2)]">Events</div>
+              <div className="text-sm text-[color:var(--text-tertiary)] mb-[var(--space-2)]">Events</div>
               <h3
                 id={`event-popover-title-${event.id}`}
-                className="text-[var(--text-primary)] font-medium truncate"
+                className="text-[color:var(--text-primary)] font-medium truncate"
                 title={event.title}
               >
                 {event.title}
               </h3>
-              <div className="text-[var(--text-secondary)] mt-[var(--space-1)] text-sm">
+              <div className="text-[color:var(--text-secondary)] mt-[var(--space-1)] text-sm">
                 {meta}
               </div>
             </div>
@@ -150,7 +150,7 @@ export function EventPreviewPopover({ event, children, onEdit, onConfirmDelete }
                 title="Edit"
                 aria-label="Edit"
                 aria-keyshortcuts="E"
-                className="h-9 w-9 rounded-[var(--radius-sm)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                className="h-9 w-9 rounded-[var(--radius-sm)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
               >
                 <Pencil style={{ width: 'var(--icon-size-md)', height: 'var(--icon-size-md)' }} />
               </Button>
@@ -166,7 +166,7 @@ export function EventPreviewPopover({ event, children, onEdit, onConfirmDelete }
                 title="Delete"
                 aria-label="Delete"
                 aria-keyshortcuts="Delete"
-                className="h-9 w-9 rounded-[var(--radius-sm)] text-[var(--text-secondary)] hover:text-[var(--destructive)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                className="h-9 w-9 rounded-[var(--radius-sm)] text-[color:var(--text-secondary)] hover:text-[color:var(--destructive)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
               >
                 <Trash2 style={{ width: 'var(--icon-size-md)', height: 'var(--icon-size-md)' }} />
               </Button>
@@ -198,7 +198,7 @@ export function EventPreviewPopover({ event, children, onEdit, onConfirmDelete }
         >
           <AlertDialogHeader>
             <AlertDialogTitle>Delete event?</AlertDialogTitle>
-            <AlertDialogDescription className="text-[var(--text-secondary)]">
+            <AlertDialogDescription className="text-[color:var(--text-secondary)]">
               This can’t be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -214,7 +214,7 @@ export function EventPreviewPopover({ event, children, onEdit, onConfirmDelete }
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={pendingDelete}
-              className="rounded-[var(--radius-sm)] bg-[var(--destructive)] text-[var(--destructive-foreground)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:opacity-60 disabled:pointer-events-none"
+              className="rounded-[var(--radius-sm)] bg-[var(--destructive)] text-[color:var(--destructive-foreground)] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:opacity-60 disabled:pointer-events-none"
             >
               Delete
             </AlertDialogAction>

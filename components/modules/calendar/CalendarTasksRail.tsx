@@ -62,10 +62,10 @@ const chipBase =
   "rounded-[var(--chip-radius)] text-[length:var(--text-sm)] " +
   "font-[var(--font-weight-medium)]";
 
-const ChipHigh = `${chipBase} bg-[var(--chip-high-bg)] text-[var(--chip-high-text)]`;
-const ChipMedium = `${chipBase} bg-[var(--chip-medium-bg)] text-[var(--chip-medium-text)]`;
-const ChipLow = `${chipBase} bg-[var(--chip-low-bg)] text-[var(--chip-low-text)]`;
-const ChipNeutral = `${chipBase} bg-[var(--chip-neutral-bg)] text-[var(--chip-neutral-text)]`;
+const ChipHigh = `${chipBase} bg-[var(--chip-high-bg)] text-[color:var(--chip-high-text)]`;
+const ChipMedium = `${chipBase} bg-[var(--chip-medium-bg)] text-[color:var(--chip-medium-text)]`;
+const ChipLow = `${chipBase} bg-[var(--chip-low-bg)] text-[color:var(--chip-low-text)]`;
+const ChipNeutral = `${chipBase} bg-[var(--chip-neutral-bg)] text-[color:var(--chip-neutral-text)]`;
 
 type TaskFilterKey = 'all' | 'today' | 'this-week' | 'completed' | string;
 
@@ -667,7 +667,7 @@ export function CalendarTasksRail({
             <div className="mt-2">
               <button
                 onClick={() => setComposerActive(true)}
-                className="w-full inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] motion-safe:transition-colors duration-[var(--duration-fast)]"
+                className="w-full inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-surface)] motion-safe:transition-colors duration-[var(--duration-fast)]"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add task</span>
@@ -701,7 +701,7 @@ export function CalendarTasksRail({
                     }}
                     placeholder="Write a task name"
                     aria-label="Add task"
-                    className="w-full h-auto px-0 border-0 text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                    className="w-full h-auto px-0 border-0 text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
                     autoFocus
                   />
                 </div>
@@ -723,7 +723,7 @@ export function CalendarTasksRail({
                     variant="ghost"
                     onClick={resetDraft}
                     aria-keyshortcuts="Escape"
-                    className="h-auto py-1 text-[length:var(--text-xs)] font-[var(--font-weight-medium)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    className="h-auto py-1 text-[length:var(--text-xs)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
                   >
                     Cancel
                   </Button>
@@ -735,7 +735,7 @@ export function CalendarTasksRail({
                       <button
                         type="button"
                         className={`p-1 hover:bg-[var(--bg-surface-elevated)] rounded ${
-                          draftDueDate ? 'text-[var(--text-primary)] bg-[var(--bg-surface-elevated)]' : 'text-[var(--text-tertiary)]'
+                          draftDueDate ? 'text-[color:var(--text-primary)] bg-[var(--bg-surface-elevated)]' : 'text-[color:var(--text-tertiary)]'
                         }`}
                         title="Set due date"
                         aria-keyshortcuts="Ctrl+D"
@@ -761,7 +761,7 @@ export function CalendarTasksRail({
                       <button
                         type="button"
                         className={`p-1 hover:bg-[var(--bg-surface-elevated)] rounded ${
-                          draftPriority !== 'none' ? 'text-[var(--text-primary)] bg-[var(--bg-surface-elevated)]' : 'text-[var(--text-tertiary)]'
+                          draftPriority !== 'none' ? 'text-[color:var(--text-primary)] bg-[var(--bg-surface-elevated)]' : 'text-[color:var(--text-tertiary)]'
                         }`}
                         title="Set priority"
                       >
@@ -789,7 +789,7 @@ export function CalendarTasksRail({
                               title={labels[p]}
                             >
                               <span className="flex items-center gap-[var(--space-2)]">
-                                {isActive && <Check className="h-4 w-4 text-[var(--primary)]" aria-hidden="true" />}
+                                {isActive && <Check className="h-4 w-4 text-[color:var(--primary)]" aria-hidden="true" />}
                                 <span>{labels[p]}</span>
                               </span>
                               {p === 'high' && <span className={ChipHigh}>High</span>}

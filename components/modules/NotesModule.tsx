@@ -443,7 +443,7 @@ export function NotesModule() {
           leftPaneVisible ? (
             <PaneHeader className="px-[var(--space-4)]">
               <div className="flex w-full items-center justify-between">
-                <h2 className="text-[var(--text-lg)] font-semibold">Notes</h2>
+                <h2 className="text-[length:var(--text-lg)] font-semibold">Notes</h2>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" aria-label="Create new content">
@@ -538,7 +538,7 @@ export function NotesModule() {
                   value={selectedNote.title}
                   onChange={event => handleTitleChange(event.target.value)}
                   placeholder="Untitled note"
-                  className="h-auto border-none bg-transparent p-0 text-lg font-semibold text-[var(--text-primary)] focus-visible:ring-0"
+                  className="h-auto border-none bg-transparent p-0 text-lg font-semibold text-[color:var(--text-primary)] focus-visible:ring-0"
                 />
               ) : (
                 <h3 className="font-semibold truncate">{currentFolderName}</h3>

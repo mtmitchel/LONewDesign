@@ -12,7 +12,7 @@ export function QuickModalFooter({ leftLink, onCancel, primary }: Props) {
     <>
       {leftLink ? (
         <button
-          className="text-[var(--text-secondary)] hover:underline"
+          className="text-[color:var(--text-secondary)] hover:underline"
           onClick={leftLink.onClick}
           title={leftLink.title ?? leftLink.label}
         >

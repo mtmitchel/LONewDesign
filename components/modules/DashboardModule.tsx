@@ -83,14 +83,14 @@ export function DashboardModule() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Dashboard</h1>
-              <p className="text-sm text-[var(--text-secondary)] mt-1">
+              <h1 className="text-2xl font-semibold text-[color:var(--text-primary)]">Dashboard</h1>
+              <p className="text-sm text-[color:var(--text-secondary)] mt-1">
                 Welcome back! Here's your productivity overview.
               </p>
             </div>
             
             {isEditMode && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-[var(--primary-tint-10)] text-[var(--primary)] rounded-lg">
+              <div className="flex items-center gap-2 px-3 py-2 bg-[var(--primary-tint-10)] text-[color:var(--primary)] rounded-lg">
                 <Settings size={16} />
                 <span className="text-sm font-medium">Edit Mode</span>
               </div>
@@ -183,7 +183,7 @@ export function DashboardModule() {
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <LoadingSpinner size="lg" variant="primary" />
-              <p className="mt-3 text-sm text-[var(--text-secondary)]">Loading dashboard...</p>
+              <p className="mt-3 text-sm text-[color:var(--text-secondary)]">Loading dashboard...</p>
             </div>
           </div>
         ) : visibleWidgets.length === 0 ? (

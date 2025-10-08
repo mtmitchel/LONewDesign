@@ -41,7 +41,7 @@ export function MailListFooter({
         Previous
       </Button>
 
-      <span className="flex-1 text-center text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+  <span className="flex-1 text-center text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
         Page {clampedCurrentPage} of {clampedTotalPages}
       </span>
 

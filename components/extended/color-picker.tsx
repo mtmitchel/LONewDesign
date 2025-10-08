@@ -144,7 +144,7 @@ export function ColorPicker({
 
             {/* Preset Colors */}
             <div>
-              <p className="text-sm font-medium text-[var(--text-primary)] mb-2">Presets</p>
+              <p className="text-sm font-medium text-[color:var(--text-primary)] mb-2">Presets</p>
               <div className="grid grid-cols-6 gap-2">
                 {presets.map((preset) => (
                   <button
@@ -173,7 +173,7 @@ export function ColorPicker({
             {/* Color Input */}
             {showInput && (
               <div>
-                <p className="text-sm font-medium text-[var(--text-primary)] mb-2">Custom</p>
+                <p className="text-sm font-medium text-[color:var(--text-primary)] mb-2">Custom</p>
                 <Input
                   value={inputValue}
                   onChange={handleInputChange}

@@ -79,7 +79,7 @@ export function MiniCalendarWidget({ widget }: WidgetProps) {
     <div className="h-full flex flex-col">
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-4">
-        <h4 className="font-medium text-[var(--text-primary)]">
+  <h4 className="font-medium text-[color:var(--text-primary)]">
           {monthNames[month]} {year}
         </h4>
         <div className="flex items-center gap-1">
@@ -109,7 +109,7 @@ export function MiniCalendarWidget({ widget }: WidgetProps) {
           {dayNames.map((day) => (
             <div
               key={day}
-              className="text-xs font-medium text-[var(--text-secondary)] text-center py-1"
+              className="text-xs font-medium text-[color:var(--text-secondary)] text-center py-1"
             >
               {day}
             </div>
@@ -124,8 +124,8 @@ export function MiniCalendarWidget({ widget }: WidgetProps) {
               className={cn(
                 "relative text-xs p-1 rounded text-center hover:bg-[var(--primary-tint-10)] transition-colors",
                 dateObj.isCurrentMonth 
-                  ? "text-[var(--text-primary)]"
-                  : "text-[var(--text-secondary)] opacity-50",
+                  ? "text-[color:var(--text-primary)]"
+                  : "text-[color:var(--text-secondary)] opacity-50",
                 isToday(dateObj.day) && dateObj.isCurrentMonth &&
                   "bg-[var(--primary)] text-white font-semibold hover:bg-[var(--primary-hover)]"
               )}
@@ -141,7 +141,7 @@ export function MiniCalendarWidget({ widget }: WidgetProps) {
       
       {/* Today indicator */}
       <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
-        <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+  <div className="flex items-center gap-2 text-xs text-[color:var(--text-secondary)]">
           <CalendarIcon size={12} />
           <span>Today: {today.toLocaleDateString()}</span>
         </div>

@@ -43,8 +43,8 @@ export function MonthView({
       <div className="grid grid-cols-7 h-[var(--cal-header-h)] flex-shrink-0">
         {weekdays.map(w => (
           <div key={w}
-               className="grid place-items-center text-[var(--text-xs)] font-medium
-                          text-[var(--text-tertiary)] border-r last:border-r-0 border-[var(--cal-gridline)]">
+               className="grid place-items-center text-[length:var(--text-xs)] font-medium
+                          text-[color:var(--text-tertiary)] border-r last:border-r-0 border-[var(--cal-gridline)]">
             {w}
           </div>
         ))}

@@ -39,7 +39,7 @@ export function WidgetLibrary({ isOpen, onClose, onAddWidget, existingWidgets }:
               <X size={16} />
             </Button>
           </div>
-          <p className="text-sm text-[var(--text-secondary)]">
+          <p className="text-sm text-[color:var(--text-secondary)]">
             Choose widgets to add to your dashboard. You can customize them after adding.
           </p>
         </DialogHeader>
@@ -48,7 +48,7 @@ export function WidgetLibrary({ isOpen, onClose, onAddWidget, existingWidgets }:
           <div className="space-y-6">
             {Object.entries(categories).map(([category, widgetTypes]) => (
               <div key={category}>
-                <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">
+                <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-3">
                   {category}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -68,11 +68,11 @@ export function WidgetLibrary({ isOpen, onClose, onAddWidget, existingWidgets }:
                             <div className="flex items-center gap-3">
                               {IconComponent && (
                                 <div className="w-10 h-10 bg-[var(--primary-tint-10)] rounded-lg flex items-center justify-center">
-                                  <IconComponent size={20} className="text-[var(--primary)]" />
+                                  <IconComponent size={20} className="text-[color:var(--primary)]" />
                                 </div>
                               )}
                               <div>
-                                <h4 className="font-medium text-[var(--text-primary)]">
+                                <h4 className="font-medium text-[color:var(--text-primary)]">
                                   {definition.name}
                                 </h4>
                                 {count > 0 && (
@@ -86,10 +86,10 @@ export function WidgetLibrary({ isOpen, onClose, onAddWidget, existingWidgets }:
                               <Plus size={14} />
                             </Button>
                           </div>
-                          <p className="text-sm text-[var(--text-secondary)] mb-3">
+                          <p className="text-sm text-[color:var(--text-secondary)] mb-3">
                             {definition.description}
                           </p>
-                          <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+                          <div className="flex items-center justify-between text-xs text-[color:var(--text-secondary)]">
                             <span>
                               Size: {definition.defaultSize.width}×{definition.defaultSize.height}
                             </span>

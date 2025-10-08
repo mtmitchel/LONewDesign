@@ -16,9 +16,9 @@ export function CollapsedSidebarPanel({
     >
       <div className="flex items-center justify-center h-full px-[var(--space-3)] py-[var(--space-2)]">
         <div className="flex items-center gap-[var(--space-2)]">
-          <span className="text-[var(--text-sm)] text-[var(--text-secondary)]">Mail</span>
-          <span className="text-[var(--text-sm)] text-[var(--text-tertiary)]">/</span>
-          <span className="text-[var(--text-base)] font-[var(--font-weight-medium)] text-[var(--text-primary)]">
+          <span className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)]">Mail</span>
+          <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">/</span>
+          <span className="text-[length:var(--text-base)] font-[var(--font-weight-medium)] text-[color:var(--text-primary)]">
             {currentView}
           </span>
         </div>

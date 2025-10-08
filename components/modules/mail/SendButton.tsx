@@ -1,26 +1,35 @@
 import * as React from "react";
-import { Button } from "../../ui/button";
 import { Send } from "lucide-react";
+import { Button } from "../../ui/button";
+import { cn } from "../../ui/utils";
 
-type Props = {
-  disabled?: boolean;
-  onClick?: () => void;
-  title?: string;
+type SendButtonProps = Omit<React.ComponentProps<typeof Button>, "children"> & {
+  label?: string;
 };
 
-export function SendButton({ disabled, onClick, title = "Send" }: Props) {
+export function SendButton({
+  label = "Send",
+  className,
+  variant = "solid",
+  size = "sm",
+  "aria-keyshortcuts": ariaKeyShortcuts,
+  title,
+  ...buttonProps
+}: SendButtonProps) {
   return (
     <Button
-      variant="solid"
-      size="sm"
-      onClick={onClick}
-      disabled={disabled}
-      aria-keyshortcuts="Control+Enter Meta+Enter"
-      title={`${title} (⌘/Ctrl+Enter)`}
-      className="min-w-[88px] justify-center focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)]"
+      variant={variant}
+      size={size}
+      aria-keyshortcuts={ariaKeyShortcuts ?? "Control+Enter Meta+Enter"}
+      title={title ?? `${label} (⌘/Ctrl+Enter)`}
+      className={cn(
+        "min-w-[88px] justify-center focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)]",
+        className
+      )}
+      {...buttonProps}
     >
       <Send className="mr-2 h-4 w-4" />
-      {title}
+      {label}
     </Button>
   );
 }

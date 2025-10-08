@@ -113,7 +113,7 @@ export function ChatRightPane({
         <div className="flex-1 min-h-0 overflow-y-auto p-4">
           <div className="space-y-[var(--space-6)]">
             <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-[var(--space-4)]">
                 Quick actions
               </h4>
               <div className="grid grid-cols-2 gap-[var(--space-4)]">
@@ -125,9 +125,9 @@ export function ChatRightPane({
                   aria-keyshortcuts="KeyT"
                 >
                   <span className="grid size-6 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]">
-                    <CheckSquare className="size-4 text-[var(--primary)] opacity-60" aria-hidden="true" />
+                    <CheckSquare className="size-4 text-[color:var(--primary)] opacity-60" aria-hidden="true" />
                   </span>
-                  <span className="text-[var(--text-base)]">Create task</span>
+                  <span className="text-[length:var(--text-base)]">Create task</span>
                 </Button>
 
                 <Button
@@ -138,9 +138,9 @@ export function ChatRightPane({
                   aria-keyshortcuts="KeyN"
                 >
                   <span className="grid size-6 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]">
-                    <FilePenLine className="size-4 text-[var(--primary)] opacity-60" aria-hidden="true" />
+                    <FilePenLine className="size-4 text-[color:var(--primary)] opacity-60" aria-hidden="true" />
                   </span>
-                  <span className="text-[var(--text-base)]">Take note</span>
+                  <span className="text-[length:var(--text-base)]">Take note</span>
                 </Button>
 
                 <Button
@@ -151,9 +151,9 @@ export function ChatRightPane({
                   aria-keyshortcuts="KeyE"
                 >
                   <span className="grid size-6 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]">
-                    <CalendarPlus className="size-4 text-[var(--primary)] opacity-60" aria-hidden="true" />
+                    <CalendarPlus className="size-4 text-[color:var(--primary)] opacity-60" aria-hidden="true" />
                   </span>
-                  <span className="text-[var(--text-base)]">Schedule</span>
+                  <span className="text-[length:var(--text-base)]">Schedule</span>
                 </Button>
 
                 <Button
@@ -164,15 +164,15 @@ export function ChatRightPane({
                   aria-keyshortcuts="KeyL"
                 >
                   <span className="grid size-6 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]">
-                    <Tag className="size-4 text-[var(--primary)] opacity-60" aria-hidden="true" />
+                    <Tag className="size-4 text-[color:var(--primary)] opacity-60" aria-hidden="true" />
                   </span>
-                  <span className="text-[var(--text-base)]">Add tag</span>
+                  <span className="text-[length:var(--text-base)]">Add tag</span>
                 </Button>
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-[var(--space-4)]">
                 Related items
               </h4>
               {relatedItems.length ? (
@@ -185,18 +185,18 @@ export function ChatRightPane({
                       className="group w-full rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-3)] text-left shadow-none transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)] hover:bg-[var(--bg-surface-elevated)] hover:shadow-[var(--elevation-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]"
                     >
                       <div className="flex items-center gap-[var(--space-3)]">
-                        <span className="grid size-8 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)] text-[var(--primary)] opacity-80 group-hover:opacity-100">
+                        <span className="grid size-8 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)] text-[color:var(--primary)] opacity-80 group-hover:opacity-100">
                           <item.icon className="size-4" aria-hidden="true" />
                         </span>
                         <div className="flex-1 min-w-0">
-                          <div className="truncate text-sm font-medium text-[var(--text-primary)]">
+                          <div className="truncate text-sm font-medium text-[color:var(--text-primary)]">
                             {item.label}
                           </div>
-                          <div className="mt-[var(--space-1)] truncate text-xs text-[var(--text-secondary)]">
+                          <div className="mt-[var(--space-1)] truncate text-xs text-[color:var(--text-secondary)]">
                             {item.description}
                           </div>
                         </div>
-                        <span className="text-xs font-medium text-[var(--primary)] opacity-0 transition-opacity duration-[var(--duration-fast)] group-hover:opacity-100">
+                        <span className="text-xs font-medium text-[color:var(--primary)] opacity-0 transition-opacity duration-[var(--duration-fast)] group-hover:opacity-100">
                           View
                         </span>
                       </div>
@@ -205,11 +205,11 @@ export function ChatRightPane({
                 </div>
               ) : (
                 <div className="text-center py-[var(--space-8)]">
-                  <FileText className="w-12 h-12 mx-auto mb-4 text-[var(--text-secondary)] opacity-30" />
-                  <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">
+                  <FileText className="w-12 h-12 mx-auto mb-4 text-[color:var(--text-secondary)] opacity-30" />
+                  <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-2">
                     No related items
                   </h4>
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed">
                     Select a conversation to see related items
                   </p>
                 </div>
@@ -221,29 +221,29 @@ export function ChatRightPane({
         <div className="flex-1 min-h-0 overflow-y-auto p-4">
           <div className="space-y-[var(--space-6)]">
             <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-[var(--space-4)]">
                 Settings for model
               </h4>
               <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] p-[var(--space-3)]">
-                <div className="text-sm text-[var(--text-primary)] font-medium">
+                <div className="text-sm text-[color:var(--text-primary)] font-medium">
                   {selectedModel}
                 </div>
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-[var(--space-4)]">
                 System prompt
               </h4>
               <div className="space-y-[var(--space-2)]">
                 <textarea
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-2)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] resize-none"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-2)] text-sm text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)] resize-none"
                   rows={6}
                   placeholder="Enter system prompt..."
                   defaultValue="You are a helpful assistant."
                 />
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[var(--text-secondary)]">180/2000</span>
+                  <span className="text-xs text-[color:var(--text-secondary)]">180/2000</span>
                   <Button variant="outline" size="sm">
                     Clear
                   </Button>
@@ -252,14 +252,14 @@ export function ChatRightPane({
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-[var(--space-4)]">
                 Model behavior
               </h4>
               <div className="space-y-[var(--space-4)]">
                 <div className="space-y-[var(--space-2)]">
                   <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-[var(--text-primary)]">Creativity</label>
-                    <span className="text-sm text-[var(--text-primary)]">0.7</span>
+                    <label className="text-sm font-medium text-[color:var(--text-primary)]">Creativity</label>
+                    <span className="text-sm text-[color:var(--text-primary)]">0.7</span>
                   </div>
                   <input
                     type="range"
@@ -269,7 +269,7 @@ export function ChatRightPane({
                     defaultValue="0.7"
                     className="w-full"
                   />
-                  <div className="flex justify-between text-xs text-[var(--text-secondary)]">
+                  <div className="flex justify-between text-xs text-[color:var(--text-secondary)]">
                     <span>Precise</span>
                     <span>Creative</span>
                   </div>
@@ -277,20 +277,20 @@ export function ChatRightPane({
 
                 <div className="space-y-[var(--space-2)]">
                   <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-[var(--text-primary)]">Max response</label>
-                    <span className="text-sm text-[var(--text-primary)]">tokens</span>
+                    <label className="text-sm font-medium text-[color:var(--text-primary)]">Max response</label>
+                    <span className="text-sm text-[color:var(--text-primary)]">tokens</span>
                   </div>
                   <input
                     type="number"
                     defaultValue="2000"
-                    className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-2)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                    className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-2)] text-sm text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-[var(--space-4)]">
                 Actions
               </h4>
               <div className="space-y-[var(--space-2)]">
@@ -385,8 +385,8 @@ function PaneTabButton({
       className={cn(
         'relative pb-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
         active
-          ? 'text-[var(--text-primary)]'
-          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+          ? 'text-[color:var(--text-primary)]'
+          : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
       )}
     >
       {label}

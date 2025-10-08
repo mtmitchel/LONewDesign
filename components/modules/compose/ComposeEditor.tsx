@@ -1,6 +1,78 @@
 import React, { useRef, useCallback, useEffect } from 'react';
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config as DOMPurifyConfig } from 'dompurify';
 import { ComposeEditorCommands } from './types';
+
+type ExtendedDOMPurifyConfig = DOMPurifyConfig & {
+  ALLOWED_STYLES?: Record<string, string[]>;
+};
+
+const BASE_ALLOWED_STYLES: Record<string, string[]> = {
+  '*': [
+    'color',
+    'background-color',
+    'font-weight',
+    'font-style',
+    'text-decoration',
+    'text-align',
+    'font-family',
+    'font-size'
+  ]
+};
+
+const INPUT_SANITIZE_CONFIG: ExtendedDOMPurifyConfig = {
+  ALLOWED_TAGS: [
+    'p',
+    'br',
+    'div',
+    'span',
+    'strong',
+    'b',
+    'em',
+    'i',
+    'u',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'ul',
+    'ol',
+    'li',
+    'blockquote',
+    'a',
+    'img'
+  ],
+  ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'style', 'data-*', 'class'],
+  ALLOWED_STYLES: BASE_ALLOWED_STYLES
+};
+
+const PASTE_SANITIZE_CONFIG: ExtendedDOMPurifyConfig = {
+  ALLOWED_TAGS: [
+    'p',
+    'br',
+    'div',
+    'span',
+    'strong',
+    'b',
+    'em',
+    'i',
+    'u',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'ul',
+    'ol',
+    'li',
+    'blockquote',
+    'a'
+  ],
+  ALLOWED_ATTR: ['href', 'style'],
+  ALLOWED_STYLES: BASE_ALLOWED_STYLES
+};
 
 interface ComposeEditorProps {
   html: string;
@@ -29,24 +101,7 @@ export function ComposeEditor({
     if (editorRef.current) {
       const newHtml = editorRef.current.innerHTML;
       // Sanitize content on input
-      const sanitized = DOMPurify.sanitize(newHtml, {
-        ALLOWED_TAGS: [
-          'p', 'br', 'div', 'span', 'strong', 'b', 'em', 'i', 'u', 
-          'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-          'ul', 'ol', 'li', 'blockquote',
-          'a', 'img'
-        ],
-        ALLOWED_ATTR: [
-          'href', 'src', 'alt', 'title', 'style',
-          'data-*', 'class'
-        ],
-        ALLOWED_STYLES: {
-          '*': [
-            'color', 'background-color', 'font-weight', 'font-style', 
-            'text-decoration', 'text-align', 'font-family', 'font-size'
-          ]
-        }
-      });
+      const sanitized = DOMPurify.sanitize(newHtml, INPUT_SANITIZE_CONFIG);
       onUpdateHtml(sanitized);
     }
   }, [onUpdateHtml]);
@@ -61,21 +116,7 @@ export function ComposeEditor({
     
     if (pastedData) {
       // Sanitize pasted content
-      const sanitized = DOMPurify.sanitize(pastedData, {
-        ALLOWED_TAGS: [
-          'p', 'br', 'div', 'span', 'strong', 'b', 'em', 'i', 'u',
-          'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-          'ul', 'ol', 'li', 'blockquote',
-          'a'
-        ],
-        ALLOWED_ATTR: ['href', 'style'],
-        ALLOWED_STYLES: {
-          '*': [
-            'color', 'background-color', 'font-weight', 'font-style',
-            'text-decoration', 'text-align', 'font-family', 'font-size'
-          ]
-        }
-      });
+      const sanitized = DOMPurify.sanitize(pastedData, PASTE_SANITIZE_CONFIG);
       
       // Insert at cursor position
       const selection = window.getSelection();
@@ -246,7 +287,7 @@ export function ComposeEditor({
         className="
           flex-1 overflow-auto overflow-x-hidden outline-none min-w-0
           px-[var(--space-4)] py-[var(--space-3)]
-          text-[var(--text-primary)] text-[var(--text-base)] leading-relaxed break-words
+          text-[color:var(--text-primary)] text-base leading-relaxed break-words
           prose prose-sm max-w-none focus:outline-none
         "
         style={{

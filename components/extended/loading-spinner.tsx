@@ -17,9 +17,9 @@ const sizeClasses = {
 };
 
 const variantClasses = {
-  default: 'text-[var(--text-secondary)]',
-  primary: 'text-[var(--primary)]',
-  secondary: 'text-[var(--text-primary)]'
+  default: 'text-[color:var(--text-secondary)]',
+  primary: 'text-[color:var(--primary)]',
+  secondary: 'text-[color:var(--text-primary)]'
 };
 
 export function LoadingSpinner({
@@ -65,7 +65,7 @@ export function LoadingOverlay({
           <div className="text-center">
             <LoadingSpinner size="lg" variant="primary" />
             {message && (
-              <p className="mt-3 text-sm text-[var(--text-secondary)]">{message}</p>
+              <p className="mt-3 text-sm text-[color:var(--text-secondary)]">{message}</p>
             )}
           </div>
         </div>

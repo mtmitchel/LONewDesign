@@ -31,6 +31,14 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 
 ### Phase 2: Core Modules
 
+#### Cross-module polish ✅ COMPLETE (2025-10-08)
+| Item | Status | Notes |
+|------|--------|-------|
+| Arbitrary token namespace sweep | ✅ | Replaced legacy `text-[var(--…)]` utilities with `text-[color:…]`/`text-[length:…]` across dashboard widgets, Mail tri-pane, Notes surfaces, and Tasks flows. |
+| Shared primitives alignment | ✅ | Updated `badge`, `button`, `card`, `toggle-group`, and `checkbox` primitives to the new convention, eliminating duplicate-property warnings. |
+| Send button refresh | ✅ | Expanded `SendButton.tsx` props so compose and reply surfaces share the same keyboard shortcuts and class hooks. |
+| Documentation update | ✅ | Added Tailwind helper guidance to `docs/technical/design-tokens-reference.md` so future UI work keeps tokens namespaced. |
+
 #### Tasks Module 🚧 IN PROGRESS
 | Component | Status | Priority | Notes |
 |-----------|--------|----------|-------|
@@ -189,5 +197,5 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 - ❌ **Cancelled** - No longer needed
 
 ---
-*Last Updated: October 2025*
+*Last Updated: October 8, 2025*
 *Next Review: Weekly sprint planning*

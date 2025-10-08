@@ -51,10 +51,10 @@ export function NotesPreviewWidget({ widget }: WidgetProps) {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-medium text-[var(--text-primary)]">
+  <div className="text-sm font-medium text-[color:var(--text-primary)]">
           Recent Notes
         </div>
-        <div className="text-xs text-[var(--text-secondary)]">
+  <div className="text-xs text-[color:var(--text-secondary)]">
           {mockNotes.length} total
         </div>
       </div>
@@ -69,19 +69,19 @@ export function NotesPreviewWidget({ widget }: WidgetProps) {
                 className="p-3 bg-[var(--surface)] border border-[var(--border-subtle)] rounded-lg hover:bg-[var(--elevated)] transition-colors cursor-pointer"
               >
                 <div className="flex items-start gap-2 mb-2">
-                  <FileText size={16} className="text-[var(--primary)] flex-shrink-0 mt-0.5" />
+                  <FileText size={16} className="text-[color:var(--primary)] flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-[var(--text-primary)] truncate">
+                    <h4 className="text-sm font-medium text-[color:var(--text-primary)] truncate">
                       {note.title}
                     </h4>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex items-center gap-1">
-                        <Clock size={12} className="text-[var(--text-secondary)]" />
-                        <span className="text-xs text-[var(--text-secondary)]">
+                        <Clock size={12} className="text-[color:var(--text-secondary)]" />
+                        <span className="text-xs text-[color:var(--text-secondary)]">
                           {note.lastModified}
                         </span>
                       </div>
-                      <span className="text-xs text-[var(--text-secondary)]">
+                      <span className="text-xs text-[color:var(--text-secondary)]">
                         {note.wordCount} words
                       </span>
                     </div>
@@ -89,25 +89,25 @@ export function NotesPreviewWidget({ widget }: WidgetProps) {
                 </div>
 
                 {showPreview && (
-                  <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mb-2">
+                  <p className="text-xs text-[color:var(--text-secondary)] line-clamp-2 mb-2">
                     {note.preview}
                   </p>
                 )}
 
                 {note.tags.length > 0 && (
                   <div className="flex items-center gap-1 flex-wrap">
-                    <Tag size={10} className="text-[var(--text-secondary)]" />
+                    <Tag size={10} className="text-[color:var(--text-secondary)]" />
                     {note.tags.slice(0, 2).map((tag) => (
                       <Badge
                         key={tag}
                         variant="secondary"
-                        className="text-xs px-1 py-0 bg-[var(--primary-tint-15)] text-[var(--primary)]"
+                        className="text-xs px-1 py-0 bg-[var(--primary-tint-15)] text-[color:var(--primary)]"
                       >
                         {tag}
                       </Badge>
                     ))}
                     {note.tags.length > 2 && (
-                      <span className="text-xs text-[var(--text-secondary)]">
+                      <span className="text-xs text-[color:var(--text-secondary)]">
                         +{note.tags.length - 2} more
                       </span>
                     )}

@@ -112,14 +112,14 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
       >
         {/* Header with single close button */}
         <div className="flex items-center justify-between px-6 py-4">
-          <h2 className="text-sm font-medium text-[var(--text-secondary)]">
+          <h2 className="text-sm font-medium text-[color:var(--text-secondary)]">
             {mode === 'edit' ? 'Edit event' : 'New event'}
           </h2>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-7 w-7 -mr-1 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-md transition-colors"
+            className="h-7 w-7 -mr-1 text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-hover)] rounded-md transition-colors"
             title="Close (Esc)"
             aria-label="Close dialog"
           >
@@ -184,7 +184,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
                     <div className="grid grid-cols-2 gap-2">
                       {/* Start time */}
                       <div>
-                        <label className="text-xs text-[var(--text-secondary)] mb-1.5 block">
+                        <label className="text-xs text-[color:var(--text-secondary)] mb-1.5 block">
                           Start
                         </label>
                         <Select
@@ -211,7 +211,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
 
                       {/* End time */}
                       <div>
-                        <label className="text-xs text-[var(--text-secondary)] mb-1.5 block">
+                        <label className="text-xs text-[color:var(--text-secondary)] mb-1.5 block">
                           End
                         </label>
                         <Select
@@ -275,7 +275,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
               />
               <label 
                 htmlFor="all-day-toggle"
-                className="text-sm text-[var(--text-secondary)] cursor-pointer select-none"
+                className="text-sm text-[color:var(--text-secondary)] cursor-pointer select-none"
               >
                 All day
               </label>
@@ -291,8 +291,8 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
                     className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
                     style={{ backgroundColor: formData.calendarColor }}
                   />
-                  <span className="text-sm text-[var(--text-secondary)]">{formData.calendar}</span>
-                  <ChevronDown className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
+                  <span className="text-sm text-[color:var(--text-secondary)]">{formData.calendar}</span>
+                  <ChevronDown className="h-3.5 w-3.5 text-[color:var(--text-tertiary)]" />
                 </button>
             </PopoverTrigger>
             <PopoverContent className="w-[200px] p-1 z-[200]" align="start">
@@ -311,7 +311,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
                         calendarColor: cal.color 
                       });
                     }}
-                    className="w-full flex items-center gap-2.5 px-2 py-1.5 text-sm rounded hover:bg-[var(--bg-hover)] transition-colors text-[var(--text-primary)]"
+                    className="w-full flex items-center gap-2.5 px-2 py-1.5 text-sm rounded hover:bg-[var(--bg-hover)] transition-colors text-[color:var(--text-primary)]"
                   >
                     <span 
                       className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
@@ -330,12 +330,12 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
             <div className="space-y-3 pt-2">
               {/* Location - fixed icon alignment */}
               <button className="w-full flex items-center gap-2 py-1.5 group hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-md transition-colors">
-                <MapPin className="h-4 w-4 text-[var(--text-tertiary)] flex-shrink-0" />
+                <MapPin className="h-4 w-4 text-[color:var(--text-tertiary)] flex-shrink-0" />
                 <Input
                   value={formData.location || ''}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   placeholder="Add location"
-                  className="border-0 h-auto py-0 px-0 text-sm placeholder:text-[var(--text-tertiary)] focus-visible:ring-0 bg-transparent"
+                  className="border-0 h-auto py-0 px-0 text-sm placeholder:text-[color:var(--text-tertiary)] focus-visible:ring-0 bg-transparent"
                   onClick={(e) => e.stopPropagation()}
                 />
               </button>
@@ -344,8 +344,8 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
               <Popover>
                 <PopoverTrigger asChild>
                   <button className="w-full flex items-center gap-2 py-1.5 hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-md transition-colors text-left">
-                    <Repeat className="h-4 w-4 text-[var(--text-tertiary)] flex-shrink-0" />
-                    <span className="text-sm text-[var(--text-secondary)]">
+                    <Repeat className="h-4 w-4 text-[color:var(--text-tertiary)] flex-shrink-0" />
+                    <span className="text-sm text-[color:var(--text-secondary)]">
                       {formData.repeat === 'none' ? 'Does not repeat' : formData.repeat}
                     </span>
                   </button>
@@ -355,7 +355,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
                       <button
                         key={option}
                         onClick={() => setFormData({ ...formData, repeat: option })}
-                        className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-[var(--bg-hover)] text-[var(--text-primary)]"
+                        className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-[var(--bg-hover)] text-[color:var(--text-primary)]"
                       >
                         {option === 'none' ? 'Does not repeat' : option}
                       </button>
@@ -365,19 +365,19 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
 
               {/* Description - fixed icon alignment */}
               <div className="flex items-start gap-2 py-1.5 hover:bg-[var(--bg-hover)] -mx-2 px-2 rounded-md transition-colors">
-                <FileText className="h-4 w-4 text-[var(--text-tertiary)] flex-shrink-0 mt-0.5" />
+                <FileText className="h-4 w-4 text-[color:var(--text-tertiary)] flex-shrink-0 mt-0.5" />
                 <Textarea
                   value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Add description"
-                  className="min-h-[60px] resize-none text-sm border-0 px-0 py-0 placeholder:text-[var(--text-tertiary)] focus-visible:ring-0 bg-transparent"
+                  className="min-h-[60px] resize-none text-sm border-0 px-0 py-0 placeholder:text-[color:var(--text-tertiary)] focus-visible:ring-0 bg-transparent"
                 />
               </div>
 
               {/* Hide details button */}
               <button
                 onClick={() => setIsExpanded(false)}
-                className="flex items-center gap-1.5 text-sm text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors py-1 -mx-2 px-2"
+                className="flex items-center gap-1.5 text-sm text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)] transition-colors py-1 -mx-2 px-2"
               >
                 <ChevronDown className="h-4 w-4 rotate-180" />
                 Hide details
@@ -389,7 +389,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
           {!isExpanded && (
             <button
               onClick={() => setIsExpanded(true)}
-              className="flex items-center gap-1.5 text-sm text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] transition-colors py-1"
+              className="flex items-center gap-1.5 text-sm text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)] transition-colors py-1"
             >
               <ChevronDown className="h-4 w-4" />
               Add details
@@ -404,7 +404,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
               variant="ghost"
               size="sm"
               onClick={handleDelete}
-              className="h-8 px-2 text-[var(--text-tertiary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
+              className="h-8 px-2 text-[color:var(--text-tertiary)] hover:text-[color:var(--danger)] hover:bg-[var(--danger)]/10 transition-colors"
             >
               <Trash2 className="h-4 w-4 mr-1.5" />
               Delete
@@ -418,7 +418,7 @@ export function EventModalModern({ isOpen, onClose, mode = 'edit', event, onSave
               variant="ghost" 
               size="sm"
               onClick={onClose}
-              className="h-8 px-3 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
+              className="h-8 px-3 text-sm text-[color:var(--text-primary)] hover:bg-[var(--bg-hover)]"
             >
               Cancel
             </Button>

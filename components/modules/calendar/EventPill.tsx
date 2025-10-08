@@ -8,7 +8,7 @@ const pill = cva(
   [
     "flex items-center",
     "rounded-[var(--event-pill-r)]",
-    "text-[var(--event-pill-fs)]",
+  "text-[length:var(--event-pill-fs)]",
     "leading-[var(--event-pill-lh)]",
     "px-[var(--event-pill-px)] py-[var(--event-pill-py)]",
     "gap-[var(--event-pill-gap)]",
@@ -21,10 +21,10 @@ const pill = cva(
   {
     variants: {
       tone: {
-        neutral: "bg-[var(--event-neutral-bg)] text-[var(--event-neutral-text)]",
-        low: "bg-[var(--event-low-bg)] text-[var(--event-low-text)]",
-        medium: "bg-[var(--event-medium-bg)] text-[var(--event-medium-text)]",
-        high: "bg-[var(--event-high-bg)] text-[var(--event-high-text)]",
+  neutral: "bg-[var(--event-neutral-bg)] text-[color:var(--event-neutral-text)]",
+  low: "bg-[var(--event-low-bg)] text-[color:var(--event-low-text)]",
+  medium: "bg-[var(--event-medium-bg)] text-[color:var(--event-medium-text)]",
+  high: "bg-[var(--event-high-bg)] text-[color:var(--event-high-text)]",
       },
       density: {
         default: "",
@@ -120,13 +120,13 @@ export const EventPill = React.forwardRef<HTMLDivElement, EventPillProps>(
         )}
 
         {prefix && (
-          <span className="shrink-0 text-[var(--event-meta-ink)]">{prefix}</span>
+          <span className="shrink-0 text-[color:var(--event-meta-ink)]">{prefix}</span>
         )}
         <span className="min-w-0 truncate font-medium" style={{ fontWeight: "var(--event-title-weight)" }}>
           {label}
         </span>
         {suffix && (
-          <span className="shrink-0 text-[var(--event-meta-ink)]">{suffix}</span>
+          <span className="shrink-0 text-[color:var(--event-meta-ink)]">{suffix}</span>
         )}
       </div>
     );

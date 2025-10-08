@@ -35,7 +35,7 @@ export function DatePopoverField({
           <span
             className={cn(
               "flex-1 min-w-0 text-left whitespace-nowrap overflow-hidden text-ellipsis",
-              !value && "text-[var(--text-tertiary)]"
+              !value && "text-[color:var(--text-tertiary)]"
             )}
           >
             {value ? format(value, "PP") : placeholder}

@@ -37,7 +37,7 @@ export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleColla
       {/* Header */}
       <div className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center flex-shrink-0">
         {!collapsed && (
-          <h1 className="text-lg font-semibold text-[var(--text-primary)]">LibreOllama</h1>
+          <h1 className="text-lg font-semibold text-[color:var(--text-primary)]">LibreOllama</h1>
         )}
       </div>
       
@@ -57,15 +57,15 @@ export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleColla
                     ? 'justify-center px-0 h-10 hover:bg-[var(--bg-surface-elevated)]'
                     : `gap-[var(--space-3)] px-3 py-2 hover:bg-[var(--bg-surface-elevated)]`,
                   isActive
-                    ? 'bg-[var(--bg-surface-elevated)] text-[var(--primary)] font-medium border-l-[3px] border-[var(--primary)]'
-                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    ? 'bg-[var(--bg-surface-elevated)] text-[color:var(--primary)] font-medium border-l-[3px] border-[var(--primary)]'
+                    : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
                 )}
                 data-active={isActive ? 'true' : undefined}
               >
                 <Icon
                   className={cn(
                     'w-5 h-5 motion-safe:transition-colors duration-[var(--duration-fast)]',
-                    isActive ? 'text-[var(--primary)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--primary)]'
+                    isActive ? 'text-[color:var(--primary)]' : 'text-[color:var(--text-secondary)] group-hover:text-[color:var(--primary)]'
                   )}
                   strokeWidth={1.5}
                 />
@@ -87,7 +87,7 @@ export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleColla
                       sideOffset={8}
                       className="shadow-[var(--elevation-lg)]"
                     >
-                      <span className="text-sm font-[var(--font-weight-medium)] text-[var(--text-primary)]">
+                      <span className="text-sm font-[var(--font-weight-medium)] text-[color:var(--text-primary)]">
                         {module.label}
                       </span>
                     </TooltipContent>

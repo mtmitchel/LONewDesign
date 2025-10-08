@@ -152,10 +152,10 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
       
       {/* Header - Fixed */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Task details</h2>
+  <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Task details</h2>
         <button 
           onClick={onClose}
-          className="flex items-center justify-center w-8 h-8 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
+          className="flex items-center justify-center w-8 h-8 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
@@ -171,20 +171,20 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
               type="text"
               value={editedTask.title}
               onChange={(e) => handleFieldChange('title', e.target.value)}
-              className="w-full text-2xl font-semibold text-[var(--text-primary)] bg-transparent border-0 focus:outline-none focus:ring-0 px-0 py-2"
+              className="w-full text-2xl font-semibold text-[color:var(--text-primary)] bg-transparent border-0 focus:outline-none focus:ring-0 px-0 py-2"
               placeholder="Task name"
             />
           </div>
 
           {/* POLISH TASK 2 & 3: Due Date Section */}
           <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-6">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
               <Calendar className="w-4 h-4" />
               <span>Due date</span>
             </div>
             <Popover>
               <PopoverTrigger asChild>
-                <button className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-tertiary)] hover:border-[var(--border-hover)] transition-colors">
+                <button className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-tertiary)] hover:border-[var(--border-hover)] transition-colors">
                   <Calendar className="w-4 h-4" />
                   <span>{editedTask.dueDate || "Pick a date"}</span>
                 </button>
@@ -202,7 +202,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
 
           {/* POLISH TASK 4: Priority Section */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
               <Flag className="w-4 h-4" />
               <span>Priority</span>
             </div>
@@ -213,8 +213,8 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                   onClick={() => handleFieldChange('priority', p)}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium border-2 capitalize transition-colors ${
                     editedTask.priority === p
-                      ? 'border-[var(--primary)] bg-[var(--primary-tint-10)] text-[var(--primary)]'
-                      : 'border-[var(--border-default)] text-[var(--text-primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-tint-5)]'
+                      ? 'border-[var(--primary)] bg-[var(--primary-tint-10)] text-[color:var(--primary)]'
+                      : 'border-[var(--border-default)] text-[color:var(--text-primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-tint-5)]'
                   }`}
                 >
                   {p}
@@ -225,7 +225,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
 
           {/* POLISH TASK 5: Labels Section */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
               <Tag className="w-4 h-4" />
               <span>Labels</span>
             </div>
@@ -301,7 +301,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
             )}
             {/* Color picker for labels */}
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-[var(--text-secondary)]">Color:</span>
+              <span className="text-xs text-[color:var(--text-secondary)]">Color:</span>
               <div className="flex gap-1">
                 {[
                   { name: 'Blue', value: 'var(--label-blue)' },
@@ -339,12 +339,12 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
                 onKeyDown={handleKeyDownLabel}
-                className="flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] focus:ring-offset-0"
+                className="flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] focus:ring-offset-0"
               />
               <button 
                 onClick={handleAddLabel}
                 disabled={!newLabel.trim()}
-                className="flex items-center justify-center w-9 h-9 rounded-md border border-[var(--border-default)] text-[var(--text-secondary)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center w-9 h-9 rounded-md border border-[var(--border-default)] text-[color:var(--text-secondary)] hover:border-[var(--primary)] hover:text-[color:var(--primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" />
               </button>
@@ -353,7 +353,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
 
           {/* POLISH TASK 6: Subtasks Section */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
               <span>Subtasks</span>
             </div>
             <div className="flex flex-col gap-2">
@@ -368,11 +368,11 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                     type="text"
                     value={subtask.title}
                     onChange={(e) => handleUpdateSubtaskTitle(subtask.id, e.target.value)}
-                    className={`flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-primary)] focus:outline-none focus:border-[var(--primary)] ${subtask.isCompleted ? 'line-through text-[var(--text-tertiary)]' : ''}`}
+                    className={`flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-primary)] focus:outline-none focus:border-[var(--primary)] ${subtask.isCompleted ? 'line-through text-[color:var(--text-tertiary)]' : ''}`}
                   />
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className="flex items-center justify-center w-9 h-9 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                      <button className="flex items-center justify-center w-9 h-9 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors">
                         <Calendar className="w-4 h-4" />
                       </button>
                     </PopoverTrigger>
@@ -387,7 +387,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                   </Popover>
                   <button 
                     onClick={() => handleDeleteSubtask(subtask.id)}
-                    className="flex items-center justify-center w-9 h-9 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
+                    className="flex items-center justify-center w-9 h-9 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -405,11 +405,11 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                       handleAddSubtask();
                     }
                   }}
-                  className="flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)]"
+                  className="flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)]"
                 />
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center justify-center w-9 h-9 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors">
+                    <button className="flex items-center justify-center w-9 h-9 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors">
                       <Calendar className="w-4 h-4" />
                     </button>
                   </PopoverTrigger>
@@ -425,7 +425,7 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
                 <button 
                   onClick={handleAddSubtask}
                   disabled={!newSubtaskTitle.trim()}
-                  className="flex items-center justify-center w-9 h-9 rounded-md text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center w-9 h-9 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
@@ -435,14 +435,14 @@ export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: Tas
 
           {/* POLISH TASK 7: Description Section */}
           <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-6">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[var(--text-secondary)] uppercase tracking-wide">
+            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
               <span>Description</span>
             </div>
             <textarea
               placeholder="Add notes..."
               value={editedTask.description || ''}
               onChange={(e) => handleFieldChange('description', e.target.value)}
-              className="w-full min-h-[120px] px-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-md text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] focus:ring-offset-0 resize-y"
+              className="w-full min-h-[120px] px-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] focus:ring-offset-0 resize-y"
             />
           </div>
 

@@ -117,18 +117,18 @@ export function ChartWidget({ widget }: WidgetProps) {
     <div className="h-full flex flex-col">
       {/* Chart Title */}
       <div className="mb-4">
-        <h4 className="text-sm font-medium text-[var(--text-primary)]">
+  <h4 className="text-sm font-medium text-[color:var(--text-primary)]">
           {title}
         </h4>
         {chartType === 'bar' && (
           <div className="flex items-center gap-4 mt-2">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-[var(--primary)] rounded"></div>
-              <span className="text-xs text-[var(--text-secondary)]">Tasks</span>
+              <span className="text-xs text-[color:var(--text-secondary)]">Tasks</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-[var(--info)] rounded"></div>
-              <span className="text-xs text-[var(--text-secondary)]">Emails</span>
+              <span className="text-xs text-[color:var(--text-secondary)]">Emails</span>
             </div>
           </div>
         )}

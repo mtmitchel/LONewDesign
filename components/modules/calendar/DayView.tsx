@@ -193,7 +193,7 @@ export function DayView({
     <div className="rounded-[var(--cal-frame-radius)] border border-[var(--cal-frame-border)]
                     bg-[var(--cal-bg)] overflow-hidden h-full flex flex-col">
       {/* header */}
-      <div className="h-[var(--cal-header-h)] grid place-items-center text-[var(--text-lg)] font-semibold flex-shrink-0">
+  <div className="h-[var(--cal-header-h)] grid place-items-center text-[length:var(--text-lg)] font-semibold flex-shrink-0">
         {day?.fullLabel || day?.dayLabel || ""}
       </div>
 
@@ -201,7 +201,7 @@ export function DayView({
       <div className="flex-1 overflow-y-auto">
         {/* all-day row */}
         <div className="grid grid-cols-[var(--cal-rail-w)_1fr] sticky top-0 bg-[var(--cal-bg)] z-10">
-          <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">all day</div>
+          <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">all day</div>
           <div className="h-[var(--cal-hour-row-h)] bg-[var(--bg-surface-elevated)]
                           border-y border-l border-[var(--cal-gridline)]" />
         </div>
@@ -211,7 +211,7 @@ export function DayView({
         <div className="flex flex-col border-t border-[var(--cal-gridline)]">
           {times.map(t => (
             <div key={t.key}
-                 className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[var(--text-xs)] text-[var(--text-tertiary)]">
+                 className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
               {t.label}
             </div>
           ))}

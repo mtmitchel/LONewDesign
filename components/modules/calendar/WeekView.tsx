@@ -213,9 +213,9 @@ export function WeekView({
                       bg-[var(--cal-bg)] flex-shrink-0">
         <div />
         {weekDays.map(d => (
-          <div key={d.key}
-               className="grid place-items-center border-l first:border-l-0 border-[var(--cal-gridline)]
-                          text-[var(--text-sm)] font-medium text-[var(--text-primary)]">
+    <div key={d.key}
+      className="grid place-items-center border-l first:border-l-0 border-[var(--cal-gridline)]
+           text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">
             {d.label}
           </div>
         ))}
@@ -226,7 +226,7 @@ export function WeekView({
         {/* all-day */}
         <div className="grid grid-cols-[var(--cal-rail-w)_repeat(7,1fr)] sticky top-0 bg-[var(--cal-bg)] z-10">
           <div className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right
-                          text-[var(--text-xs)] text-[var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">
+                          text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] leading-[var(--cal-hour-row-h)]">
             all day
           </div>
           {weekDays.map(d => (
@@ -241,9 +241,9 @@ export function WeekView({
         {/* rail: NO bottom borders */}
         <div className="flex flex-col border-t border-[var(--cal-gridline)]">
           {times.map(t => (
-            <div key={t.key}
-                 className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right
-                            text-[var(--text-xs)] text-[var(--text-tertiary)]">
+      <div key={t.key}
+        className="h-[var(--cal-hour-row-h)] pr-[var(--space-2)] text-right
+             text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
               {t.label}
             </div>
           ))}

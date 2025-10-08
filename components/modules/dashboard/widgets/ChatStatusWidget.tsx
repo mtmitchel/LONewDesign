@@ -52,10 +52,10 @@ export function ChatStatusWidget({ widget }: WidgetProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'online': return 'text-[var(--success)]';
-      case 'active': return 'text-[var(--primary)]';
-      case 'away': return 'text-[var(--warning)]';
-      default: return 'text-[var(--text-secondary)]';
+  case 'online': return 'text-[color:var(--success)]';
+  case 'active': return 'text-[color:var(--primary)]';
+  case 'away': return 'text-[color:var(--warning)]';
+  default: return 'text-[color:var(--text-secondary)]';
     }
   };
 
@@ -79,7 +79,7 @@ export function ChatStatusWidget({ widget }: WidgetProps) {
     
     return (
       <Avatar className="w-8 h-8">
-        <AvatarFallback className="text-xs bg-[var(--primary-tint-15)] text-[var(--primary)]">
+  <AvatarFallback className="text-xs bg-[var(--primary-tint-15)] text-[color:var(--primary)]">
           {title.split(' ').map(n => n[0]).join('').slice(0, 2)}
         </AvatarFallback>
       </Avatar>
@@ -91,22 +91,22 @@ export function ChatStatusWidget({ widget }: WidgetProps) {
       {/* Status Overview */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="text-center p-2 bg-[var(--elevated)] rounded-lg">
-          <div className="text-lg font-semibold text-[var(--primary)]">
+          <div className="text-lg font-semibold text-[color:var(--primary)]">
             {totalUnread}
           </div>
-          <div className="text-xs text-[var(--text-secondary)]">Unread</div>
+          <div className="text-xs text-[color:var(--text-secondary)]">Unread</div>
         </div>
         <div className="text-center p-2 bg-[var(--elevated)] rounded-lg">
-          <div className="text-lg font-semibold text-[var(--success)]">
+          <div className="text-lg font-semibold text-[color:var(--success)]">
             {activeChats}
           </div>
-          <div className="text-xs text-[var(--text-secondary)]">Active</div>
+          <div className="text-xs text-[color:var(--text-secondary)]">Active</div>
         </div>
       </div>
 
       {/* Conversations */}
       <div className="flex-1 min-h-0">
-        <div className="text-sm font-medium text-[var(--text-primary)] mb-3">
+  <div className="text-sm font-medium text-[color:var(--text-primary)] mb-3">
           Recent Conversations
         </div>
         <ScrollArea className="h-full">
@@ -127,11 +127,11 @@ export function ChatStatusWidget({ widget }: WidgetProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[var(--text-primary)] truncate">
+                        <span className="text-sm font-medium text-[color:var(--text-primary)] truncate">
                           {conversation.title}
                         </span>
                         {conversation.type === 'ai' && (
-                          <Badge variant="secondary" className="text-xs px-1 py-0 bg-[var(--info)]/10 text-[var(--info)]">
+                          <Badge variant="secondary" className="text-xs px-1 py-0 bg-[var(--info)]/10 text-[color:var(--info)]">
                             AI
                           </Badge>
                         )}
@@ -143,13 +143,13 @@ export function ChatStatusWidget({ widget }: WidgetProps) {
                       )}
                     </div>
                     
-                    <p className="text-xs text-[var(--text-secondary)] truncate mb-1">
+                    <p className="text-xs text-[color:var(--text-secondary)] truncate mb-1">
                       {conversation.lastMessage}
                     </p>
                     
                     <div className="flex items-center gap-1">
-                      <Clock size={10} className="text-[var(--text-secondary)]" />
-                      <span className="text-xs text-[var(--text-secondary)]">
+                      <Clock size={10} className="text-[color:var(--text-secondary)]" />
+                      <span className="text-xs text-[color:var(--text-secondary)]">
                         {conversation.lastActivity}
                       </span>
                       <Circle size={4} className={`fill-current ${getStatusColor(conversation.status)}`} />

@@ -29,8 +29,8 @@ export function PaginationControl({
       role="navigation"
       aria-label="Pagination"
       className={cn(
-        'flex items-center gap-3',
-        'text-[length:var(--text-sm)] text-[var(--text-secondary)]',
+  'flex items-center gap-3',
+  'text-[length:var(--text-sm)] text-[color:var(--text-secondary)]',
         className
       )}
     >
@@ -75,8 +75,8 @@ function PaginationButton({ icon: Icon, label, onClick, disabled }: PaginationBu
         'flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] transition-colors',
         'focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2',
         disabled
-          ? 'cursor-not-allowed text-[var(--text-tertiary)] opacity-40'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)]'
+          ? 'cursor-not-allowed text-[color:var(--text-tertiary)] opacity-40'
+          : 'text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[color:var(--text-primary)]'
       )}
     >
       <Icon className="h-[var(--mail-pagination-arrow-size)] w-[var(--mail-pagination-arrow-size)]" />

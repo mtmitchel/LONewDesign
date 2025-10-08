@@ -137,12 +137,12 @@ export function ChatLeftPane({
                     'border-b border-[var(--border-subtle)] cursor-pointer motion-safe:transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
                     isActive
-                      ? 'bg-[color-mix(in_oklab,var(--primary-tint-5) 55%, transparent)] text-[var(--text-primary)]'
+                      ? 'bg-[color-mix(in_oklab,var(--primary-tint-5) 55%, transparent)] text-[color:var(--text-primary)]'
                       : 'bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)]'
                   )}
                 >
                   <div className="flex items-center justify-between gap-[var(--space-2)]">
-                    <div className="font-medium text-[var(--text-primary)] truncate">{conversation.title}</div>
+                    <div className="font-medium text-[color:var(--text-primary)] truncate">{conversation.title}</div>
                     {conversation.unread && (
                       <span
                         aria-hidden="true"
@@ -151,7 +151,7 @@ export function ChatLeftPane({
                       />
                     )}
                   </div>
-                  <div className="mt-[var(--space-1)] text-sm text-[var(--text-tertiary)] truncate">
+                  <div className="mt-[var(--space-1)] text-sm text-[color:var(--text-tertiary)] truncate">
                     {conversation.lastMessageSnippet}
                   </div>
                 </div>

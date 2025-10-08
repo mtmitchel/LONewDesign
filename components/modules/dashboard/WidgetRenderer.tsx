@@ -50,7 +50,7 @@ export function WidgetRenderer({ widget, editMode, onUpdate, onRemove }: WidgetP
         return <ChatStatusWidget widget={widget} />;
       default:
         return (
-          <div className="flex items-center justify-center h-32 text-[var(--text-secondary)]">
+          <div className="flex items-center justify-center h-32 text-[color:var(--text-secondary)]">
             <p>Unknown widget type: {widget.type}</p>
           </div>
         );
@@ -69,7 +69,7 @@ export function WidgetRenderer({ widget, editMode, onUpdate, onRemove }: WidgetP
         editMode && "bg-[var(--primary-tint-10)]/30"
       )}>
         <div className="flex items-center justify-between">
-          <h3 className="font-medium text-[var(--text-primary)] truncate">
+          <h3 className="font-medium text-[color:var(--text-primary)] truncate">
             {widget.title}
           </h3>
           
@@ -78,14 +78,14 @@ export function WidgetRenderer({ widget, editMode, onUpdate, onRemove }: WidgetP
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="h-6 w-6 p-0 text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
               >
                 <GripVertical size={12} />
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="h-6 w-6 p-0 text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
               >
                 <Settings size={12} />
               </Button>
@@ -93,7 +93,7 @@ export function WidgetRenderer({ widget, editMode, onUpdate, onRemove }: WidgetP
                 variant="ghost"
                 size="sm"
                 onClick={handleRemove}
-                className="h-6 w-6 p-0 text-[var(--text-secondary)] hover:text-[var(--error)]"
+                className="h-6 w-6 p-0 text-[color:var(--text-secondary)] hover:text-[color:var(--error)]"
               >
                 <X size={12} />
               </Button>

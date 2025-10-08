@@ -89,13 +89,13 @@ export function TaskCard({
                       </svg>
                     </button>
                   <div className="flex-1 min-w-0">
-                    <h4 className={`text-[length:var(--task-title-size)] font-[var(--font-weight-medium)] leading-snug line-clamp-2 ${isCompleted ? 'line-through text-[var(--text-tertiary)] opacity-60' : 'text-[var(--text-primary)]'}`}>
+                    <h4 className={`text-[length:var(--task-title-size)] font-[var(--font-weight-medium)] leading-snug line-clamp-2 ${isCompleted ? 'line-through text-[color:var(--text-tertiary)] opacity-60' : 'text-[color:var(--text-primary)]'}`}>
                       {taskTitle}
                     </h4>
                     {(dueDate || priority !== 'none' || labels.length > 0) && (
                       <div className="flex items-center gap-[var(--space-2)] mt-[var(--space-1)] flex-wrap">
                         {dueDate && (
-                          <span className="text-[length:var(--task-meta-size)] font-[var(--font-weight-normal)] text-[var(--text-tertiary)]">
+                          <span className="text-[length:var(--task-meta-size)] font-[var(--font-weight-normal)] text-[color:var(--text-tertiary)]">
                             {dueDate}
                           </span>
                         )}
@@ -131,20 +131,20 @@ export function TaskCard({
             </Card>
         </ContextMenuTrigger>
         <ContextMenuContent className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] p-[var(--space-2)]">
-            <ContextMenuItem onClick={onToggleCompletion} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
+            <ContextMenuItem onClick={onToggleCompletion} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
                 <CheckSquare className="w-4 h-4 mr-2" />
                 {isCompleted ? 'Mark as not completed' : 'Mark completed'}
             </ContextMenuItem>
-            <ContextMenuItem onClick={onEdit} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
+            <ContextMenuItem onClick={onEdit} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
                 <Edit className="w-4 h-4 mr-2" />
                 Edit
             </ContextMenuItem>
-            <ContextMenuItem onClick={onDuplicate} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
+            <ContextMenuItem onClick={onDuplicate} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
                 <Copy className="w-4 h-4 mr-2" />
                 Duplicate
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={onDelete} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[var(--danger)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
+            <ContextMenuItem onClick={onDelete} className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[color:var(--danger)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer">
                 <Trash className="w-4 h-4 mr-2" />
                 Delete
             </ContextMenuItem>

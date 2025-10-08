@@ -5,7 +5,7 @@ import { cn } from "../ui/utils";
 import { Button } from "../ui/button";
 
 interface EmptyStateProps {
-  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  icon?: React.ComponentType<{ size?: number | string; className?: string }>;
   title?: string;
   description?: string;
   action?: {
@@ -38,19 +38,19 @@ export function EmptyState({
         <div className="mb-4">
           <Icon 
             size={64} 
-            className="text-[var(--text-secondary)] opacity-50" 
+            className="text-[color:var(--text-secondary)] opacity-50" 
           />
         </div>
       )}
       
       {title && (
-        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+  <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-2">
           {title}
         </h3>
       )}
       
       {description && (
-        <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-sm">
+  <p className="text-sm text-[color:var(--text-secondary)] mb-6 max-w-sm">
           {description}
         </p>
       )}

@@ -11,19 +11,19 @@ const buttonVariants = cva(
       variant: {
         // Solid - primary accent background
         solid: "bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-sm",
-        // Tonal - primary color with light background (Asana-style)
-        tonal: "bg-[var(--primary-tint-10)] text-[var(--primary)] hover:bg-[var(--primary-tint-20)] border border-transparent",
-        // Ghost - transparent with subtle hover (Sunsama-style)
-        ghost: "bg-transparent text-[var(--text-primary)] hover:bg-[var(--hover-bg)] border border-transparent",
+    // Tonal - primary color with light background (Asana-style)
+    tonal: "bg-[var(--primary-tint-10)] text-[color:var(--primary)] hover:bg-[var(--primary-tint-20)] border border-transparent",
+    // Ghost - transparent with subtle hover (Sunsama-style)
+    ghost: "bg-transparent text-[color:var(--text-primary)] hover:bg-[var(--hover-bg)] border border-transparent",
         // Danger - for destructive actions
         danger: "bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90 shadow-sm",
         // Outline - subtle border variant
-        outline: "border border-[var(--border-default)] bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--hover-bg)]",
+    outline: "border border-[var(--border-default)] bg-[var(--bg-surface)] text-[color:var(--text-primary)] hover:bg-[var(--hover-bg)]",
         // Legacy compatibility
         default: "bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-sm",
         destructive: "bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90 shadow-sm",
-        secondary: "bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]/80",
-        link: "text-[var(--primary)] underline-offset-4 hover:underline bg-transparent",
+  secondary: "bg-[var(--bg-surface-elevated)] text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]/80",
+  link: "text-[color:var(--primary)] underline-offset-4 hover:underline bg-transparent",
       },
       size: {
         // Comfortable density for long sessions (Asana-style)

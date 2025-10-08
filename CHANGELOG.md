@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Token namespace cleanup (2025-10-08)
+- Namespaced every remaining `text-[var(--…)]` usage under `text-[color:…]` / `text-[length:…]` across dashboard widgets, the Mail tri-pane, Notes surfaces, and Tasks flows so arbitrary Tailwind values align with the design-token lint rules.
+- Updated shared primitives (`badge`, `button`, `card`, `toggle-group`, `checkbox`) plus `SendButton.tsx` to consume the new convention and avoid duplicate-property warnings in toolchains.
+- Refreshed `docs/technical/design-tokens-reference.md` with guidance covering the namespaced helpers so future contributors follow the same pattern.
+
 ### Notes module refinements (2025-10-09)
 - Enabled context-menu-triggered inline renaming for notes and folders in the left pane, with keyboard commit/cancel behavior.
 - Added note pinning support that keeps pinned items at the top of both center and sidebar lists, plus pin/unpin actions in dropdowns and context menus.

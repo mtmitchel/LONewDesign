@@ -49,11 +49,11 @@ export function FileUpload({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const validateFile = (file: File): string | null => {
+  const validateFile = (file: File): string | undefined => {
     if (file.size > maxSize) {
       return `File size exceeds ${formatFileSize(maxSize)}`;
     }
-    return null;
+    return undefined;
   };
 
   const handleFiles = (fileList: FileList) => {
@@ -187,12 +187,12 @@ export function FileUpload({
         
         {children || (
           <div className="space-y-3">
-            <Upload size={32} className="mx-auto text-[var(--text-secondary)]" />
+            <Upload size={32} className="mx-auto text-[color:var(--text-secondary)]" />
             <div>
-              <p className="text-sm font-medium text-[var(--text-primary)]">
+              <p className="text-sm font-medium text-[color:var(--text-primary)]">
                 Click to upload or drag and drop
               </p>
-              <p className="text-xs text-[var(--text-secondary)]">
+              <p className="text-xs text-[color:var(--text-secondary)]">
                 {accept ? `Accepts: ${accept}` : 'Any file type'} • Max {formatFileSize(maxSize)}
               </p>
             </div>
@@ -208,14 +208,14 @@ export function FileUpload({
               key={uploadedFile.id}
               className="flex items-center gap-3 p-3 bg-[var(--surface)] border border-[var(--border-subtle)] rounded-lg"
             >
-              <File size={16} className="text-[var(--text-secondary)] flex-shrink-0" />
+              <File size={16} className="text-[color:var(--text-secondary)] flex-shrink-0" />
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-[var(--text-primary)] truncate">
+                  <p className="text-sm font-medium text-[color:var(--text-primary)] truncate">
                     {uploadedFile.file.name}
                   </p>
-                  <span className="text-xs text-[var(--text-secondary)]">
+                  <span className="text-xs text-[color:var(--text-secondary)]">
                     {formatFileSize(uploadedFile.file.size)}
                   </span>
                 </div>
@@ -226,13 +226,13 @@ export function FileUpload({
                 
                 {uploadedFile.status === 'error' && (
                   <div className="flex items-center gap-1 mt-1">
-                    <AlertCircle size={12} className="text-[var(--error)]" />
-                    <span className="text-xs text-[var(--error)]">{uploadedFile.error}</span>
+                    <AlertCircle size={12} className="text-[color:var(--error)]" />
+                    <span className="text-xs text-[color:var(--error)]">{uploadedFile.error}</span>
                   </div>
                 )}
                 
                 {uploadedFile.status === 'completed' && (
-                  <span className="text-xs text-[var(--success)]">Upload complete</span>
+                  <span className="text-xs text-[color:var(--success)]">Upload complete</span>
                 )}
               </div>
 
@@ -240,7 +240,7 @@ export function FileUpload({
                 variant="ghost"
                 size="sm"
                 onClick={() => removeFile(uploadedFile.id)}
-                className="text-[var(--text-secondary)] hover:text-[var(--error)]"
+                className="text-[color:var(--text-secondary)] hover:text-[color:var(--error)]"
               >
                 <X size={14} />
               </Button>

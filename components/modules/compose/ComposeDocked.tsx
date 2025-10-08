@@ -224,10 +224,10 @@ export function ComposeDocked({
         onClick={() => onRestore?.()}
       >
         <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-[var(--text-primary)] truncate">
+            <div className="text-sm font-medium text-[color:var(--text-primary)] truncate">
               {recipientSummary}
             </div>
-            <div className="text-xs text-[var(--text-secondary)] truncate">
+            <div className="text-xs text-[color:var(--text-secondary)] truncate">
               {subjectText}
             </div>
         </div>
@@ -279,7 +279,7 @@ export function ComposeDocked({
         border-b border-[var(--border-subtle)]
         px-[var(--space-4)]
       ">
-        <span className="text-sm font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+  <span className="text-sm font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
           New Message
         </span>
         <div className="flex items-center gap-1">

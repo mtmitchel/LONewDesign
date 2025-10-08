@@ -16,21 +16,21 @@ export function StatsCardWidget({ widget }: WidgetProps) {
           className="p-4 bg-[var(--elevated)] rounded-lg border border-[var(--border-subtle)] flex flex-col justify-between"
         >
           <div>
-            <p className="text-sm text-[var(--text-secondary)] mb-1">{stat.label}</p>
-            <p className="text-2xl font-semibold text-[var(--text-primary)]">{stat.value}</p>
+            <p className="text-sm text-[color:var(--text-secondary)] mb-1">{stat.label}</p>
+            <p className="text-2xl font-semibold text-[color:var(--text-primary)]">{stat.value}</p>
           </div>
           
           {stat.change && (
             <div className="flex items-center gap-1 mt-2">
               {stat.change.startsWith('+') ? (
-                <TrendingUp size={14} className="text-[var(--success)]" />
+                <TrendingUp size={14} className="text-[color:var(--success)]" />
               ) : (
-                <TrendingDown size={14} className="text-[var(--error)]" />
+                <TrendingDown size={14} className="text-[color:var(--error)]" />
               )}
               <span 
                 className={cn(
                   "text-xs font-medium",
-                  stat.change.startsWith('+') ? "text-[var(--success)]" : "text-[var(--error)]"
+                  stat.change.startsWith('+') ? "text-[color:var(--success)]" : "text-[color:var(--error)]"
                 )}
               >
                 {stat.change}

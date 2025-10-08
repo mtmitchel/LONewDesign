@@ -112,13 +112,13 @@ export function EmailListItem({
                 className={cn(
                   'h-4 w-4 transition-colors',
                   email.starred
-                    ? 'fill-[var(--accent-coral)] text-[var(--accent-coral)]'
-                    : 'text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]'
+                    ? 'fill-[var(--accent-coral)] text-[color:var(--accent-coral)]'
+                    : 'text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]'
                 )}
               />
             </button>
 
-            <div className="w-[180px] shrink-0 truncate text-[length:var(--text-sm)] text-[var(--text-primary)]">
+            <div className="w-[180px] shrink-0 truncate text-[length:var(--text-sm)] text-[color:var(--text-primary)]">
               {email.sender}
             </div>
 
@@ -127,20 +127,20 @@ export function EmailListItem({
                 className={cn(
                   'truncate text-[length:var(--text-sm)]',
                   email.unread
-                    ? 'font-[var(--font-weight-medium)] text-[var(--text-primary)]'
-                    : 'text-[var(--text-secondary)]'
+                    ? 'font-[var(--font-weight-medium)] text-[color:var(--text-primary)]'
+                    : 'text-[color:var(--text-secondary)]'
                 )}
               >
                 {email.subject}
               </span>
-              <span className="truncate text-[length:var(--text-sm)] text-[var(--text-tertiary)]">
+              <span className="truncate text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">
                 {email.preview}
               </span>
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
               {email.hasAttachment && (
-                <Paperclip className="h-4 w-4 text-[var(--text-tertiary)]" />
+                <Paperclip className="h-4 w-4 text-[color:var(--text-tertiary)]" />
               )}
               {email.labels.length > 0 && (
                 <div className="flex items-center gap-1">
@@ -156,7 +156,7 @@ export function EmailListItem({
                   })}
                 </div>
               )}
-              <span className="min-w-[64px] text-right text-[length:var(--text-xs)] text-[var(--text-tertiary)]">
+              <span className="min-w-[64px] text-right text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
                 {email.time}
               </span>
             </div>

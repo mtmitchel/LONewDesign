@@ -54,7 +54,7 @@ export function TimePopoverField({
           <span
             className={cn(
               "flex-1 min-w-0 text-left whitespace-nowrap overflow-hidden text-ellipsis",
-              !value && "text-[var(--text-tertiary)]"
+              !value && "text-[color:var(--text-tertiary)]"
             )}
           >
             {formatted || placeholder}
@@ -73,7 +73,7 @@ export function TimePopoverField({
           className="max-h-[240px] overflow-y-auto overscroll-contain py-[var(--space-1)]"
           onWheel={(event) => event.stopPropagation()}
         >
-          <ul className="flex flex-col text-[var(--text-base)]">
+          <ul className="flex flex-col text-[length:var(--text-base)]">
             {times.map((t) => (
               <li key={t}>
                 <button

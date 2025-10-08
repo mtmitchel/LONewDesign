@@ -204,7 +204,7 @@ export function InlineReply({
       {/* Header with subject context - matches ComposeDocked */}
       <header className="h-[40px] flex items-center justify-between bg-[var(--bg-surface-elevated)]
         border-b border-[var(--border-subtle)] px-[var(--space-4)] flex-shrink-0">
-        <span className="text-sm font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+  <span className="text-sm font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
           {subject ? `Replying to: ${subject}` : 'Reply'}
         </span>
         <div className="flex items-center gap-1">
@@ -313,17 +313,17 @@ export function InlineReply({
 
             {/* Cc Bcc Links */}
             {!showCc && !showBcc && (
-              <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
+              <div className="flex items-center gap-3 text-xs text-[color:var(--text-secondary)]">
                 <button
                   type="button"
-                  className="underline hover:text-[var(--text-primary)]"
+                  className="underline hover:text-[color:var(--text-primary)]"
                   onClick={revealCc}
                 >
                   Cc
                 </button>
                 <button
                   type="button"
-                  className="underline hover:text-[var(--text-primary)]"
+                  className="underline hover:text-[color:var(--text-primary)]"
                   onClick={revealBcc}
                 >
                   Bcc
@@ -349,7 +349,7 @@ export function InlineReply({
 
           {showCc && (
             <div className="flex items-start gap-2">
-              <span className="w-[36px] pt-[6px] text-xs text-[var(--text-secondary)]">Cc</span>
+              <span className="w-[36px] pt-[6px] text-xs text-[color:var(--text-secondary)]">Cc</span>
               <div className="flex-1 min-w-0">
                 <ComposeChips
                   field="cc"
@@ -364,7 +364,7 @@ export function InlineReply({
                 <div className="flex items-center pt-[6px]">
                   <button
                     type="button"
-                    className="text-xs text-[var(--text-secondary)] underline hover:text-[var(--text-primary)]"
+                    className="text-xs text-[color:var(--text-secondary)] underline hover:text-[color:var(--text-primary)]"
                     onClick={revealBcc}
                   >
                     Bcc
@@ -376,7 +376,7 @@ export function InlineReply({
 
           {showBcc && (
             <div className="flex items-start gap-2">
-              <span className="w-[36px] pt-[6px] text-xs text-[var(--text-secondary)]">Bcc</span>
+              <span className="w-[36px] pt-[6px] text-xs text-[color:var(--text-secondary)]">Bcc</span>
               <div className="flex-1 min-w-0">
                 <ComposeChips
                   field="bcc"
@@ -476,7 +476,7 @@ export function InlineReply({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-8 h-8 p-0 text-[var(--text-secondary)] hover:text-[var(--danger)]"
+                  className="w-8 h-8 p-0 text-[color:var(--text-secondary)] hover:text-[color:var(--danger)]"
                   onClick={onDiscard}
                   aria-label="Discard"
                 >

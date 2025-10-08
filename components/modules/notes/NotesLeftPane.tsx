@@ -166,7 +166,7 @@ export function NotesLeftPane({ folders, notes, selectedFolderId, selectedNoteId
           <ContextMenuTrigger asChild>
             <div className="min-h-full">
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-tertiary)]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-tertiary)]" />
                 <Input
                   type="text"
                   placeholder="Search notes..."
@@ -254,13 +254,13 @@ export function NotesLeftPane({ folders, notes, selectedFolderId, selectedNoteId
                             cancelNoteRename();
                           }
                         }}
-                        className="h-7 w-full px-2 py-1 text-sm bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                        className="h-7 w-full px-2 py-1 text-sm bg-[var(--bg-surface-elevated)] text-[color:var(--text-primary)] rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                       />
                     ) : (
                       <span className="text-sm">{note.title}</span>
                     )}
                     {note.isStarred && <Star size={12} className="text-yellow-500" fill="currentColor" />}
-                    {note.isPinned && <Pin size={12} className="text-[var(--primary)]" />}
+                    {note.isPinned && <Pin size={12} className="text-[color:var(--primary)]" />}
                   </div>
                 </div>
               </ContextMenuTrigger>
@@ -654,7 +654,7 @@ function FolderTreeItem({
                       onCancelFolderRename();
                     }
                   }}
-                  className="h-7 w-full px-2 py-1 text-sm bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                  className="h-7 w-full px-2 py-1 text-sm bg-[var(--bg-surface-elevated)] text-[color:var(--text-primary)] rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                 />
               ) : (
                 <span className="text-sm">{folder.name}</span>
@@ -785,12 +785,12 @@ function FolderTreeItem({
                               onCancelNoteRename();
                             }
                           }}
-                          className="h-7 w-full px-2 py-1 text-sm bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                          className="h-7 w-full px-2 py-1 text-sm bg-[var(--bg-surface-elevated)] text-[color:var(--text-primary)] rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
                         />
                       ) : (
                         <span className="text-sm">{note.title}</span>
                       )}
-                      {note.isPinned && <Pin size={12} className="text-[var(--primary)]" />}
+                      {note.isPinned && <Pin size={12} className="text-[color:var(--primary)]" />}
                     </div>
                   </div>
                 </ContextMenuTrigger>

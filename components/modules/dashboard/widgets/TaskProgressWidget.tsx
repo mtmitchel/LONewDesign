@@ -63,10 +63,10 @@ export function TaskProgressWidget({ widget }: WidgetProps) {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-[var(--error)] text-white';
-      case 'medium': return 'bg-[var(--warning)] text-white';
-      case 'low': return 'bg-[var(--success)] text-white';
-      default: return 'bg-[var(--primary-tint-15)] text-[var(--primary)]';
+  case 'high': return 'bg-[var(--error)] text-white';
+  case 'medium': return 'bg-[var(--warning)] text-white';
+  case 'low': return 'bg-[var(--success)] text-white';
+  default: return 'bg-[var(--primary-tint-15)] text-[color:var(--primary)]';
     }
   };
 
@@ -75,22 +75,22 @@ export function TaskProgressWidget({ widget }: WidgetProps) {
       {/* Overall Progress */}
       <div className="mb-4 p-3 bg-[var(--elevated)] rounded-lg">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-[var(--text-primary)]">
+          <span className="text-sm font-medium text-[color:var(--text-primary)]">
             Overall Progress
           </span>
-          <span className="text-sm text-[var(--text-secondary)]">
+          <span className="text-sm text-[color:var(--text-secondary)]">
             {completedTasks}/{totalTasks} tasks
           </span>
         </div>
         <Progress value={overallProgress} className="h-2" />
-        <div className="text-xs text-[var(--text-secondary)] mt-1">
+  <div className="text-xs text-[color:var(--text-secondary)] mt-1">
           {overallProgress}% complete
         </div>
       </div>
 
       {/* Task List */}
       <div className="flex-1 min-h-0">
-        <div className="text-sm font-medium text-[var(--text-primary)] mb-3">
+  <div className="text-sm font-medium text-[color:var(--text-primary)] mb-3">
           Active Tasks
         </div>
         <ScrollArea className="h-full">
@@ -106,15 +106,15 @@ export function TaskProgressWidget({ widget }: WidgetProps) {
                       size={16} 
                       className={
                         task.status === 'completed' 
-                          ? "text-[var(--success)]" 
-                          : "text-[var(--text-secondary)]"
+                          ? "text-[color:var(--success)]" 
+                          : "text-[color:var(--text-secondary)]"
                       }
                     />
                     <span 
                       className={`text-sm font-medium truncate ${
                         task.status === 'completed' 
-                          ? "text-[var(--text-secondary)] line-through" 
-                          : "text-[var(--text-primary)]"
+                          ? "text-[color:var(--text-secondary)] line-through" 
+                          : "text-[color:var(--text-primary)]"
                       }`}
                     >
                       {task.title}
@@ -130,7 +130,7 @@ export function TaskProgressWidget({ widget }: WidgetProps) {
                 {showProgress && task.status !== 'completed' && (
                   <div className="mb-2">
                     <Progress value={task.progress} className="h-1" />
-                    <div className="text-xs text-[var(--text-secondary)] mt-1">
+                    <div className="text-xs text-[color:var(--text-secondary)] mt-1">
                       {task.progress}% complete
                     </div>
                   </div>
@@ -138,18 +138,18 @@ export function TaskProgressWidget({ widget }: WidgetProps) {
 
                 {showDueDate && (
                   <div className="flex items-center gap-1">
-                    <Clock size={12} className="text-[var(--text-secondary)]" />
+                    <Clock size={12} className="text-[color:var(--text-secondary)]" />
                     <span 
                       className={`text-xs ${
                         formatDate(task.dueDate) === 'Overdue' 
-                          ? "text-[var(--error)]" 
-                          : "text-[var(--text-secondary)]"
+                          ? "text-[color:var(--error)]" 
+                          : "text-[color:var(--text-secondary)]"
                       }`}
                     >
                       Due {formatDate(task.dueDate)}
                     </span>
                     {formatDate(task.dueDate) === 'Overdue' && (
-                      <AlertCircle size={12} className="text-[var(--error)]" />
+                      <AlertCircle size={12} className="text-[color:var(--error)]" />
                     )}
                   </div>
                 )}

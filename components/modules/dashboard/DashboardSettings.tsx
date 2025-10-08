@@ -68,7 +68,7 @@ export function DashboardSettings({
               <X size={16} />
             </Button>
           </div>
-          <p className="text-sm text-[var(--text-secondary)]">
+          <p className="text-sm text-[color:var(--text-secondary)]">
             Customize your dashboard layout and manage widgets visibility.
           </p>
         </DialogHeader>
@@ -77,28 +77,28 @@ export function DashboardSettings({
           {/* Dashboard Stats */}
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center p-3 bg-[var(--elevated)] rounded-lg">
-              <div className="text-2xl font-semibold text-[var(--text-primary)]">
+              <div className="text-2xl font-semibold text-[color:var(--text-primary)]">
                 {localWidgets.length}
               </div>
-              <div className="text-sm text-[var(--text-secondary)]">Total Widgets</div>
+              <div className="text-sm text-[color:var(--text-secondary)]">Total Widgets</div>
             </div>
             <div className="text-center p-3 bg-[var(--elevated)] rounded-lg">
-              <div className="text-2xl font-semibold text-[var(--primary)]">
+              <div className="text-2xl font-semibold text-[color:var(--primary)]">
                 {visibleCount}
               </div>
-              <div className="text-sm text-[var(--text-secondary)]">Visible</div>
+              <div className="text-sm text-[color:var(--text-secondary)]">Visible</div>
             </div>
             <div className="text-center p-3 bg-[var(--elevated)] rounded-lg">
-              <div className="text-2xl font-semibold text-[var(--text-secondary)]">
+              <div className="text-2xl font-semibold text-[color:var(--text-secondary)]">
                 {hiddenCount}
               </div>
-              <div className="text-sm text-[var(--text-secondary)]">Hidden</div>
+              <div className="text-sm text-[color:var(--text-secondary)]">Hidden</div>
             </div>
           </div>
 
           {/* Layout Settings */}
           <div>
-            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">Layout</h3>
+            <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-3">Layout</h3>
             <div className="grid grid-cols-2 gap-3">
               <Button
                 variant={layout === 'grid' ? 'default' : 'outline'}
@@ -129,7 +129,7 @@ export function DashboardSettings({
 
           {/* Widget Management */}
           <div>
-            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-3">Widgets</h3>
+            <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-3">Widgets</h3>
             
             {localWidgets.length === 0 ? (
               <Alert>
@@ -154,7 +154,7 @@ export function DashboardSettings({
                             {widget.type}
                           </Badge>
                         </div>
-                        <span className="text-xs text-[var(--text-secondary)]">
+                        <span className="text-xs text-[color:var(--text-secondary)]">
                           {widget.size.width}×{widget.size.height}
                         </span>
                       </div>
@@ -167,16 +167,16 @@ export function DashboardSettings({
                             onCheckedChange={() => handleVisibilityToggle(widget.id)}
                           />
                           {widget.isVisible ? (
-                            <Eye size={16} className="text-[var(--success)]" />
+                            <Eye size={16} className="text-[color:var(--success)]" />
                           ) : (
-                            <EyeOff size={16} className="text-[var(--text-secondary)]" />
+                            <EyeOff size={16} className="text-[color:var(--text-secondary)]" />
                           )}
                         </div>
                         
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                          className="text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
                         >
                           <Settings size={14} />
                         </Button>
@@ -185,7 +185,7 @@ export function DashboardSettings({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteWidget(widget.id)}
-                          className="text-[var(--text-secondary)] hover:text-[var(--error)]"
+                          className="text-[color:var(--text-secondary)] hover:text-[color:var(--error)]"
                         >
                           <Trash2 size={14} />
                         </Button>

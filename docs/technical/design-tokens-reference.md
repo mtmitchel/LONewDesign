@@ -15,6 +15,14 @@
 
 ## Custom Variants & Utilities
 
+### Tailwind Arbitrary Token Helpers
+When applying tokens through Tailwind classes, namespace the arbitrary values to avoid conflicts and keep intent clear:
+
+- Color tokens → `text-[color:var(--text-primary)]`, `hover:text-[color:var(--primary)]`
+- Font-size tokens → `text-[length:var(--text-base)]`
+
+This mirrors the conventions used across the app shell and prevents duplicate-property warnings in editor tooling.
+
 ### Compose Editor Placeholder
 ```css
 [data-compose-editor]:empty:before {

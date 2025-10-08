@@ -20,7 +20,7 @@ import { Separator } from '../ui/separator';
 interface SettingsSection {
   id: string;
   title: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ComponentType<{ size?: number | string; className?: string }>;
   description: string;
 }
 
@@ -86,7 +86,7 @@ export function SettingsModule() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Personal Information</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Personal Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="firstName">First Name</Label>
@@ -106,19 +106,19 @@ export function SettingsModule() {
             <Separator />
             
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Account Settings</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Account Settings</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Two-Factor Authentication</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Add an extra layer of security to your account</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Add an extra layer of security to your account</p>
                   </div>
                   <Button variant="outline">Enable</Button>
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Password</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Last changed 3 months ago</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Last changed 3 months ago</p>
                   </div>
                   <Button variant="outline">Change</Button>
                 </div>
@@ -131,12 +131,12 @@ export function SettingsModule() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Email Notifications</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Email Notifications</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Email notifications</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Receive email updates about your activity</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Receive email updates about your activity</p>
                   </div>
                   <Switch 
                     checked={settings.emailNotifications} 
@@ -146,7 +146,7 @@ export function SettingsModule() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Weekly digest</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Get a summary of your week every Monday</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Get a summary of your week every Monday</p>
                   </div>
                   <Switch 
                     checked={settings.weeklyDigest} 
@@ -156,7 +156,7 @@ export function SettingsModule() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Task reminders</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Get reminded about upcoming deadlines</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Get reminded about upcoming deadlines</p>
                   </div>
                   <Switch 
                     checked={settings.taskReminders} 
@@ -169,12 +169,12 @@ export function SettingsModule() {
             <Separator />
             
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Push Notifications</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Push Notifications</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Browser notifications</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Show notifications in your browser</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Show notifications in your browser</p>
                   </div>
                   <Switch 
                     checked={settings.pushNotifications} 
@@ -190,28 +190,28 @@ export function SettingsModule() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Theme</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Theme</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 border border-[var(--border-default)] rounded-lg cursor-pointer bg-[var(--primary-tint-10)]">
                   <div className="flex items-center gap-3 mb-2">
-                    <Sun size={20} className="text-[var(--primary)]" />
-                    <span className="font-medium text-[var(--text-primary)]">Light</span>
+                    <Sun size={20} className="text-[color:var(--primary)]" />
+                    <span className="font-medium text-[color:var(--text-primary)]">Light</span>
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)]">Bright and clean interface</p>
+                  <p className="text-sm text-[color:var(--text-secondary)]">Bright and clean interface</p>
                 </div>
                 <div className="p-4 border border-[var(--border-default)] rounded-lg cursor-pointer opacity-60">
                   <div className="flex items-center gap-3 mb-2">
                     <Moon size={20} />
                     <span className="font-medium">Dark</span>
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)]">Coming soon</p>
+                  <p className="text-sm text-[color:var(--text-secondary)]">Coming soon</p>
                 </div>
                 <div className="p-4 border border-[var(--border-default)] rounded-lg cursor-pointer opacity-60">
                   <div className="flex items-center gap-3 mb-2">
                     <Monitor size={20} />
                     <span className="font-medium">System</span>
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)]">Match device preference</p>
+                  <p className="text-sm text-[color:var(--text-secondary)]">Match device preference</p>
                 </div>
               </div>
             </div>
@@ -219,19 +219,19 @@ export function SettingsModule() {
             <Separator />
             
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Interface</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Interface</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Compact mode</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Reduce spacing and padding for more content</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Reduce spacing and padding for more content</p>
                   </div>
                   <Switch defaultChecked={false} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Show tooltips</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Display helpful tooltips when hovering</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Display helpful tooltips when hovering</p>
                   </div>
                   <Switch defaultChecked={true} />
                 </div>
@@ -244,12 +244,12 @@ export function SettingsModule() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Data Collection</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Data Collection</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Usage analytics</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Help improve LibreOllama by sharing usage data</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Help improve LibreOllama by sharing usage data</p>
                   </div>
                   <Switch 
                     checked={settings.analytics} 
@@ -259,7 +259,7 @@ export function SettingsModule() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Data sharing</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Share anonymized data with partners</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Share anonymized data with partners</p>
                   </div>
                   <Switch 
                     checked={settings.dataSharing} 
@@ -272,19 +272,19 @@ export function SettingsModule() {
             <Separator />
             
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Account Actions</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Account Actions</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Export data</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Download all your data in JSON format</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Download all your data in JSON format</p>
                   </div>
                   <Button variant="outline">Export</Button>
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-[var(--error)]">Delete account</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Permanently delete your account and data</p>
+                    <Label className="text-[color:var(--error)]">Delete account</Label>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Permanently delete your account and data</p>
                   </div>
                   <Button variant="destructive">Delete</Button>
                 </div>
@@ -297,12 +297,12 @@ export function SettingsModule() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Storage & Sync</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Storage & Sync</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Auto-save</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Automatically save your work every few seconds</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Automatically save your work every few seconds</p>
                   </div>
                   <Switch 
                     checked={settings.autoSave} 
@@ -312,7 +312,7 @@ export function SettingsModule() {
                 <div className="flex items-center justify-between">
                   <div>
                     <Label>Offline mode</Label>
-                    <p className="text-sm text-[var(--text-secondary)]">Enable working without an internet connection</p>
+                    <p className="text-sm text-[color:var(--text-secondary)]">Enable working without an internet connection</p>
                   </div>
                   <Switch 
                     checked={settings.offlineMode} 
@@ -325,18 +325,18 @@ export function SettingsModule() {
             <Separator />
             
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Storage Usage</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Storage Usage</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">Notes</span>
+                  <span className="text-[color:var(--text-secondary)]">Notes</span>
                   <span className="font-medium">2.4 MB</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">Attachments</span>
+                  <span className="text-[color:var(--text-secondary)]">Attachments</span>
                   <span className="font-medium">15.7 MB</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[var(--text-secondary)]">Canvas drawings</span>
+                  <span className="text-[color:var(--text-secondary)]">Canvas drawings</span>
                   <span className="font-medium">8.2 MB</span>
                 </div>
                 <Separator />
@@ -353,19 +353,19 @@ export function SettingsModule() {
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Resources</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Resources</h3>
               <div className="space-y-3">
                 <a href="#" className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)] hover:bg-[var(--primary-tint-10)]/30 transition-colors">
-                  <span className="text-[var(--text-primary)]">Documentation</span>
-                  <ChevronRight size={16} className="text-[var(--text-secondary)]" />
+                  <span className="text-[color:var(--text-primary)]">Documentation</span>
+                  <ChevronRight size={16} className="text-[color:var(--text-secondary)]" />
                 </a>
                 <a href="#" className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)] hover:bg-[var(--primary-tint-10)]/30 transition-colors">
-                  <span className="text-[var(--text-primary)]">Keyboard shortcuts</span>
-                  <ChevronRight size={16} className="text-[var(--text-secondary)]" />
+                  <span className="text-[color:var(--text-primary)]">Keyboard shortcuts</span>
+                  <ChevronRight size={16} className="text-[color:var(--text-secondary)]" />
                 </a>
                 <a href="#" className="flex items-center justify-between p-3 rounded-lg border border-[var(--border-default)] hover:bg-[var(--primary-tint-10)]/30 transition-colors">
-                  <span className="text-[var(--text-primary)]">Release notes</span>
-                  <ChevronRight size={16} className="text-[var(--text-secondary)]" />
+                  <span className="text-[color:var(--text-primary)]">Release notes</span>
+                  <ChevronRight size={16} className="text-[color:var(--text-secondary)]" />
                 </a>
               </div>
             </div>
@@ -373,7 +373,7 @@ export function SettingsModule() {
             <Separator />
             
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Support</h3>
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">Support</h3>
               <div className="space-y-3">
                 <Button variant="outline" className="w-full justify-start">
                   Contact Support
@@ -390,8 +390,8 @@ export function SettingsModule() {
             <Separator />
             
             <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">About</h3>
-              <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+              <h3 className="text-lg font-semibold text-[color:var(--text-primary)] mb-4">About</h3>
+              <div className="space-y-2 text-sm text-[color:var(--text-secondary)]">
                 <p>LibreOllama v1.0.0</p>
                 <p>Built with React and Tailwind CSS</p>
                 <p>© 2024 LibreOllama Team</p>
@@ -410,7 +410,7 @@ export function SettingsModule() {
       {/* Settings Navigation */}
       <div className="w-80 bg-[var(--elevated)] border-r border-[var(--border-subtle)] flex flex-col">
         <div className="p-6 border-b border-[var(--border-subtle)]">
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">Settings</h1>
+          <h1 className="text-2xl font-semibold text-[color:var(--text-primary)]">Settings</h1>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4">
@@ -423,8 +423,8 @@ export function SettingsModule() {
                   onClick={() => setActiveSection(section.id)}
                   className={`w-full text-left p-4 rounded-lg transition-colors ${
                     activeSection === section.id
-                      ? 'bg-[var(--primary-tint-10)] text-[var(--primary)]'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--primary-tint-10)]/30 hover:text-[var(--text-primary)]'
+                      ? 'bg-[var(--primary-tint-10)] text-[color:var(--primary)]'
+                      : 'text-[color:var(--text-secondary)] hover:bg-[var(--primary-tint-10)]/30 hover:text-[color:var(--text-primary)]'
                   }`}
                 >
                   <div className="flex items-start gap-3">

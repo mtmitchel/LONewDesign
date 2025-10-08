@@ -2,6 +2,18 @@ import { useState } from 'react';
 import { SearchFilters, EmailChip } from './types';
 import { createChip } from './utils';
 
+const DEFAULT_SEARCH_FILTERS: SearchFilters = {
+  from: '',
+  to: '',
+  subject: '',
+  hasWords: '',
+  doesntHave: '',
+  size: 'any',
+  hasAttachment: false,
+  dateRange: 'any',
+  folder: 'all'
+};
+
 export function useMailState() {
   const [selectedFolder, setSelectedFolder] = useState('inbox');
   const [selectedEmail, setSelectedEmail] = useState<number | null>(null);
@@ -13,17 +25,7 @@ export function useMailState() {
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   
   // Advanced search filters
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-    from: '',
-    to: '',
-    subject: '',
-    hasWords: '',
-    doesntHave: '',
-    size: 'any',
-    hasAttachment: false,
-    dateRange: 'any',
-    folder: 'all'
-  });
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({ ...DEFAULT_SEARCH_FILTERS });
 
   // Compose modal state - for legacy compose modal
   const [recipientFieldExpanded, setRecipientFieldExpanded] = useState(false);
@@ -64,14 +66,7 @@ export function useMailState() {
   };
 
   const clearFilters = () => {
-    setSearchFilters({
-      from: '',
-      to: '',
-      subject: '',
-      hasAttachment: false,
-      dateRange: 'any',
-      folder: 'any'
-    });
+    setSearchFilters({ ...DEFAULT_SEARCH_FILTERS });
   };
 
   const applyFilters = () => {

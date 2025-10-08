@@ -161,7 +161,7 @@ export function MailCenterPane({
           ))}
 
           {emails.length === 0 && (
-            <div className="p-[var(--space-8)] text-center text-[var(--text-secondary)]">
+            <div className="p-[var(--space-8)] text-center text-[color:var(--text-secondary)]">
               {searchQuery ? 'No emails found matching your search.' : 'No emails in this folder.'}
             </div>
           )}

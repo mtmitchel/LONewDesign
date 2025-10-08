@@ -47,7 +47,7 @@ export function CalendarHeader({ view, date, onViewChange, onNavigate, onToday, 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-6)] py-[var(--space-4)]">
       <div className="flex items-center gap-[var(--space-3)]">
-        <CalendarIcon className="text-[var(--text-primary)]" size={20} aria-hidden="true" />
+  <CalendarIcon className="text-[color:var(--text-primary)]" size={20} aria-hidden="true" />
   <h1 className="text-[length:var(--text-2xl)] font-[var(--font-weight-semibold)] text-[color:var(--text-primary)]">Calendar</h1>
       </div>
 

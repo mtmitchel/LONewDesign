@@ -95,7 +95,7 @@ export default function ComposeModal({
         {/* Header */}
         <div className="h-12 px-[var(--space-4)] pt-[var(--space-3)] pb-[var(--space-2)] border-b border-[var(--border-subtle)]
                         bg-[var(--bg-surface-elevated)] flex items-center justify-between">
-          <h2 id="compose-title" className="text-sm font-medium text-[var(--text-secondary)] truncate">
+          <h2 id="compose-title" className="text-sm font-medium text-[color:var(--text-secondary)] truncate">
             {subject.trim() ? subject : "New message"}
           </h2>
           <div className="flex items-center gap-1">
@@ -109,21 +109,21 @@ export default function ComposeModal({
         <div className="flex-1 px-[var(--space-4)] py-[var(--space-3)] space-y-[var(--field-gap-y)]">
           {/* Recipients row (simple input stub; wire to chips/autocomplete) */}
           <div className="flex items-start gap-3">
-            <div className="text-[var(--text-tertiary)] pt-2 text-sm w-20 shrink-0">Recipients</div>
+            <div className="text-[color:var(--text-tertiary)] pt-2 text-sm w-20 shrink-0">Recipients</div>
             <div className="flex-1 min-w-0">
               {/* Replace with your ChipInput */}
               <input className="w-full bg-transparent border-b border-[var(--border-subtle)] focus:outline-none py-2"
                      placeholder="Add recipients" />
               <div className="mt-1 flex items-center gap-3 text-xs">
-                <button onClick={() => setShowCc(s => !s)} className="text-[var(--text-secondary)] hover:underline">Cc</button>
-                <button onClick={() => setShowBcc(s => !s)} className="text-[var(--text-secondary)] hover:underline">Bcc</button>
+                <button onClick={() => setShowCc(s => !s)} className="text-[color:var(--text-secondary)] hover:underline">Cc</button>
+                <button onClick={() => setShowBcc(s => !s)} className="text-[color:var(--text-secondary)] hover:underline">Bcc</button>
               </div>
             </div>
           </div>
 
           {/* Subject */}
           <div className="flex items-start gap-3">
-            <div className="text-[var(--text-tertiary)] pt-2 text-sm w-20 shrink-0">Subject</div>
+            <div className="text-[color:var(--text-tertiary)] pt-2 text-sm w-20 shrink-0">Subject</div>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}

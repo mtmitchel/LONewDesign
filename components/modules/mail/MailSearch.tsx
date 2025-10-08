@@ -33,24 +33,24 @@ export function MailSearch({
     onAdvancedSearchToggle(false);
   };
 
-  const fieldClass = 'h-10 px-[var(--space-3)] text-[var(--text-base)] border-[var(--border-default)] rounded-[var(--radius-sm)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary-tint-10)] focus-visible:ring-offset-0 focus-visible:outline-none transition-colors duration-[var(--duration-fast)]';
-  const selectTriggerClass = `${fieldClass} [&_svg]:text-[var(--text-secondary)] hover:[&_svg]:text-[var(--primary)] motion-safe:transition-colors duration-[var(--duration-fast)]`;
+  const fieldClass = 'h-10 px-[var(--space-3)] text-[length:var(--text-base)] border-[var(--border-default)] rounded-[var(--radius-sm)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary-tint-10)] focus-visible:ring-offset-0 focus-visible:outline-none transition-colors duration-[var(--duration-fast)]';
+  const selectTriggerClass = `${fieldClass} [&_svg]:text-[color:var(--text-secondary)] hover:[&_svg]:text-[color:var(--primary)] motion-safe:transition-colors duration-[var(--duration-fast)]`;
 
   return (
     <Popover open={showAdvancedSearch} onOpenChange={onAdvancedSearchToggle}>
       <PopoverAnchor asChild>
         <div className="relative w-[320px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-tertiary)]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-tertiary)]" />
           <input
             type="text"
             placeholder="Search mail"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="h-9 w-full pl-9 pr-10 bg-white border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[var(--text-sm)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] motion-safe:transition-colors duration-[var(--duration-fast)]"
+            className="h-9 w-full pl-9 pr-10 bg-white border border-[var(--border-default)] rounded-[var(--radius-sm)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] motion-safe:transition-colors duration-[var(--duration-fast)]"
           />
           <PopoverTrigger asChild>
             <button
-              className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-primary)] hover:text-[var(--primary)] transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[color:var(--text-primary)] hover:text-[color:var(--primary)] transition-colors"
             >
               <SlidersHorizontal className="w-4 h-4" />
             </button>
@@ -67,7 +67,7 @@ export function MailSearch({
           <div className="p-[var(--space-6)]">
             {/* Header */}
             <div className="flex items-center justify-between mb-[var(--space-5)]">
-              <h3 className="text-[var(--text-lg)] font-[var(--font-weight-semibold)] text-[var(--text-primary)]">
+              <h3 className="text-[length:var(--text-lg)] font-[var(--font-weight-semibold)] text-[color:var(--text-primary)]">
                 Advanced search
               </h3>
               <Button
@@ -83,7 +83,7 @@ export function MailSearch({
             {/* Form Fields */}
             <div className="space-y-[var(--space-3)]">
               <div className="flex flex-col gap-[var(--space-2)]">
-                <label className="text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+                <label className="text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
                   From
                 </label>
                 <Input
@@ -95,7 +95,7 @@ export function MailSearch({
               </div>
 
               <div className="flex flex-col gap-[var(--space-2)]">
-                <label className="text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+                <label className="text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
                   To
                 </label>
                 <Input
@@ -107,7 +107,7 @@ export function MailSearch({
               </div>
 
               <div className="flex flex-col gap-[var(--space-2)]">
-                <label className="text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+                <label className="text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
                   Subject
                 </label>
                 <Input
@@ -119,7 +119,7 @@ export function MailSearch({
               </div>
 
               <div className="flex flex-col gap-[var(--space-2)]">
-                <label className="text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+                <label className="text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
                   Has the words
                 </label>
                 <Input
@@ -131,7 +131,7 @@ export function MailSearch({
               </div>
 
               <div className="flex flex-col gap-[var(--space-2)]">
-                <label className="text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+                <label className="text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
                   Date within
                 </label>
                 <Select
@@ -152,7 +152,7 @@ export function MailSearch({
               </div>
 
               <div className="flex flex-col gap-[var(--space-2)]">
-                <label className="text-[var(--text-sm)] font-[var(--font-weight-medium)] text-[var(--text-secondary)]">
+                <label className="text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
                   Search in
                 </label>
                 <Select
@@ -182,7 +182,7 @@ export function MailSearch({
                 />
                 <label
                   htmlFor="hasAttachment"
-                  className="text-[var(--text-sm)] text-[var(--text-primary)] cursor-pointer leading-tight pt-[3px]"
+                  className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] cursor-pointer leading-tight pt-[3px]"
                 >
                   Has attachment
                 </label>
@@ -194,14 +194,14 @@ export function MailSearch({
               <Button
                 variant="ghost"
                 onClick={onClearFilters}
-                className="h-9 px-[var(--space-3)] bg-transparent text-[var(--btn-ghost-text)] hover:bg-[var(--btn-ghost-hover)] hover:text-[var(--text-primary)] border border-[var(--btn-ghost-border)]"
+                className="h-9 px-[var(--space-3)] bg-transparent text-[color:var(--btn-ghost-text)] hover:bg-[var(--btn-ghost-hover)] hover:text-[color:var(--text-primary)] border border-[var(--btn-ghost-border)]"
               >
                 Reset
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => onAdvancedSearchToggle(false)}
-                className="h-9 px-[var(--space-3)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="h-9 px-[var(--space-3)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
               >
                 Cancel
               </Button>

@@ -50,7 +50,7 @@ export function QuickNoteModal({ open, onOpenChange, onCreate, portalContainer }
           aria-label="Title"
         />
         <textarea
-          className="min-h-[140px] resize-y bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] px-[var(--space-4)] py-[var(--field-pad-y)] text-[var(--text-base)] placeholder:text-[var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+          className="min-h-[140px] resize-y bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] px-[var(--space-4)] py-[var(--field-pad-y)] text-[length:var(--text-base)] placeholder:text-[color:var(--text-tertiary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           placeholder="Write a quick note…"
           value={body}
           onChange={(e) => setBody(e.target.value)}

@@ -52,7 +52,7 @@ export function MailRightPane({ onHidePane, className }: MailRightPaneProps) {
         <div className="flex-1 min-h-0 overflow-y-auto p-4">
           <div className="space-y-[var(--space-6)]">
             <div>
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-[var(--space-4)]">
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-[var(--space-4)]">
                 Quick actions
               </h4>
               <div className="grid grid-cols-2 gap-[var(--space-4)]">
@@ -64,9 +64,9 @@ export function MailRightPane({ onHidePane, className }: MailRightPaneProps) {
                   aria-keyshortcuts="KeyT"
                 >
                   <span className="grid size-6 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]">
-                    <CheckSquare className="size-4 text-[var(--primary)] opacity-60" aria-hidden="true" />
+                    <CheckSquare className="size-4 text-[color:var(--primary)] opacity-60" aria-hidden="true" />
                   </span>
-                  <span className="text-[var(--text-base)]">Create task</span>
+                  <span className="text-[length:var(--text-base)]">Create task</span>
                 </Button>
                 
                 <Button 
@@ -77,9 +77,9 @@ export function MailRightPane({ onHidePane, className }: MailRightPaneProps) {
                   aria-keyshortcuts="KeyN"
                 >
                   <span className="grid size-6 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]">
-                    <FilePenLine className="size-4 text-[var(--primary)] opacity-60" aria-hidden="true" />
+                    <FilePenLine className="size-4 text-[color:var(--primary)] opacity-60" aria-hidden="true" />
                   </span>
-                  <span className="text-[var(--text-base)]">Take note</span>
+                  <span className="text-[length:var(--text-base)]">Take note</span>
                 </Button>
                 
                 <Button 
@@ -90,9 +90,9 @@ export function MailRightPane({ onHidePane, className }: MailRightPaneProps) {
                   aria-keyshortcuts="KeyE"
                 >
                   <span className="grid size-6 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]">
-                    <CalendarPlus className="size-4 text-[var(--primary)] opacity-60" aria-hidden="true" />
+                    <CalendarPlus className="size-4 text-[color:var(--primary)] opacity-60" aria-hidden="true" />
                   </span>
-                  <span className="text-[var(--text-base)]">Schedule</span>
+                  <span className="text-[length:var(--text-base)]">Schedule</span>
                 </Button>
                 
                 <Button 
@@ -103,19 +103,19 @@ export function MailRightPane({ onHidePane, className }: MailRightPaneProps) {
                   aria-keyshortcuts="KeyL"
                 >
                   <span className="grid size-6 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]">
-                    <Tag className="size-4 text-[var(--primary)] opacity-60" aria-hidden="true" />
+                    <Tag className="size-4 text-[color:var(--primary)] opacity-60" aria-hidden="true" />
                   </span>
-                  <span className="text-[var(--text-base)]">Add tag</span>
+                  <span className="text-[length:var(--text-base)]">Add tag</span>
                 </Button>
               </div>
             </div>
             
             <div className="text-center py-[var(--space-8)]">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-[var(--text-secondary)] opacity-30" />
-              <h4 className="text-sm font-medium text-[var(--text-primary)] mb-2">
+              <FileText className="w-12 h-12 mx-auto mb-4 text-[color:var(--text-secondary)] opacity-30" />
+              <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-2">
                 No related items
               </h4>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed">
                 Select a message to see related items
               </p>
             </div>
@@ -207,8 +207,8 @@ function PaneTabButton({
       className={cn(
         'relative pb-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
         active
-          ? 'text-[var(--text-primary)]'
-          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+          ? 'text-[color:var(--text-primary)]'
+          : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
       )}
     >
       {label}

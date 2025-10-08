@@ -73,7 +73,7 @@ export function ComposeEnvelope({
 
 
 
-  const fieldLabelClass = "text-sm text-[var(--text-secondary)] font-normal";
+  const fieldLabelClass = "text-sm text-[color:var(--text-secondary)] font-normal";
   const labelWidth = "w-[36px] flex-shrink-0";
 
   if (collapsed) {
@@ -81,7 +81,7 @@ export function ComposeEnvelope({
       <section ref={envelopeRef} className="px-4 py-3 space-y-3" role="group" aria-label="Compose envelope">
         <button
           type="button"
-          className="flex h-9 w-full items-center text-left text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          className="flex h-9 w-full items-center text-left text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
           onClick={() => onCollapsedChange(false)}
         >
           <span className={fieldLabelClass}>Recipients</span>
@@ -94,7 +94,7 @@ export function ComposeEnvelope({
             onChange={(event) => onUpdateSubject(event.target.value)}
             onFocus={() => onCollapsedChange(false)}
             placeholder=""
-            className="flex-1 border-none shadow-none bg-transparent px-0 text-sm focus-visible:ring-0 placeholder:text-[var(--text-tertiary)]"
+            className="flex-1 border-none shadow-none bg-transparent px-0 text-sm focus-visible:ring-0 placeholder:text-[color:var(--text-tertiary)]"
           />
         </div>
         
@@ -110,7 +110,7 @@ export function ComposeEnvelope({
         <span className={`${fieldLabelClass} ${labelWidth}`}>From</span>
         <Button
           variant="ghost"
-          className="flex-1 justify-start px-0 h-auto py-1 text-sm font-normal text-[var(--text-primary)] hover:bg-transparent"
+          className="flex-1 justify-start px-0 h-auto py-1 text-sm font-normal text-[color:var(--text-primary)] hover:bg-transparent"
           onClick={() => console.log('From dropdown')}
         >
           User Name &lt;user@domain.com&gt;
@@ -137,14 +137,14 @@ export function ComposeEnvelope({
           <div className="flex items-center gap-2 ml-auto">
             <button
               type="button"
-              className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              className="text-sm text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
               onClick={() => onShowCcBcc('cc')}
             >
               Cc
             </button>
             <button
               type="button"
-              className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              className="text-sm text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
               onClick={() => onShowCcBcc('bcc')}
             >
               Bcc
@@ -172,7 +172,7 @@ export function ComposeEnvelope({
           {!showBcc && (
             <button
               type="button"
-              className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] ml-auto"
+              className="text-sm text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] ml-auto"
               onClick={() => onShowCcBcc('bcc')}
             >
               Bcc
@@ -206,7 +206,7 @@ export function ComposeEnvelope({
           onChange={(event) => onUpdateSubject(event.target.value)}
           onKeyDown={handleSubjectKeyDown}
           placeholder=""
-          className="flex-1 border-none shadow-none bg-transparent px-0 text-sm focus-visible:ring-0 placeholder:text-[var(--text-tertiary)]"
+          className="flex-1 border-none shadow-none bg-transparent px-0 text-sm focus-visible:ring-0 placeholder:text-[color:var(--text-tertiary)]"
         />
       </div>
       

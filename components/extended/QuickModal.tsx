@@ -50,11 +50,11 @@ export function QuickModal({
           role="dialog"
         >
           <DialogHeader className="px-[var(--modal-inner-x)] pt-[var(--modal-inner-y)] pb-0">
-            <DialogTitle className="text-[var(--text-xl)] text-[var(--text-primary)]">
+            <DialogTitle className="text-[length:var(--text-xl)] text-[color:var(--text-primary)]">
               {title}
             </DialogTitle>
             {description ? (
-              <DialogDescription className="text-[var(--text-sm)] text-[var(--text-secondary)] mt-1">
+              <DialogDescription className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] mt-1">
                 {description}
               </DialogDescription>
             ) : null}

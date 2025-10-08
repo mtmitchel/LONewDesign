@@ -21,7 +21,7 @@ export function BulkActionsBar({
 
   return (
     <div className="flex items-center gap-[var(--space-3)] p-[var(--space-4)] bg-[var(--primary-tint-5)] border-b border-[var(--border-default)]">
-      <span className="text-sm text-[var(--text-primary)]">
+  <span className="text-sm text-[color:var(--text-primary)]">
         {selectedCount} selected
       </span>
       <Button variant="ghost" size="sm" onClick={onArchive}>
@@ -31,7 +31,7 @@ export function BulkActionsBar({
       <Button 
         variant="ghost" 
         size="sm" 
-        className="text-[var(--accent-coral)] hover:text-[var(--accent-coral-hover)] hover:bg-[var(--accent-coral-tint-10)]"
+        className="text-[color:var(--accent-coral)] hover:text-[color:var(--accent-coral-hover)] hover:bg-[var(--accent-coral-tint-10)]"
         onClick={onDelete}
       >
         <Trash className="w-4 h-4" />
