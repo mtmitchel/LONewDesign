@@ -32,8 +32,8 @@
   --easing-emphasized: cubic-bezier(0.2, 0.9, 0.1, 1);
   --on-primary: var(--primary-foreground);
   /* Elevation tokens for LibreOllama */
-  --elevation-sm: 0 1px 2px rgba(0,0,0,0.06);
-  --elevation-lg: 0 10px 30px rgba(0,0,0,0.12);
+  --elevation-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --elevation-lg: 0 8px 24px rgb(0 0 0 / 0.10);
   --elevation-xl: 0 24px 60px rgba(0,0,0,0.18);
   /* Subtle border token maps to existing system default if not provided */
   --border-subtle: var(--border-default);
@@ -69,6 +69,7 @@
   --focus-ring: var(--primary);       /* focus ring color - calm */
   --time-field-gap: var(--space-2);   /* gap between time text and icon */
   --time-field-width: 144px;          /* prevents wrap with '9:00 AM' */
+  --field-max-w: 640px;               /* comfortable max field width */
   
   /* Icons */
   --icon-size-md: 20px;               /* up from 18 -> clearer */
@@ -106,6 +107,7 @@
   --modal-inner-x: var(--space-6);  /* 24 */
 
   /* Settings design tokens */
+  --settings-nav-w: 280px;
   --settings-surface-bg: var(--bg-surface);
   --settings-surface-border: var(--border-subtle);
   --settings-surface-radius: var(--radius-lg);
@@ -731,9 +733,10 @@
   --space-8: 32px;  /* XXXL - Major layout spacing */
   
   /* Border Radius - Complete Scale */
-  --radius-sm: 6px;    /* Small - Buttons, small elements */
-  --radius-md: 8px;    /* Medium - Cards, panels */
-  --radius-lg: 12px;   /* Large - Modals, major containers */
+  --radius-sm: 8px;    /* Small - Buttons, small elements */
+  --radius-md: 12px;   /* Medium - Cards, panels */
+  --radius-lg: 16px;   /* Large - Modals, major containers */
+  --radius-card: var(--radius-lg);
   --radius-pill: 9999px; /* Pills, badges */
   
   /* Typography Scale - Complete Font Sizes */

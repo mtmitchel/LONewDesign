@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Settings module token-driven overhaul (2025-10-08)
+- Rebuilt Settings with comprehensive two-column desktop layout featuring sticky scroll-spy navigation and responsive mobile tabs + accordion.
+- Added complete sections for agents/models (Ollama server, local models, model defaults), AI writing assistant (provider/model selection, style/behavior controls), cloud providers (API key management with test/save actions), and Google account management.
+- Implemented fallback provider configuration in model defaults with primary/fallback provider selection supporting both cloud and local Ollama models.
+- Enhanced design tokens in `globals.css` with updated elevation/radius values, added `--settings-nav-w`, `--field-max-w`, and `--radius-card` tokens for consistent Settings UI styling.
+- Added analytics event stubs for future telemetry integration and placeholder backend actions for provider testing, model management, and account connections.
+
 ### Left pane selection styling unification (2025-10-08)
 - Standardized active row highlighting across chat, mail, and notes modules with consistent blue accent treatment.
 - Applied solid primary background (`var(--primary)`) with white text for selected items, replacing mixed transparency approaches.
