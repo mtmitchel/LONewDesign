@@ -8,6 +8,15 @@ export type Conversation = {
   participants?: string[];
 };
 
+export type ChatMessage = {
+  id: string;
+  conversationId: string;
+  author: 'user' | 'assistant' | 'system';
+  text: string;
+  timestamp: string; // ISO string
+  pending?: boolean;
+};
+
 export type ConversationAction =
   | 'pin'
   | 'unpin'

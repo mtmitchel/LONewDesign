@@ -108,13 +108,13 @@ Converting LibreOllama UI from web to desktop application using Tauri + React, w
 | Dashboard Settings | 📋 | Medium | Layout customization |
 | Charts Integration | 📋 | Medium | Recharts implementation |
 
-#### Chat Module 📋 PLANNED
+#### Chat Module � IN PROGRESS
 | Component | Status | Priority | Notes |
 |-----------|--------|----------|-------|
-| Chat Interface | 📋 | High | Message display |
-| Message Composer | 📋 | High | Rich text input |
+| Chat Interface | � | High | Conversation rail tokenized, timestamps above bubbles, icon affordances for copy/regenerate/edit with hover treatment for user messages. |
+| Message Composer | � | High | Auto-grow up to 8 lines, reserved scroll padding, attachment shortcut, keyboard shortcut tooltip, and send-state styling. |
 | Contact Management | 📋 | Medium | User list & search |
-| File Sharing | 📋 | Low | Attachment support |
+| File Sharing | 📋 | Low | Drop handler scaffolded; full upload flow pending |
 
 #### Notes Module 🚧 IN PROGRESS
 | Component | Status | Priority | Notes |

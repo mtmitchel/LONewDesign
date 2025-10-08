@@ -1,7 +1,7 @@
 # LibreOllama Design Tokens Reference
 
 > This is a markdown reference copy of `styles/globals.css` for easy sharing and documentation purposes.
-> **Last Updated:** October 7, 2025 - Added task density system, chip tokens, segmented control tokens, and list view density tokens.
+> **Last Updated:** October 8, 2025 - Added chat rail, bubble, and composer tokens plus guidance for Tailwind helper namespacing.
 
 ## Import & Base Setup
 
@@ -373,6 +373,16 @@ These tokens switch based on `.density-compact` class:
 | `--list-row-font--compact` | `0.875rem` / `14px` | Task name font (smallest) |
 | `--list-row-meta--compact` | `0.8125rem` / `13px` | Metadata font |
 | `--list-row-min-h--compact` | `36px` | Minimum row height (tightest) |
+
+### Chat Module Tokens
+| Token | Value | Description |
+|-------|-------|-------------|
+| `--chat-rail-w` | `2px` | Width of the active conversation rail in the list view |
+| `--chat-row-gap` | `var(--space-3)` | Baseline gap between primary and secondary content in chat list rows |
+| `--chat-bubble-max-w` | `72ch` | Maximum readable width for chat message bubbles |
+| `--chat-bubble-gap-y` | `var(--space-2)` | Vertical rhythm between stacked bubbles from the same author |
+| `--chat-composer-max-rows` | `8` | Maximum rows the chat composer grows before scrolling |
+| `--chat-empty-bg` | `var(--bg-surface-elevated)` | Background color for chat empty states |
 
 #### Active List Row Tokens (Dynamic)
 | Token | Default | Usage |

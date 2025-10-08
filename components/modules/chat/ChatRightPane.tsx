@@ -17,6 +17,7 @@ interface ChatRightPaneProps {
   className?: string;
   mode?: 'inline' | 'overlay';
   selectedModel?: string;
+  selectedModelLabel?: string;
   conversation?: Conversation | null;
 }
 
@@ -34,6 +35,7 @@ export function ChatRightPane({
   className,
   mode = 'inline',
   selectedModel = 'gpt-4',
+  selectedModelLabel,
   conversation = null,
 }: ChatRightPaneProps) {
   const [activeTab, setActiveTab] = React.useState<'context' | 'settings'>('context');
@@ -58,6 +60,8 @@ export function ChatRightPane({
   const relatedItems = React.useMemo<RelatedItem[]>(() => {
     if (!conversation) return [];
     const others = (conversation.participants ?? []).filter(name => name.toLowerCase() !== 'you');
+    const participantCount = conversation.participants?.length ?? 1;
+    const participantLabel = `${participantCount} participant${participantCount === 1 ? '' : 's'}`;
     return [
       {
         id: `${conversation.id}-summary`,
@@ -80,7 +84,7 @@ export function ChatRightPane({
       {
         id: `${conversation.id}-labels`,
         label: 'Conversation tags',
-        description: `${conversation.participants?.length ?? 1} participants`,
+        description: participantLabel,
         icon: Tag,
       },
     ];
@@ -222,11 +226,11 @@ export function ChatRightPane({
           <div className="space-y-[var(--space-6)]">
             <div>
               <h4 className="text-sm font-medium text-[color:var(--text-primary)] mb-[var(--space-4)]">
-                Settings for model
+                Model settings
               </h4>
               <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] p-[var(--space-3)]">
                 <div className="text-sm text-[color:var(--text-primary)] font-medium">
-                  {selectedModel}
+                  {selectedModelLabel ?? selectedModel}
                 </div>
               </div>
             </div>
@@ -277,8 +281,7 @@ export function ChatRightPane({
 
                 <div className="space-y-[var(--space-2)]">
                   <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-[color:var(--text-primary)]">Max response</label>
-                    <span className="text-sm text-[color:var(--text-primary)]">tokens</span>
+                    <label className="text-sm font-medium text-[color:var(--text-primary)]">Max response — tokens</label>
                   </div>
                   <input
                     type="number"
@@ -393,9 +396,10 @@ function PaneTabButton({
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute left-0 right-0 -bottom-1 h-0.5 rounded-full transition-opacity',
+          'pointer-events-none absolute left-0 right-0 -bottom-1 rounded-full transition-opacity duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
           active ? 'bg-[var(--primary)] opacity-100' : 'bg-transparent opacity-0'
         )}
+        style={{ height: 'var(--border-strong)' }}
       />
     </button>
   );

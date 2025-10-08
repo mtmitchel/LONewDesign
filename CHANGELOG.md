@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Chat tri-pane polish (2025-10-08)
+- Tokenized the conversation rail width and pared conversation rows back to titles only so the left pane stays calm while still honoring pinned and unread states.
+- Rebuilt the chat center pane with timestamp-above bubbles, icon-only copy/regenerate/edit affordances, and hover-only actions for user messages.
+- Extended the composer with auto-grow behavior, reserved bottom padding, attachment drop support, and updated keyboard shortcuts/tooltips for a smoother send flow.
+- Introduced tooltip-backed model selection in the header, aria-live announcements, and scoped keyboard shortcuts (`Cmd/Ctrl+K`, `N`, `[`, `]`, `\`) across the chat tri-pane.
+
 ### Token namespace cleanup (2025-10-08)
 - Namespaced every remaining `text-[var(--…)]` usage under `text-[color:…]` / `text-[length:…]` across dashboard widgets, the Mail tri-pane, Notes surfaces, and Tasks flows so arbitrary Tailwind values align with the design-token lint rules.
 - Updated shared primitives (`badge`, `button`, `card`, `toggle-group`, `checkbox`) plus `SendButton.tsx` to consume the new convention and avoid duplicate-property warnings in toolchains.

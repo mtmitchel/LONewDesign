@@ -37,6 +37,7 @@
   --elevation-xl: 0 24px 60px rgba(0,0,0,0.18);
   /* Subtle border token maps to existing system default if not provided */
   --border-subtle: var(--border-default);
+  --border-strong: 2px;
   --border-hairline: rgba(0,0,0,0.06);
   --hover-bg: var(--bg-surface-elevated);
 
@@ -369,6 +370,14 @@
   --list-row-meta:  var(--list-row-meta--comfortable);
   --list-row-min-h: var(--list-row-min-h--comfortable);
   --list-row-gap: var(--space-3);     /* 12px column gap */
+
+  /* Chat module tokens */
+  --chat-rail-w: 2px;
+  --chat-row-gap: var(--space-3);
+  --chat-bubble-max-w: 72ch;
+  --chat-bubble-gap-y: var(--space-2);
+  --chat-composer-max-rows: 8;
+  --chat-empty-bg: var(--bg-surface-elevated);
 
   /* Priority neutral dot (no container, just indicator) */
   --priority-dot-size: 10px;

@@ -8,9 +8,10 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '../../ui/context-menu';
-import { FileText, FileType, Pencil, Pin, PinOff, Trash2, Braces } from 'lucide-react';
+import { FileText, FileType, Pencil, Pin, PinOff, Trash2, Braces, Search } from 'lucide-react';
 import { cn } from '../../ui/utils';
 import type { Conversation, ConversationAction } from './types';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 
 interface ChatLeftPaneProps {
   conversations?: Conversation[];
@@ -19,20 +20,30 @@ interface ChatLeftPaneProps {
   onHidePane?: () => void;
   className?: string;
   onConversationAction?: (id: string, action: ConversationAction) => void;
+  isLoading?: boolean;
 }
 
-export function ChatLeftPane({
-  conversations = [],
-  activeId,
-  onSelect,
-  onHidePane,
-  className,
-  onConversationAction,
-}: ChatLeftPaneProps) {
+export type ChatLeftPaneHandle = {
+  focusSearch: () => void;
+};
+
+export const ChatLeftPane = React.forwardRef<ChatLeftPaneHandle, ChatLeftPaneProps>(function ChatLeftPane(
+  {
+    conversations = [],
+    activeId,
+    onSelect,
+    onHidePane,
+    className,
+    onConversationAction,
+    isLoading = false,
+  },
+  ref
+) {
   const [query, setQuery] = React.useState('');
   const [activeIndex, setActiveIndex] = React.useState(0);
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const itemRefs = React.useRef<Array<HTMLDivElement | null>>([]);
+  const searchRef = React.useRef<HTMLInputElement | null>(null);
 
   const filtered = React.useMemo(() => {
     const q = query.toLowerCase();
@@ -92,15 +103,39 @@ export function ChatLeftPane({
     [onConversationAction]
   );
 
+  React.useImperativeHandle(ref, () => ({
+    focusSearch: () => {
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    },
+  }));
+
+  const renderSkeleton = () => (
+    <div className="space-y-[var(--space-2)] px-[var(--space-4)] py-[var(--space-3)]">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={`chat-skeleton-${index}`}
+          className="rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)]/80 animate-pulse"
+        >
+          <div className="h-[var(--list-row-min-h)]" />
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className={cn('flex h-full flex-col bg-[var(--bg-surface)]', className)}>
       <div className="px-[var(--space-4)] pt-[var(--space-3)] pb-[var(--space-2)]">
-        <Input
-          value={query}
-          onChange={event => setQuery(event.target.value)}
-          placeholder="Search conversations"
-          className="h-[var(--field-height)] bg-[var(--bg-surface)] border border-[var(--border-default)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary-tint-10)]"
-        />
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-[var(--space-3)] top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--text-tertiary)]" />
+          <Input
+            ref={searchRef}
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            placeholder="Search conversations"
+            className="h-[var(--field-height)] bg-[var(--bg-surface)] border border-[var(--border-default)] pl-10 placeholder:text-[color:var(--text-tertiary)] focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary-tint-10)]"
+          />
+        </div>
       </div>
       <div
         ref={listRef}
@@ -110,6 +145,7 @@ export function ChatLeftPane({
         className="flex-1 overflow-y-auto"
         onKeyDown={handleKeyDown}
       >
+        {isLoading ? renderSkeleton() : null}
         {filtered.map((conversation, index) => {
           const isActive = conversation.id === activeId;
           const isFocused = index === activeIndex;
@@ -133,26 +169,46 @@ export function ChatLeftPane({
                   }}
                   onContextMenu={() => focusRow(index)}
                   className={cn(
-                    'min-h-[var(--list-row-min-h)] px-[var(--list-row-pad-x)] py-[var(--list-row-pad-y)]',
-                    'border-b border-[var(--border-subtle)] cursor-pointer motion-safe:transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
+                    'group relative grid min-h-[var(--list-row-min-h)] grid-cols-[var(--chat-rail-w)_1fr] items-start px-[var(--list-row-pad-x)] py-[var(--list-row-pad-y)]',
+                    'cursor-pointer motion-safe:transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
                     isActive
                       ? 'bg-[color-mix(in_oklab,var(--primary-tint-5) 55%, transparent)] text-[color:var(--text-primary)]'
                       : 'bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)]'
                   )}
                 >
-                  <div className="flex items-center justify-between gap-[var(--space-2)]">
-                    <div className="font-medium text-[color:var(--text-primary)] truncate">{conversation.title}</div>
-                    {conversation.unread && (
-                      <span
-                        aria-hidden="true"
-                        className="inline-flex shrink-0 rounded-full bg-[var(--primary-tint-5)]"
-                        style={{ width: 'var(--space-2)', height: 'var(--space-2)' }}
-                      />
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'block h-full w-full rounded-l-[var(--radius-md)] transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)]',
+                      isActive ? 'bg-[var(--primary)]' : 'bg-transparent'
                     )}
-                  </div>
-                  <div className="mt-[var(--space-1)] text-sm text-[color:var(--text-tertiary)] truncate">
-                    {conversation.lastMessageSnippet}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center justify-between gap-[var(--space-2)]">
+                      <div className="flex min-w-0 items-center gap-[var(--space-2)]">
+                        <div className="truncate text-[length:var(--list-row-font)] font-medium text-[color:var(--text-primary)]">
+                          {conversation.title}
+                        </div>
+                        {conversation.pinned ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center text-[color:var(--text-tertiary)]">
+                                <Pin className="h-3.5 w-3.5" aria-hidden="true" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">Pinned</TooltipContent>
+                          </Tooltip>
+                        ) : null}
+                      </div>
+                      {!isActive && conversation.unread ? (
+                        <span
+                          aria-hidden="true"
+                          className="mt-[var(--space-1)] inline-flex shrink-0 rounded-full bg-[var(--primary-tint-5)] opacity-60"
+                          style={{ width: 'var(--space-2)', height: 'var(--space-2)' }}
+                        />
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </ContextMenuTrigger>
@@ -212,4 +268,4 @@ export function ChatLeftPane({
       )}
     </div>
   );
-}
+});

@@ -3,10 +3,24 @@ import React from "react";
 import { TriPane } from "../TriPane";
 import { PaneHeader } from "../layout/PaneHeader";
 import { PaneCaret } from "../dev/PaneCaret";
-import { ChatLeftPane } from "./chat/ChatLeftPane";
+import { ChatLeftPane, ChatLeftPaneHandle } from "./chat/ChatLeftPane";
 import { ChatRightPane } from "./chat/ChatRightPane";
 import { ChatCenterPane } from "./chat/ChatCenterPane";
-import type { Conversation, ConversationAction } from "./chat/types";
+import type { ChatMessage, Conversation, ConversationAction } from "./chat/types";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+
+const MODEL_OPTIONS = [
+  { value: "gpt-4", label: "GPT-4" },
+  { value: "gpt-3.5", label: "GPT-3.5" },
+  { value: "claude", label: "Claude" },
+];
 
 const CENTER_MIN_VAR = '--tripane-center-min';
 
@@ -43,6 +57,7 @@ export function ChatModuleTriPane() {
   const [isOverlayRight, setIsOverlayRight] = React.useState(false);
   const overlayPanelRef = React.useRef<HTMLDivElement | null>(null);
   const lastFocusRef = React.useRef<Element | null>(null);
+  const leftPaneRef = React.useRef<ChatLeftPaneHandle | null>(null);
 
   // Responsive guard: enforce minimum center width by hiding panes (right first, then left)
   React.useEffect(() => {
@@ -76,42 +91,51 @@ export function ChatModuleTriPane() {
     return () => window.removeEventListener('resize', handleResize);
   }, [collapsedRail, isOverlayRight, leftPaneVisible, rightPaneVisible]);
 
-  // Keyboard shortcuts (scoped to Chat viewport)
-  React.useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey) return;
-      if (!containerRef.current?.contains(document.activeElement)) return;
-      
-      if (e.key === "[")  { 
-        e.preventDefault(); 
-        setLeftPaneVisible(false); 
-        console.debug('chat:pane:left:toggle', { visible: false, source: 'keyboard' });
-      }
-      if (e.key === "]")  { 
-        e.preventDefault(); 
-        setLeftPaneVisible(true); 
-        console.debug('chat:pane:left:toggle', { visible: true, source: 'keyboard' });
-      }
-      if (e.key === "\\") { 
-        e.preventDefault(); 
-        setRightPaneVisible(v => {
-          const newState = !v;
-          console.debug('chat:pane:right:toggle', { visible: newState, source: 'keyboard' });
-          return newState;
-        }); 
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
 // Sample handlers passed to panes
   const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null);
   const [selectedModel, setSelectedModel] = React.useState<string>('gpt-4');
+  const selectedModelLabel = React.useMemo(() => {
+    const match = MODEL_OPTIONS.find(option => option.value === selectedModel);
+    return match ? match.label : selectedModel;
+  }, [selectedModel]);
+  const modelAnnouncement = React.useMemo(
+    () => `Model set to ${selectedModelLabel}`,
+    [selectedModelLabel]
+  );
   const [conversations, setConversations] = React.useState<Conversation[]>([
     { id: 'c1', title: 'Design sync', lastMessageSnippet: 'Let\'s review the new mocks', updatedAt: '2025-01-15T10:30:00Z', unread: true, participants: ['You','Alex'] },
     { id: 'c2', title: 'Changelog', lastMessageSnippet: 'Published 0.9.3', updatedAt: '2025-01-14T08:12:00Z', participants: ['You'] },
     { id: 'c3', title: 'Support chat', lastMessageSnippet: 'Issue resolved ✅', updatedAt: '2025-01-13T13:45:00Z', participants: ['You','Sam'] },
+  ]);
+  const [messages, setMessages] = React.useState<ChatMessage[]>([
+    {
+      id: 'm1',
+      conversationId: 'c1',
+      author: 'assistant',
+      text: 'Sharing the latest component guidelines for review.',
+      timestamp: '2025-01-15T09:38:00Z',
+    },
+    {
+      id: 'm2',
+      conversationId: 'c1',
+      author: 'user',
+      text: 'Thanks! I will add my comments shortly.',
+      timestamp: '2025-01-15T09:39:00Z',
+    },
+    {
+      id: 'm3',
+      conversationId: 'c2',
+      author: 'assistant',
+      text: 'Here is the summary for release 0.9.3.',
+      timestamp: '2025-01-14T08:14:00Z',
+    },
+    {
+      id: 'm4',
+      conversationId: 'c3',
+      author: 'user',
+      text: 'Customer reported the sync bug resolved after patch.',
+      timestamp: '2025-01-13T13:40:00Z',
+    },
   ]);
 
   const activeConversation = React.useMemo(
@@ -125,13 +149,60 @@ export function ChatModuleTriPane() {
   };
 
   const onSend = (text: string) => {
-    console.debug('chat:message:send', { length: text.length });
+    if (!activeConversationId) return;
+    const now = new Date().toISOString();
+    const id = `m-${Date.now()}`;
+    const message: ChatMessage = {
+      id,
+      conversationId: activeConversationId,
+      author: 'user',
+      text,
+      timestamp: now,
+    };
+    setMessages(prev => [...prev, message]);
+
+    setConversations(prev =>
+      prev.map(conversation =>
+        conversation.id === activeConversationId
+          ? {
+              ...conversation,
+              lastMessageSnippet: text,
+              updatedAt: now,
+              unread: false,
+            }
+          : conversation
+      )
+    );
+
+    console.debug('chat:message:send', { conversation: activeConversationId, length: text.length });
   };
 
-  const onModelChange = (model: string) => {
+  const onAttachFiles = (files: FileList) => {
+    console.debug('chat:attachments', { count: files.length });
+  };
+
+  const onStartNewConversation = React.useCallback(() => {
+    const id = `c-${Date.now()}`;
+    const createdAt = new Date().toISOString();
+    setConversations(prev => [
+      {
+        id,
+        title: 'Untitled conversation',
+        lastMessageSnippet: 'Draft a prompt to get started…',
+        updatedAt: createdAt,
+        participants: ['You'],
+        unread: false,
+      },
+      ...prev,
+    ]);
+    setActiveConversationId(id);
+    console.debug('chat:conversation:new', { id });
+  }, [setActiveConversationId, setConversations]);
+
+  const onModelChange = React.useCallback((model: string) => {
     setSelectedModel(model);
     console.debug('chat:model:change', { model });
-  };
+  }, [setSelectedModel]);
 
   const onConversationAction = React.useCallback(
     (id: string, action: ConversationAction) => {
@@ -169,6 +240,68 @@ export function ChatModuleTriPane() {
     },
     [conversations, setActiveConversationId, setConversations]
   );
+
+  // Keyboard shortcuts (scoped to Chat viewport)
+  React.useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      const withinChat = containerRef.current?.contains(activeElement ?? null);
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        if (!withinChat) return;
+        event.preventDefault();
+        if (!leftPaneVisible) {
+          setLeftPaneVisible(true);
+        }
+        window.requestAnimationFrame(() => leftPaneRef.current?.focusSearch());
+        return;
+      }
+
+      if (!withinChat) return;
+
+      if (event.metaKey || event.ctrlKey) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName?.toLowerCase();
+      const isTypingField = target?.isContentEditable || tagName === 'input' || tagName === 'textarea';
+
+      if (event.key === '[') {
+        event.preventDefault();
+        setLeftPaneVisible(false);
+        console.debug('chat:pane:left:toggle', { visible: false, source: 'keyboard' });
+        return;
+      }
+
+      if (event.key === ']') {
+        event.preventDefault();
+        setLeftPaneVisible(true);
+        console.debug('chat:pane:left:toggle', { visible: true, source: 'keyboard' });
+        return;
+      }
+
+      if (event.key === '\\') {
+        event.preventDefault();
+        setRightPaneVisible(v => {
+          const newState = !v;
+          console.debug('chat:pane:right:toggle', { visible: newState, source: 'keyboard' });
+          return newState;
+        });
+        return;
+      }
+
+      if (event.key.toLowerCase() === 'n') {
+        if (isTypingField) return;
+        event.preventDefault();
+        onStartNewConversation();
+        console.debug('chat:conversation:new', { via: 'keyboard' });
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [leftPaneVisible, onStartNewConversation, setLeftPaneVisible, setRightPaneVisible]);
 
   // Focus trap for overlay right pane
   React.useEffect(() => {
@@ -212,6 +345,7 @@ export function ChatModuleTriPane() {
         left={
           leftPaneVisible ? (
             <ChatLeftPane 
+              ref={leftPaneRef}
               conversations={conversations} 
               activeId={activeConversationId} 
               onSelect={onOpenConversation}
@@ -235,8 +369,11 @@ export function ChatModuleTriPane() {
               <div className="flex items-center justify-between w-full">
                 <div className="font-medium">Conversations</div>
                 <button
+                  type="button"
                   className="px-[var(--space-2)] py-[var(--space-1)] rounded bg-transparent text-[color:var(--text-primary)] hover:bg-[var(--hover-bg)]"
-                  onClick={() => console.debug('[chat] new conversation')}
+                  onClick={onStartNewConversation}
+                  title="New chat (N)"
+                  aria-keyshortcuts="KeyN"
                 >
                   + New
                 </button>
@@ -244,22 +381,48 @@ export function ChatModuleTriPane() {
             </PaneHeader>
           ) : undefined
         }
-        center={<ChatCenterPane conversationId={activeConversationId} onSend={onSend} />}
+        center={
+          <ChatCenterPane
+            conversationId={activeConversationId}
+            messages={messages}
+            onSend={onSend}
+            onStartNewConversation={onStartNewConversation}
+            onAttachFiles={onAttachFiles}
+          />
+        }
         centerHeader={
           <PaneHeader className="px-[var(--space-4)]">
-            <div className="flex items-center justify-between w-full">
-              <div className="truncate">{activeConversationId ? 'Conversation' : 'Chat'}</div>
-              <div className="flex items-center gap-[var(--space-3)]">
-                <select 
-                  className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-2)] py-[var(--space-1)] text-sm text-[color:var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-                  value={selectedModel}
-                  onChange={(e) => onModelChange(e.target.value)}
-                >
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-3.5">GPT-3.5</option>
-                  <option value="claude">Claude</option>
-                </select>
+            <div className="flex w-full items-center justify-between gap-[var(--space-3)]">
+              <div className="min-w-0 truncate text-[color:var(--text-primary)]">
+                {activeConversation?.title ?? 'Chat'}
               </div>
+              <div className="flex items-center gap-[var(--space-2)] text-xs font-medium uppercase tracking-wide text-[color:var(--text-tertiary)]">
+                <span>Model</span>
+                <Select value={selectedModel} onValueChange={onModelChange}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <SelectTrigger
+                        size="sm"
+                        aria-label="Select model for this conversation"
+                        className="max-w-[220px] text-[length:var(--text-sm)]"
+                      >
+                        <SelectValue placeholder="Select a model" />
+                      </SelectTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">{selectedModelLabel}</TooltipContent>
+                  </Tooltip>
+                  <SelectContent>
+                    {MODEL_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div aria-live="polite" className="sr-only">
+              {modelAnnouncement}
             </div>
           </PaneHeader>
         }
@@ -268,6 +431,7 @@ export function ChatModuleTriPane() {
             <ChatRightPane
               onHidePane={() => setRightPaneVisible(false)}
               selectedModel={selectedModel}
+              selectedModelLabel={selectedModelLabel}
               conversation={activeConversation}
             />
           ) : (
@@ -298,6 +462,7 @@ export function ChatModuleTriPane() {
             <ChatRightPane
               onHidePane={() => setRightPaneVisible(false)}
               selectedModel={selectedModel}
+              selectedModelLabel={selectedModelLabel}
               conversation={activeConversation}
             />
           </div>
