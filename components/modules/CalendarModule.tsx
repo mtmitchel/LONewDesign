@@ -6,7 +6,7 @@ import { EventModalModern } from './calendar/EventModalModern';
 import { CalendarPopover } from './calendar/CalendarPopover';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { SegmentedToggle } from '../controls/SegmentedToggle';
-import { QUICK_ASSISTANT_EVENTS } from '../assistant';
+import { QUICK_ASSISTANT_EVENTS, openQuickAssistant } from '../assistant';
 
 // Unified calendar engine and views
 import { useCalendarEngine, formatRangeLabel, navigate } from './calendar/useCalendarEngine';
@@ -290,9 +290,12 @@ export function CalendarModule() {
 
   const goToToday = () => setCurrentDate(new Date());
   const navigateView = (dir: 'prev' | 'next') => setCurrentDate((d) => navigate(d, viewMode, dir));
+  const handleOpenAssistant = React.useCallback(() => {
+    openQuickAssistant({ mode: 'event', scope: { source: 'calendar' } });
+  }, []);
 
   return (
-    <div className="flex h-full flex-col bg-[var(--bg-surface)]">
+    <div className="relative flex h-full flex-col bg-[var(--bg-surface)]">
       {/* Header */}
       <header className="relative h-12 flex items-center px-[var(--space-4)] border-b border-[var(--border-divider)] bg-[var(--bg-surface)]">
         {/* Left controls */}
@@ -344,9 +347,13 @@ export function CalendarModule() {
             ]}
             dense
           />
-          <Button className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] ml-[var(--space-3)]" onClick={() => setModalState({ mode: 'create', isOpen: true })}>
+          <Button
+            className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] ml-[var(--space-3)] md:hidden"
+            onClick={handleOpenAssistant}
+            aria-keyshortcuts="Meta+K,Control+K"
+          >
             <Plus className="w-4 h-4 mr-1.5" />
-            New event
+            Add event
           </Button>
         </div>
       </header>

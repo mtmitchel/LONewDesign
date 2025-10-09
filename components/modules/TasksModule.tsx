@@ -34,10 +34,10 @@ import { TaskAddButton } from './tasks/TaskAddButton';
 import { TaskCard } from './tasks/TaskCard';
 import { TaskComposer } from './tasks/TaskComposer';
 import { TaskSidePanel } from './tasks/TaskSidePanel';
-import { QuickTaskModal } from '../extended/QuickTaskModal';
 import { SegmentedToggle } from '../controls/SegmentedToggle';
 import { TASK_LISTS } from './tasks/constants';
 import { projects } from './projects/data';
+import { openQuickAssistant } from '../assistant';
 
 type TaskLabel = string | { name: string; color: string };
 
@@ -114,7 +114,6 @@ export function TasksModule() {
   const [tasks, setTasks] = useState(mockTasks);
   const [sortOption, setSortOption] = useState<{[key: string]: string}>({});
   const [activeComposerSection, setActiveComposerSection] = useState<string | null>(null);
-  const [showCreateTask, setShowCreateTask] = useState(false);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [selectedList, setSelectedList] = useState<string | null>(null); // null means "All lists"
   const [globalSort, setGlobalSort] = useState<'due-date' | 'date-created' | 'priority'>('date-created');
@@ -248,19 +247,10 @@ export function TasksModule() {
     }
   };
 
-  const handleQuickTaskCreate = (payload: { title: string; date?: string }) => {
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
-      title: payload.title,
-      status: 'todo', // Default to "To Do" list
-      priority: 'none',
-      dueDate: payload.date,
-      labels: [],
-      isCompleted: false,
-      dateCreated: new Date().toISOString(),
-    };
-    setTasks(prevTasks => [newTask, ...prevTasks]);
-  };
+  const handleOpenAssistant = React.useCallback(() => {
+    const scope = projectFilter ? { projectId: projectFilter } : undefined;
+    openQuickAssistant({ mode: 'task', scope });
+  }, [projectFilter]);
 
   const handleAddList = () => {
     if (newListName.trim()) {
@@ -778,9 +768,10 @@ export function TasksModule() {
               <RefreshCw size={14} className="mr-2" />
               Refresh
             </Button>
-            <Button 
-              onClick={() => setShowCreateTask(true)}
-              className="bg-primary text-primary-foreground h-9"
+            <Button
+              onClick={handleOpenAssistant}
+              className="h-9 bg-[var(--primary)] text-[var(--primary-foreground)] md:hidden"
+              aria-keyshortcuts="Meta+K,Control+K"
             >
               <Plus size={16} className="mr-2" />
               Add task
@@ -795,12 +786,6 @@ export function TasksModule() {
         onClose={() => setSelectedTask(null)}
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
-      />
-
-      <QuickTaskModal
-        open={showCreateTask}
-        onOpenChange={setShowCreateTask}
-        onCreate={handleQuickTaskCreate}
       />
     </div>
   );

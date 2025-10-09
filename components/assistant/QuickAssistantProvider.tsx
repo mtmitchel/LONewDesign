@@ -9,15 +9,11 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { QuickNoteModal } from "../extended/QuickNoteModal";
 import { QuickTaskModal } from "../extended/QuickTaskModal";
 import { QuickEventModal } from "../extended/QuickEventModal";
 import { AssistantCaptureDialog, type AssistantSubmitPayload } from "./AssistantCaptureDialog";
-import { Button } from "../ui/button";
-import { cn } from "../ui/utils";
 import { useTaskStore } from "../modules/tasks/taskStore";
 
 function generateId(prefix: string) {
@@ -173,8 +169,6 @@ export function QuickAssistantProvider({
   const [taskState, setTaskState] = useState<TaskModalState>({ open: false });
   const [noteState, setNoteState] = useState<NoteModalState>({ open: false });
   const [eventState, setEventState] = useState<EventModalState>({ open: false });
-  const [launcherPortal, setLauncherPortal] = useState<HTMLElement | null>(null);
-
   const scopeRef = useRef<QuickAssistantScope | null>(null);
 
   const setScope = useCallback((scope: QuickAssistantScope | null) => {
@@ -493,11 +487,6 @@ export function QuickAssistantProvider({
     };
   }, [openAssistant]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setLauncherPortal(document.body);
-  }, []);
-
   const contextValue = useMemo<QuickAssistantContextValue>(
     () => ({ openAssistant, openQuickCreate }),
     [openAssistant, openQuickCreate]
@@ -506,41 +495,6 @@ export function QuickAssistantProvider({
   return (
     <QuickAssistantContext.Provider value={contextValue}>
       {children}
-
-      {launcherPortal
-        ? createPortal(
-            <div className="fixed bottom-[calc(var(--space-8)+12px)] right-[var(--space-8)] z-[999]">
-              <div className="group relative grid place-items-center">
-                <span
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute inset-[-4px] rounded-full border border-white/70",
-                    "shadow-[0_20px_45px_rgba(15,23,42,0.35)]",
-                    "transition-shadow duration-300",
-                    "group-hover:shadow-[0_26px_65px_rgba(15,23,42,0.45)]"
-                  )}
-                />
-                <Button
-                  variant="assistant"
-                  size="floating"
-                  className={cn(
-                    "relative z-[1] grid place-items-center",
-                    "!shadow-none hover:!shadow-none",
-                    "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--bg-surface)] focus-visible:ring-[color:var(--focus-ring)]",
-                    "active:scale-95",
-                    "transition-transform"
-                  )}
-                  title="Open Assistant"
-                  aria-label="Open Assistant"
-                  onClick={() => openAssistant()}
-                >
-                  <Plus className="relative size-6 text-[rgba(15,23,42,0.85)]" aria-hidden />
-                </Button>
-              </div>
-            </div>,
-            launcherPortal
-          )
-        : null}
 
       <AssistantCaptureDialog
         open={assistant.open}

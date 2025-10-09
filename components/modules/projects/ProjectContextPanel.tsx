@@ -8,7 +8,6 @@ import {
   NotebookPen,
   Palette,
   Sparkles,
-  Wand2,
 } from "lucide-react";
 import { PaneColumn } from "../../layout/PaneColumn";
 import { PaneHeader } from "../../layout/PaneHeader";
@@ -88,7 +87,7 @@ export function ProjectContextPanel({ onCollapse, project, taskLists = [] }: Pro
         <PaneCaret side="right" label="Hide context" variant="button" onClick={onCollapse} ariaKeyshortcuts="\\" />
       </PaneHeader>
 
-      <div className="flex-1 overflow-y-auto px-[var(--panel-pad-x)] py-[var(--panel-pad-y)]">
+      <div className="flex-1 overflow-y-auto border-t border-[var(--border-subtle)] px-[var(--panel-pad-x)] py-[var(--panel-pad-y)]">
         {activeTab === "context" ? (
           <ContextTab />
         ) : (
@@ -106,27 +105,12 @@ export function ProjectContextPanel({ onCollapse, project, taskLists = [] }: Pro
 function ContextTab() {
   return (
     <div className="space-y-[var(--space-6)]">
-      <ContextSection title="Quick actions" icon={<Wand2 className="size-4" aria-hidden />}>
-        <div className="flex flex-wrap gap-[var(--space-2)]">
-          {quickActions.map((chip) => (
-            <Button
-              key={chip}
-              variant="outline"
-              size="sm"
-              className="rounded-full border-[var(--border-subtle)] bg-[var(--bg-surface)] text-xs text-[color:var(--text-secondary)]"
-            >
-              {chip}
-            </Button>
-          ))}
-        </div>
-      </ContextSection>
-
       <ContextSection title="Related notes" icon={<NotebookPen className="size-4" aria-hidden />}>
-        <PlaceholderBody label="No related notes" hint="Capture a note from the overview to pin it here." />
+        <PlaceholderBody label="No related notes" hint="Capture one with ⌘/Ctrl+K to pin it here." />
       </ContextSection>
 
       <ContextSection title="Related tasks" icon={<ListTodo className="size-4" aria-hidden />}>
-        <PlaceholderBody label="No linked tasks" hint="Create a task from the board or attach an existing one." />
+        <PlaceholderBody label="No linked tasks" hint="Use the board or press ⌘/Ctrl+K to add one." />
       </ContextSection>
 
       <ContextSection title="Upcoming events" icon={<Calendar className="size-4" aria-hidden />}>
@@ -143,7 +127,7 @@ function ContextTab() {
       </ContextSection>
 
       <ContextSection title="Suggestions" icon={<Sparkles className="size-4" aria-hidden />}>
-        <PlaceholderBody label="Assistant is learning" hint="Run captures or attach work to surface smarter prompts." />
+        <PlaceholderBody label="Assistant is learning" hint="Link work to surface smarter prompts over time." />
       </ContextSection>
 
       <ContextSection title="Backlinks" icon={<Link className="size-4" aria-hidden />}>
@@ -187,10 +171,10 @@ function SettingsTabContent({
           <Field label="Default due date">
             <Select value={settings.defaultDue} onValueChange={(value: "none" | "today" | "tomorrow") => onChange("defaultDue", value)}>
               <SelectTrigger aria-label="Default due date">
-                <SelectValue placeholder="No default" />
+                <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No default</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="tomorrow">Tomorrow</SelectItem>
               </SelectContent>
@@ -237,7 +221,7 @@ function SettingsTabContent({
               type="button"
               onClick={() => onChange("projectColor", option.id)}
               className={cn(
-                "grid size-9 place-items-center rounded-full border",
+                "grid size-9 place-items-center rounded-full border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]",
                 settings.projectColor === option.id ? "border-[var(--primary)]" : "border-[var(--border-subtle)]",
               )}
               style={{ backgroundColor: option.swatch }}
@@ -264,8 +248,6 @@ function SettingsTabContent({
     </div>
   );
 }
-
-const quickActions = ["Add note", "Attach task", "Schedule", "Link file"];
 
 function ContextSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (

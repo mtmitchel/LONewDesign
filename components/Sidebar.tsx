@@ -13,12 +13,14 @@ import {
 import { PaneCaret, PaneFooter } from './dev/PaneCaret';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { cn } from './ui/utils';
+import { SidebarAssistantLauncher } from './ui/chrome/SidebarAssistantLauncher';
 
 interface SidebarProps {
   activeModule: string;
   onModuleChange: (module: string) => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  onAssistantOpen: () => void;
 }
 
 const modules = [
@@ -33,11 +35,15 @@ const modules = [
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
-export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleCollapse, onAssistantOpen }: SidebarProps) {
+  const sidebarWidth = collapsed ? 'var(--sidebar-w-closed)' : 'var(--sidebar-w-open)';
   return (
-    <div className={`${collapsed ? 'w-16' : 'w-72'} bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col transition-all duration-200`}>
+    <div
+      className="flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-all duration-200"
+      style={{ width: sidebarWidth }}
+    >
       {/* Header */}
-      <div className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-center flex-shrink-0">
+      <div className="flex h-[var(--pane-header-h)] flex-shrink-0 items-center justify-center border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--sidebar-gutter)]">
         {!collapsed && (
           <button
             type="button"
@@ -51,8 +57,8 @@ export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleColla
       </div>
       
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-[var(--space-4)]">
-        <ul className="space-y-[var(--space-2)]">
+      <nav className={cn('flex-1 overflow-y-auto', collapsed ? 'px-[var(--space-2)] py-[var(--space-4)]' : 'px-[var(--sidebar-gutter)] py-[var(--space-4)]')}>
+        <ul className="flex flex-col gap-[var(--space-2)]">
           {modules.map((module) => {
             const Icon = module.icon;
             const isActive = activeModule === module.id;
@@ -109,16 +115,24 @@ export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleColla
           })}
         </ul>
       </nav>
-      
-      {/* Standardized Pane Caret - Bottom placement */}
-      <PaneFooter>
-        <PaneCaret
-          direction={collapsed ? 'right' : 'left'}
-          onClick={onToggleCollapse}
-          tooltipText={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          shortcut="⌘\\"
+
+      <div className="mt-auto flex flex-col gap-[var(--space-3)]">
+        <SidebarAssistantLauncher
+          collapsed={collapsed}
+          onOpen={onAssistantOpen}
+          className="pb-[var(--sidebar-gutter)]"
         />
-      </PaneFooter>
+
+        {/* Standardized Pane Caret - Bottom placement */}
+        <PaneFooter>
+          <PaneCaret
+            direction={collapsed ? 'right' : 'left'}
+            onClick={onToggleCollapse}
+            tooltipText={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            shortcut="⌘\\"
+          />
+        </PaneFooter>
+      </div>
     </div>
   );
 }

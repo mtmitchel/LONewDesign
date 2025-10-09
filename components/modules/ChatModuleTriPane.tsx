@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Button } from "../ui/button";
+import { openQuickAssistant } from "../assistant";
 
 const MODEL_OPTIONS = [
   { value: "gpt-4", label: "GPT-4" },
@@ -59,6 +60,9 @@ export function ChatModuleTriPane() {
   const overlayPanelRef = React.useRef<HTMLDivElement | null>(null);
   const lastFocusRef = React.useRef<Element | null>(null);
   const leftPaneRef = React.useRef<ChatLeftPaneHandle | null>(null);
+  const handleOpenAssistant = React.useCallback(() => {
+    openQuickAssistant({ scope: { source: 'chat' } });
+  }, []);
 
   // Responsive guard: enforce minimum center width by hiding panes (right first, then left)
   React.useEffect(() => {
@@ -433,29 +437,39 @@ export function ChatModuleTriPane() {
               <div className="min-w-0 truncate text-[color:var(--text-primary)]">
                 {activeConversation?.title ?? 'Chat'}
               </div>
-              <div className="flex items-center gap-[var(--space-2)] text-xs font-medium uppercase tracking-wide text-[color:var(--text-tertiary)]">
-                <span>Model</span>
-                <Select value={selectedModel} onValueChange={onModelChange}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <SelectTrigger
-                        size="sm"
-                        aria-label="Select model for this conversation"
-                        className="max-w-[220px] text-[length:var(--text-sm)]"
-                      >
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">{selectedModelLabel}</TooltipContent>
-                  </Tooltip>
-                  <SelectContent>
-                    {MODEL_OPTIONS.map(option => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-[var(--space-2)]">
+                <div className="flex items-center gap-[var(--space-2)] text-xs font-medium uppercase tracking-wide text-[color:var(--text-tertiary)]">
+                  <span>Model</span>
+                  <Select value={selectedModel} onValueChange={onModelChange}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SelectTrigger
+                          size="sm"
+                          aria-label="Select model for this conversation"
+                          className="max-w-[220px] text-[length:var(--text-sm)]"
+                        >
+                          <SelectValue placeholder="Select a model" />
+                        </SelectTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">{selectedModelLabel}</TooltipContent>
+                    </Tooltip>
+                    <SelectContent>
+                      {MODEL_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-9 bg-[var(--primary)] text-[var(--primary-foreground)] md:hidden"
+                  onClick={handleOpenAssistant}
+                  aria-keyshortcuts="Meta+K,Control+K"
+                >
+                  Add
+                </Button>
               </div>
             </div>
             <div aria-live="polite" className="sr-only">

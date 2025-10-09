@@ -9,7 +9,6 @@ import { ProjectNavigator } from "./projects/ProjectNavigator";
 import { ProjectOverview } from "./projects/ProjectOverview";
 import { ProjectContextPanel } from "./projects/ProjectContextPanel";
 import { ProjectTasksBoard } from "./projects/ProjectTasksBoard";
-import { AssistantFab } from "./projects/AssistantFab";
 import {
   projects,
   getProjectById,
@@ -104,15 +103,6 @@ export function ProjectsModule() {
     });
   }, [selectedProject]);
 
-  const handleFabOpen = React.useCallback(() => {
-    if (!selectedProject) return;
-    emitProjectEvent("project.add_clicked", { source: "fab", projectId: selectedProject.id });
-    openQuickAssistant({
-      scope: { projectId: selectedProject.id },
-      mode: "capture",
-    });
-  }, [selectedProject]);
-
   const handleCreateTask = React.useCallback(
     (listId: string) => {
       if (!selectedProject) return;
@@ -200,11 +190,11 @@ export function ProjectsModule() {
             <PaneHeader role="navigation" className="items-center gap-[var(--space-4)] px-[var(--space-6)]">
               <TabList activeTab={activeTab} onTabChange={handleTabChange} />
               <Button
-                variant="secondary"
+                variant="solid"
                 size="sm"
                 className="ml-auto md:hidden"
                 onClick={handleAdd}
-                aria-keyshortcuts="Meta+K Control+K"
+                aria-keyshortcuts="Meta+K,Control+K"
               >
                 Add
               </Button>
@@ -236,9 +226,6 @@ export function ProjectsModule() {
                   </div>
                 )}
               </div>
-              {selectedProject ? (
-                <AssistantFab isContextOpen={rightPaneVisible} onOpen={handleFabOpen} />
-              ) : null}
             </div>
           </PaneColumn>
         }
@@ -299,7 +286,7 @@ function TabPlaceholder({ tabId, onAdd }: { tabId: string; onAdd: () => void }) 
         <p className="text-[length:var(--text-lg)] font-semibold text-[color:var(--text-primary)]">{copy.title}</p>
         <p>{copy.body}</p>
         {copy.cta ? (
-          <Button variant="ghost" onClick={onAdd} aria-keyshortcuts="Meta+K Control+K">
+          <Button variant="ghost" onClick={onAdd} aria-keyshortcuts="Meta+K,Control+K">
             {copy.cta}
           </Button>
         ) : null}

@@ -21,6 +21,7 @@ import {
 } from './notes';
 import { NotesRightPane } from './notes/NotesRightPane';
 import { QUICK_ASSISTANT_EVENTS } from '../assistant';
+import { openQuickAssistant } from '../assistant';
 
 export function NotesModule() {
   // State management for folders, notes, selections, search, and settings
@@ -370,6 +371,72 @@ export function NotesModule() {
     setNotes(prev => prev.map(n => (n.id === selectedNoteId ? { ...n, tags: n.tags.filter(t => t !== tag) } : n)));
   };
 
+  const handleOpenAssistant = React.useCallback(() => {
+    const scope = selectedFolderId ? { folderId: selectedFolderId } : undefined;
+    openQuickAssistant({ mode: 'note', scope });
+  }, [selectedFolderId]);
+
+  const centerContent = selectedNote ? (
+    <NotesEditor
+      content={selectedNote.content}
+      onContentChange={handleContentChange}
+      onToolbarAction={() => {}}
+      isSaving={isSaving}
+      lastSavedLabel={lastSavedLabel}
+      autoSaveEnabled={settings.autoSave}
+    />
+  ) : (
+    <NotesCenterPane
+      notes={filteredNotes}
+      selectedNoteId={selectedNoteId}
+      settings={{
+        showPreview: settings.showPreview,
+        showWordCount: settings.showWordCount,
+        compactView: settings.compactView,
+      }}
+      onSelectNote={handleSelectNote}
+      onToggleStar={handleToggleStar}
+      onCreateNote={handleCreateNote}
+      onNoteAction={(noteId, action) => {
+        switch (action) {
+          case 'rename':
+            console.log('Rename note:', noteId);
+            break;
+          case 'move':
+            console.log('Move note:', noteId);
+            break;
+          case 'duplicate':
+            handleDuplicate();
+            break;
+          case 'pin':
+            handleTogglePin(noteId, true);
+            break;
+          case 'unpin':
+            handleTogglePin(noteId, false);
+            break;
+          case 'export-pdf':
+            console.log('Export note as PDF:', noteId);
+            break;
+          case 'export-word':
+            console.log('Export note as Word:', noteId);
+            break;
+          case 'export-text':
+            console.log('Export note as Text:', noteId);
+            break;
+          case 'delete':
+            if (noteId === selectedNoteId) {
+              handleDelete();
+            } else {
+              setNotes(prev => prev.filter(n => n.id !== noteId));
+            }
+            break;
+          default:
+            console.log('Unknown note action:', action, noteId);
+        }
+      }}
+    />
+  );
+
   return (
     <div id="notes-viewport" className="h-full">
       <TriPane
@@ -553,81 +620,30 @@ export function NotesModule() {
             </PaneHeader>
           ) : undefined
         }
-        center={
-          selectedNote ? (
-            <NotesEditor
-              content={selectedNote.content}
-              onContentChange={handleContentChange}
-              onToolbarAction={() => {}}
-              isSaving={isSaving}
-              lastSavedLabel={lastSavedLabel}
-              autoSaveEnabled={settings.autoSave}
-            />
-          ) : (
-            <NotesCenterPane
-              notes={filteredNotes}
-              selectedNoteId={selectedNoteId}
-              settings={{
-                showPreview: settings.showPreview,
-                showWordCount: settings.showWordCount,
-                compactView: settings.compactView,
-              }}
-              onSelectNote={handleSelectNote}
-            onToggleStar={handleToggleStar}
-              onCreateNote={handleCreateNote}
-              onNoteAction={(noteId, action) => {
-                switch (action) {
-                  case 'rename':
-                    console.log('Rename note:', noteId);
-                    break;
-                  case 'move':
-                    console.log('Move note:', noteId);
-                    break;
-                  case 'duplicate':
-                    handleDuplicate();
-                    break;
-                case 'pin':
-                  handleTogglePin(noteId, true);
-                  break;
-                case 'unpin':
-                  handleTogglePin(noteId, false);
-                  break;
-                  case 'export-pdf':
-                    console.log('Export note as PDF:', noteId);
-                    break;
-                  case 'export-word':
-                    console.log('Export note as Word:', noteId);
-                    break;
-                  case 'export-text':
-                    console.log('Export note as Text:', noteId);
-                    break;
-                  case 'delete':
-                    if (noteId === selectedNoteId) {
-                      handleDelete();
-                    } else {
-                      setNotes(prev => prev.filter(n => n.id !== noteId));
-                    }
-                    break;
-                  default:
-                    console.log('Unknown note action:', action, noteId);
-                }
-              }}
-            />
-          )
-        }
+        center={<div className="relative h-full">{centerContent}</div>}
         centerHeader={
           <PaneHeader className="px-[var(--space-4)]">
-            <div className="flex w-full items-center justify-between">
-              {selectedNote ? (
-                <Input
-                  value={selectedNote.title}
-                  onChange={event => handleTitleChange(event.target.value)}
-                  placeholder="Untitled note"
-                  className="h-auto border-none bg-transparent p-0 text-lg font-semibold text-[color:var(--text-primary)] focus-visible:ring-0"
-                />
-              ) : (
-                <h3 className="font-semibold truncate">{currentFolderName}</h3>
-              )}
+            <div className="flex w-full items-center justify-between gap-[var(--space-3)]">
+              <div className="min-w-0 flex-1">
+                {selectedNote ? (
+                  <Input
+                    value={selectedNote.title}
+                    onChange={event => handleTitleChange(event.target.value)}
+                    placeholder="Untitled note"
+                    className="h-auto border-none bg-transparent p-0 text-lg font-semibold text-[color:var(--text-primary)] focus-visible:ring-0"
+                  />
+                ) : (
+                  <h3 className="truncate font-semibold">{currentFolderName}</h3>
+                )}
+              </div>
+              <Button
+                size="sm"
+                className="h-9 bg-[var(--primary)] text-[var(--primary-foreground)] md:hidden"
+                onClick={handleOpenAssistant}
+                aria-keyshortcuts="Meta+K,Control+K"
+              >
+                Add
+              </Button>
             </div>
           </PaneHeader>
         }

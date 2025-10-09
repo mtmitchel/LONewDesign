@@ -1,5 +1,6 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Button } from '../ui/button';
 import { EmailOverlay } from './mail';
 import { ComposeDocked } from './compose';
 import { MailLeftPane } from './mail/MailLeftPane';
@@ -9,6 +10,7 @@ import { PaneCaret } from '../dev/PaneCaret';
 import { CollapsedSidebarPanel } from './mail/CollapsedSidebarPanel';
 import { useMailState } from './mail/useMailState';
 import { folders, labels, emails as initialEmails } from './mail/mockData';
+import { openQuickAssistant } from '../assistant';
 
 const PAGE_SIZE = 25;
 
@@ -275,6 +277,10 @@ export function MailModuleTriPane() {
       }
     : null;
 
+  const handleOpenAssistant = React.useCallback(() => {
+    openQuickAssistant({ scope: { source: 'mail' } });
+  }, []);
+
   return (
     <TooltipProvider>
       {/* Custom Tri-Pane Layout with Enhanced Toggle Controls */}
@@ -303,6 +309,16 @@ export function MailModuleTriPane() {
         
         {/* Center Pane */}
         <div className="flex-1 flex flex-col min-w-0 relative overflow-visible" id="center-pane">
+          <div className="flex justify-end px-4 py-3 md:hidden">
+            <Button
+              size="sm"
+              className="h-9 bg-[var(--primary)] text-[var(--primary-foreground)]"
+              onClick={handleOpenAssistant}
+              aria-keyshortcuts="Meta+K,Control+K"
+            >
+              Add
+            </Button>
+          </div>
           <MailCenterPane
             showLeftDivider={leftPaneVisible}
             showRightDivider={rightPaneVisible}

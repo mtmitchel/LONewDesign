@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Sidebar } from './Sidebar';
+import { openQuickAssistant, type QuickAssistantScope } from './assistant';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -10,6 +11,26 @@ interface AppShellProps {
 export function AppShell({ children, activeModule, onModuleChange }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  const handleAssistantOpen = useCallback(() => {
+    const scope: QuickAssistantScope = { source: activeModule };
+    switch (activeModule) {
+      case 'tasks':
+        openQuickAssistant({ mode: 'task', scope });
+        return;
+      case 'notes':
+        openQuickAssistant({ mode: 'note', scope });
+        return;
+      case 'calendar':
+        openQuickAssistant({ mode: 'event', scope });
+        return;
+      case 'projects':
+        openQuickAssistant({ mode: 'capture', scope });
+        return;
+      default:
+        openQuickAssistant({ scope });
+    }
+  }, [activeModule]);
+
   return (
     <div className="h-screen flex bg-[var(--bg-canvas)]">
       <Sidebar 
@@ -17,6 +38,7 @@ export function AppShell({ children, activeModule, onModuleChange }: AppShellPro
         onModuleChange={onModuleChange}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onAssistantOpen={handleAssistantOpen}
       />
       <main className="flex-1 flex flex-col overflow-hidden">
         {children}

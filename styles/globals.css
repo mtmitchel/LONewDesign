@@ -929,8 +929,18 @@
   --btn-primary-radius: 6px;        /* Button corner radius */
   
   /* Layout System */
-  --sidebar-width: 280px;           /* Expanded sidebar width */
-  --sidebar-collapsed-width: 60px;  /* Collapsed sidebar width */
+  --sidebar-width: 256px;           /* Expanded sidebar width */
+  --sidebar-collapsed-width: 72px;  /* Collapsed sidebar width */
+  --sidebar-gutter: var(--space-4);
+  --sidebar-w-open: var(--sidebar-width);
+  --sidebar-w-closed: var(--sidebar-collapsed-width);
+
+  /* Assistant launcher */
+  --launcher-open-h: 40px;
+  --launcher-closed-size: 40px;
+  --launcher-radius: var(--radius-lg);
+  --launcher-icon: 20px;
+  --launcher-elevation: var(--elevation-lg);
   --sidebar-bg: var(--bg-surface);  /* Sidebar background */
   --sidebar-border: 1px solid var(--border-default); /* Right border */
   
