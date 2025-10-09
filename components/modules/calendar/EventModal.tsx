@@ -148,7 +148,7 @@ export function EventModal({ open, initial, onClose, onSave, onDelete }: EventMo
 
   return (
     <Dialog open={open} onOpenChange={(value) => (!value ? onClose() : undefined)}>
-      <DialogContent className="max-w-[var(--modal-max-w)]">
+  <DialogContent className="max-w-[var(--modal-max-w-lg)]">
         <DialogHeader>
           <DialogTitle>{draft.id ? 'Edit event' : 'New event'}</DialogTitle>
           <DialogDescription>Fill out the event details and choose a calendar.</DialogDescription>

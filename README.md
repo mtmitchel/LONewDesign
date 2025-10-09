@@ -25,7 +25,7 @@ The `:smart` scripts automatically detect if port 5173 is busy and:
 This prevents "port already in use" errors when running multiple instances.
 
 ## Notes
-- Design tokens live in styles/globals.css and design-tokens.md
+- Design tokens live in styles/globals.css and docs/technical/design-tokens-reference.md
 - See LibreOllama-UI-Kit-Plan.md for component coverage
 - Keyboard: [ hides left pane, ] shows left pane, \ toggles right context
 - Use `:smart` variants for automatic port management

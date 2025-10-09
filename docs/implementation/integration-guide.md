@@ -1,6 +1,6 @@
 # Quick Assistant Capture Modal - Integration Guide
 
-This guide explains how to integrate the new CaptureModal into the existing QuickAssistantProvider.
+> **Legacy notice:** The CaptureModal prototype documented below has been superseded by `components/assistant/AssistantCaptureDialog.tsx` and the updated `QuickAssistantProvider`. Keep this guide for historical reference only—do **not** import the archived prototype into production code.
 
 ## Current State
 
@@ -37,10 +37,10 @@ The existing `QuickAssistantProvider` uses a basic modal with a single input fie
 
 ## New State
 
-Replace with the enhanced CaptureModal:
+Replace with the enhanced CaptureModal (historically colocated with `QuickAssistantProvider`; the prototype now lives under `archive/assistant-prototype` purely for reference):
 
 ```tsx
-import { CaptureModal } from "./CaptureModal";
+import { CaptureModal } from "./CaptureModal"; // prototype path; see archive/assistant-prototype
 
 <CaptureModal
   open={assistant.open}
@@ -56,6 +56,8 @@ import { CaptureModal } from "./CaptureModal";
   onCapture={handleCaptureSubmit}
 />
 ```
+
+> **Note:** In the current product code, use `components/assistant/AssistantCaptureDialog.tsx` instead of wiring this prototype. The snippet above is retained only to show how the original modal integrated before the redesign.
 
 ## Implementation Steps
 
@@ -112,10 +114,10 @@ const handleCaptureSubmit = useCallback(
 
 ### Step 2: Update Type Definitions
 
-Ensure CommandType is imported and available:
+Ensure CommandType is imported and available (in the prototype it lived alongside the modal):
 
 ```tsx
-import { CommandType } from "./useCaptureSession";
+import { CommandType } from "./useCaptureSession"; // prototype path; see archive/assistant-prototype
 ```
 
 ### Step 3: Remove Old Command Parsing

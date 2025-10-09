@@ -1,5 +1,7 @@
 # Quick Assistant Capture Redesign - Prototype Delivery
 
+> **Legacy notice:** The prototype described here has been replaced by `AssistantCaptureDialog` and the streamlined assistant experience. Keep this document for archival reference only.
+
 ## 📦 Deliverables
 
 ### 1. Wireframes
@@ -14,7 +16,7 @@
 
 ### 2. Prototype Components
 
-All components built in `/components/quick-assistant/`:
+All prototype components are archived in `/archive/assistant-prototype/`:
 
 | Component | Purpose | Lines | Status |
 |-----------|---------|-------|--------|
@@ -32,7 +34,7 @@ All components built in `/components/quick-assistant/`:
 | Document | Purpose | Location |
 |----------|---------|----------|
 | Wireframes | Visual design specs | `/docs/implementation/quick-assistant-wireframes.md` |
-| Component README | API docs, usage examples | `/components/quick-assistant/README.md` |
+| Component README | API docs, usage examples | `/components/assistant/README.md` |
 | Integration Guide | Step-by-step integration | `/docs/implementation/integration-guide.md` |
 | Prototype Delivery | This file | `/docs/implementation/PROTOTYPE_DELIVERY.md` |
 
@@ -296,7 +298,7 @@ Ready for implementation when needed:
 
 For questions or issues:
 
-1. Review component README: `/components/quick-assistant/README.md`
+1. Review component README: `/components/assistant/README.md`
 2. Check integration guide: `/docs/implementation/integration-guide.md`
 3. Refer to original spec: `/docs/implementation/quick-assistant-capture-redesign.md`
 4. Review wireframes: `/docs/implementation/quick-assistant-wireframes.md`

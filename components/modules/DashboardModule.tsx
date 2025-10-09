@@ -1,12 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import {
-  DashboardCard,
-  QuietLink,
-  ShowMore,
-  TimeWeatherChip,
-} from "./dashboard/DashboardPrimitives";
+import { useState } from "react";
+import { DashboardHeader } from "../dashboard/DashboardHeader";
+import { DashboardCard, QuietLink, ShowMore } from "./dashboard/DashboardPrimitives";
 import { cn } from "../ui/utils";
 
 type ScheduleEvent = {
@@ -279,14 +275,6 @@ export function DashboardModule() {
   const signalVisible = signals.slice(0, 3);
   const signalOverflow = Math.max(signals.length - signalVisible.length, 0);
 
-  const recentActivityCount = useMemo(() => {
-    const dayAgo = Date.now() - 1000 * 60 * 60 * 24;
-    return activity
-      .filter((entry) => Date.parse(entry.occurredAt) >= dayAgo)
-      .length;
-  }, []);
-  const showTimelineLink = recentActivityCount > 0;
-
   const handleTaskToggle = (id: string) => {
     setUrgentTasks((prev) =>
       prev.map((task) =>
@@ -300,22 +288,6 @@ export function DashboardModule() {
     );
   };
 
-  const headerLinks: JSX.Element[] = [];
-  if (!hasUpcomingFocus) {
-    headerLinks.push(
-      <QuietLink key="focus-session" href="/focus/new">
-        Start focus session
-      </QuietLink>,
-    );
-  }
-  if (showTimelineLink) {
-    headerLinks.push(
-      <QuietLink key="view-timeline" href="/timeline">
-        View timeline
-      </QuietLink>,
-    );
-  }
-
   const hour = new Date().getHours();
   const isNight = hour >= 20 || hour < 6;
   const weatherKind = isNight ? "cloudMoon" : "cloudSun";
@@ -325,41 +297,14 @@ export function DashboardModule() {
 
   return (
     <div className="h-full overflow-auto bg-[var(--bg-canvas)]">
-      <header className="mx-auto flex w-full max-w-[var(--dashboard-max-w)] items-start justify-between px-[var(--space-6)] py-[var(--dash-header-pad-y)]">
-        <div>
-          <div
-            className="mb-[var(--dash-header-gap)] text-sm"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Today + inbox
-          </div>
-          <h1
-            className="text-[var(--dash-title-size)] font-semibold leading-tight"
-            style={{ color: "var(--heading-color)" }}
-          >
-            Today overview
-          </h1>
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            {dateLabel}
-          </p>
-          {headerLinks.length ? (
-            <div
-              className="mt-2 flex flex-wrap gap-3 text-sm"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {headerLinks}
-            </div>
-          ) : null}
-        </div>
-        <TimeWeatherChip
-          className="shrink-0"
-          time={currentTime}
-          tempC={18}
-          kind={weatherKind}
-          location="San Francisco"
-          summary="Partly cloudy"
-        />
-      </header>
+      <DashboardHeader
+        dateLabel={dateLabel}
+        time={currentTime}
+        tempC={18}
+        weatherKind={weatherKind}
+        location="San Francisco"
+        summary="Partly cloudy"
+      />
 
       <main className="mx-auto w-full max-w-[var(--dashboard-max-w)] px-[var(--space-6)] pb-[var(--space-8)]">
         <section

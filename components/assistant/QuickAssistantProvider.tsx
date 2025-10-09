@@ -15,11 +15,10 @@ import { toast } from "sonner";
 import { QuickNoteModal } from "../extended/QuickNoteModal";
 import { QuickTaskModal } from "../extended/QuickTaskModal";
 import { QuickEventModal } from "../extended/QuickEventModal";
+import { AssistantCaptureDialog, type AssistantSubmitPayload } from "./AssistantCaptureDialog";
 import { Button } from "../ui/button";
 import { cn } from "../ui/utils";
 import { useTaskStore } from "../modules/tasks/taskStore";
-import { CaptureModal } from "./CaptureModal";
-import type { CommandType } from "./useCaptureSession";
 
 function generateId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -130,6 +129,11 @@ function combineDateTime(date: string, time?: string) {
   return new Date(`${date}T${time}`);
 }
 
+function dispatchAssistantEvent(eventName: string, detail?: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(eventName, { detail }));
+}
+
 type AssistantModalState = {
   open: boolean;
   initialValue: string;
@@ -187,7 +191,6 @@ export function QuickAssistantProvider({
       title?: string;
       body: string;
       original?: string;
-      metadata?: Record<string, unknown> | null;
     }) => {
       const now = new Date().toISOString();
       const detail = {
@@ -196,13 +199,11 @@ export function QuickAssistantProvider({
         body: payload.body,
         createdAt: now,
         scope: scopeRef.current,
-        capture:
-          payload.original || payload.metadata
-            ? {
-                originalContent: payload.original ?? payload.body,
-                metadata: payload.metadata ?? undefined,
-              }
-            : undefined,
+        capture: payload.original
+          ? {
+              originalContent: payload.original,
+            }
+          : undefined,
       };
       window.dispatchEvent(
         new CustomEvent(QUICK_ASSISTANT_EVENTS.createNote, { detail })
@@ -223,7 +224,6 @@ export function QuickAssistantProvider({
       location?: string;
       notes?: string;
       original?: string;
-      metadata?: Record<string, unknown> | null;
     }) => {
       const startsAt = combineDateTime(payload.date, payload.start);
       const endsAtBase = payload.end
@@ -237,13 +237,11 @@ export function QuickAssistantProvider({
         location: payload.location,
         description: payload.notes,
         scope: scopeRef.current,
-        capture:
-          payload.original || payload.metadata
-            ? {
-                originalContent: payload.original ?? payload.notes ?? payload.title,
-                metadata: payload.metadata ?? undefined,
-              }
-            : undefined,
+        capture: payload.original
+          ? {
+              originalContent: payload.original,
+            }
+          : undefined,
       };
       window.dispatchEvent(
         new CustomEvent(QUICK_ASSISTANT_EVENTS.createEvent, { detail })
@@ -257,9 +255,24 @@ export function QuickAssistantProvider({
     (options?: OpenAssistantOptions) => {
       const nextScope = options?.scope ?? null;
       setScope(nextScope);
+      let initialText = options?.initialValue ?? "";
+      if (options?.mode && options.mode !== "capture") {
+        const prefix = `/${options.mode}`;
+        if (!initialText.trim()) {
+          initialText = `${prefix} `;
+        } else if (!initialText.trimStart().startsWith(prefix)) {
+          initialText = `${prefix} ${initialText}`;
+        }
+      }
+
       setAssistant({
         open: true,
-        initialValue: options?.initialValue ?? "",
+        initialValue: initialText,
+      });
+
+      dispatchAssistantEvent("assistant.opened", {
+        command: options?.mode ?? "capture",
+        scope: nextScope ?? undefined,
       });
     },
     [setScope]
@@ -319,88 +332,62 @@ export function QuickAssistantProvider({
     [addTask]
   );
 
-  const handleCapture = useCallback(
-    (payload: {
-      command: CommandType;
-      content: string;
-      originalContent: string;
-      metadata: Record<string, unknown> | null;
-    }) => {
-      const parsed = parseCommand(payload.content);
-      const metadata = payload.metadata ?? {};
-      const metaObject =
-        typeof metadata === "object" && metadata
-          ? (metadata as Record<string, unknown>)
-          : {};
+  const handleAssistantSubmit = useCallback(
+    async ({ text, command }: AssistantSubmitPayload) => {
+      const trimmed = text.trim();
+      if (!trimmed) {
+        const message = "Add something to capture before saving.";
+        dispatchAssistantEvent("assistant.error", {
+          reason: "empty",
+          command,
+          scope: scopeRef.current ?? undefined,
+        });
+        throw new Error(message);
+      }
+
+      dispatchAssistantEvent("assistant.submitted", {
+        command,
+        scope: scopeRef.current ?? undefined,
+      });
+
+      const parsed = parseCommand(trimmed);
 
       switch (parsed.kind) {
         case "empty": {
-          resetAssistant();
-          return;
+          dispatchAssistantEvent("assistant.error", {
+            reason: "empty",
+            command,
+            scope: scopeRef.current ?? undefined,
+          });
+          throw new Error("Add something to capture before saving.");
         }
         case "task": {
-          const title = (parsed.payload || payload.content).trim();
+          const title = (parsed.payload || trimmed.replace(/^\/task\s*/, "")).trim();
           if (!title) {
-            toast.error("Add a task description before creating.");
-            resetAssistant();
-            return;
+            const message = "Add a task description before creating.";
+            dispatchAssistantEvent("assistant.error", {
+              reason: "missing_task_title",
+              command: "task",
+              scope: scopeRef.current ?? undefined,
+            });
+            throw new Error(message);
           }
-          const taskDescription = (parsed.payload ?? payload.content).trim();
 
           handleTaskCreate({
             title,
-            date: typeof metaObject.dueDate === "string" ? (metaObject.dueDate as string) : undefined,
-            priority:
-              metaObject.priority === "low" ||
-              metaObject.priority === "medium" ||
-              metaObject.priority === "high" ||
-              metaObject.priority === "none"
-                ? (metaObject.priority as "low" | "medium" | "high" | "none")
-                : undefined,
-            assignee:
-              typeof metaObject.assignee === "string"
-                ? (metaObject.assignee as string)
-                : undefined,
-            description: taskDescription,
-            notes:
-              payload.originalContent &&
-              payload.originalContent !== payload.content
-                ? payload.originalContent
-                : undefined,
+            description: parsed.payload || title,
           });
-          resetAssistant();
           return;
         }
         case "event": {
-          const title = (parsed.payload || payload.content || "Quick event").trim() || "Quick event";
-          const date = typeof metaObject.date === "string" && metaObject.date
-            ? (metaObject.date as string)
-            : new Date().toISOString().slice(0, 10);
-
+          const title = (parsed.payload || trimmed.replace(/^\/event\s*/, "")).trim() || "Quick event";
+          const today = new Date().toISOString().slice(0, 10);
           emitCreateEvent({
             title,
-            date,
-            start:
-              typeof metaObject.startTime === "string"
-                ? (metaObject.startTime as string)
-                : undefined,
-            end:
-              typeof metaObject.endTime === "string"
-                ? (metaObject.endTime as string)
-                : undefined,
-            location:
-              typeof metaObject.location === "string"
-                ? (metaObject.location as string)
-                : undefined,
-            notes:
-              payload.originalContent &&
-              payload.originalContent !== payload.content
-                ? payload.originalContent
-                : undefined,
-            original: payload.originalContent,
-            metadata: metaObject,
+            date: today,
+            notes: title,
+            original: trimmed,
           });
-          resetAssistant();
           return;
         }
         case "note": {
@@ -411,24 +398,18 @@ export function QuickAssistantProvider({
           emitCreateNote({
             title: built.title,
             body: built.body,
-            original: payload.originalContent,
-            metadata: metaObject,
+            original: trimmed !== built.body ? trimmed : undefined,
           });
-          resetAssistant();
           return;
         }
         case "ai": {
           toast.info(`Assistant command “/${parsed.action}” coming soon`);
-          resetAssistant();
           return;
         }
         case "unknown": {
           emitCreateNote({
-            body: payload.content,
-            original: payload.originalContent,
-            metadata: metaObject,
+            body: trimmed,
           });
-          resetAssistant();
           return;
         }
       }
@@ -561,18 +542,38 @@ export function QuickAssistantProvider({
           )
         : null}
 
-      <CaptureModal
+      <AssistantCaptureDialog
         open={assistant.open}
-        onOpenChange={(nextOpen: boolean) => {
+        initialValue={assistant.initialValue}
+        onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             resetAssistant();
           } else {
             setAssistant((prev) => ({ ...prev, open: true }));
           }
         }}
-        initialSnippet={assistant.initialValue}
-        source={scopeRef.current?.source ?? undefined}
-        onCapture={handleCapture}
+        onSubmit={handleAssistantSubmit}
+        onCommandSelect={(selected) => {
+          dispatchAssistantEvent("assistant.command_selected", {
+            command: selected,
+            scope: scopeRef.current ?? undefined,
+          });
+        }}
+        onError={(message) => {
+          const duplicateGuard = new Set([
+            "Add something to capture before saving.",
+            "Add a task description before creating.",
+          ]);
+          const shouldDispatch = !duplicateGuard.has(message);
+          if (shouldDispatch) {
+            dispatchAssistantEvent("assistant.error", {
+              reason: "dialog",
+              message,
+              scope: scopeRef.current ?? undefined,
+            });
+            toast.error(message);
+          }
+        }}
       />
 
       <QuickTaskModal

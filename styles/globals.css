@@ -36,7 +36,7 @@
   --on-primary: var(--primary-foreground);
   /* Elevation tokens for LibreOllama */
   --elevation-sm: 0 1px 2px rgb(0 0 0 / 0.06);
-  --elevation-lg: 0 8px 24px rgb(0 0 0 / 0.10);
+  --elevation-lg: 0 12px 32px rgb(0 0 0 / 0.18);
   --elevation-xl: 0 24px 60px rgba(0,0,0,0.18);
   /* Subtle border token maps to existing system default if not provided */
   --border-subtle: var(--border-default);
@@ -48,7 +48,8 @@
   --z-overlay: 70;
 
   /* Modal & Overlay */
-  --modal-max-w: 920px;
+  --modal-max-w: 640px;
+  --modal-max-w-lg: 920px;        /* legacy wide modals (calendar, settings) */
   --modal-max-w-mail: 880px;          /* tighter read width */
   --modal-max-h: 88dvh;
   --modal-radius: var(--radius-lg);
@@ -58,6 +59,8 @@
   --overlay-blur: 4px;
   --modal-elevation: var(--elevation-xl);
   --quick-modal-max-w: 480px;         /* quick action modals */
+  --assistant-field-max-h: 240px;     /* max height for capture textarea */
+  --assistant-primary-min-w: 140px;   /* keep capture primary stable */
   --modal-footer-h: 56px;             /* modal footer height */
 
   /* Overlay */
@@ -95,8 +98,8 @@
   --dash-gap: 24px;
   --card-pad: 16px;
   --row-pad: 12px;
-  --dash-header-pad-y: 16px;
-  --dash-header-gap: 6px;
+  --dash-header-py: 16px;
+  --dash-header-gap: 8px;
   --dash-title-size: 24px;
 
   --card-radius: var(--radius-lg);

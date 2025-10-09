@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AppShell } from './components/AppShell';
 import { TaskStoreProvider } from './components/modules/tasks/taskStore';
-import { QuickAssistantProvider } from './components/quick-assistant/QuickAssistantProvider';
+import { QuickAssistantProvider } from './components/assistant';
 
 // Production Modules
 import { DashboardModule } from './components/modules/DashboardModule';
@@ -10,6 +10,7 @@ import { CalendarModule } from './components/modules/CalendarModule';
 import { TasksModule } from './components/modules/TasksModule';
 import { NotesModule } from './components/modules/NotesModule';
 import { CanvasModule } from './components/modules/Canvas/CanvasModule';
+import { ProjectsModule } from './components/modules/ProjectsModule';
 import { SettingsModule } from './components/modules/SettingsModule';
 import { MailModuleTriPane } from './components/modules/MailModuleTriPane';
 
@@ -43,6 +44,8 @@ export default function App() {
         return <CalendarModule />;
       case 'canvas':
         return <CanvasModule />;
+      case 'projects':
+        return <ProjectsModule />;
       case 'settings':
         return <SettingsModule />;
       

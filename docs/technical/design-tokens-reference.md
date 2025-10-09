@@ -1,7 +1,7 @@
 # LibreOllama Design Tokens Reference
 
-> This is a markdown reference copy of `styles/globals.css` for easy sharing and documentation purposes.
-> **Last Updated:** October 8, 2025 - Added chat rail, bubble, and composer tokens plus guidance for Tailwind helper namespacing.
+> This is the canonical markdown reference for `styles/globals.css`, replacing the legacy `design-tokens.md` file at the repo root.
+> **Last Updated:** October 9, 2025 - Consolidated calendar usage guidance and deprecated the root `design-tokens.md` snapshot.
 
 ## Import & Base Setup
 
@@ -58,7 +58,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--elevation-sm` | `0 1px 2px rgba(0,0,0,0.06)` | Subtle elevation |
-| `--elevation-lg` | `0 10px 30px rgba(0,0,0,0.12)` | Medium elevation |
+| `--elevation-lg` | `0 12px 32px rgb(0 0 0 / 0.18)` | Medium elevation |
 | `--elevation-xl` | `0 24px 60px rgba(0,0,0,0.18)` | High elevation (modals) |
 
 ### Layers (Z-index)
@@ -397,7 +397,8 @@ These tokens switch based on `.density-compact` class:
 ### Modal Sizing
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--modal-max-w` | `920px` | General modals |
+| `--modal-max-w` | `640px` | Compact modals (assistant, quick capture) |
+| `--modal-max-w-lg` | `920px` | Wide modals (calendar, settings) |
 | `--modal-max-w-mail` | `880px` | Email modals (tighter) |
 | `--modal-max-h` | `88dvh` | Maximum modal height |
 | `--modal-radius` | `var(--radius-lg)` | Modal corners |
@@ -528,6 +529,14 @@ These tokens switch based on `.density-compact` class:
 | `--calendar-event-radius` | `var(--radius-md)` | Event corners |
 | `--calendar-rail-shadow` | `var(--elevation-sm)` | Sidebar shadow |
 | `--calendar-header-h` | `60px` | Calendar header height |
+
+#### Calendar Layout & Usage Guidelines
+- **Frame & Layout**: Keep a single contiguous frame per view using `--cal-frame-radius` and `--cal-frame-border`. Avoid creating gutters between day cells; rely on hairline gridlines from `--cal-gridline` instead.
+- **Lines & Rings**: Highlight today, focus, and selection states with `--cal-ring` and `--cal-hover` rather than solid fills for calmer emphasis.
+- **Outside-Month Ink**: Dim outside-month dates via the `--cal-outside-ink` opacity token to preserve focus on the current month.
+- **Now Indicator**: Use `--cal-now-line` (1px line) with a dot defined by `--cal-now-dot` to show the current time in Week/Day views.
+- **Event Pills**: Apply `--event-pill-*` padding/radius tokens and chip tints for low-ink events. Respect `--event-overlap-gap` and `--event-gap` to avoid cramped stacking.
+- **Usage Principles**: Represent today/selected/focus via thin rings, keep pills single-line with chip tokens, and prefer low-ink mouse-over states powered by `--event-hover-bg`.
 
 ### Calendar Event Colors
 | Token | Value | Usage |

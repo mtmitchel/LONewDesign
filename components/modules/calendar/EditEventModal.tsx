@@ -61,7 +61,7 @@ export function EditEventModal({ isOpen, onClose, event, onSave, onDelete }: Edi
 
   return (
     <div className="fixed inset-0 grid place-items-center p-[var(--overlay-gutter)] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)] z-[var(--z-overlay)]">
-      <div className="w-full max-w-[var(--modal-max-w)] max-h-[var(--modal-max-h)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--modal-radius)] shadow-[var(--modal-elevation)] flex flex-col overflow-hidden">
+  <div className="w-full max-w-[var(--modal-max-w-lg)] max-h-[var(--modal-max-h)] bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--modal-radius)] shadow-[var(--modal-elevation)] flex flex-col overflow-hidden">
         
         {/* Header */}
         <div className="flex items-center justify-between p-[var(--space-4)] border-b border-[var(--border-divider)]">

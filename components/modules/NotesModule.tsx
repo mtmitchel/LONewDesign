@@ -20,7 +20,7 @@ import {
   mockNotes,
 } from './notes';
 import { NotesRightPane } from './notes/NotesRightPane';
-import { QUICK_ASSISTANT_EVENTS } from '../quick-assistant/QuickAssistantProvider';
+import { QUICK_ASSISTANT_EVENTS } from '../assistant';
 
 export function NotesModule() {
   // State management for folders, notes, selections, search, and settings

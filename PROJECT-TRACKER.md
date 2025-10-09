@@ -29,7 +29,7 @@ Converting LibreOllama UI from w#### Chat Module ✅ IN PROGRESS
 |------|--------|----------------|-------|
 | Vite + React + TypeScript Setup | ✅ | 2024-XX-XX | Frontend scaffolding complete |
 | Tauri Desktop Integration | ✅ | 2024-XX-XX | v2.1 with secure defaults |
-| Design Token System | ✅ | 2024-XX-XX | CSS variables from design-tokens.md |
+| Design Token System | ✅ | 2024-XX-XX | CSS variables from docs/technical/design-tokens-reference.md |
 | Tailwind CSS Configuration | ✅ | 2024-XX-XX | Custom properties integration |
 | Dynamic Port Selection | ✅ | 2024-XX-XX | Smart development scripts |
 | Security Implementation | ✅ | 2024-XX-XX | DOMPurify + Strict CSP |
@@ -216,7 +216,7 @@ Converting LibreOllama UI from w#### Chat Module ✅ IN PROGRESS
 
 ## 🔗 Related Documents
 - [Tauri-Master-Plan.md](./Tauri-Master-Plan.md) - Technical implementation plan
-- [design-tokens.md](./design-tokens.md) - Design system specification
+- [design-tokens-reference.md](./docs/technical/design-tokens-reference.md) - Design system specification
 - [LibreOllama-UI-Kit-Plan.md](./LibreOllama-UI-Kit-Plan.md) - Component usage guide
 - [README.md](./README.md) - Development setup instructions
 

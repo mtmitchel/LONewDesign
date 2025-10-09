@@ -1,213 +1,298 @@
-# Implementation Plan for Unified UI Redesign
+# Implementation plan for unified UI redesign (v2)
 
-## Scope Overview
-- Deliver a cohesive redesign that unifies capture, navigation, project context, scheduling, and knowledge management.
-- Reuse existing modal, pane, and tokenized UI primitives to avoid duplicating patterns.
-- Prioritize incremental delivery with clear gates so new experiences can ship progressively.
+## Scope overview
 
----
-
-## 1. Global Quick Assistant (Capture + Ask)
-### Objectives
-- Replace scattered "new" or "+" entry points with a single floating Quick Assistant accessible via button and hotkeys.
-- Support freeform capture and slash-command routing to existing quick modals for tasks, notes, events, emails, and AI actions.
-
-### Key Deliverables
-- Floating assistant launcher (bottom-right) with tooltip and theming.
-- Global hotkeys: ⌘/Ctrl+K to open default mode; single-letter shortcuts (T, N, E, etc.) that scope the modal.
-- Command parser that detects `/task`, `/note`, `/event`, `/email`, `/summarize`, `/link`, `/focus`, etc., pre-filling the appropriate QuickModal variant.
-- Text-selection capture: when users highlight text and press Ctrl/⌘+K, the assistant opens prefilled with the selection for immediate follow-up.
-- Context-aware routing that respects current project/folder scope when creating records.
-- Post-submit handoff to the Context Panel (see section 4) for creation confirmation and follow-up suggestions.
-
-### Integration Notes
-- Reuse `QuickModal`, `QuickTaskModal`, `QuickNoteModal`, `QuickEventModal`, and associated input primitives.
-- Refactor existing local "Add" buttons across modules to invoke the assistant with scoped context props.
-- Ensure accessibility via ARIA labeling and focus management.
+* Deliver a cohesive redesign that unifies capture, navigation, project context, scheduling, and knowledge management.
+* **One assistant** entry: capture, writing tools, and open-ended AI, with natural-language intent routing.
+* Reuse modal, pane, and tokenized UI primitives to avoid duplicating patterns.
+* Prioritize incremental delivery with clear gates so new experiences can ship progressively.
 
 ---
 
-## 2. Projects/Spaces Module (Lightweight, Opinionated)
+## 1. Global quick assistant (capture + tools + ask)
+
 ### Objectives
-- Introduce a tri-pane Projects module that centralizes all artifacts (tasks, notes, emails, chats, files, canvases) per project.
-- Provide tabbed project views with an Overview focus.
 
-### Key Deliverables
-- New `ProjectsModule` leveraging `TriPane`, `PaneHeader`, and `PaneColumn` primitives.
-- Left pane project navigator with search/pin support; center pane tab system (Overview, Tasks, Notes, Files, Canvas, Chat, Emails*).
-- Overview tab widgets: progress snapshot, upcoming milestones/events, recent notes/emails, pinned chats, and primary "Add" button invoking the Quick Assistant scoped to the project.
-- Right pane using Context Panel 2.0 with project-specific suggestions and linking controls.
-- Project-level data filters piped into existing Tasks/Notes/Calendar stores.
+* Replace scattered “new” or “+” entry points with a single floating Quick Assistant accessible via button and hotkeys.
+* Support **natural language** (no slash required) and **slash commands** for power users.
+* Integrate selection-aware **writing tools** (tone, concise, expand, proofread, summarize, translate, explain, create list, extract key points) and previously scoped actions (task, note, event, summarize/translate selection).
+* Provide a safe **Ask AI…** fallback when a request doesn’t match a predefined tool.
 
-### Integration Notes
-- Wire sidebar navigation to include the Projects module.
-- Ensure current project context is available globally (assistant, context panel, dashboard widgets).
+### Key deliverables
+
+* Floating assistant launcher (bottom-right FAB) with tooltip and theming; `⌘/Ctrl+K` opens the dialog.
+* Selection-aware modal: when users highlight text and press `⌘/Ctrl+K`, Assistant opens with a **tools grid** and can run transforms or accept an NL request.
+* **Natural-language intent router** (see §11) that maps free text to the correct tool or creation flow with confidence gating.
+* **Deterministic tool registry** (see §12) that builds compact, safe prompts and returns plain text.
+* **Result pane** for transforms with **Replace selection** (primary), **Insert below**, and **Copy**.
+* Adaptive primary CTA label: *Create task / Save note / Create event / Summarize / Translate / Capture* based on resolved intent.
+* Context-aware routing that respects current project/folder scope when creating records, with post-submit handoff to Context Panel (§4).
+
+### Integration notes
+
+* Reuse `QuickModal` primitives and existing quick-create modals; mount dialog high in the tree; trap focus; restore focus on close.
+* Keyboard: `Enter` submits; `Shift+Enter` adds newline; `/` opens command list; arrow keys navigate the tools grid; `1–9` run the first nine tools (`aria-keyshortcuts`).
+* Accessibility: `role="dialog"`, `aria-modal`, `aria-labelledby`; `aria-live="polite"` for success/errors.
+* Instrumentation: `assistant.opened`, `assistant.intent_resolved` (intent, confidence, local/cloud), `assistant.executed`, `assistant.error`.
 
 ---
 
-## 3. Dashboard ("Today + Inbox")
+## 2. Projects/spaces module (lightweight, opinionated)
+
 ### Objectives
-- Transform the Dashboard into the default home: surface today's agenda, unified triage, top projects, and recent activity.
 
-### Key Deliverables
-- Header with current date, personalized greeting, and assistant entry hint.
-- "Today" row: next events, urgent tasks, focus metrics displayed in cards.
-- Unified "Inbox Triage" feed combining unsorted notes, inbox tasks, clipped items with quick File/Snooze actions.
-- "Top Projects" strip with progress visualization and deep links.
-- "Recent Activity" feed and optional quick action widgets.
-- Optional "News" widget that surfaces an RSS or custom-curated feed relevant to the user or active projects.
+* Introduce a tri-pane Projects module that centralizes all artifacts (tasks, notes, emails, chats, files, canvases) per project.
+* Provide tabbed project views with an Overview focus.
 
-### Integration Notes
-- Reuse card, badge, list, and empty-state primitives; adhere to 8pt spacing tokens.
-- Provide skeleton/loading states for asynchronous data sources.
-- Update sidebar to label Dashboard as "Today + Inbox".
+### Key deliverables
+
+* New `ProjectsModule` leveraging `TriPane`, `PaneHeader`, and `PaneColumn` primitives.
+* Left pane project navigator with search/pin support; center pane tab system (Overview, Tasks, Notes, Files, Canvas, Chat, Emails*).
+* Overview tab widgets: progress snapshot, upcoming milestones/events, recent notes/emails, pinned chats, and primary "Add" button invoking the Assistant scoped to the project.
+* Right pane using Context Panel 2.0 with project-specific suggestions and linking controls.
+* Project-level data filters piped into existing Tasks/Notes/Calendar stores.
+
+### Integration notes
+
+* Wire sidebar navigation to include the Projects module.
+* Ensure current project context is available globally (assistant, context panel, dashboard widgets).
+
+---
+
+## 3. Dashboard (Today)
+
+### Objectives
+
+* Make the Dashboard the default home: surface today's agenda, triage, and top projects with **calm** presentation.
+
+### Key deliverables
+
+* **Three-zone header**: left *Today overview* title, **centered date**, and a **time + weather chip** on the right. No extra links.
+* **Top row**: Next up (events), Urgent tasks, **Focus** (only when active/starting within 90 minutes).
+* **Inbox**: three crisp items max; actions are quiet links (Open, File, Snooze); age/source in tertiary ink.
+* **Projects**: three cards with uniform progress pill and one-line next step.
+* **Signals**: up to three items; dotted links.
+* **Recent activity**: hidden by default for single-user; show only if there were updates in last 24h.
+
+### Integration notes
+
+* Use sentence case on all card titles; quiet links use dotted underline; lists capped to three items (no inner scroll).
+* Keep FAB bottom-right.
+* Provide skeletons for async sources.
 
 #### Status – 2025-10-09
-- Header reflowed with slimmer vertical rhythm (`--dash-header-pad-y`, `--dash-header-gap`) and the calm time + weather chip anchored at parity on the right.
-- Top-row cards now run sentence-case titles without the "Now" eyebrow, keeping quiet links as dotted underlines.
-- Focus card renders only when a session is active or begins within 90 minutes, otherwise a "Start focus session" quiet link appears under the header.
-- Projects, Inbox, and Signals cards tightened to three-row caps with tertiary metadata, and Recent Activity stays hidden by default for single-user mode.
-- Dashboard tokens refreshed: chip padding, header typography, and card spacing now align with the unified design system sweep.
+
+* Header simplified (title/date/chip). *Today + inbox* label removed.
+* Focus card now conditional; otherwise omitted.
+* Projects, Inbox, and Signals reduced to three-row caps; tertiary metadata and dotted quiet links unify the look.
+* Recent activity hidden by default for single-user.
+* Weather chip supports **sun, cloud-sun, drizzle, rain, thunder, snow, fog, wind** plus **moon/cloud-moon** night variants.
 
 ---
 
-## 4. Context Panel 2.0 (Standardized Across Modules)
+## 4. Context Panel 2.0 (standardized across modules)
+
 ### Objectives
-- Establish a single, reusable context panel layout shared by Mail, Chat, Tasks, Notes, Projects, Dashboard widgets, etc.
 
-### Key Deliverables
-- Shared `ContextPanel` component with consistent header, tab switcher (Context | Settings), and section stack.
-- Fixed section order: Create Link (chip input), Related Notes, Related Tasks, Upcoming Events, Email Threads/Chats, AI Suggestions, Backlinks.
-- Reusable `ContextSection`, `ContextQuickActions`, and `ContextListItem` primitives.
-- Backlink surfacing to display linked entities across modules.
-- Uniform styling: tokenized spacing, typography, focus states, and iconography.
+* Establish a single, reusable context panel layout shared by Mail, Chat, Tasks, Notes, Projects, Dashboard widgets, etc.
 
-### Integration Notes
-- Refactor existing `MailRightPane`, `ChatRightPane`, and analogous components to consume the shared panel.
-- Provide data adapters per module to hydrate each section.
+### Key deliverables
+
+* Shared `ContextPanel` with consistent header, tab switcher (Context | Settings), and section stack.
+* Fixed section order: Create link (chips), Related notes, Related tasks, Upcoming events, Threads/Chats, AI suggestions, Backlinks.
+* Reusable `ContextSection`, `ContextQuickActions`, and `ContextListItem` primitives.
+* Backlink surfacing across modules.
+
+### Integration notes
+
+* Refactor existing right panes to consume the shared panel; hydrate via module adapters.
 
 ---
 
-## 5. Universal Search / Command Palette (Jump + Create)
+## 5. Universal search / command palette (jump + create)
+
 ### Objectives
-- Deliver a global command palette for navigation, cross-entity search, and natural language creation.
 
-### Key Deliverables
-- Modal overlay with prominent input, module filter chips, keyboard navigation, and grouping by result type.
-- Search adapters for Notes, Tasks, Emails, Events, Projects, Chats, Files.
-- Natural language parsing (prefixes like `todo:`, `note:`, `event:`; optional NLP hooks) to create items via Quick Assistant handlers.
-- Quick command shortcuts (e.g., `>` for actions, `#` for projects, `@` for people).
-- Integration with ⌘/Ctrl+K by default; optionally expose from header search affordances.
+* Provide global navigation, cross-entity search, and NL creation.
 
-### Integration Notes
-- Reuse or formalize components from `components/extended/command-palette.tsx` and `search-input.tsx`.
-- Ensure results respect current scopes (e.g., project filters) and update routing/navigation state on selection.
+### Key deliverables
+
+* Modal overlay with prominent input, module filter chips, keyboard navigation, and type-grouped results.
+* Adapters for Notes, Tasks, Emails, Events, Projects, Chats, Files.
+* NL prefixes (`todo:`, `note:`, `event:`) and/or NL router hook to hand off to Assistant creation flows.
+
+### Integration notes
+
+* Bind to `⌘/Ctrl+K` when Assistant is closed; avoid conflicts; respect current scopes.
 
 ---
 
-## 6. Tasks ↔ Calendar Tight Coupling
+## 6. Tasks ↔ calendar tight coupling
+
 ### Objectives
-- Sync task due dates with calendar events, enabling scheduling via drag-and-drop and reciprocal updates.
 
-### Key Deliverables
-- Calendar augmentation to render tasks with due dates/time blocks as events using shared event pill styling.
-- Drag-and-drop interactions: task → calendar (set due window); calendar event → task (adjust due date).
-- Event detail CTA: "Create follow-up task" leveraging QuickTaskModal.
-- Focus block suggestions accessible via assistant or context panel.
-- Shared data contract ensuring updates propagate between task and calendar stores without duplication.
+* Sync task due dates with calendar events; enable scheduling via drag-and-drop and reciprocal updates.
 
-### Integration Notes
-- Audit Task and Calendar store providers for shared selectors and mutation hooks.
-- Handle edge cases: all-day tasks, recurring tasks, timezone shifts, and conflict resolution.
+### Key deliverables
+
+* Calendar renders tasks with due dates/time blocks using shared event pill styling.
+* Drag-and-drop: task → calendar (set window); event → task (adjust due date).
+* Event detail CTA: "Create follow-up task" via QuickTaskModal.
+* Focus block suggestions accessible via Assistant or Context Panel.
+
+### Integration notes
+
+* Audit Task/Calendar providers for shared selectors and mutation hooks; handle all-day, recurring, timezone shifts.
 
 ---
 
-## 7. Notes "Keep" View + Web Clipper
+## 7. Notes “Keep” view + web clipper
+
 ### Objectives
-- Provide a visual grid for pinned/quick notes and a lightweight clipping flow for URLs and media.
 
-### Key Deliverables
-- Notes module tab/view rendering pinned notes and clip-tagged notes in a masonry/grid layout.
-- Card styling with image/thumbnail support, tag chips, and pin indicators.
-- "Add from URL" affordance (inline input or modal) that creates notes prefilled with metadata.
-- Optional clipboard detection for quick capture.
+* Provide a visual grid for pinned/quick notes and a lightweight clipping flow for URLs and media.
 
-### Integration Notes
-- Reuse existing note model, pinning logic, and card primitives; avoid introducing new entities.
-- Prepare for future browser extension handoff by defining clipping API endpoints or IPC routes.
+### Key deliverables
+
+* Masonry/grid layout for pinned and clip-tagged notes; card styling with thumbnail, tag chips, pin indicators.
+* "Add from URL" affordance creating notes with metadata; optional clipboard detection.
+
+### Integration notes
+
+* Reuse existing note model, pinning logic, and card primitives; prep extension handoff with simple clipping endpoints/IPC.
 
 ---
 
-## 8. Lightweight Linking / Backlinks
+## 8. Lightweight linking / backlinks
+
 ### Objectives
-- Enable bi-directional linking between entities to build a lightweight knowledge graph.
 
-### Key Deliverables
-- Markdown/rich-text parser enhancements to detect `[[Entity Name]]` syntax and resolve to existing items.
-- Autocomplete suggestions when typing `[[` within editors.
-- "Attach to…" picker for explicit linking between notes, tasks, projects, emails, events, etc.
-- Persistence layer for link relationships plus automatic backlink generation.
-- Context Panel integration to surface backlinks under related sections.
+* Bi-directional links between entities to build a lightweight knowledge graph.
 
-### Integration Notes
-- Implement minimal shared linking service/utilities to manage creation, lookup, and hydration.
-- Handle unresolved links gracefully (e.g., highlight in editor, prompt to create entity).
+### Key deliverables
+
+* Parser enhancements to detect `[[Entity Name]]` and autocomplete after `[[`.
+* "Attach to…" picker for explicit linking; persistence + automatic backlinks.
+* Context Panel surfaces backlinks.
+
+### Integration notes
+
+* Minimal shared linking service for create/lookup/hydration; handle unresolved links gracefully.
 
 ---
 
-## 9. Starter Automations (Recipes + Slash-Commands)
+## 9. Starter automations (recipes + slash-commands)
+
 ### Objectives
-- Introduce simple automations and chat slash-commands to reduce repetitive workflows.
 
-### Key Deliverables
-- Event watchers (e.g., new email, tag change) that trigger task/note creation recipes.
-- Rule configuration UI (initially templated toggles; future custom builder) within Settings.
-- Chat slash-command handler supporting `/summarize`, `/plan`, `/task`, `/note`, `/email`, `/focus`, etc., leveraging assistant flows.
-- System notifications or context panel callouts confirming automation outcomes.
+* Reduce repetitive work with simple automations.
 
-### Integration Notes
-- Ensure automations reuse the same creation handlers as the Quick Assistant.
-- Provide clear logging or activity entries for generated artifacts.
+### Key deliverables
+
+* Watchers (new email, tag change) → task/note creation recipes.
+* Rule UI (templated toggles; future builder) in Settings.
+* Slash-commands in chat (`/summarize`, `/plan`, `/task`, `/note`, `/email`, `/focus`) that reuse Assistant flows.
+
+### Integration notes
+
+* Automations call the same creation handlers as the Assistant; provide logging/activity entries for generated artifacts.
 
 ---
 
-## 10. Design System Polish & Unification Pass
+## 10. Design system polish & unification pass
+
 ### Objectives
-- Apply a final sweep to enforce design tokens, spacing, type scale, and component variants across new and legacy surfaces.
 
-### Key Deliverables
-- Token enforcement (spacing, color, radius, typography) using `globals.css` and `tailwind.config.ts` tokens.
-- Audit to replace ad-hoc styles with UI kit primitives (buttons, tabs, toggles, cards, lists).
-- Consistent focus, hover, and motion-safe transitions.
-- Updated documentation/README snippets reflecting new patterns.
+* Enforce design tokens, spacing, type scale, and component variants across new and legacy surfaces.
 
-### Integration Notes
-- Pair with QA pass to ensure accessibility (contrast, focus order, keyboard navigation).
+### Key deliverables
 
----
+* Token enforcement (spacing, color, radius, typography) using `globals.css` + Tailwind tokens.
+* Replace ad-hoc styles with UI kit primitives (buttons, tabs, toggles, cards, lists).
+* Consistent focus, hover, `motion-safe` transitions.
+* Updated README/MDX snippets documenting patterns.
 
-## Integration & Consistency Guidelines
-- **One Assistant:** Retire redundant "+" buttons; route all quick-create actions through the Quick Assistant with scope awareness.
-- **One Context Pattern:** Adopt Context Panel 2.0 everywhere; surface backlinks and AI suggestions consistently.
-- **One Home:** Dashboard serves as the universal landing page; ensure navigation and routing defaults point here.
-- **One Search:** Route all global/module search experiences through the command palette service.
-- **One Design Language:** Use UI kit tokens and primitives exclusively—no custom spacing, colors, or ad-hoc components.
+### Integration notes
+
+* Pair with accessibility QA: contrast, focus order, keyboard navigation.
 
 ---
 
-## Suggested Two-Week Build Sequence
-1. **Quick Assistant MVP** – floating launcher, hotkeys, slash parsing, scoped creation.
-2. **Dashboard Refresh** – Today row, Inbox triage, projects strip, activity feed.
-3. **Projects Module Foundations** – tri-pane layout, overview tab, context integration.
-4. **Context Panel 2.0** – shared components, refactors, backlink surfacing.
-5. **Universal Command Palette** – search adapters, create-from-query, hotkey wiring.
-6. **Tasks ↔ Calendar Sync** – event rendering, drag/drop, follow-up flows.
-7. **Notes Keep View & Clipper** – grid layout, URL capture, pin integration.
-8. **Linking & Backlinks** – parser, attach UI, persistence.
-9. **Starter Automations** – basic recipes, slash commands, confirmations.
-10. **Design Polish Pass** – token sweep, documentation, accessibility QA.
+## 11. Natural-language intent router (NL → intent → action)
 
-Each milestone should conclude with:
-- Functional demo (screen recording or screenshots).
-- Updated documentation or inline Storybook/MDX notes where applicable.
-- Verification via `npm run type-check` and relevant smoke tests in web + Tauri shells.
+### Purpose
+
+Turn arbitrary text into a **strict, validated intent** that deterministic code executes. The LLM classifies; code validates and enriches.
+
+### Intent schema (initial)
+
+* `task.create` — title, due (ISO), notes, priority
+* `note.create` — body
+* `event.create` — title, start/end (ISO), location
+* `summarize.selection` — bullets
+* `translate.selection` — target_lang, tone (informal/polite/neutral)
+
+### Mechanics
+
+* **LLM classification** (local 7–8B by default). Output **strict JSON only**.
+* **Validation** via Zod; **enrichers** normalize dates (chrono/luxon), language codes, bullet counts; apply timezone.
+* **Confidence gate** (<0.6 prompts a compact disambiguation UI); selection-required intents block with a clear inline message.
+* **Provider routing**: classification local; heavy summarize/translate may use the user’s configured cloud provider; show a tiny "Using OpenAI • Change" label when cloud is used.
+* **Instrumentation** as listed in §1.
+
+---
+
+## 12. Writing tools registry (selection transforms)
+
+### Tools (all selection-based)
+
+* **Professional tone**, **Friendly tone**, **Make concise**, **Expand**, **Proofread**, **Summarize** (N bullets), **Translate…** (lang + tone), **Explain**, **Create list**, **Extract key points**.
+
+### Behavior
+
+* Assistant shows a **tools grid** when a selection exists and input is empty.
+* NL like “make this friendlier”, “translate to German (informal)”, “extract key points” routes to the corresponding tool; unmatched → **Ask AI** with the selection as context.
+* Results render in a **draft pane** with Replace/Insert/Copy actions; dismissing restores focus.
+
+---
+
+## 13. Tokens added/confirmed (dashboard + assistant)
+
+* **Header**: `--dash-header-py`, `--dash-title-size`, `--dash-header-gap`.
+* **Chip**: `--chip-bg`, `--chip-border`, `--chip-radius`, `--chip-pad-y`, `--chip-pad-x`; icons `--icon-sm`, `--icon-md`.
+* **Cards**: `--card-pad`, `--row-pad`, `--dash-gap`; borders `--border-subtle`; radii `--radius-lg`.
+* **Assistant**: `--modal-max-w: 640px`, `--elevation-lg`, tools grid spacing, item radius/border/hover tokens.
+
+---
+
+## 14. Accessibility & keyboard
+
+* Dialogs: focus trap, `aria-modal`, labelled titles, `Esc` closes and restores focus.
+* Keyboard parity for the Assistant (slash list, tools grid, submit); dotted quiet links advertise shortcuts via `title` + `aria-keyshortcuts`.
+* Reduce motion: all animation gated behind `motion-safe:` with non-animated fallback states.
+
+---
+
+## 15. Risks & mitigations
+
+* **LLM misclassification** → confidence gate + preview line; default to non-destructive capture.
+* **Ambiguous dates** → deterministic enrichers and user locale/timezone; morning/afternoon heuristics (configurable).
+* **Privacy** → local classification; size thresholds before sending selection to cloud; explicit provider label when cloud used.
+* **Scope leaks** → assistant receives current project/folder scope; creation handlers require scope explicitly.
+
+---
+
+## 16. Rollout & sequencing (two weeks)
+
+1. **Assistant MVP** – launcher, hotkeys, selection, NL router (task/note/event + Ask AI fallback).
+2. **Dashboard refresh** – header three-zone layout; top-row cards; Inbox/Projects/Signals 3-row caps; optional Focus.
+3. **Projects foundations** – tri-pane layout, overview widgets, scoped Assistant.
+4. **Context Panel 2.0** – shared component, backlinks.
+5. **Command palette** – adapters and create-from-query handoff to Assistant.
+6. **Tasks ↔ calendar** – render tasks in calendar; drag/drop; follow-up flows.
+7. **Notes keep view + clipper** – grid, URL capture.
+8. **Linking/backlinks** – parser + attach UI + persistence.
+9. **Starter automations** – watchers, slash-commands.
+10. **Design polish** – token sweep + accessibility QA.
+
+**Milestone exit criteria**: demo recording, updated docs/MDX, `npm run type-check`, smoke tests in web + Tauri shells.

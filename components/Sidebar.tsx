@@ -3,6 +3,7 @@ import {
   Calendar,
   CheckSquare,
   FileText,
+  FolderKanban,
   LayoutDashboard,
   Mail,
   MessageSquare,
@@ -22,6 +23,7 @@ interface SidebarProps {
 
 const modules = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'projects', label: 'Projects', icon: FolderKanban },
   { id: 'canvas', label: 'Canvas', icon: PenTool },
   { id: 'mail', label: 'Mail', icon: Mail },
   { id: 'chat', label: 'Chat', icon: MessageSquare },

@@ -6,7 +6,7 @@ import { EventModalModern } from './calendar/EventModalModern';
 import { CalendarPopover } from './calendar/CalendarPopover';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { SegmentedToggle } from '../controls/SegmentedToggle';
-import { QUICK_ASSISTANT_EVENTS } from '../quick-assistant/QuickAssistantProvider';
+import { QUICK_ASSISTANT_EVENTS } from '../assistant';
 
 // Unified calendar engine and views
 import { useCalendarEngine, formatRangeLabel, navigate } from './calendar/useCalendarEngine';

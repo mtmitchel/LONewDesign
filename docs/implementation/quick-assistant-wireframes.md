@@ -1,5 +1,7 @@
 # Quick Assistant Capture Redesign - Wireframes
 
+> **Legacy notice:** These wireframes capture the original CaptureModal concept. The production assistant now uses `AssistantCaptureDialog` with a simplified surface.
+
 ## Wireframe 1: Initial Capture State (Compact)
 
 ```

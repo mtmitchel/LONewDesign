@@ -4,7 +4,7 @@ This document defines the high-level goals, execution plan, and concrete tasks t
 
 ## Goals
 - Scaffold a secure Tauri desktop app (Rust backend + Vite React TypeScript frontend).
-- Keep existing component structure and token-driven theming (styles/globals.css, design-tokens.md).
+- Keep existing component structure and token-driven theming (styles/globals.css, docs/technical/design-tokens-reference.md).
 - Finalize TriPane Mail module behavior (keyboard, caret toggles, consistent layout).
 - Ensure secure content rendering (sanitize email HTML).
 - Provide dev/build scripts and documentation.
@@ -203,13 +203,13 @@ implemented
         {
           "operation": "replace",
           "find_pattern": "import './styles/globals.css';",
-          "replace_with": "import './styles/globals.css'; // keep tokens as single source of truth, see design-tokens.md"
+        "replace_with": "import './styles/globals.css'; // keep tokens as single source of truth, see docs/technical/design-tokens-reference.md"
         }
       ],
       "validation_steps": [
         "npm run dev",
         "Visually verify tokenized colors and spacing on TriPane headers and mail list",
-        "Cross-check with design-tokens.md and LibreOllama-UI-Kit-Plan.md"
+        "Cross-check with docs/technical/design-tokens-reference.md and LibreOllama-UI-Kit-Plan.md"
       ],
       "success_criteria": "UI renders with correct tokenized colors, spacing, and borders; no hardcoded overrides fight tokens.",
       "dependencies": ["init-frontend-vite-tailwind"],
@@ -308,7 +308,7 @@ implemented
         {
           "operation": "insert",
           "find_pattern": "",
-          "replace_with": "# LibreOllama Desktop (Tauri + React)\n\n## Prereqs\n- Node.js 18+\n- Rust + Cargo (stable)\n- Tauri CLI (via devDependency)\n\n## Dev\n- npm install\n- npm run dev (web)\n- npm run tauri:dev (desktop)\n\n## Build\n- npm run build\n- npm run tauri:build\n\n## Notes\n- Design tokens live in styles/globals.css and design-tokens.md\n- See LibreOllama-UI-Kit-Plan.md for component coverage\n- Keyboard: [ hides left pane, ] shows left pane, \\\\ toggles right context\n"
+          "replace_with": "# LibreOllama Desktop (Tauri + React)\n\n## Prereqs\n- Node.js 18+\n- Rust + Cargo (stable)\n- Tauri CLI (via devDependency)\n\n## Dev\n- npm install\n- npm run dev (web)\n- npm run tauri:dev (desktop)\n\n## Build\n- npm run build\n- npm run tauri:build\n\n## Notes\n- Design tokens live in styles/globals.css and docs/technical/design-tokens-reference.md\n- See LibreOllama-UI-Kit-Plan.md for component coverage\n- Keyboard: [ hides left pane, ] shows left pane, \\\\ toggles right context\n"
         }
       ],
       "validation_steps": [
@@ -346,7 +346,7 @@ implemented
 - npm run build && npm run tauri:build (production build)
 
 ## References
-- design-tokens.md
+- docs/technical/design-tokens-reference.md
 - LibreOllama-UI-Kit-Plan.md
 - components/modules/MailModuleTriPane.tsx (primary module)
 - components/PaneCaret.tsx and components/PaneCaretSpec.tsx
