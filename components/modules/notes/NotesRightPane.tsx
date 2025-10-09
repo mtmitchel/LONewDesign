@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, Lightbulb, Link } from 'lucide-react';
 import { cn } from '../../ui/utils';
 import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
 import { PaneColumn } from '../../layout/PaneColumn';
@@ -15,30 +15,59 @@ interface NotesRightPaneProps {
 }
 
 export function NotesRightPane({ onHidePane, className, settings, onSettingsChange }: NotesRightPaneProps) {
-  const [activeTab, setActiveTab] = React.useState<'context' | 'settings'>('context');
+  const [activeTab, setActiveTab] = React.useState<'insights' | 'settings'>('insights');
 
   return (
     <PaneColumn className={`h-full ${className || ''}`} showLeftDivider showRightDivider={false}>
       <PaneHeader role="tablist" className="gap-[var(--space-6)] px-[var(--panel-pad-x)]">
-        <PaneTabButton label="Context" active={activeTab === 'context'} onClick={() => setActiveTab('context')} />
+        <PaneTabButton label="Insights" active={activeTab === 'insights'} onClick={() => setActiveTab('insights')} />
         <PaneTabButton label="Settings" active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
       </PaneHeader>
 
-      {activeTab === 'context' ? (
-        <div className="flex-1 min-h-0 overflow-y-auto p-4">
-          <div className="space-y-[var(--space-6)]">
-            <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--space-4)] text-sm text-[color:var(--text-secondary)]">
-              <p>Use the assistant to capture aligned notes or tasks.</p>
-              <p className="mt-[var(--space-2)] text-xs text-[color:var(--text-tertiary)]" aria-hidden>
-                Press ⌘/Ctrl+K to add
+      {activeTab === 'insights' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto p-[var(--panel-pad-x)] py-[var(--panel-pad-y)]">
+                    <div className="space-y-[var(--space-6)]">
+            <section className="space-y-[var(--space-4)]">
+              <div className="flex items-center gap-[var(--space-2)]">
+                <Lightbulb className="size-4 text-[color:var(--text-primary)]" aria-hidden="true" />
+                <h4 className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] font-semibold">AI insights</h4>
+              </div>
+              <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] italic">
+                Nothing to surface right now.
               </p>
-            </div>
+            </section>
 
-            <div className="py-[var(--space-8)] text-center">
-              <FileText className="mx-auto mb-4 h-12 w-12 text-[color:var(--text-secondary)] opacity-30" />
-              <h4 className="mb-2 text-sm font-medium text-[color:var(--text-primary)]">No related items</h4>
-              <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed">Select a note to see related items</p>
-            </div>
+            <section className="space-y-[var(--space-4)]">
+              <div className="flex items-center gap-[var(--space-2)]">
+                <svg className="size-4 text-[color:var(--text-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <h4 className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] font-semibold">Reminders</h4>
+              </div>
+              <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] italic">
+                No reminders.
+              </p>
+            </section>
+
+            <section className="space-y-[var(--space-4)]">
+              <div className="flex items-center gap-[var(--space-2)]">
+                <Link className="size-4 text-[color:var(--text-primary)]" aria-hidden="true" />
+                <h4 className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] font-semibold">Related items</h4>
+              </div>
+              <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] italic">
+                No recent related items.
+              </p>
+            </section>
+
+            <section className="space-y-[var(--space-4)]">
+              <div className="flex items-center gap-[var(--space-2)]">
+                <FileText className="size-4 text-[color:var(--text-primary)]" aria-hidden="true" />
+                <h4 className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] font-semibold">Linked notes</h4>
+              </div>
+              <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] italic">
+                No linked notes.
+              </p>
+            </section>
           </div>
         </div>
       ) : (

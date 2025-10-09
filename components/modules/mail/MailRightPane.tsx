@@ -1,9 +1,6 @@
 import React from 'react';
 import { FileText } from 'lucide-react';
-import { cn } from '../../ui/utils';
-import { PaneCaret, PaneFooter } from '../../dev/PaneCaret';
-import { PaneColumn } from '../../layout/PaneColumn';
-import { PaneHeader } from '../../layout/PaneHeader';
+import { ContextPanel, ContextSection } from '../context';
 import RightContextSettings, {
   DEFAULT_MAIL_SETTINGS,
   MailSettings,
@@ -16,97 +13,77 @@ interface MailRightPaneProps {
 }
 
 export function MailRightPane({ onHidePane, className }: MailRightPaneProps) {
-  const [activeTab, setActiveTab] = React.useState<'context' | 'settings'>('context');
+  const [activeTab, setActiveTab] = React.useState<'insights' | 'settings'>('insights');
   const [settings, setSettings] = React.useState<MailSettings>(DEFAULT_MAIL_SETTINGS);
+  const handleTabChange = React.useCallback((tabId: string) => {
+    if (tabId === 'insights' || tabId === 'settings') {
+      setActiveTab(tabId);
+    }
+  }, []);
+
   return (
-    <PaneColumn className={`h-full ${className || ''}`} showLeftDivider showRightDivider={false}>
-      <PaneHeader role="tablist" className="gap-[var(--space-6)] px-[var(--panel-pad-x)]">
-        <PaneTabButton
-          label="Context"
-          active={activeTab === 'context'}
-          onClick={() => setActiveTab('context')}
-        />
-        <PaneTabButton
-          label="Settings"
-          active={activeTab === 'settings'}
-          onClick={() => setActiveTab('settings')}
-        />
-      </PaneHeader>
+    <ContextPanel
+      className={className}
+      tabs={[
+        { id: 'insights', label: 'Insights' },
+        { id: 'settings', label: 'Settings' },
+      ]}
+      activeTab={activeTab}
+      onTabChange={handleTabChange}
+      panels={{
+        insights: {
+          content: (
+            <div className="space-y-[var(--space-6)]">
+              <section className="space-y-[var(--space-4)]">
+                <div className="flex items-center gap-[var(--space-2)]">
+                  <FileText className="size-4 text-[color:var(--text-primary)]" aria-hidden="true" />
+                  <h4 className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] font-semibold">AI insights</h4>
+                </div>
+                <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] italic">
+                  Nothing to surface right now.
+                </p>
+              </section>
 
-      {activeTab === 'context' ? (
-        <div className="flex-1 min-h-0 overflow-y-auto p-4">
-          <div className="space-y-[var(--space-6)]">
-            <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--space-4)] text-sm text-[color:var(--text-secondary)]">
-              <p>Capture follow-ups from anywhere with the assistant.</p>
-              <p className="mt-[var(--space-2)] text-xs text-[color:var(--text-tertiary)]" aria-hidden>
-                Press ⌘/Ctrl+K to add
-              </p>
+              <section className="space-y-[var(--space-4)]">
+                <div className="flex items-center gap-[var(--space-2)]">
+                  <svg className="size-4 text-[color:var(--text-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  <h4 className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] font-semibold">Reminders</h4>
+                </div>
+                <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] italic">
+                  No reminders.
+                </p>
+              </section>
+
+              <section className="space-y-[var(--space-4)]">
+                <div className="flex items-center gap-[var(--space-2)]">
+                  <svg className="size-4 text-[color:var(--text-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  <h4 className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] font-semibold">Related items</h4>
+                </div>
+                <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] italic">
+                  No recent related items.
+                </p>
+              </section>
             </div>
-
-            <div className="py-[var(--space-8)] text-center">
-              <FileText className="mx-auto mb-4 h-12 w-12 text-[color:var(--text-secondary)] opacity-30" />
-              <h4 className="mb-2 text-sm font-medium text-[color:var(--text-primary)]">
-                No related items
-              </h4>
-              <p className="text-xs text-[color:var(--text-secondary)] leading-relaxed">
-                Select a message to see related items
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <RightContextSettings
-            value={settings}
-            onChange={setSettings}
-            onResetDefaults={() => setSettings({ ...DEFAULT_MAIL_SETTINGS })}
-            onRestoreRecommended={() => setSettings({ ...RECOMMENDED_MAIL_SETTINGS })}
-            className="pb-[var(--space-8)]"
-          />
-        </div>
-      )}
-
-      <PaneFooter>
-        <PaneCaret
-          direction="right"
-          onClick={onHidePane}
-          tooltipText="Hide context"
-          shortcut="\\"
-        />
-      </PaneFooter>
-    </PaneColumn>
-  );
-}
-
-function PaneTabButton({
-  label,
-  active,
-  onClick
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'relative pb-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
-        active
-          ? 'text-[color:var(--text-primary)]'
-          : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]'
-      )}
-    >
-      {label}
-      <span
-        aria-hidden="true"
-        className={cn(
-          'pointer-events-none absolute left-0 right-0 -bottom-1 h-0.5 rounded-full transition-opacity',
-          active ? 'bg-[var(--primary)] opacity-100' : 'bg-transparent opacity-0'
-        )}
-      />
-    </button>
+          ),
+        },
+        settings: {
+          padding: 'none',
+          content: (
+            <RightContextSettings
+              value={settings}
+              onChange={setSettings}
+              onResetDefaults={() => setSettings({ ...DEFAULT_MAIL_SETTINGS })}
+              onRestoreRecommended={() => setSettings({ ...RECOMMENDED_MAIL_SETTINGS })}
+              className="px-[var(--panel-pad-x)] pb-[var(--space-8)]"
+            />
+          ),
+        },
+      }}
+      onCollapse={onHidePane}
+    />
   );
 }

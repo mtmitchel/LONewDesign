@@ -3,7 +3,6 @@ import {
   Calendar,
   CalendarClock,
   FolderKanban,
-  Link,
   ListTodo,
   NotebookPen,
   Palette,
@@ -18,14 +17,16 @@ import { Label } from "../../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
 import { cn } from "../../ui/utils";
 import { Project, ProjectTaskList } from "./data";
+import { ProjectInsightsPanel } from "./ProjectInsightsPanel";
 
 interface ProjectContextPanelProps {
   onCollapse: () => void;
   project?: Project;
   taskLists?: ProjectTaskList[];
+  onOpenAssistant?: (projectId: string) => void;
 }
 
-type TabId = "context" | "settings";
+type TabId = "insights" | "settings";
 
 type SettingsState = {
   defaultList: string;
@@ -37,8 +38,8 @@ type SettingsState = {
   projectIcon: string;
 };
 
-export function ProjectContextPanel({ onCollapse, project, taskLists = [] }: ProjectContextPanelProps) {
-  const [activeTab, setActiveTab] = React.useState<TabId>("context");
+export function ProjectContextPanel({ onCollapse, project, taskLists = [], onOpenAssistant }: ProjectContextPanelProps) {
+  const [activeTab, setActiveTab] = React.useState<TabId>("insights");
   const [settings, setSettings] = React.useState<SettingsState>(() => createDefaultSettings(taskLists));
 
   React.useEffect(() => {
@@ -61,104 +62,29 @@ export function ProjectContextPanel({ onCollapse, project, taskLists = [] }: Pro
         tabs={<ContextSettingsTabs activeTab={activeTab} onSelect={setActiveTab} />}
       />
 
-      <div className="flex-1 overflow-y-auto border-t border-[var(--border-subtle)] px-[var(--panel-pad-x)] py-[var(--panel-pad-y)]">
-        {activeTab === "context" ? (
-          <ContextTab project={project} />
-        ) : (
+      {activeTab === "insights" ? (
+        <ProjectInsightsPanel
+          projectId={project?.id ?? ""}
+          loading={false}
+          insights={[]}
+          reminders={[]}
+          related={[]}
+          backlinks={[]}
+          onOpenAssistant={(id) => {
+            console.debug("project:insights:open-assistant", { projectId: id });
+            onOpenAssistant?.(id);
+          }}
+        />
+      ) : (
+        <div className="flex-1 overflow-y-auto border-t border-[var(--border-subtle)] px-[var(--panel-pad-x)] py-[var(--panel-pad-y)]">
           <SettingsTabContent taskLists={taskLists} settings={settings} onChange={handleSettingChange} />
-        )}
-      </div>
+        </div>
+      )}
 
       <PaneFooter>
         <PaneCaret side="right" label="Hide context" onClick={onCollapse} ariaKeyshortcuts="\\" />
       </PaneFooter>
     </PaneColumn>
-  );
-}
-
-function ContextTab({ project }: { project?: Project }) {
-  const relatedNotes: Array<{ id: string; title: string; snippet: string }> = [];
-  const relatedTasks: Array<{ id: string; title: string; list: string }> = [];
-  const suggestions: Array<{ id: string; title: string; hint: string }> = [];
-  const backlinks: Array<{ id: string; title: string; source: string }> = [];
-  const upcomingEvents = getUpcomingEventsForProject(project?.id);
-
-  const showLinkHint =
-    relatedNotes.length === 0 && relatedTasks.length === 0 && suggestions.length === 0 && backlinks.length === 0;
-
-  return (
-    <div className="space-y-[var(--space-6)]">
-      {showLinkHint ? (
-        <p className="px-[var(--space-1)] text-sm text-[color:var(--text-tertiary)]">
-          Link work with ⌘K or from item menus.
-        </p>
-      ) : null}
-
-      {relatedNotes.length > 0 ? (
-        <ContextSection title="Related notes" icon={<NotebookPen className="size-4" aria-hidden />}>
-          <ul className="space-y-[var(--space-3)] text-sm text-[color:var(--text-secondary)]">
-            {relatedNotes.map((note) => (
-              <li key={note.id}>
-                <p className="font-medium text-[color:var(--text-primary)]">{note.title}</p>
-                <p className="truncate text-xs text-[color:var(--text-tertiary)]">{note.snippet}</p>
-              </li>
-            ))}
-          </ul>
-        </ContextSection>
-      ) : null}
-
-      {relatedTasks.length > 0 ? (
-        <ContextSection title="Related tasks" icon={<ListTodo className="size-4" aria-hidden />}>
-          <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
-            {relatedTasks.map((task) => (
-              <li key={task.id} className="flex items-center justify-between gap-[var(--space-3)]">
-                <span className="truncate font-medium text-[color:var(--text-primary)]">{task.title}</span>
-                <span className="text-xs text-[color:var(--text-tertiary)]">{task.list}</span>
-              </li>
-            ))}
-          </ul>
-        </ContextSection>
-      ) : null}
-
-      {upcomingEvents.length > 0 ? (
-        <ContextSection title="Upcoming events" icon={<Calendar className="size-4" aria-hidden />}>
-          <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
-            {upcomingEvents.map((event) => (
-              <li key={event.id} className="flex items-center justify-between gap-[var(--space-3)]">
-                <span className="truncate">{event.title}</span>
-                <span className="shrink-0 text-xs text-[color:var(--text-tertiary)]">{event.when}</span>
-              </li>
-            ))}
-          </ul>
-        </ContextSection>
-      ) : null}
-
-      {suggestions.length > 0 ? (
-        <ContextSection title="Suggestions" icon={<Sparkles className="size-4" aria-hidden />}>
-          <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
-            {suggestions.map((suggestion) => (
-              <li key={suggestion.id}>
-                <p className="font-medium text-[color:var(--text-primary)]">{suggestion.title}</p>
-                <p className="text-xs text-[color:var(--text-tertiary)]">{suggestion.hint}</p>
-              </li>
-            ))}
-          </ul>
-        </ContextSection>
-      ) : null}
-
-      {backlinks.length > 0 ? (
-        <ContextSection title="Backlinks" icon={<Link className="size-4" aria-hidden />}>
-          <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
-            {backlinks.map((backlink) => (
-              <li key={backlink.id} className="flex items-center justify-between gap-[var(--space-3)]">
-                <span className="truncate font-medium text-[color:var(--text-primary)]">{backlink.title}</span>
-                <span className="text-xs text-[color:var(--text-tertiary)]">{backlink.source}</span>
-              </li>
-            ))}
-          </ul>
-        </ContextSection>
-      ) : null}
-    </div>
   );
 }
 
@@ -281,12 +207,12 @@ function ContextSettingsTabs({ activeTab, onSelect }: { activeTab: TabId; onSele
         type="button"
         className={cn(
           "relative pb-2 transition-colors",
-          activeTab === "context" ? "text-[color:var(--text-primary)]" : "text-[color:var(--text-tertiary)]",
+          activeTab === "insights" ? "text-[color:var(--text-primary)]" : "text-[color:var(--text-tertiary)]",
         )}
-        onClick={() => onSelect("context")}
+        onClick={() => onSelect("insights")}
       >
-        Context
-        {activeTab === "context" ? (
+        Insights
+        {activeTab === "insights" ? (
           <span className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-[var(--primary)]" aria-hidden />
         ) : null}
       </button>
@@ -305,33 +231,6 @@ function ContextSettingsTabs({ activeTab, onSelect }: { activeTab: TabId; onSele
       </button>
     </div>
   );
-}
-
-function ContextSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="space-y-[var(--space-3)]">
-      <header className="flex items-center gap-[var(--space-2)] text-sm font-medium text-[color:var(--text-secondary)]">
-        <span className="grid size-6 place-items-center rounded-full bg-[var(--bg-surface-elevated)] text-[color:var(--text-secondary)]">
-          {icon}
-        </span>
-        <span className="text-[color:var(--text-primary)]">{title}</span>
-      </header>
-      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--space-4)]">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-const UPCOMING_EVENTS: Array<{ id: string; projectId?: string; title: string; when: string }> = [
-  { id: "event-sync", projectId: "proj-unified-ui", title: "Sync with success team", when: "Oct 15 · 2:00 PM" },
-  { id: "event-qa", projectId: "proj-unified-ui", title: "Dashboard QA sweep", when: "Oct 17 · 10:30 AM" },
-  { id: "event-canvas", projectId: "proj-canvas-ai", title: "Canvas prompt review", when: "Oct 18 · 4:00 PM" },
-  { id: "event-ops", projectId: "proj-ops-enablement", title: "Enablement pilot prep", when: "Oct 19 · 11:15 AM" },
-];
-
-function getUpcomingEventsForProject(projectId?: string) {
-  return UPCOMING_EVENTS.filter((event) => !projectId || event.projectId === projectId);
 }
 
 function SettingsSection({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {

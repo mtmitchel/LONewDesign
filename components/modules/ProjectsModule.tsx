@@ -551,6 +551,10 @@ export function ProjectsModule() {
                 project={selectedProject}
                 taskLists={currentTaskLists}
                 onCollapse={() => setRightPaneVisible(false)}
+                onOpenAssistant={(projectId) => {
+                  console.debug("projects:open-assistant", { projectId });
+                  // TODO: wire to QuickAssistantProvider with project scope
+                }}
               />
             )
           ) : (
