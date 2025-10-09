@@ -63,11 +63,8 @@ export function PaneCaret(props: PaneCaretProps) {
               {...(ariaKeyshortcuts ? { 'aria-keyshortcuts': ariaKeyshortcuts } : {})}
               className={cn(
                 railBase,
-                side === 'left'
-                  ? 'border-r border-[var(--border-subtle)]'
-                  : 'border-l border-[var(--border-subtle)]',
-                'bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-base)] ease-[var(--easing-standard)]',
-                'hover:bg-[var(--primary-tint-5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
+                'bg-[var(--bg-surface)] motion-safe:transition-colors duration-[var(--duration-base)] ease-[var(--easing-standard)]',
+                'hover:bg-[var(--bg-surface-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]',
                 disabled && 'opacity-60 pointer-events-none hover:bg-[var(--bg-surface-elevated)]',
                 className
               )}
@@ -75,7 +72,7 @@ export function PaneCaret(props: PaneCaretProps) {
               <Icon
                 aria-hidden="true"
                 strokeWidth={2}
-                className="size-[18px] text-[var(--caret-rest)] motion-safe:transition-transform duration-[var(--duration-base)] ease-[var(--easing-standard)] group-hover:text-[var(--caret-hover)] group-hover:scale-110"
+                className="size-[18px] text-[color:var(--text-tertiary)] motion-safe:transition-colors duration-[var(--duration-base)] ease-[var(--easing-standard)] group-hover:text-[color:var(--text-secondary)]"
               />
             </button>
           </TooltipTrigger>
@@ -191,7 +188,7 @@ export function PaneFooter({ children, className = '' }: PaneFooterProps) {
   return (
     <div
       className={cn(
-        'h-10 border-t border-[var(--border-default)] flex items-center justify-center px-4 py-2 bg-[var(--bg-surface)]',
+        'flex h-10 items-center justify-center gap-[var(--space-2)] border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)]',
         className
       )}
     >

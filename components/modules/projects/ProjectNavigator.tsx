@@ -37,12 +37,8 @@ export function ProjectNavigator({
 
   return (
     <PaneColumn className="h-full" showRightDivider>
-      <PaneHeader role="banner" className="justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">Spaces</p>
-          <h2 className="text-[length:var(--text-base)] font-semibold text-[color:var(--text-primary)]">Projects</h2>
-        </div>
-        <PaneCaret side="left" label="Hide projects rail" variant="button" onClick={onCollapse} ariaKeyshortcuts="]" />
+      <PaneHeader role="banner" className="justify-start">
+        <h2 className="text-[length:var(--text-base)] font-semibold text-[color:var(--text-primary)]">Projects</h2>
       </PaneHeader>
 
       <div className="px-[var(--space-4)] py-[var(--space-4)]">
@@ -95,7 +91,7 @@ function ProjectSection({
 
   return (
     <div className="mb-[var(--space-4)] px-[var(--space-2)]">
-      <p className="mb-[var(--space-2)] text-xs font-medium uppercase tracking-wide text-[color:var(--text-tertiary)]">
+      <p className="mb-[var(--space-2)] text-xs font-medium tracking-wide text-[color:var(--text-tertiary)]">
         {label}
       </p>
       <ul className="space-y-[var(--space-1)]">
@@ -115,9 +111,6 @@ function ProjectSection({
                 )}
                 aria-current={active ? "page" : undefined}
               >
-                <span className="grid size-8 place-items-center rounded-[var(--radius-md)] bg-[var(--bg-surface-elevated)] text-xs font-medium text-[color:var(--text-secondary)]">
-                  {project.code}
-                </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-[var(--space-1)] text-sm font-medium text-[color:var(--text-primary)]">
                     {project.name}
@@ -126,7 +119,7 @@ function ProjectSection({
                     ) : null}
                   </span>
                   <span className="mt-1 block text-xs text-[color:var(--text-tertiary)]">
-                    Due {formatDue(project.dueDate)} · {Math.round(project.progress * 100)}%
+                    {project.code} · Due {formatDue(project.dueDate)} · {Math.round(project.progress * 100)}%
                   </span>
                 </span>
               </button>

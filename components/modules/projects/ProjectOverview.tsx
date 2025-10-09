@@ -15,22 +15,20 @@ interface ProjectOverviewProps {
 export function ProjectOverview({ project, milestones, artifacts, onAddAction }: ProjectOverviewProps) {
   return (
     <div className="space-y-[var(--dash-gap)] px-[var(--space-6)] py-[var(--space-6)]">
-      <header className="flex flex-wrap items-start justify-between gap-[var(--space-4)]">
+      <header className="flex flex-wrap items-start gap-[var(--space-4)]">
         <div className="space-y-[var(--space-2)]">
-          <span className="inline-flex items-center gap-[var(--space-2)] text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">
-            {project.focusArea}
-          </span>
+          <p className="text-xs text-[color:var(--text-secondary)]">Category: {project.focusArea}</p>
           <h1 className="text-[length:var(--text-2xl)] font-semibold text-[color:var(--text-primary)]" data-user-content>
             {project.name}
           </h1>
+          <p className="text-xs text-[color:var(--text-tertiary)]" aria-hidden>
+            Press ⌘/Ctrl+K to add
+          </p>
           <p className="max-w-prose text-sm text-[color:var(--text-secondary)]">{project.summary}</p>
           <p className="text-xs text-[color:var(--text-secondary)]">
             Due {formatDate(project.dueDate)} · Last updated {formatRelative(project.lastUpdated)}
           </p>
         </div>
-        <Button onClick={onAddAction} size="lg" className="whitespace-nowrap">
-          Add
-        </Button>
       </header>
 
       <section className="grid grid-cols-1 gap-[var(--dash-gap)] xl:grid-cols-[1.2fr_1fr]">
@@ -38,25 +36,27 @@ export function ProjectOverview({ project, milestones, artifacts, onAddAction }:
           <div className="space-y-[var(--space-4)]">
             <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)]">
               <div>
-                <p className="text-xs uppercase tracking-wide text-[color:var(--text-tertiary)]">Completion</p>
+                <p className="text-xs text-[color:var(--text-tertiary)]">Completion</p>
                 <p className="text-[length:var(--text-lg)] font-semibold text-[color:var(--text-primary)]">
                   {Math.round(project.progress * 100)}%
                 </p>
               </div>
               <div className="flex items-center gap-[var(--space-2)] rounded-[var(--radius-full)] bg-[var(--chip-bg)] px-[var(--chip-pad-x)] py-[var(--chip-pad-y)] text-xs text-[color:var(--text-secondary)]">
                 <Target className="size-[var(--icon-sm)]" aria-hidden />
-                Phase {project.code.toUpperCase()}
+                Phase {project.code}
               </div>
             </div>
-            <div className="h-2 rounded-full bg-[var(--bg-surface-elevated)]">
-              <div
-                className="h-2 rounded-full bg-[var(--primary)]"
-                style={{ width: `${Math.min(100, Math.round(project.progress * 100))}%` }}
-                role="progressbar"
-                aria-valuenow={Math.round(project.progress * 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              />
+            <div className="max-w-[var(--content-measure-short)]">
+              <div className="h-2 rounded-full bg-[var(--bg-surface-elevated)]">
+                <div
+                  className="h-2 rounded-full bg-[var(--primary)]"
+                  style={{ width: `${Math.min(100, Math.round(project.progress * 100))}%` }}
+                  role="progressbar"
+                  aria-valuenow={Math.round(project.progress * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                />
+              </div>
             </div>
             <div className="flex flex-col gap-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
               <span>
@@ -102,11 +102,16 @@ export function ProjectOverview({ project, milestones, artifacts, onAddAction }:
               <EmptyState icon={<NotebookPen className="size-5" aria-hidden />} title="No linked records" subtitle="Link notes or emails for quick access." />
             ) : (
               artifacts.map((artifact) => (
-                <li key={artifact.id} className="space-y-[var(--space-1)]">
-                  <p className="text-sm font-medium text-[color:var(--text-primary)]">{artifact.title}</p>
-                  <p className="text-xs text-[color:var(--text-secondary)]">
-                    {artifact.kind === "note" ? "Note" : "Email"} · Updated {formatRelative(artifact.updatedAt)}
-                  </p>
+                <li key={artifact.id} className="flex items-center gap-[var(--space-3)]">
+                  <div className="min-w-0 flex-1 space-y-[var(--space-1)]">
+                    <p className="truncate text-sm font-medium text-[color:var(--text-primary)]">{artifact.title}</p>
+                    <p className="text-xs text-[color:var(--text-secondary)]">
+                      {artifact.kind === "note" ? "Note" : "Email"} · Updated {formatRelative(artifact.updatedAt)}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="shrink-0 text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]">
+                    Open
+                  </Button>
                 </li>
               ))
             )}

@@ -29,46 +29,133 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import { TaskColumnHeader } from './tasks/TaskColumnHeader';
-import { TaskAddButton } from './tasks/TaskAddButton';
-import { TaskCard } from './tasks/TaskCard';
 import { TaskComposer } from './tasks/TaskComposer';
+import { TasksBoard } from './tasks/TasksBoard';
 import { TaskSidePanel } from './tasks/TaskSidePanel';
 import { SegmentedToggle } from '../controls/SegmentedToggle';
 import { TASK_LISTS } from './tasks/constants';
+import type { Task, TaskLabel } from './tasks/types';
 import { projects } from './projects/data';
 import { openQuickAssistant } from '../assistant';
-
-type TaskLabel = string | { name: string; color: string };
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in-progress' | 'done';
-  priority: 'low' | 'medium' | 'high' | 'none';
-  dueDate?: string;
-  dateCreated: string;
-  completedAt?: string | null;
-  order?: number;
-  labels: TaskLabel[];
-  isCompleted: boolean;
-  projectId?: string;
-}
 
 const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
 const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
 
 const mockTasks: Task[] = [
-  { id: '1', title: 'Dump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-01', projectId: 'proj-unified-ui' },
-  { id: '2', title: 'Hump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-02', projectId: 'proj-unified-ui' },
-  { id: '3', title: 'Buy milk', dueDate: 'Aug 17', status: 'todo', priority: 'medium', labels: [{ name: 'errands', color: 'var(--label-orange)' }], isCompleted: false, dateCreated: '2025-10-03', projectId: 'proj-ops-enablement' },
-  { id: '4', title: 'Return library books', dueDate: 'Aug 13', status: 'todo', priority: 'high', labels: [{ name: 'personal', color: 'var(--label-purple)' }], isCompleted: false, dateCreated: '2025-10-04' },
-  { id: '5', title: 'asdfasdfasdfsa', dueDate: 'Aug 28', status: 'todo', priority: 'low', labels: [], isCompleted: true, dateCreated: '2025-10-05', projectId: 'proj-canvas-ai' },
-  { id: '6', title: 'Blah', status: 'in-progress', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-06', projectId: 'proj-unified-ui' },
-  { id: '7', title: 'Buy bread', dueDate: 'Oct 1', status: 'in-progress', priority: 'medium', labels: [{ name: 'errands', color: 'var(--label-orange)' }], isCompleted: false, dateCreated: '2025-10-07', projectId: 'proj-ops-enablement' },
-  { id: '8', title: 'Task 1', dueDate: 'Oct 2 – 3', status: 'todo', priority: 'low', labels: [], isCompleted: false, dateCreated: '2025-10-08', projectId: 'proj-canvas-ai' },
-  { id: '9', title: 'tretre', dueDate: 'Oct 29', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-09', projectId: 'proj-unified-ui' },
+  {
+    id: '1',
+    title: 'Dump',
+    status: 'todo',
+    priority: 'none',
+    labels: [],
+    isCompleted: false,
+    dateCreated: '2025-10-01',
+    createdAt: '2025-10-01',
+    listId: 'todo',
+    projectId: 'proj-unified-ui',
+  },
+  {
+    id: '2',
+    title: 'Hump',
+    status: 'todo',
+    priority: 'none',
+    labels: [],
+    isCompleted: false,
+    dateCreated: '2025-10-02',
+    createdAt: '2025-10-02',
+    listId: 'todo',
+    projectId: 'proj-unified-ui',
+  },
+  {
+    id: '3',
+    title: 'Buy milk',
+    dueDate: 'Aug 17',
+    status: 'todo',
+    priority: 'medium',
+    labels: [{ name: 'errands', color: 'var(--label-orange)' }],
+    isCompleted: false,
+    dateCreated: '2025-10-03',
+    createdAt: '2025-10-03',
+    listId: 'todo',
+    projectId: 'proj-ops-enablement',
+  },
+  {
+    id: '4',
+    title: 'Return library books',
+    dueDate: 'Aug 13',
+    status: 'todo',
+    priority: 'high',
+    labels: [{ name: 'personal', color: 'var(--label-purple)' }],
+    isCompleted: false,
+    dateCreated: '2025-10-04',
+    createdAt: '2025-10-04',
+    listId: 'todo',
+  },
+  {
+    id: '5',
+    title: 'asdfasdfasdfsa',
+    dueDate: 'Aug 28',
+    status: 'todo',
+    priority: 'low',
+    labels: [],
+    isCompleted: true,
+    dateCreated: '2025-10-05',
+    createdAt: '2025-10-05',
+    completedAt: '2025-10-06T09:00:00Z',
+    listId: 'todo',
+    projectId: 'proj-canvas-ai',
+  },
+  {
+    id: '6',
+    title: 'Blah',
+    status: 'in-progress',
+    priority: 'none',
+    labels: [],
+    isCompleted: false,
+    dateCreated: '2025-10-06',
+    createdAt: '2025-10-06',
+    listId: 'in-progress',
+    projectId: 'proj-unified-ui',
+  },
+  {
+    id: '7',
+    title: 'Buy bread',
+    dueDate: 'Oct 1',
+    status: 'in-progress',
+    priority: 'medium',
+    labels: [{ name: 'errands', color: 'var(--label-orange)' }],
+    isCompleted: false,
+    dateCreated: '2025-10-07',
+    createdAt: '2025-10-07',
+    listId: 'in-progress',
+    projectId: 'proj-ops-enablement',
+  },
+  {
+    id: '8',
+    title: 'Task 1',
+    dueDate: 'Oct 2 – 3',
+    status: 'todo',
+    priority: 'low',
+    labels: [],
+    isCompleted: false,
+    dateCreated: '2025-10-08',
+    createdAt: '2025-10-08',
+    listId: 'todo',
+    projectId: 'proj-canvas-ai',
+  },
+  {
+    id: '9',
+    title: 'tretre',
+    dueDate: 'Oct 29',
+    status: 'todo',
+    priority: 'none',
+    labels: [],
+    isCompleted: false,
+    dateCreated: '2025-10-09',
+    createdAt: '2025-10-09',
+    listId: 'todo',
+    projectId: 'proj-unified-ui',
+  },
 ];
 
 const columns = TASK_LISTS;
@@ -98,7 +185,9 @@ function compareTasks(a: Task, b: Task): number {
     }
 
     // Final tie-breaker: creation date (oldest first)
-    return Date.parse(a.dateCreated) - Date.parse(b.dateCreated);
+    const aCreated = a.dateCreated ?? a.createdAt;
+    const bCreated = b.dateCreated ?? b.createdAt;
+    return Date.parse(aCreated) - Date.parse(bCreated);
   }
 
   // 3) Within completed tasks: oldest completion first (recently completed at bottom)
@@ -112,13 +201,12 @@ export function TasksModule() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [tasks, setTasks] = useState(mockTasks);
-  const [sortOption, setSortOption] = useState<{[key: string]: string}>({});
-  const [activeComposerSection, setActiveComposerSection] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [selectedList, setSelectedList] = useState<string | null>(null); // null means "All lists"
   const [globalSort, setGlobalSort] = useState<'due-date' | 'date-created' | 'priority'>('date-created');
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListName, setNewListName] = useState('');
+  const [listComposerSection, setListComposerSection] = useState<string | null>(null);
   const [labelsColorMap, setLabelsColorMap] = useState<Map<string, string>>(new Map());
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
 
@@ -168,80 +256,74 @@ export function TasksModule() {
     );
   };
 
-  const handleAddTask = (title: string, status: string, dueDate?: string, priority?: 'low' | 'medium' | 'high' | 'none') => {
+  const handleAddTaskToColumn = (
+    listId: string,
+    draft: { title: string; dueDate?: string; priority?: 'low' | 'medium' | 'high' | 'none' },
+  ) => {
+    const timestamp = new Date().toISOString();
     const newTask: Task = {
       id: `task-${Date.now()}`,
-      title,
-      status: status as any,
-      priority: priority || 'none',
-      dueDate,
+      title: draft.title,
+      status: listId,
+      priority: draft.priority ?? 'none',
+      dueDate: draft.dueDate,
       labels: [],
       isCompleted: false,
-      dateCreated: new Date().toISOString(),
+      dateCreated: timestamp,
+      createdAt: timestamp,
+      listId,
+      projectId: projectFilter ?? undefined,
     };
     setTasks(prevTasks => [newTask, ...prevTasks]);
-    setActiveComposerSection(null);
   };
 
   const getTasksByStatus = (status: string) => {
-    const tasks = filteredTasks.filter(task => task.status === status);
-    // Use globalSort for list view, sortOption for board view columns
-    const sortBy = viewMode === 'list' ? globalSort : (sortOption[status] || 'completed-at-bottom');
+    const tasksForStatus = filteredTasks.filter(task => task.status === status);
 
-    // Default: completed tasks at bottom with smart ordering
-    if (sortBy === 'completed-at-bottom' || sortBy === 'date-created') {
-      return tasks.sort(compareTasks);
+    if (globalSort === 'due-date') {
+      return [...tasksForStatus].sort((a, b) => {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      });
     }
 
-    // Legacy sort options for backward compatibility
-    return tasks.sort((a, b) => {
-        if (sortBy === 'title') {
-            return a.title.localeCompare(b.title);
-        } else if (sortBy === 'due-date') {
-            if (!a.dueDate) return 1;
-            if (!b.dueDate) return -1;
-            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        } else if (sortBy === 'priority') {
-            const priorityOrder = { high: 3, medium: 2, low: 1, none: 0 };
-            return priorityOrder[b.priority] - priorityOrder[a.priority];
-        } else {
-            return new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime();
-        }
-    });
+    if (globalSort === 'priority') {
+      const priorityOrder = { high: 3, medium: 2, low: 1, none: 0 };
+      return [...tasksForStatus].sort(
+        (a, b) => (priorityOrder[b.priority] ?? 0) - (priorityOrder[a.priority] ?? 0),
+      );
+    }
+
+    return [...tasksForStatus].sort(compareTasks);
   };
 
   const toggleTaskCompletion = (taskId: string) => {
-    setTasks(tasks.map(task => {
-      if (task.id === taskId) {
-        const newCompletedState = !task.isCompleted;
-        return {
-          ...task,
-          isCompleted: newCompletedState,
-          completedAt: newCompletedState ? new Date().toISOString() : null,
-        };
-      }
-      return task;
-    }));
+    setTasks(prev =>
+      prev.map(task => {
+        if (task.id === taskId) {
+          const newCompletedState = !task.isCompleted;
+          return {
+            ...task,
+            isCompleted: newCompletedState,
+            completedAt: newCompletedState ? new Date().toISOString() : null,
+          };
+        }
+        return task;
+      }),
+    );
   };
-
-  const handleSort = (columnId: string, sortBy: string) => {
-      setSortOption(prev => ({...prev, [columnId]: sortBy}));
-  }
-
-  const handleHideCompleted = () => console.log("Hide completed tasks");
-  const handleRenameList = () => console.log("Rename list");
-  const handleDeleteList = () => console.log("Delete list");
 
   const handleEditTask = (task: Task) => console.log("Edit task", task);
   const handleDuplicateTask = (task: Task) => console.log("Duplicate task", task);
   
   const handleUpdateTask = (updatedTask: Task) => {
-    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task));
+    setTasks(prev => prev.map(task => (task.id === updatedTask.id ? updatedTask : task)));
     setSelectedTask(null); // Close side panel after update
   };
 
   const handleDeleteTask = (taskId: string) => {
-    setTasks(tasks.filter(t => t.id !== taskId));
+    setTasks(prev => prev.filter(t => t.id !== taskId));
     if (selectedTask?.id === taskId) {
       setSelectedTask(null); // Close side panel if the deleted task was open
     }
@@ -263,97 +345,65 @@ export function TasksModule() {
   };
 
   const BoardView = () => (
-    <div className="flex-1 overflow-x-auto px-6 py-4 bg-[var(--bg-canvas)]">
-      <div className="density-compact flex items-start gap-[var(--space-4)] min-w-max">
-        {columns.map((column) => (
-          <div key={column.id} className="min-w-[280px] min-h-[160px] bg-[var(--bg-surface-elevated)] rounded-[var(--radius-lg)] p-[var(--space-3)] flex flex-col">
-            <div className="flex flex-col gap-[var(--task-card-gap)] flex-1">
-              <TaskColumnHeader 
-                columnTitle={column.title}
-                taskCount={getTasksByStatus(column.id).length}
-                currentSort={sortOption[column.id] || 'date-created'}
-                onSort={(sortBy) => handleSort(column.id, sortBy)}
-                onHideCompleted={handleHideCompleted}
-                onRenameList={handleRenameList}
-                onDeleteList={handleDeleteList}
+    <div className="flex-1 bg-[var(--bg-canvas)]">
+      <TasksBoard
+        variant="standalone"
+        columns={columns}
+        tasks={filteredTasks}
+        onAddTask={handleAddTaskToColumn}
+        onToggleTaskCompletion={toggleTaskCompletion}
+        onDeleteTask={handleDeleteTask}
+        onDuplicateTask={handleDuplicateTask}
+        onTaskSelect={setSelectedTask}
+        onEditTask={handleEditTask}
+        className="bg-[var(--bg-canvas)] min-h-full"
+        trailingColumn={
+          isAddingList ? (
+            <div className="flex min-w-[260px] flex-col gap-[var(--space-2)] rounded-[var(--radius-lg)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] p-[var(--space-3)]">
+              <input
+                type="text"
+                autoFocus
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                placeholder="New section"
+                className="h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddList();
+                  if (e.key === 'Escape') {
+                    setIsAddingList(false);
+                    setNewListName('');
+                  }
+                }}
               />
-              
-              {/* Task cards stack */}
-              <div className="flex flex-col gap-[var(--task-card-gap)]">
-                {getTasksByStatus(column.id).map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    taskTitle={task.title}
-                    dueDate={task.dueDate}
-                    priority={task.priority}
-                    labels={task.labels}
-                    isCompleted={task.isCompleted}
-                    onToggleCompletion={() => toggleTaskCompletion(task.id)}
-                    onClick={() => {
-                      setSelectedTask(task);
-                    }}
-                    onEdit={() => handleEditTask(task)}
-                    onDuplicate={() => handleDuplicateTask(task)}
-                    onDelete={() => handleDeleteTask(task.id)}
-                  />
-                ))}
-              </div>
-
-              {/* Add task at bottom (primary) */}
-              <div className="mt-auto pt-[var(--space-2)]">
-                {activeComposerSection === column.id ? (
-                  <TaskComposer 
-                    onAddTask={(title, dueDate, priority) => handleAddTask(title, column.id, dueDate, priority)}
-                    onCancel={() => setActiveComposerSection(null)}
-                  />
-                ) : (
-                  <TaskAddButton onClick={() => setActiveComposerSection(column.id)} />
-                )}
+              <div className="flex items-center gap-[var(--space-2)]">
+                <button
+                  onClick={handleAddList}
+                  className="inline-flex h-8 items-center rounded-[var(--radius-sm)] px-[var(--space-3)] text-xs font-medium bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)]"
+                >
+                  Add list
+                </button>
+                <button
+                  onClick={() => {
+                    setIsAddingList(false);
+                    setNewListName('');
+                  }}
+                  className="inline-flex h-8 items-center rounded-[var(--radius-sm)] px-[var(--space-3)] text-xs font-medium text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[color:var(--text-primary)]"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
-          </div>
-        ))}
-        
-        {/* Add list button or inline form */}
-        {isAddingList ? (
-          <div className="min-w-[280px] bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)] rounded-lg p-2">
-            <input
-              type="text"
-              autoFocus
-              value={newListName}
-              onChange={(e) => setNewListName(e.target.value)}
-              placeholder="New section"
-              className="w-full h-8 px-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)]"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleAddList();
-                if (e.key === 'Escape') { setIsAddingList(false); setNewListName(''); }
-              }}
-            />
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <button
-                onClick={handleAddList}
-                className="inline-flex items-center px-2 h-7 rounded text-xs font-medium bg-[var(--btn-primary-bg)] text-white hover:bg-[var(--btn-primary-hover)]"
-              >
-                Add list
-              </button>
-              <button
-                onClick={() => { setIsAddingList(false); setNewListName(''); }}
-                className="inline-flex items-center px-2 h-7 rounded text-xs font-medium text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-surface)]"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setIsAddingList(true)}
-            className="inline-flex items-center gap-[var(--space-2)] px-[var(--space-3)] h-10 rounded-[var(--radius-md)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)] cursor-pointer ml-[var(--space-2)]"
-          >
-            <Plus className="w-4 h-4" />
-            Add list
-          </button>
-        )}
-      </div>
+          ) : (
+            <button
+              onClick={() => setIsAddingList(true)}
+              className="flex min-w-[220px] items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--border-subtle)] bg-transparent px-[var(--space-4)] py-[var(--space-5)] text-sm font-medium text-[color:var(--text-secondary)] hover:border-[var(--border-default)] hover:text-[color:var(--text-primary)]"
+            >
+              <Plus className="mr-[var(--space-2)] h-4 w-4" />
+              Add list
+            </button>
+          )
+        }
+      />
     </div>
   );
 
@@ -509,17 +559,20 @@ export function TasksModule() {
                     </ContextMenuContent>
                   </ContextMenu>
                 ))}
-                    {activeComposerSection === column.id ? (
+                    {listComposerSection === column.id ? (
                         <div className="px-4 py-2">
                             <TaskComposer 
-                                onAddTask={(title, dueDate, priority) => handleAddTask(title, column.id, dueDate, priority)}
-                                onCancel={() => setActiveComposerSection(null)}
+                                onAddTask={(title, dueDate, priority) => {
+                                  handleAddTaskToColumn(column.id, { title, dueDate, priority });
+                                  setListComposerSection(null);
+                                }}
+                                onCancel={() => setListComposerSection(null)}
                             />
                         </div>
                     ) : (
                         <button
                             className="opacity-0 group-hover:opacity-100 motion-safe:transition-opacity duration-[var(--duration-fast)] inline-flex items-center gap-2 px-4 py-2 text-[length:var(--text-sm)] text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)]"
-                            onClick={() => setActiveComposerSection(column.id)}
+                            onClick={() => setListComposerSection(column.id)}
                         >
                             <Plus className="w-4 h-4" />
                             Add task...

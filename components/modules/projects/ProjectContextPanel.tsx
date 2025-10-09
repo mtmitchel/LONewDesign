@@ -84,7 +84,6 @@ export function ProjectContextPanel({ onCollapse, project, taskLists = [] }: Pro
             ) : null}
           </button>
         </div>
-        <PaneCaret side="right" label="Hide context" variant="button" onClick={onCollapse} ariaKeyshortcuts="\\" />
       </PaneHeader>
 
       <div className="flex-1 overflow-y-auto border-t border-[var(--border-subtle)] px-[var(--panel-pad-x)] py-[var(--panel-pad-y)]">

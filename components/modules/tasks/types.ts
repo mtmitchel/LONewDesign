@@ -2,6 +2,13 @@ export type Priority = 'low' | 'medium' | 'high' | 'none';
 
 export type TaskLabel = string | { name: string; color: string };
 
+export interface Subtask {
+  id: string;
+  title: string;
+  isCompleted: boolean;
+  dueDate?: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -21,6 +28,9 @@ export interface Task {
   isCompleted: boolean;
   checklist?: ChecklistItem[];
   isPinned?: boolean;
+  order?: number;
+  completedAt?: string | null;
+  subtasks?: Subtask[];
 }
 
 export interface ChecklistItem {

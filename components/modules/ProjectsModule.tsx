@@ -8,7 +8,10 @@ import { PaneCaret } from "../dev/PaneCaret";
 import { ProjectNavigator } from "./projects/ProjectNavigator";
 import { ProjectOverview } from "./projects/ProjectOverview";
 import { ProjectContextPanel } from "./projects/ProjectContextPanel";
-import { ProjectTasksBoard } from "./projects/ProjectTasksBoard";
+import { TasksBoard } from "./tasks/TasksBoard";
+import { TaskSidePanel } from "./tasks/TaskSidePanel";
+import type { Task as BoardTask } from "./tasks/types";
+import { Plus } from "lucide-react";
 import {
   projects,
   getProjectById,
@@ -21,7 +24,20 @@ import {
 } from "./projects/data";
 import { openQuickAssistant } from "../assistant";
 import { Button } from "../ui/button";
+import { Dialog, DialogContent } from "../ui/dialog";
 import { cn } from "../ui/utils";
+import { useMediaQuery } from "./settings/_parts/useMediaQuery";
+
+type ProjectBoardTask = ProjectTask & {
+  isCompleted?: boolean;
+  labels?: BoardTask["labels"];
+  createdAt?: string;
+  dateCreated?: string;
+  completedAt?: string | null;
+  description?: string;
+  subtasks?: BoardTask["subtasks"];
+  checklist?: BoardTask["checklist"];
+};
 
 const tabs = [
   { id: "overview", label: "Overview" },
@@ -36,23 +52,36 @@ const tabs = [
 export function ProjectsModule() {
   const [leftPaneVisible, setLeftPaneVisible] = React.useState(true);
   const [rightPaneVisible, setRightPaneVisible] = React.useState(true);
-  const [activeTab, setActiveTab] = React.useState<string>("overview");
+  const [activeTab, setActiveTab] = React.useState<string>(() => parseProjectRouteFromLocation().tab ?? "overview");
   const [search, setSearch] = React.useState("");
-  const [selectedProjectId, setSelectedProjectId] = React.useState(() => projects[0]?.id ?? "");
-  const taskListsByProject = React.useMemo<Record<string, ProjectTaskList[]>>(() => {
+  const [selectedProjectId, setSelectedProjectId] = React.useState(() => parseProjectRouteFromLocation().projectId ?? projects[0]?.id ?? "");
+  const [taskListsByProject, setTaskListsByProject] = React.useState<Record<string, ProjectTaskList[]>>(() => {
     const map: Record<string, ProjectTaskList[]> = {};
     projects.forEach((project) => {
       map[project.id] = getTaskListsForProject(project.id);
     });
     return map;
-  }, []);
-  const [boardTasksByProject, setBoardTasksByProject] = React.useState<Record<string, ProjectTask[]>>(() => {
-    const map: Record<string, ProjectTask[]> = {};
+  });
+  const [boardTasksByProject, setBoardTasksByProject] = React.useState<Record<string, ProjectBoardTask[]>>(() => {
+    const map: Record<string, ProjectBoardTask[]> = {};
     projects.forEach((project) => {
-      map[project.id] = getTasksForProject(project.id);
+      map[project.id] = getTasksForProject(project.id).map((task) => ({
+        ...task,
+        isCompleted: false,
+        createdAt: task.updatedAt,
+        dateCreated: task.updatedAt,
+        labels: [],
+      }));
     });
     return map;
   });
+  const [isAddingProjectList, setIsAddingProjectList] = React.useState(false);
+  const [newProjectListName, setNewProjectListName] = React.useState("");
+  const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(() => parseProjectRouteFromLocation().taskId ?? null);
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const rightPaneRestoreRef = React.useRef<boolean | null>(null);
+
+  const isHandlingPopRef = React.useRef(false);
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -73,6 +102,47 @@ export function ProjectsModule() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  React.useEffect(() => {
+    const handlePopState = () => {
+      isHandlingPopRef.current = true;
+      const route = parseProjectRouteFromLocation();
+      if (route.projectId) {
+        setSelectedProjectId(route.projectId);
+      }
+      setActiveTab(route.tab ?? "overview");
+      setSelectedTaskId(route.taskId ?? null);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const previousRouteRef = React.useRef({ projectId: selectedProjectId, tab: activeTab, taskId: selectedTaskId });
+  const hasSyncedInitialRoute = React.useRef(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || !selectedProjectId) return;
+    const targetPath = buildProjectPath(selectedProjectId, activeTab, selectedTaskId);
+    const currentPath = window.location.pathname;
+    const previous = previousRouteRef.current;
+
+    const hasTaskChanged = previous.taskId !== selectedTaskId;
+    const hasProjectChanged = previous.projectId !== selectedProjectId;
+    const hasTabChanged = previous.tab !== activeTab;
+
+    const method: "pushState" | "replaceState" = !hasSyncedInitialRoute.current
+      ? "replaceState"
+      : hasTaskChanged || hasProjectChanged || hasTabChanged
+      ? "pushState"
+      : "replaceState";
+
+    if (currentPath !== targetPath) {
+      window.history[method](null, "", targetPath);
+    }
+
+    previousRouteRef.current = { projectId: selectedProjectId, tab: activeTab, taskId: selectedTaskId };
+    hasSyncedInitialRoute.current = true;
+  }, [selectedProjectId, activeTab, selectedTaskId]);
+
   const selectedProject = React.useMemo(() => getProjectById(selectedProjectId) ?? projects[0], [selectedProjectId]);
 
   const overviewData = React.useMemo(() => {
@@ -88,11 +158,48 @@ export function ProjectsModule() {
     };
   }, [selectedProject]);
 
-  const currentTaskLists = selectedProject ? taskListsByProject[selectedProject.id] ?? [] : [];
+  const currentTaskLists = React.useMemo(
+    () => (selectedProject ? taskListsByProject[selectedProject.id] ?? [] : []),
+    [selectedProject, taskListsByProject],
+  );
   const currentTasks = React.useMemo(() => {
-    if (!selectedProject) return [] as ProjectTask[];
+    if (!selectedProject) return [] as ProjectBoardTask[];
     return boardTasksByProject[selectedProject.id] ?? [];
   }, [boardTasksByProject, selectedProject]);
+  const boardColumns = React.useMemo(() => currentTaskLists.map((list) => ({ id: list.id, title: list.name })), [currentTaskLists]);
+  const boardTasks = React.useMemo<BoardTask[]>(
+    () =>
+      currentTasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.listId,
+        priority: (task.priority ?? "none") as BoardTask["priority"],
+        dueDate: task.dueDate,
+        createdAt: task.createdAt ?? task.updatedAt,
+        dateCreated: task.dateCreated ?? task.updatedAt,
+        updatedAt: task.updatedAt,
+        labels: task.labels ?? [],
+        listId: task.listId,
+        projectId: task.projectId,
+        isCompleted: Boolean(task.isCompleted),
+        checklist: task.checklist ?? [],
+        description: task.description,
+        subtasks: task.subtasks ?? [],
+      })),
+    [currentTasks],
+  );
+  const selectedBoardTask = React.useMemo(() => boardTasks.find((task) => task.id === selectedTaskId) ?? null, [boardTasks, selectedTaskId]);
+  const showInlineTaskPanel = Boolean(isDesktop && activeTab === "tasks" && selectedBoardTask);
+
+  React.useEffect(() => {
+    if (showInlineTaskPanel && !rightPaneVisible) {
+      rightPaneRestoreRef.current = rightPaneRestoreRef.current ?? false;
+      setRightPaneVisible(true);
+    }
+    if (!selectedBoardTask) {
+      rightPaneRestoreRef.current = null;
+    }
+  }, [rightPaneVisible, selectedBoardTask, showInlineTaskPanel]);
 
   const handleAdd = React.useCallback(() => {
     if (!selectedProject) return;
@@ -103,16 +210,36 @@ export function ProjectsModule() {
     });
   }, [selectedProject]);
 
+  React.useEffect(() => {
+    setIsAddingProjectList(false);
+    setNewProjectListName("");
+    setSelectedTaskId(null);
+  }, [selectedProjectId]);
+
+  React.useEffect(() => {
+    if (activeTab !== "tasks") {
+      setSelectedTaskId(null);
+    }
+  }, [activeTab]);
+
   const handleCreateTask = React.useCallback(
-    (listId: string) => {
+    (listId: string, draft?: { title?: string; dueDate?: string; priority?: BoardTask["priority"] }) => {
       if (!selectedProject) return;
       const timestamp = new Date().toISOString();
-      const newTask: ProjectTask = {
+      const priority = draft?.priority && draft.priority !== "none" ? draft.priority : undefined;
+      const newTask: ProjectBoardTask = {
         id: `project-task-${timestamp}`,
         projectId: selectedProject.id,
         listId,
-        title: "New task",
+        title: draft?.title?.trim() || "New task",
+        priority,
+        dueDate: draft?.dueDate,
         updatedAt: timestamp,
+        createdAt: timestamp,
+        dateCreated: timestamp,
+        isCompleted: false,
+        labels: [],
+        completedAt: null,
       };
       setBoardTasksByProject((prev) => ({
         ...prev,
@@ -124,8 +251,86 @@ export function ProjectsModule() {
     [selectedProject],
   );
 
-  const handleMoveTask = React.useCallback(
-    (taskId: string, toListId: string) => {
+  const handleOpenTaskDetails = React.useCallback(
+    (task: BoardTask) => {
+      if (!selectedProject) return;
+      rightPaneRestoreRef.current = rightPaneVisible;
+      if (!rightPaneVisible) {
+        setRightPaneVisible(true);
+      }
+      setSelectedTaskId(task.id);
+      emitProjectEvent("project.tasks.details_open", { projectId: selectedProject.id, taskId: task.id, source: "project-board" });
+    },
+    [rightPaneVisible, selectedProject],
+  );
+
+  const handleCloseTaskDetails = React.useCallback(() => {
+    if (!selectedProject || !selectedTaskId) {
+      setSelectedTaskId(null);
+      return;
+    }
+    emitProjectEvent("project.tasks.details_close", { projectId: selectedProject.id, taskId: selectedTaskId });
+    setSelectedTaskId(null);
+    if (rightPaneRestoreRef.current === false) {
+      setRightPaneVisible(false);
+    }
+    rightPaneRestoreRef.current = null;
+  }, [selectedProject, selectedTaskId]);
+
+  const handleUpdateProjectTask = React.useCallback(
+    (updatedTask: BoardTask) => {
+      if (!selectedProject) return;
+      setBoardTasksByProject((prev) => {
+        const tasks = prev[selectedProject.id] ?? [];
+        const timestamp = new Date().toISOString();
+        return {
+          ...prev,
+          [selectedProject.id]: tasks.map((task) =>
+            task.id === updatedTask.id
+              ? {
+                  ...task,
+                  title: updatedTask.title,
+                  listId: updatedTask.listId,
+                  priority: updatedTask.priority !== "none" ? updatedTask.priority : undefined,
+                  dueDate: updatedTask.dueDate,
+                  description: updatedTask.description,
+                  labels: updatedTask.labels,
+                  subtasks: updatedTask.subtasks,
+                  checklist: updatedTask.checklist,
+                  isCompleted: updatedTask.isCompleted,
+                  completedAt: updatedTask.isCompleted ? task.completedAt ?? timestamp : null,
+                  updatedAt: timestamp,
+                }
+              : task,
+          ),
+        };
+      });
+      emitProjectEvent("project.tasks.details_update", { projectId: selectedProject.id, taskId: updatedTask.id });
+    },
+    [selectedProject],
+  );
+
+  const handleAddProjectList = React.useCallback(() => {
+    if (!selectedProject) return;
+    const name = newProjectListName.trim();
+    if (!name) return;
+    const newList: ProjectTaskList = {
+      id: `${selectedProject.id}-list-${Date.now()}`,
+      projectId: selectedProject.id,
+      name,
+      order: currentTaskLists.length,
+    };
+    setTaskListsByProject((prev) => ({
+      ...prev,
+      [selectedProject.id]: [...(prev[selectedProject.id] ?? []), newList],
+    }));
+    emitProjectEvent("project.tasks.add_list", { projectId: selectedProject.id, listId: newList.id });
+    setNewProjectListName("");
+    setIsAddingProjectList(false);
+  }, [currentTaskLists.length, newProjectListName, selectedProject, setTaskListsByProject]);
+
+  const handleToggleProjectTask = React.useCallback(
+    (taskId: string) => {
       if (!selectedProject) return;
       setBoardTasksByProject((prev) => {
         const tasks = prev[selectedProject.id] ?? [];
@@ -133,12 +338,65 @@ export function ProjectsModule() {
           ...prev,
           [selectedProject.id]: tasks.map((task) =>
             task.id === taskId
-              ? { ...task, listId: toListId, updatedAt: new Date().toISOString() }
+              ? {
+                  ...task,
+                  isCompleted: !task.isCompleted,
+                  completedAt: !task.isCompleted ? new Date().toISOString() : null,
+                }
               : task,
           ),
         };
       });
-      emitProjectEvent("project.board.move", { projectId: selectedProject.id, taskId, listId: toListId });
+    },
+    [selectedProject],
+  );
+  const handleDeleteProjectTask = React.useCallback(
+    (taskId: string) => {
+      if (!selectedProject) return;
+      setBoardTasksByProject((prev) => {
+        const tasks = prev[selectedProject.id] ?? [];
+        return {
+          ...prev,
+          [selectedProject.id]: tasks.filter((task) => task.id !== taskId),
+        };
+      });
+      setSelectedTaskId((prev) => {
+        if (prev === taskId) {
+          if (rightPaneRestoreRef.current === false) {
+            setRightPaneVisible(false);
+          }
+          rightPaneRestoreRef.current = null;
+          return null;
+        }
+        return prev;
+      });
+      emitProjectEvent("project.tasks.delete", { projectId: selectedProject.id, taskId });
+    },
+    [selectedProject],
+  );
+  const handleDuplicateProjectTask = React.useCallback(
+    (taskId: string) => {
+      if (!selectedProject) return;
+      setBoardTasksByProject((prev) => {
+        const tasks = prev[selectedProject.id] ?? [];
+        const source = tasks.find((task) => task.id === taskId);
+        if (!source) return prev;
+        const timestamp = new Date().toISOString();
+        const duplicated: ProjectBoardTask = {
+          ...source,
+          id: `project-task-${timestamp}`,
+          title: `${source.title} (Copy)`,
+          updatedAt: timestamp,
+          createdAt: timestamp,
+          dateCreated: timestamp,
+          isCompleted: false,
+          completedAt: null,
+        };
+        return {
+          ...prev,
+          [selectedProject.id]: [duplicated, ...tasks],
+        };
+      });
     },
     [selectedProject],
   );
@@ -189,18 +447,9 @@ export function ProjectsModule() {
           >
             <PaneHeader role="navigation" className="items-center gap-[var(--space-4)] px-[var(--space-6)]">
               <TabList activeTab={activeTab} onTabChange={handleTabChange} />
-              <Button
-                variant="solid"
-                size="sm"
-                className="ml-auto md:hidden"
-                onClick={handleAdd}
-                aria-keyshortcuts="Meta+K,Control+K"
-              >
-                Add
-              </Button>
             </PaneHeader>
             <div className="relative flex-1">
-              <div className="absolute inset-0 overflow-y-auto">
+              <div className={cn("absolute inset-0 overflow-y-auto", activeTab === "tasks" && "bg-[var(--bg-canvas)]") }>
                 {selectedProject ? (
                   activeTab === "overview" ? (
                     <ProjectOverview
@@ -210,12 +459,65 @@ export function ProjectsModule() {
                       onAddAction={handleAdd}
                     />
                   ) : activeTab === "tasks" ? (
-                    <ProjectTasksBoard
-                      projectId={selectedProject.id}
-                      lists={currentTaskLists}
-                      tasks={currentTasks}
-                      onCreateTask={handleCreateTask}
-                      onMoveTask={handleMoveTask}
+                    <TasksBoard
+                      variant="embedded"
+                      columns={boardColumns}
+                      tasks={boardTasks}
+                      onAddTask={(listId, draft) => handleCreateTask(listId, draft)}
+                      onToggleTaskCompletion={handleToggleProjectTask}
+                      onDeleteTask={handleDeleteProjectTask}
+                      onDuplicateTask={(task) => handleDuplicateProjectTask(task.id)}
+                      onTaskSelect={(task) => {
+                        handleOpenTaskDetails(task);
+                        setTasksModuleScope(selectedProject.id);
+                      }}
+                      className="bg-[var(--bg-canvas)] min-h-full"
+                      trailingColumn={
+                        isAddingProjectList ? (
+                          <div className="flex min-w-[260px] flex-col gap-[var(--space-2)] rounded-[var(--radius-lg)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] p-[var(--space-3)]">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={newProjectListName}
+                              onChange={(e) => setNewProjectListName(e.target.value)}
+                              placeholder="New section"
+                              className="h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleAddProjectList();
+                                if (e.key === "Escape") {
+                                  setIsAddingProjectList(false);
+                                  setNewProjectListName("");
+                                }
+                              }}
+                            />
+                            <div className="flex items-center gap-[var(--space-2)]">
+                              <button
+                                onClick={handleAddProjectList}
+                                className="inline-flex h-8 items-center rounded-[var(--radius-sm)] px-[var(--space-3)] text-xs font-medium bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)]"
+                              >
+                                Add list
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setIsAddingProjectList(false);
+                                  setNewProjectListName("");
+                                }}
+                                className="inline-flex h-8 items-center rounded-[var(--radius-sm)] px-[var(--space-3)] text-xs font-medium text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[color:var(--text-primary)]"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setIsAddingProjectList(true)}
+                            className="flex min-w-[220px] items-center justify-center rounded-[var(--radius-lg)] border border-dashed border-[var(--border-subtle)] bg-transparent px-[var(--space-4)] py-[var(--space-5)] text-sm font-medium text-[color:var(--text-secondary)] hover:border-[var(--border-default)] hover:text-[color:var(--text-primary)]"
+                          >
+                            <Plus className="mr-[var(--space-2)] h-4 w-4" />
+                            Add list
+                          </button>
+                        )
+                      }
                     />
                   ) : (
                     <TabPlaceholder tabId={activeTab} onAdd={handleAdd} />
@@ -231,16 +533,45 @@ export function ProjectsModule() {
         }
         right={
           rightPaneVisible ? (
-            <ProjectContextPanel
-              project={selectedProject}
-              taskLists={currentTaskLists}
-              onCollapse={() => setRightPaneVisible(false)}
-            />
+            showInlineTaskPanel && selectedBoardTask ? (
+              <TaskSidePanel
+                task={selectedBoardTask}
+                onClose={handleCloseTaskDetails}
+                onUpdateTask={handleUpdateProjectTask}
+                onDeleteTask={handleDeleteProjectTask}
+                presentation="inline"
+                className="h-full"
+              />
+            ) : (
+              <ProjectContextPanel
+                project={selectedProject}
+                taskLists={currentTaskLists}
+                onCollapse={() => setRightPaneVisible(false)}
+              />
+            )
           ) : (
             <CollapsedRail side="right" onClick={() => setRightPaneVisible(true)} ariaKeyshortcuts="\\" />
           )
         }
       />
+      {!isDesktop && selectedBoardTask ? (
+        <Dialog open onOpenChange={(open) => { if (!open) handleCloseTaskDetails(); }}>
+          <DialogContent
+            hideClose
+            overlayClassName="fixed inset-0 z-[var(--z-overlay)] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)]"
+            className="fixed inset-0 z-[var(--z-overlay)] m-0 h-full w-full max-w-none translate-x-0 translate-y-0 rounded-none border-0 bg-[var(--quick-panel-bg)] shadow-[var(--modal-elevation)]"
+          >
+            <TaskSidePanel
+              task={selectedBoardTask}
+              onClose={handleCloseTaskDetails}
+              onUpdateTask={handleUpdateProjectTask}
+              onDeleteTask={handleDeleteProjectTask}
+              presentation="inline"
+              className="h-full"
+            />
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </div>
   );
 }
@@ -338,6 +669,44 @@ const placeholderCopy: Record<string, { title: string; body: string; cta?: strin
     body: "The unified UI redesign will light up this surface once its module ships.",
   },
 };
+
+type ProjectRouteState = {
+  projectId?: string;
+  tab?: string;
+  taskId?: string;
+};
+
+function parseProjectRouteFromLocation(): ProjectRouteState {
+  if (typeof window === "undefined") return {};
+  const path = window.location.pathname;
+  const tasksMatch = path.match(/^\/projects\/([^/]+)\/tasks(?:\/([^/]+))?/);
+  if (tasksMatch) {
+    return {
+      projectId: tasksMatch[1],
+      tab: "tasks",
+      taskId: tasksMatch[2],
+    };
+  }
+  const genericMatch = path.match(/^\/projects\/([^/]+)(?:\/([^/]+))?/);
+  if (genericMatch) {
+    return {
+      projectId: genericMatch[1],
+      tab: genericMatch[2] ?? "overview",
+    };
+  }
+  return {};
+}
+
+function buildProjectPath(projectId: string, tab: string, taskId: string | null): string {
+  if (!projectId) return "/projects";
+  if (tab === "tasks") {
+    return taskId ? `/projects/${projectId}/tasks/${taskId}` : `/projects/${projectId}/tasks`;
+  }
+  if (tab && tab !== "overview") {
+    return `/projects/${projectId}/${tab}`;
+  }
+  return `/projects/${projectId}`;
+}
 
 function emitProjectEvent(event: string, payload?: Record<string, unknown>) {
   if (typeof window !== "undefined") {

@@ -94,6 +94,7 @@
   --dashboard-max-w: 1120px;
   --dashboard-col-w: 1fr;
   --content-measure: 72ch;
+  --content-measure-short: 420px;
 
   --dash-gap: 24px;
   --card-pad: 16px;

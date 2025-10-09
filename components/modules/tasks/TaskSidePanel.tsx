@@ -1,472 +1,532 @@
 
-import React from 'react';
-import { Checkbox } from '../../ui/checkbox';
+import * as React from 'react';
 import { Calendar, Flag, Tag, Trash2, X, Plus } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
-import { Calendar as CalendarComponent } from '../../ui/calendar';
 import { format } from 'date-fns';
 
-type TaskLabel = string | { name: string; color: string };
+import { Checkbox } from '../../ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
+import { Calendar as CalendarComponent } from '../../ui/calendar';
+import { cn } from '../../ui/utils';
+import { PaneHeader } from '../../layout/PaneHeader';
+import type { Task, TaskLabel, Subtask } from './types';
 
-export interface Subtask {
-  id: string;
-  title: string;
-  isCompleted: boolean;
-  dueDate?: string;
-}
+const getTaskLabelName = (label: TaskLabel) => (typeof label === 'string' ? label : label.name);
 
-export interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: 'todo' | 'in-progress' | 'done';
-  priority: 'low' | 'medium' | 'high' | 'none';
-  dueDate?: string;
-  dateCreated: string;
-  labels: TaskLabel[];
-  isCompleted: boolean;
-  subtasks?: Subtask[];
-}
-
-const getTaskLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
-
-interface TaskSidePanelProps {
+type TaskSidePanelProps = {
   task: Task | null;
   onClose: () => void;
   onUpdateTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
-}
+  presentation?: 'overlay' | 'inline';
+  className?: string;
+};
 
-export function TaskSidePanel({ task, onClose, onUpdateTask, onDeleteTask }: TaskSidePanelProps) {
-  if (!task) return null;
-
-  const [editedTask, setEditedTask] = React.useState<Task>(task);
+export function TaskSidePanel({
+  task,
+  onClose,
+  onUpdateTask,
+  onDeleteTask,
+  presentation = 'overlay',
+  className,
+}: TaskSidePanelProps) {
+  const [editedTask, setEditedTask] = React.useState<Task | null>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = React.useState('');
   const [newSubtaskDueDate, setNewSubtaskDueDate] = React.useState<string | undefined>(undefined);
   const [newLabel, setNewLabel] = React.useState('');
   const [selectedLabelColor, setSelectedLabelColor] = React.useState('var(--label-blue)');
   const [editingLabelIndex, setEditingLabelIndex] = React.useState<number | null>(null);
 
-  // Helper function to parse formatted date strings like "Oct 30" or "2025-10-30" back to Date
-  const parseDisplayDate = (dateStr: string): Date | undefined => {
+  const titleFieldRef = React.useRef<HTMLTextAreaElement | null>(null);
+
+  const adjustTitleHeight = React.useCallback(() => {
+    const el = titleFieldRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  React.useEffect(() => {
+    if (!task) {
+      setEditedTask(null);
+      setNewSubtaskTitle('');
+      setNewSubtaskDueDate(undefined);
+      setNewLabel('');
+      setEditingLabelIndex(null);
+      return;
+    }
+
+    setEditedTask(task);
+    setNewSubtaskTitle('');
+    setNewSubtaskDueDate(undefined);
+    setNewLabel('');
+    setEditingLabelIndex(null);
+  }, [task]);
+
+  React.useLayoutEffect(() => {
+    adjustTitleHeight();
+  }, [adjustTitleHeight, editedTask?.title, task?.id, presentation]);
+
+  const headingId = task ? `task-panel-title-${task.id}` : undefined;
+
+  const parseDisplayDate = React.useCallback((dateStr: string): Date | undefined => {
     if (!dateStr) return undefined;
-    
-    // If it's already in ISO format (yyyy-MM-dd), parse it directly
     if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return new Date(dateStr);
     }
-    
-    // If it's in display format (MMM d), assume current year
     const currentYear = new Date().getFullYear();
-    try {
-      const date = new Date(`${dateStr}, ${currentYear}`);
-      return isNaN(date.getTime()) ? undefined : date;
-    } catch {
-      return undefined;
-    }
-  };
+    const parsed = new Date(`${dateStr}, ${currentYear}`);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }, []);
 
-  const handleFieldChange = (field: keyof Task, value: any) => {
-    setEditedTask(prev => ({ ...prev!, [field]: value }));
-  };
+  const handleFieldChange = React.useCallback((field: keyof Task, value: unknown) => {
+    setEditedTask((prev) => (prev ? { ...prev, [field]: value } : prev));
+  }, []);
 
-  const handleAddSubtask = () => {
-    if (newSubtaskTitle.trim()) {
-      const newSubtask: Subtask = {
+  const handleAddSubtask = React.useCallback(() => {
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      if (!newSubtaskTitle.trim()) return prev;
+      const nextSubtask: Subtask = {
         id: `subtask-${Date.now()}`,
         title: newSubtaskTitle.trim(),
         isCompleted: false,
         dueDate: newSubtaskDueDate,
       };
-      setEditedTask(prev => ({ ...prev!, subtasks: [...(prev?.subtasks || []), newSubtask] }));
-      setNewSubtaskTitle('');
-      setNewSubtaskDueDate(undefined);
-    }
-  };
+      return { ...prev, subtasks: [...(prev.subtasks ?? []), nextSubtask] };
+    });
+    setNewSubtaskTitle('');
+    setNewSubtaskDueDate(undefined);
+  }, [newSubtaskDueDate, newSubtaskTitle]);
 
-  const handleToggleSubtaskCompletion = (subtaskId: string, isCompleted: boolean) => {
-    setEditedTask(prev => ({
-      ...prev!,
-      subtasks: prev!.subtasks?.map(subtask => 
-        subtask.id === subtaskId ? { ...subtask, isCompleted } : subtask
-      ),
-    }));
-  };
+  const handleToggleSubtaskCompletion = React.useCallback((subtaskId: string, isCompleted: boolean) => {
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        subtasks: (prev.subtasks ?? []).map((subtask) =>
+          subtask.id === subtaskId ? { ...subtask, isCompleted } : subtask,
+        ),
+      };
+    });
+  }, []);
 
-  const handleUpdateSubtaskTitle = (subtaskId: string, title: string) => {
-    setEditedTask(prev => ({
-      ...prev!,
-      subtasks: prev!.subtasks?.map(subtask => 
-        subtask.id === subtaskId ? { ...subtask, title } : subtask
-      ),
-    }));
-  };
+  const handleUpdateSubtaskTitle = React.useCallback((subtaskId: string, title: string) => {
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        subtasks: (prev.subtasks ?? []).map((subtask) =>
+          subtask.id === subtaskId ? { ...subtask, title } : subtask,
+        ),
+      };
+    });
+  }, []);
 
-  const handleUpdateSubtaskDueDate = (subtaskId: string, dueDate: string | undefined) => {
-    setEditedTask(prev => ({
-      ...prev!,
-      subtasks: prev!.subtasks?.map(subtask => 
-        subtask.id === subtaskId ? { ...subtask, dueDate } : subtask
-      ),
-    }));
-  };
+  const handleUpdateSubtaskDueDate = React.useCallback((subtaskId: string, dueDate: string | undefined) => {
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        subtasks: (prev.subtasks ?? []).map((subtask) =>
+          subtask.id === subtaskId ? { ...subtask, dueDate } : subtask,
+        ),
+      };
+    });
+  }, []);
 
-  const handleDeleteSubtask = (subtaskId: string) => {
-    setEditedTask(prev => ({
-      ...prev!,
-      subtasks: prev!.subtasks?.filter(subtask => subtask.id !== subtaskId),
-    }));
-  };
+  const handleDeleteSubtask = React.useCallback((subtaskId: string) => {
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        subtasks: (prev.subtasks ?? []).filter((subtask) => subtask.id !== subtaskId),
+      };
+    });
+  }, []);
 
-  const handleAddLabel = () => {
-    const nextLabel = newLabel.trim();
-    if (nextLabel && !editedTask.labels.some(label => getTaskLabelName(label) === nextLabel)) {
-      setEditedTask(prev => ({
-        ...prev!,
-        labels: [...prev!.labels, { name: nextLabel, color: selectedLabelColor }],
-      }));
-      setNewLabel('');
-    }
-  };
+  const handleAddLabel = React.useCallback(() => {
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      const next = newLabel.trim();
+      if (!next) return prev;
+      if (prev.labels.some((label) => getTaskLabelName(label) === next)) return prev;
+      return { ...prev, labels: [...prev.labels, { name: next, color: selectedLabelColor }] };
+    });
+    setNewLabel('');
+  }, [newLabel, selectedLabelColor]);
 
-  const handleRemoveLabel = (labelToRemove: string) => {
-    setEditedTask(prev => ({
-      ...prev!,
-      labels: prev!.labels.filter(label => getTaskLabelName(label) !== labelToRemove),
-    }));
-  };
+  const handleRemoveLabel = React.useCallback((labelToRemove: string) => {
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        labels: prev.labels.filter((label) => getTaskLabelName(label) !== labelToRemove),
+      };
+    });
+  }, []);
 
-  const handleKeyDownLabel = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleAddLabel();
-    }
-  };
-
-  const handleSaveChanges = () => {
+  const handleSaveChanges = React.useCallback(() => {
+    if (!editedTask) return;
     onUpdateTask(editedTask);
     onClose();
-  };
+  }, [editedTask, onClose, onUpdateTask]);
+
+  const containerClass = cn(
+    'flex flex-col',
+    presentation === 'inline'
+      ? 'h-full w-full border-l border-[var(--quick-panel-border)] bg-[var(--quick-panel-bg)]'
+      : 'fixed top-[var(--pane-header-h)] right-0 bottom-0 z-[var(--z-overlay)] h-[calc(100%-var(--pane-header-h))] w-[var(--quick-panel-width)] border-l border-[var(--quick-panel-border)] bg-[var(--quick-panel-bg)] shadow-[var(--elevation-xl)]',
+    className,
+  );
+
+  const regionProps = presentation === 'inline' && headingId
+    ? { role: 'region' as const, 'aria-labelledby': headingId }
+    : {};
+
+  if (!task || !editedTask) {
+    return null;
+  }
 
   return (
-    <div className={`fixed top-[var(--pane-header-h)] bottom-0 right-0 w-[480px] bg-[var(--bg-surface)] shadow-[var(--elevation-xl)] flex flex-col z-50 ${task ? 'translate-x-0' : 'translate-x-full'} transition-transform duration-300`}>
-      
-      {/* Header - Fixed */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border-subtle)]">
-  <h2 className="text-lg font-semibold text-[color:var(--text-primary)]">Task details</h2>
-        <button 
+    <div className={containerClass} {...regionProps}>
+      <PaneHeader role="heading" className="justify-between">
+        <h2 id={headingId} className="text-[length:var(--text-lg)] font-semibold text-[color:var(--text-primary)]">
+          Task details
+        </h2>
+        <button
+          type="button"
           onClick={onClose}
-          className="flex items-center justify-center w-8 h-8 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
+          className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
+          aria-label="Close task details"
         >
-          <X className="w-5 h-5" />
+          <X className="size-5" aria-hidden />
         </button>
-      </div>
-      
-      {/* Content - Scrollable */}
+      </PaneHeader>
+
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="flex flex-col gap-6">
-          
-          {/* POLISH TASK 1: Task Title - Prominent */}
+        <div className="flex flex-col gap-[var(--space-6)]">
           <div>
-            <input
-              type="text"
+            <textarea
+              ref={titleFieldRef}
               value={editedTask.title}
-              onChange={(e) => handleFieldChange('title', e.target.value)}
-              className="w-full text-2xl font-semibold text-[color:var(--text-primary)] bg-transparent border-0 focus:outline-none focus:ring-0 px-0 py-2"
+              onChange={(event) => handleFieldChange('title', event.target.value)}
+              className="w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-[var(--space-2)] text-[length:var(--text-2xl)] font-semibold leading-tight text-[color:var(--text-primary)] focus:outline-none focus:ring-0 whitespace-pre-wrap"
               placeholder="Task name"
+              rows={1}
+              onInput={() => adjustTitleHeight()}
             />
           </div>
 
-          {/* POLISH TASK 2 & 3: Due Date Section */}
-          <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-6">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
-              <Calendar className="w-4 h-4" />
+          <div className="flex flex-col gap-[var(--space-3)] border-t border-[var(--border-subtle)] pt-[var(--space-6)]">
+            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
+              <Calendar className="size-4" aria-hidden />
               <span>Due date</span>
             </div>
             <Popover>
               <PopoverTrigger asChild>
-                <button className="w-full flex items-center gap-2 px-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-tertiary)] hover:border-[var(--border-hover)] transition-colors">
-                  <Calendar className="w-4 h-4" />
-                  <span>{editedTask.dueDate || "Pick a date"}</span>
+                <button
+                  type="button"
+                  className="flex h-10 w-full items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-secondary)] hover:border-[var(--border-hover)]"
+                >
+                  <Calendar className="size-4" aria-hidden />
+                  <span>{editedTask.dueDate || 'Pick a date'}</span>
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
                 <CalendarComponent
                   mode="single"
-                  selected={parseDisplayDate(editedTask.dueDate || '')}
-                  onSelect={(date) => handleFieldChange('dueDate', date ? format(date, "MMM d") : undefined)}
+                  selected={parseDisplayDate(editedTask.dueDate ?? '')}
+                  onSelect={(date) => handleFieldChange('dueDate', date ? format(date, 'MMM d') : undefined)}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
           </div>
 
-          {/* POLISH TASK 4: Priority Section */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
-              <Flag className="w-4 h-4" />
+          <div className="flex flex-col gap-[var(--space-3)]">
+            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
+              <Flag className="size-4" aria-hidden />
               <span>Priority</span>
             </div>
-            <div className="flex gap-2">
-              {['high', 'medium', 'low', 'none'].map(p => (
-                <button 
-                  key={p}
-                  onClick={() => handleFieldChange('priority', p)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium border-2 capitalize transition-colors ${
-                    editedTask.priority === p
+            <div className="flex flex-wrap gap-[var(--space-2)]">
+              {(['high', 'medium', 'low', 'none'] as Task['priority'][]).map((priority) => (
+                <button
+                  key={priority}
+                  type="button"
+                  onClick={() => handleFieldChange('priority', priority)}
+                  className={cn(
+                    'rounded-[var(--radius-sm)] border-2 px-[var(--space-3)] py-[var(--space-1_5)] text-sm font-medium capitalize transition-colors',
+                    editedTask.priority === priority
                       ? 'border-[var(--primary)] bg-[var(--primary-tint-10)] text-[color:var(--primary)]'
-                      : 'border-[var(--border-default)] text-[color:var(--text-primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-tint-5)]'
-                  }`}
+                      : 'border-[var(--border-default)] text-[color:var(--text-primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-tint-5)]',
+                  )}
                 >
-                  {p}
+                  {priority}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* POLISH TASK 5: Labels Section */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
-              <Tag className="w-4 h-4" />
+          <div className="flex flex-col gap-[var(--space-3)]">
+            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
+              <Tag className="size-4" aria-hidden />
               <span>Labels</span>
             </div>
-            {editedTask.labels.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {editedTask.labels.map((label, idx) => {
+            {editedTask.labels.length > 0 ? (
+              <div className="flex flex-wrap gap-[var(--space-2)]">
+                {editedTask.labels.map((label, index) => {
                   const labelName = getTaskLabelName(label);
                   const labelColor = typeof label === 'string' ? 'var(--label-gray)' : label.color;
-                  
                   return (
-                    <div key={`${labelName}-${idx}`} className="relative inline-flex">
+                    <div key={`${labelName}-${index}`} className="relative inline-flex">
                       <div
-                        className="inline-flex items-center gap-1 px-[var(--space-2)] py-0.5 rounded-[var(--radius-sm)] text-[length:var(--text-xs)] font-[var(--font-weight-medium)] cursor-pointer"
+                        className="inline-flex items-center gap-[var(--space-1)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-[length:var(--text-xs)] font-medium"
                         style={{
                           backgroundColor: `color-mix(in oklab, ${labelColor} 18%, transparent)`,
                           color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
-                          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`
+                          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`,
                         }}
-                        onClick={() => setEditingLabelIndex(editingLabelIndex === idx ? null : idx)}
+                        onClick={() => setEditingLabelIndex(editingLabelIndex === index ? null : index)}
                       >
                         <span>{labelName}</span>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
                             handleRemoveLabel(labelName);
                           }}
-                          className="inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-[color-mix(in_oklab,currentColor_15%,transparent)] text-current opacity-70 hover:opacity-100"
+                          className="grid size-4 place-items-center rounded-full text-current hover:bg-[color-mix(in oklab,currentColor_15%,transparent)]"
+                          aria-label={`Remove label ${labelName}`}
                         >
-                          <X className="w-3 h-3" />
+                          <X className="size-3" aria-hidden />
                         </button>
                       </div>
-                      {editingLabelIndex === idx && (
-                        <div className="absolute top-full left-0 mt-1 p-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] z-30" style={{ minWidth: '280px' }}>
-                          <div className="flex gap-2 justify-start">
-                            {[
-                              { name: 'Blue', value: 'var(--label-blue)' },
-                              { name: 'Purple', value: 'var(--label-purple)' },
-                              { name: 'Pink', value: 'var(--label-pink)' },
-                              { name: 'Red', value: 'var(--label-red)' },
-                              { name: 'Orange', value: 'var(--label-orange)' },
-                              { name: 'Yellow', value: 'var(--label-yellow)' },
-                              { name: 'Green', value: 'var(--label-green)' },
-                              { name: 'Teal', value: 'var(--label-teal)' },
-                              { name: 'Gray', value: 'var(--label-gray)' },
-                            ].map(color => (
+                      {editingLabelIndex === index ? (
+                        <div className="absolute left-0 top-full z-30 mt-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--space-3)] shadow-[var(--elevation-lg)]">
+                          <div className="flex flex-wrap gap-[var(--space-2)]">
+                            {labelColorPalette.map((option) => (
                               <button
-                                key={color.value}
+                                key={option.value}
+                                type="button"
                                 onClick={() => {
-                                  setEditedTask(prev => ({
-                                    ...prev!,
-                                    labels: prev!.labels.map((l, i) => 
-                                      i === idx ? { name: labelName, color: color.value } : l
-                                    )
-                                  }));
+                                  setEditedTask((prev) => {
+                                    if (!prev) return prev;
+                                    return {
+                                      ...prev,
+                                      labels: prev.labels.map((existing, idx) =>
+                                        idx === index ? { name: labelName, color: option.value } : existing,
+                                      ),
+                                    };
+                                  });
                                   setEditingLabelIndex(null);
                                 }}
-                                className={`w-5 h-5 rounded-full border transition-all hover:scale-110`}
-                                style={{ 
-                                  backgroundColor: `color-mix(in oklab, ${color.value} 18%, transparent)`,
-                                  borderColor: `color-mix(in oklab, ${color.value} 35%, transparent)`,
-                                  borderWidth: '1px'
+                                className="size-5 rounded-full border transition-transform hover:scale-110"
+                                style={{
+                                  backgroundColor: `color-mix(in oklab, ${option.value} 18%, transparent)`,
+                                  borderColor: `color-mix(in oklab, ${option.value} 35%, transparent)`,
                                 }}
-                                title={color.name}
+                                aria-label={`Set ${labelName} label to ${option.name}`}
                               />
                             ))}
                           </div>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}
               </div>
-            )}
-            {/* Color picker for labels */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-[color:var(--text-secondary)]">Color:</span>
-              <div className="flex gap-1">
-                {[
-                  { name: 'Blue', value: 'var(--label-blue)' },
-                  { name: 'Purple', value: 'var(--label-purple)' },
-                  { name: 'Pink', value: 'var(--label-pink)' },
-                  { name: 'Red', value: 'var(--label-red)' },
-                  { name: 'Orange', value: 'var(--label-orange)' },
-                  { name: 'Yellow', value: 'var(--label-yellow)' },
-                  { name: 'Green', value: 'var(--label-green)' },
-                  { name: 'Teal', value: 'var(--label-teal)' },
-                  { name: 'Gray', value: 'var(--label-gray)' },
-                ].map(color => (
+            ) : null}
+            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] text-[color:var(--text-secondary)]">
+              <span>Color:</span>
+              <div className="flex items-center gap-[var(--space-1)]">
+                {labelColorPalette.map((option) => (
                   <button
-                    key={color.value}
-                    onClick={() => setSelectedLabelColor(color.value)}
-                    className={`w-5 h-5 rounded-full border transition-all ${
-                      selectedLabelColor === color.value 
-                        ? 'ring-2 ring-[var(--primary)] ring-offset-1 scale-110' 
-                        : 'hover:scale-110'
-                    }`}
-                    style={{ 
-                      backgroundColor: `color-mix(in oklab, ${color.value} 18%, transparent)`,
-                      borderColor: `color-mix(in oklab, ${color.value} 35%, transparent)`,
-                      borderWidth: '1px'
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSelectedLabelColor(option.value)}
+                    className={cn(
+                      'size-5 rounded-full border transition-transform hover:scale-110',
+                      selectedLabelColor === option.value && 'ring-2 ring-[var(--primary)] ring-offset-1 scale-110',
+                    )}
+                    style={{
+                      backgroundColor: `color-mix(in oklab, ${option.value} 18%, transparent)`,
+                      borderColor: `color-mix(in oklab, ${option.value} 35%, transparent)`,
                     }}
-                    title={color.name}
+                    aria-label={`Choose ${option.name}`} 
                   />
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-[var(--space-2)]">
               <input
                 type="text"
-                placeholder="Add a label"
                 value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                onKeyDown={handleKeyDownLabel}
-                className="flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] focus:ring-offset-0"
+                onChange={(event) => setNewLabel(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    handleAddLabel();
+                  }
+                }}
+                placeholder="Add a label"
+                className="flex-1 h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-tint-10)]"
               />
-              <button 
+              <button
+                type="button"
                 onClick={handleAddLabel}
                 disabled={!newLabel.trim()}
-                className="flex items-center justify-center w-9 h-9 rounded-md border border-[var(--border-default)] text-[color:var(--text-secondary)] hover:border-[var(--primary)] hover:text-[color:var(--primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="grid size-9 place-items-center rounded-[var(--radius-md)] border border-[var(--border-default)] text-[color:var(--text-secondary)] transition-colors hover:border-[var(--primary)] hover:text-[color:var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Add label"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="size-4" aria-hidden />
               </button>
             </div>
           </div>
 
-          {/* POLISH TASK 6: Subtasks Section */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
+          <div className="flex flex-col gap-[var(--space-3)]">
+            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
               <span>Subtasks</span>
             </div>
-            <div className="flex flex-col gap-2">
-              {(editedTask.subtasks || []).map(subtask => (
-                <div key={subtask.id} className="flex items-center gap-2">
-                  <Checkbox 
+            <div className="flex flex-col gap-[var(--space-2)]">
+              {(editedTask.subtasks ?? []).map((subtask) => (
+                <div key={subtask.id} className="flex items-center gap-[var(--space-2)]">
+                  <Checkbox
                     checked={subtask.isCompleted}
-                    onCheckedChange={(checked) => handleToggleSubtaskCompletion(subtask.id, !!checked)}
-                    className="w-5 h-5 shrink-0"
+                    onCheckedChange={(checked) => handleToggleSubtaskCompletion(subtask.id, Boolean(checked))}
+                    className="size-5"
                   />
                   <input
                     type="text"
                     value={subtask.title}
-                    onChange={(e) => handleUpdateSubtaskTitle(subtask.id, e.target.value)}
-                    className={`flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-primary)] focus:outline-none focus:border-[var(--primary)] ${subtask.isCompleted ? 'line-through text-[color:var(--text-tertiary)]' : ''}`}
+                    onChange={(event) => handleUpdateSubtaskTitle(subtask.id, event.target.value)}
+                    className={cn(
+                      'flex-1 h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] focus:border-[var(--primary)] focus:outline-none',
+                      subtask.isCompleted && 'line-through text-[color:var(--text-tertiary)]',
+                    )}
                   />
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className="flex items-center justify-center w-9 h-9 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors">
-                        <Calendar className="w-4 h-4" />
+                      <button
+                        type="button"
+                        className="grid size-9 place-items-center rounded-[var(--radius-md)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
+                        aria-label="Set subtask due date"
+                      >
+                        <Calendar className="size-4" aria-hidden />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
                       <CalendarComponent
                         mode="single"
                         selected={subtask.dueDate ? new Date(subtask.dueDate) : undefined}
-                        onSelect={(date) => handleUpdateSubtaskDueDate(subtask.id, date ? format(date, "yyyy-MM-dd") : undefined)}
+                        onSelect={(date) => handleUpdateSubtaskDueDate(subtask.id, date ? format(date, 'yyyy-MM-dd') : undefined)}
                         initialFocus
                       />
                     </PopoverContent>
                   </Popover>
-                  <button 
+                  <button
+                    type="button"
                     onClick={() => handleDeleteSubtask(subtask.id)}
-                    className="flex items-center justify-center w-9 h-9 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors"
+                    className="grid size-9 place-items-center rounded-[var(--radius-md)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
+                    aria-label="Delete subtask"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="size-4" aria-hidden />
                   </button>
                 </div>
               ))}
-              <div className="flex items-center gap-2">
-                <Checkbox disabled className="w-5 h-5 shrink-0 opacity-30" />
+              <div className="flex items-center gap-[var(--space-2)]">
+                <Checkbox disabled className="size-5 opacity-30" aria-hidden />
                 <input
                   type="text"
-                  placeholder="Add a subtask"
                   value={newSubtaskTitle}
-                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
+                  onChange={(event) => setNewSubtaskTitle(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
                       handleAddSubtask();
                     }
                   }}
-                  className="flex-1 h-9 px-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)]"
+                  placeholder="Add a subtask"
+                  className="flex-1 h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none"
                 />
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center justify-center w-9 h-9 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors">
-                      <Calendar className="w-4 h-4" />
+                    <button
+                      type="button"
+                      className="grid size-9 place-items-center rounded-[var(--radius-md)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
+                      aria-label="Set new subtask due date"
+                    >
+                      <Calendar className="size-4" aria-hidden />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <CalendarComponent
                       mode="single"
                       selected={newSubtaskDueDate ? new Date(newSubtaskDueDate) : undefined}
-                      onSelect={(date) => setNewSubtaskDueDate(date ? format(date, "yyyy-MM-dd") : undefined)}
+                      onSelect={(date) => setNewSubtaskDueDate(date ? format(date, 'yyyy-MM-dd') : undefined)}
                       initialFocus
                     />
                   </PopoverContent>
                 </Popover>
-                <button 
+                <button
+                  type="button"
                   onClick={handleAddSubtask}
                   disabled={!newSubtaskTitle.trim()}
-                  className="flex items-center justify-center w-9 h-9 rounded-md text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="grid size-9 place-items-center rounded-[var(--radius-md)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Add subtask"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="size-4" aria-hidden />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* POLISH TASK 7: Description Section */}
-          <div className="flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-6">
-            <div className="flex items-center gap-2 text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] uppercase tracking-wide">
+          <div className="flex flex-col gap-[var(--space-3)] border-t border-[var(--border-subtle)] pt-[var(--space-6)]">
+            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
               <span>Description</span>
             </div>
             <textarea
+              value={editedTask.description ?? ''}
+              onChange={(event) => handleFieldChange('description', event.target.value)}
               placeholder="Add notes..."
-              value={editedTask.description || ''}
-              onChange={(e) => handleFieldChange('description', e.target.value)}
-              className="w-full min-h-[120px] px-3 py-2 bg-[var(--bg-canvas)] border border-[var(--border-default)] rounded-md text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] focus:ring-offset-0 resize-y"
+              className="min-h-[120px] rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-canvas)] px-[var(--space-3)] py-[var(--space-2)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-tint-10)]"
             />
           </div>
 
         </div>
       </div>
-      
-      {/* POLISH TASK 8: Footer - Sticky */}
-      <div className="sticky bottom-0 left-0 right-0 flex items-center justify-between px-6 py-4 bg-[var(--bg-surface)] border-t border-[var(--border-subtle)]">
-        <button 
-          onClick={() => onDeleteTask(task.id)}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+
+      <div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-6 py-4">
+        <button
+          type="button"
+          onClick={() => {
+            onDeleteTask(task.id);
+            onClose();
+          }}
+          className="inline-flex items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-2)] text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="size-4" aria-hidden />
           Delete task
         </button>
-        
-        <button 
+        <button
+          type="button"
           onClick={handleSaveChanges}
-          className="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-[var(--btn-primary-bg)] text-white hover:bg-[var(--btn-primary-hover)] transition-colors"
+          className="inline-flex items-center rounded-[var(--radius-sm)] bg-[var(--btn-primary-bg)] px-[var(--space-4)] py-[var(--space-2_5)] text-sm font-medium text-[color:var(--btn-primary-text)] transition-colors hover:bg-[var(--btn-primary-hover)]"
         >
           Done
         </button>
       </div>
-      
     </div>
   );
 }
+
+const labelColorPalette = [
+  { name: 'Blue', value: 'var(--label-blue)' },
+  { name: 'Purple', value: 'var(--label-purple)' },
+  { name: 'Pink', value: 'var(--label-pink)' },
+  { name: 'Red', value: 'var(--label-red)' },
+  { name: 'Orange', value: 'var(--label-orange)' },
+  { name: 'Yellow', value: 'var(--label-yellow)' },
+  { name: 'Green', value: 'var(--label-green)' },
+  { name: 'Teal', value: 'var(--label-teal)' },
+  { name: 'Gray', value: 'var(--label-gray)' },
+];
