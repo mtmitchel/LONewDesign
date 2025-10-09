@@ -18,12 +18,15 @@ export function SectionHeader({
   title,
   action,
   titleId,
+  variant = "default",
 }: {
   eyebrow?: string;
-  title: string;
+  title: React.ReactNode;
   action?: React.ReactNode;
   titleId: string;
+  variant?: "default" | "chrome";
 }) {
+  const normalizedTitle = variant === "chrome" ? toSentenceCase(title) : title;
   return (
     <div className="flex items-start justify-between px-[var(--card-pad)] pt-[var(--card-pad)]">
       <div>
@@ -39,7 +42,7 @@ export function SectionHeader({
           id={titleId}
           className="text-base font-medium [color:var(--heading-color)]"
         >
-          {title}
+          {normalizedTitle}
         </h3>
       </div>
       {action}
@@ -67,13 +70,15 @@ export function DashboardCard({
   action,
   children,
   className,
+  variant = "default",
 }: {
   id: string;
-  title: string;
+  title: React.ReactNode;
   eyebrow?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  variant?: "default" | "chrome";
 }) {
   const titleId = `${id}-title`;
 
@@ -87,12 +92,24 @@ export function DashboardCard({
         className,
       )}
     >
-      <SectionHeader eyebrow={eyebrow} title={title} action={action} titleId={titleId} />
+      <SectionHeader eyebrow={eyebrow} title={title} action={action} titleId={titleId} variant={variant} />
       <div className="px-[var(--card-pad)] pb-[var(--card-pad)] pt-[var(--space-2)]">
         {children}
       </div>
     </section>
   );
+}
+
+function toSentenceCase(node: React.ReactNode): React.ReactNode {
+  if (React.isValidElement(node)) {
+    if (node.props && (node.props as Record<string, unknown>)["data-user-content"]) {
+      return node;
+    }
+    return node;
+  }
+  if (typeof node !== "string") return node;
+  if (node.length === 0) return node;
+  return node[0].toUpperCase() + node.slice(1);
 }
 
 export type WeatherKind =

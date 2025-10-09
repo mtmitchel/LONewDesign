@@ -15,6 +15,8 @@ export interface Task {
   assignee?: string;
   labels: TaskLabel[];
   listId: string;
+  projectId?: string;
+  boardListId?: string;
   notes?: string;
   isCompleted: boolean;
   checklist?: ChecklistItem[];

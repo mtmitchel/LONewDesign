@@ -5,12 +5,12 @@ export type Project = {
   name: string;
   code: string;
   summary: string;
-  lead: string;
-  team: string[];
   dueDate: string;
   progress: number;
   status: ProjectStatus;
   focusArea: string;
+  lastUpdated: string;
+  nextStep?: string;
   pinned?: boolean;
 };
 
@@ -27,7 +27,6 @@ export type ProjectArtifact = {
   projectId: string;
   title: string;
   kind: "note" | "email";
-  owner: string;
   updatedAt: string;
 };
 
@@ -39,43 +38,60 @@ export type ProjectThread = {
   lastMessageAt: string;
 };
 
+export type ProjectTaskList = {
+  id: string;
+  projectId: string;
+  name: string;
+  order: number;
+};
+
+export type ProjectTask = {
+  id: string;
+  projectId: string;
+  listId: string;
+  title: string;
+  priority?: "low" | "medium" | "high";
+  dueDate?: string;
+  updatedAt: string;
+};
+
 export const projects: Project[] = [
   {
     id: "proj-unified-ui",
     name: "Unified UI redesign",
     code: "UUI",
-    summary: "Orchestrate dashboard, assistant, and context surfaces into a cohesive tri-pane experience.",
-    lead: "Mason Rivera",
-    team: ["Mason", "Priya", "Alex", "Devon"],
+    summary: "Unify dashboard, assistant, and context surfaces into a calm tri-pane workspace.",
     dueDate: "2025-11-01",
     progress: 0.62,
     status: "on-track",
     focusArea: "Experience design",
+    lastUpdated: "2025-10-09T15:00:00Z",
+    nextStep: "Polish context panel quick actions",
     pinned: true,
   },
   {
     id: "proj-canvas-ai",
     name: "Canvas AI assist",
     code: "CAN",
-    summary: "Blend inline AI tooling for collaborative boards with scoped actions and summarization.",
-    lead: "Priya Patel",
-    team: ["Priya", "Alex", "Naomi"],
+    summary: "Blend inline AI tooling for boards with scoped actions and summarization.",
     dueDate: "2025-10-24",
     progress: 0.44,
     status: "at-risk",
     focusArea: "Intelligence",
+    lastUpdated: "2025-10-08T21:00:00Z",
+    nextStep: "Validate prompt registry coverage",
   },
   {
     id: "proj-ops-enablement",
     name: "Ops enablement launch",
     code: "OPS",
     summary: "Package the onboarding flow and automations for operations teams adopting LibreOllama.",
-    lead: "Devon Clarke",
-    team: ["Devon", "Mason", "Ivy"],
     dueDate: "2025-12-05",
     progress: 0.78,
     status: "on-track",
     focusArea: "Enablement",
+    lastUpdated: "2025-10-07T18:30:00Z",
+    nextStep: "Draft rollout announcement",
   },
 ];
 
@@ -116,7 +132,6 @@ export const artifacts: ProjectArtifact[] = [
     projectId: "proj-unified-ui",
     title: "UX feedback digest",
     kind: "note",
-    owner: "Priya Patel",
     updatedAt: "2025-10-08T16:20:00Z",
   },
   {
@@ -124,7 +139,6 @@ export const artifacts: ProjectArtifact[] = [
     projectId: "proj-unified-ui",
     title: "Client sign-off summary",
     kind: "email",
-    owner: "Alex Chen",
     updatedAt: "2025-10-07T11:05:00Z",
   },
   {
@@ -132,7 +146,6 @@ export const artifacts: ProjectArtifact[] = [
     projectId: "proj-canvas-ai",
     title: "AI partner briefing",
     kind: "note",
-    owner: "Naomi Lee",
     updatedAt: "2025-10-06T09:45:00Z",
   },
   {
@@ -140,7 +153,6 @@ export const artifacts: ProjectArtifact[] = [
     projectId: "proj-ops-enablement",
     title: "Pilot customer feedback",
     kind: "email",
-    owner: "Ivy Doyle",
     updatedAt: "2025-10-05T18:10:00Z",
   },
 ];
@@ -176,6 +188,76 @@ export const threads: ProjectThread[] = [
   },
 ];
 
+export const projectTaskLists: ProjectTaskList[] = [
+  { id: "uui-backlog", projectId: "proj-unified-ui", name: "Backlog", order: 0 },
+  { id: "uui-active", projectId: "proj-unified-ui", name: "Active", order: 1 },
+  { id: "uui-review", projectId: "proj-unified-ui", name: "Review", order: 2 },
+  { id: "can-backlog", projectId: "proj-canvas-ai", name: "Backlog", order: 0 },
+  { id: "can-active", projectId: "proj-canvas-ai", name: "Active", order: 1 },
+  { id: "can-testing", projectId: "proj-canvas-ai", name: "Testing", order: 2 },
+  { id: "ops-backlog", projectId: "proj-ops-enablement", name: "Backlog", order: 0 },
+  { id: "ops-active", projectId: "proj-ops-enablement", name: "Active", order: 1 },
+  { id: "ops-ready", projectId: "proj-ops-enablement", name: "Ready to ship", order: 2 },
+];
+
+export const projectTasks: ProjectTask[] = [
+  {
+    id: "task-uui-brief",
+    projectId: "proj-unified-ui",
+    listId: "uui-active",
+    title: "Document context panel adapters",
+    priority: "medium",
+    dueDate: "2025-10-15",
+    updatedAt: "2025-10-09T15:00:00Z",
+  },
+  {
+    id: "task-uui-canvas",
+    projectId: "proj-unified-ui",
+    listId: "uui-backlog",
+    title: "Draft universal search copy",
+    updatedAt: "2025-10-08T12:00:00Z",
+  },
+  {
+    id: "task-uui-assistant",
+    projectId: "proj-unified-ui",
+    listId: "uui-review",
+    title: "Review assistant capture summary flow",
+    priority: "low",
+    updatedAt: "2025-10-07T21:30:00Z",
+  },
+  {
+    id: "task-can-metrics",
+    projectId: "proj-canvas-ai",
+    listId: "can-active",
+    title: "Collect latency telemetry",
+    priority: "high",
+    dueDate: "2025-10-12",
+    updatedAt: "2025-10-08T20:10:00Z",
+  },
+  {
+    id: "task-can-library",
+    projectId: "proj-canvas-ai",
+    listId: "can-backlog",
+    title: "Map prompt library variants",
+    updatedAt: "2025-10-07T09:05:00Z",
+  },
+  {
+    id: "task-ops-sequence",
+    projectId: "proj-ops-enablement",
+    listId: "ops-active",
+    title: "Draft onboarding checklist",
+    dueDate: "2025-10-20",
+    updatedAt: "2025-10-08T13:15:00Z",
+  },
+  {
+    id: "task-ops-handbook",
+    projectId: "proj-ops-enablement",
+    listId: "ops-backlog",
+    title: "Outline support handbook",
+    updatedAt: "2025-10-06T18:45:00Z",
+  },
+];
+
 export function getProjectById(id: string): Project | undefined {
   return projects.find((project) => project.id === id);
 }
@@ -199,4 +281,16 @@ export function getThreadsForProject(projectId: string): ProjectThread[] {
     .filter((thread) => thread.projectId === projectId)
     .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
     .slice(0, 3);
+}
+
+export function getTaskListsForProject(projectId: string): ProjectTaskList[] {
+  return projectTaskLists
+    .filter((list) => list.projectId === projectId)
+    .sort((a, b) => a.order - b.order);
+}
+
+export function getTasksForProject(projectId: string): ProjectTask[] {
+  return projectTasks
+    .filter((task) => task.projectId === projectId)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

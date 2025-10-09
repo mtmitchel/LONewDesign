@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   KanbanSquare, List, Search, Plus, Filter, RefreshCw, ChevronDown,
   MoreHorizontal, CheckSquare, Clock, Calendar, ArrowUpDown,
@@ -37,6 +37,7 @@ import { TaskSidePanel } from './tasks/TaskSidePanel';
 import { QuickTaskModal } from '../extended/QuickTaskModal';
 import { SegmentedToggle } from '../controls/SegmentedToggle';
 import { TASK_LISTS } from './tasks/constants';
+import { projects } from './projects/data';
 
 type TaskLabel = string | { name: string; color: string };
 
@@ -52,21 +53,22 @@ interface Task {
   order?: number;
   labels: TaskLabel[];
   isCompleted: boolean;
+  projectId?: string;
 }
 
 const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
 const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
 
 const mockTasks: Task[] = [
-  { id: '1', title: 'Dump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-01' },
-  { id: '2', title: 'Hump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-02' },
-  { id: '3', title: 'Buy milk', dueDate: 'Aug 17', status: 'todo', priority: 'medium', labels: [{ name: 'errands', color: 'var(--label-orange)' }], isCompleted: false, dateCreated: '2025-10-03' },
+  { id: '1', title: 'Dump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-01', projectId: 'proj-unified-ui' },
+  { id: '2', title: 'Hump', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-02', projectId: 'proj-unified-ui' },
+  { id: '3', title: 'Buy milk', dueDate: 'Aug 17', status: 'todo', priority: 'medium', labels: [{ name: 'errands', color: 'var(--label-orange)' }], isCompleted: false, dateCreated: '2025-10-03', projectId: 'proj-ops-enablement' },
   { id: '4', title: 'Return library books', dueDate: 'Aug 13', status: 'todo', priority: 'high', labels: [{ name: 'personal', color: 'var(--label-purple)' }], isCompleted: false, dateCreated: '2025-10-04' },
-  { id: '5', title: 'asdfasdfasdfsa', dueDate: 'Aug 28', status: 'todo', priority: 'low', labels: [], isCompleted: true, dateCreated: '2025-10-05' },
-  { id: '6', title: 'Blah', status: 'in-progress', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-06' },
-  { id: '7', title: 'Buy bread', dueDate: 'Oct 1', status: 'in-progress', priority: 'medium', labels: [{ name: 'errands', color: 'var(--label-orange)' }], isCompleted: false, dateCreated: '2025-10-07' },
-  { id: '8', title: 'Task 1', dueDate: 'Oct 2 – 3', status: 'todo', priority: 'low', labels: [], isCompleted: false, dateCreated: '2025-10-08' },
-  { id: '9', title: 'tretre', dueDate: 'Oct 29', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-09' },
+  { id: '5', title: 'asdfasdfasdfsa', dueDate: 'Aug 28', status: 'todo', priority: 'low', labels: [], isCompleted: true, dateCreated: '2025-10-05', projectId: 'proj-canvas-ai' },
+  { id: '6', title: 'Blah', status: 'in-progress', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-06', projectId: 'proj-unified-ui' },
+  { id: '7', title: 'Buy bread', dueDate: 'Oct 1', status: 'in-progress', priority: 'medium', labels: [{ name: 'errands', color: 'var(--label-orange)' }], isCompleted: false, dateCreated: '2025-10-07', projectId: 'proj-ops-enablement' },
+  { id: '8', title: 'Task 1', dueDate: 'Oct 2 – 3', status: 'todo', priority: 'low', labels: [], isCompleted: false, dateCreated: '2025-10-08', projectId: 'proj-canvas-ai' },
+  { id: '9', title: 'tretre', dueDate: 'Oct 29', status: 'todo', priority: 'none', labels: [], isCompleted: false, dateCreated: '2025-10-09', projectId: 'proj-unified-ui' },
 ];
 
 const columns = TASK_LISTS;
@@ -119,13 +121,27 @@ export function TasksModule() {
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [labelsColorMap, setLabelsColorMap] = useState<Map<string, string>>(new Map());
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<{ projectId?: string }>).detail;
+      setProjectFilter(detail?.projectId ?? null);
+    };
+    window.addEventListener('tasks:set-project-scope', listener as EventListener);
+    return () => window.removeEventListener('tasks:set-project-scope', listener as EventListener);
+  }, []);
+
+  const activeProject = React.useMemo(() => projects.find((project) => project.id === projectFilter), [projectFilter]);
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLabels = selectedLabels.length === 0 || 
       task.labels.some(label => selectedLabels.includes(getLabelName(label)));
     const matchesList = selectedList === null || task.status === selectedList;
-    return matchesSearch && matchesLabels && matchesList;
+    const matchesProject = projectFilter === null || task.projectId === projectFilter;
+    return matchesSearch && matchesLabels && matchesList && matchesProject;
   });
 
   // Get all unique labels from tasks with their colors
@@ -597,6 +613,18 @@ export function TasksModule() {
             dense
           />
           <h1 className="text-lg font-semibold">Tasks</h1>
+          {projectFilter ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 whitespace-nowrap text-[color:var(--text-secondary)]"
+              onClick={() => setProjectFilter(null)}
+            >
+              {activeProject?.name ?? "Filtered"}
+              <span aria-hidden className="ml-2 text-[color:var(--text-tertiary)]">×</span>
+              <span className="sr-only">Clear project filter</span>
+            </Button>
+          ) : null}
         </div>
 
         <div className="flex-1 flex justify-center px-8">

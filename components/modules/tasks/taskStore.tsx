@@ -165,6 +165,8 @@ function createTask(input: TaskInput): Task {
     assignee: input.assignee,
     labels: input.labels ?? [],
     listId: input.listId ?? input.status ?? 'todo',
+    projectId: input.projectId,
+    boardListId: input.boardListId,
     notes: input.notes,
     isCompleted: input.isCompleted ?? false,
     checklist: input.checklist ?? [],
