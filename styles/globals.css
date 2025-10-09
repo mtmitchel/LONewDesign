@@ -119,6 +119,7 @@
   --chip-radius: var(--radius-md);
   --chip-pad-x: 10px;
   --chip-pad-y: 6px;
+  --chip-text: var(--text-secondary);
 
   --badge-radius: var(--radius-sm);
   --icon-sm: 16px;
@@ -985,6 +986,16 @@
   --pane-divider-color: var(--border-subtle);
   --pane-divider-w: 1px;
   --pane-sticky-z: var(--z-overlay);
+  /* Overview header */
+  --overview-header-gap: var(--space-2);
+  /* Dense list rows */
+  --list-row-h: 36px;
+  --list-row-pad-x: var(--space-3);
+  --list-row-gap: var(--space-2);
+  /* Meta ink */
+  --meta-quiet: var(--text-secondary);
+  /* Progress */
+  --progress-h: 6px;
   /* Project navigation */
   --project-nav-item-h: 44px;
   --project-nav-gap: var(--space-2);
@@ -1032,6 +1043,33 @@
   --sidebar-accent-foreground: var(--primary);
   --sidebar-border: var(--border-subtle);
   --sidebar-ring: var(--primary);
+}
+
+/* Card shells for overview */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-sm);
+}
+
+.card-header {
+  padding: var(--overview-card-pad) var(--overview-card-pad) var(--space-3);
+}
+
+.card-title {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.card-body {
+  padding: 0 var(--overview-card-pad) var(--overview-card-pad);
+  display: block;
+}
+
+.card-footer {
+  padding: 0 var(--overview-card-pad) var(--overview-card-pad);
 }
 
 @layer utilities {

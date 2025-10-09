@@ -44,8 +44,9 @@ const tabs = [
   { id: "tasks", label: "Tasks" },
   { id: "notes", label: "Notes" },
   { id: "files", label: "Files" },
-  { id: "canvas", label: "Canvas" },
-  { id: "chat", label: "Chat" },
+  { id: "events", label: "Events" },
+  { id: "canvas", label: "Canvases" },
+  { id: "chat", label: "Chats" },
   { id: "emails", label: "Emails" },
 ];
 
@@ -654,6 +655,10 @@ const placeholderCopy: Record<string, { title: string; body: string; cta?: strin
   files: {
     title: "Files surface coming soon",
     body: "Attach documents from the assistant or drag them in once file sync ships.",
+  },
+  events: {
+    title: "Events landing soon",
+    body: "Calendar links will collect here once project scheduling sync is wired up.",
   },
   canvas: {
     title: "Canvas coming soon",
