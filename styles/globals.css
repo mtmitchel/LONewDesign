@@ -198,6 +198,31 @@
   --task-header-pad-x: var(--space-4);
   --task-header-pad-y: var(--space-4);
 
+  /* Task board lane tokens */
+  --lane-padding-x: var(--space-3);
+  --lane-padding-y: var(--space-4);
+  --lane-padding: var(--lane-padding-y);
+  --board-lane-width: 320px;
+  --gap-header-to-stack: var(--space-4);
+  --gap-card-to-card: var(--space-2);
+  --board-card-inset-x: 0px;
+
+  --task-card-padding-x: var(--space-3);
+  --task-leading-gap-x: var(--space-2);
+  --task-meta-gap-x: var(--space-2);
+  --task-chip-gap-x: var(--space-1);
+
+  --list-header-actions-gap-x: var(--space-2);
+
+  --board-lane-bg: var(--bg-surface-elevated);
+  --board-lane-radius: var(--radius-lg);
+  --board-lane-padding: var(--lane-padding);
+  --board-card-gap: var(--gap-card-to-card);
+  --board-header-radius: var(--radius-md);
+  --board-header-border: var(--border-hairline);
+  --board-header-padding-y: var(--space-3);
+  --board-header-padding-x: var(--space-4);
+
   /* Task checkbox "always-check" pattern */
   --check-size: 18px;
   --check-ring: var(--border-subtle);

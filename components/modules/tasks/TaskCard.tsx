@@ -52,11 +52,11 @@ export function TaskCard({
     <ContextMenu>
         <ContextMenuTrigger>
             <Card 
-              className={`bg-[var(--bg-surface)] border border-[var(--task-card-border)] rounded-[var(--task-card-radius)] shadow-[var(--task-card-shadow)] hover:shadow-[var(--elevation-sm)] motion-safe:transition-shadow duration-[var(--duration-base)] px-[var(--task-card-pad-x)] py-[var(--task-card-pad-y)] cursor-pointer min-h-[44px]`}
+              className={`bg-[var(--bg-surface)] border border-[var(--task-card-border)] rounded-[var(--task-card-radius)] shadow-[var(--task-card-shadow)] hover:shadow-[var(--elevation-sm)] motion-safe:transition-shadow duration-[var(--duration-base)] px-[var(--task-card-padding-x)] py-[var(--task-card-pad-y)] cursor-pointer min-h-[44px]`}
               onClick={onClick}
             >
               <CardContent className="p-0">
-                <div className="flex items-start gap-[var(--space-2)]">
+                <div className="flex items-start gap-[var(--task-leading-gap-x)]">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -93,7 +93,7 @@ export function TaskCard({
                       {taskTitle}
                     </h4>
                     {(dueDate || priority !== 'none' || labels.length > 0) && (
-                      <div className="flex items-center gap-[var(--space-2)] mt-[var(--space-1)] flex-wrap">
+                      <div className="mt-[var(--space-1)] flex items-center flex-wrap gap-x-[var(--task-meta-gap-x)] gap-y-[var(--space-2)]">
                         {dueDate && (
                           <span className="text-[length:var(--task-meta-size)] font-[var(--font-weight-normal)] text-[color:var(--text-tertiary)]">
                             {dueDate}
@@ -108,21 +108,25 @@ export function TaskCard({
                             {priority[0].toUpperCase() + priority.slice(1)}
                           </Badge>
                         )}
-                        {labels.map((label, idx) => (
-                          <Badge
-                            key={`${getTaskLabelName(label)}-${idx}`}
-                            variant="soft"
-                            size="sm"
-                            className="relative"
-                            style={{ 
-                              backgroundColor: `color-mix(in oklab, ${getTaskLabelColor(label)} 18%, transparent)`,
-                              color: `color-mix(in oklab, ${getTaskLabelColor(label)} 85%, var(--text-primary))`,
-                              boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${getTaskLabelColor(label)} 35%, transparent)`
-                            }}
-                          >
-                            {getTaskLabelName(label)}
-                          </Badge>
-                        ))}
+                        {labels.length > 0 ? (
+                          <div className="flex items-center gap-[var(--task-chip-gap-x)]">
+                            {labels.map((label, idx) => (
+                              <Badge
+                                key={`${getTaskLabelName(label)}-${idx}`}
+                                variant="soft"
+                                size="sm"
+                                className="relative"
+                                style={{ 
+                                  backgroundColor: `color-mix(in oklab, ${getTaskLabelColor(label)} 18%, transparent)`,
+                                  color: `color-mix(in oklab, ${getTaskLabelColor(label)} 85%, var(--text-primary))`,
+                                  boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${getTaskLabelColor(label)} 35%, transparent)`
+                                }}
+                              >
+                                {getTaskLabelName(label)}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </div>

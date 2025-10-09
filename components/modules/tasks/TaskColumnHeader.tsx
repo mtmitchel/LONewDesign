@@ -1,9 +1,6 @@
 import React from 'react';
-import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
-import { Card } from '../../ui/card';
 import { MoreHorizontal, ArrowUpDown, Check } from 'lucide-react';
-import { cn } from '../../ui/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,18 +35,14 @@ export function TaskColumnHeader({
   }
 
   return (
-    <Card
-      className={cn(
-        "bg-[var(--bg-surface)] border border-[var(--border-subtle)]",
-        "rounded-[var(--list-header-radius)] shadow-[var(--list-header-shadow)]",
-        "px-[var(--list-header-pad-x)] py-[var(--list-header-pad-y)]"
-      )}
+    <header
+      className="bg-[var(--board-lane-bg)] rounded-[var(--board-header-radius)] border border-[var(--board-header-border)] px-[var(--board-header-padding-x)] py-[var(--board-header-padding-y)] mb-[var(--gap-header-to-stack)]"
       role="group"
       aria-roledescription="list header"
     >
       <div className="flex items-center justify-between gap-[var(--space-2)]">
         <div className="flex items-center gap-[var(--space-2)] min-w-0">
-          <h3 
+          <h3
             className="text-[length:var(--list-header-title)] font-semibold text-[color:var(--text-primary)] truncate"
           >
             {columnTitle}
@@ -58,7 +51,7 @@ export function TaskColumnHeader({
             {taskCount}
           </span>
         </div>
-        <div className="flex items-center gap-[var(--space-1)]">
+        <div className="flex items-center gap-[var(--list-header-actions-gap-x)]">
           <DropdownMenu>
               <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" title="Sort" aria-keyshortcuts="Shift+S" className="w-6 h-6 p-0">
@@ -133,6 +126,6 @@ export function TaskColumnHeader({
           </DropdownMenu>
         </div>
       </div>
-    </Card>
+    </header>
   );
 }

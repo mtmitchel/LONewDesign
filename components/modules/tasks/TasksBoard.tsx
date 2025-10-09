@@ -78,63 +78,91 @@ export function TasksBoard({
   }, []);
 
   return (
-    <div className={['min-h-full overflow-x-auto px-6 py-4', className].filter(Boolean).join(' ')}>
+    <div
+      className={[
+        'min-h-full overflow-x-auto px-6 py-4 bg-[var(--bg-canvas)]',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div className="density-compact flex min-w-max items-start gap-[var(--space-4)]">
         {columns.map((column) => {
           const columnId = column.id;
           const columnTasks = getTasksForColumn(columnId);
+          const composerIsActive = activeComposer === columnId;
+          const hasTasks = columnTasks.length > 0;
           return (
-            <div key={columnId} className="flex min-w-[280px] min-h-[160px] flex-col bg-[var(--bg-surface-elevated)] p-[var(--space-3)]">
-              <div className="flex flex-col gap-[var(--task-card-gap)]">
-                <TaskColumnHeader
-                  columnTitle={column.title}
-                  taskCount={columnTasks.length}
-                  currentSort={sortOption[columnId] ?? 'date-created'}
-                  onSort={(value) => handleSortChange(columnId, value)}
-                  onHideCompleted={noop}
-                  onRenameList={noop}
-                  onDeleteList={noop}
-                />
+            <section
+              key={columnId}
+              className="flex w-[var(--board-lane-width)] flex-none flex-col"
+            >
+              <TaskColumnHeader
+                columnTitle={column.title}
+                taskCount={columnTasks.length}
+                currentSort={sortOption[columnId] ?? 'date-created'}
+                onSort={(value) => handleSortChange(columnId, value)}
+                onHideCompleted={noop}
+                onRenameList={noop}
+                onDeleteList={noop}
+              />
 
-                <div className="flex flex-col gap-[var(--task-card-gap)]">
-                  {columnTasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      taskTitle={task.title}
-                      dueDate={task.dueDate}
-                      priority={task.priority ?? 'none'}
-                      labels={task.labels ?? []}
-                      isCompleted={Boolean(task.isCompleted)}
-                      onToggleCompletion={() => onToggleTaskCompletion(task.id)}
-                      onClick={() => onTaskSelect?.(task)}
-                      onEdit={() => onEditTask?.(task)}
-                      onDuplicate={() => onDuplicateTask?.(task)}
-                      onDelete={() => onDeleteTask?.(task.id)}
-                    />
-                  ))}
-                  {columnTasks.length === 0 && activeComposer !== columnId ? (
-                    <button
-                      type="button"
-                      className="w-full rounded-[var(--task-card-radius)] border border-dashed border-[var(--border-subtle)] bg-transparent px-[var(--task-card-pad-x)] py-[var(--task-card-pad-y)] text-left text-sm text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
-                      onClick={() => handleComposerOpen(columnId)}
-                    >
-                      Add a task
-                    </button>
-                  ) : null}
-                </div>
+              <div
+                className={[
+                  'flex flex-col rounded-[var(--board-lane-radius)] bg-[var(--board-lane-bg)] px-[var(--lane-padding-x)]',
+                  hasTasks ? 'py-[var(--lane-padding-y)] min-h-[160px]' : 'pb-[var(--lane-padding-y)] pt-[var(--space-3)]',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {hasTasks ? (
+                  <ul className="space-y-[var(--gap-card-to-card)]">
+                    {columnTasks.map((task) => (
+                      <li key={task.id} className="mx-[var(--board-card-inset-x)]">
+                        <TaskCard
+                          taskTitle={task.title}
+                          dueDate={task.dueDate}
+                          priority={task.priority ?? 'none'}
+                          labels={task.labels ?? []}
+                          isCompleted={Boolean(task.isCompleted)}
+                          onToggleCompletion={() => onToggleTaskCompletion(task.id)}
+                          onClick={() => onTaskSelect?.(task)}
+                          onEdit={() => onEditTask?.(task)}
+                          onDuplicate={() => onDuplicateTask?.(task)}
+                          onDelete={() => onDeleteTask?.(task.id)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
 
-                <div className="mt-auto pt-[var(--space-2)]">
-                  {activeComposer === columnId ? (
+                {composerIsActive ? (
+                  <div
+                    className={[
+                      'mx-[var(--board-card-inset-x)]',
+                      hasTasks ? 'mt-[var(--gap-header-to-stack)]' : undefined,
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
                     <TaskComposer
                       onAddTask={(title, dueDate, priority) => handleAddFromComposer(columnId, title, dueDate, priority)}
                       onCancel={handleComposerClose}
                     />
-                  ) : (
-                    <TaskAddButton onClick={() => handleComposerOpen(columnId)} />
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <TaskAddButton
+                    className={[
+                      'mx-[var(--board-card-inset-x)]',
+                      hasTasks ? 'mt-[var(--gap-header-to-stack)]' : undefined,
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    onClick={() => handleComposerOpen(columnId)}
+                  />
+                )}
               </div>
-            </div>
+            </section>
           );
         })}
         {trailingColumn}
