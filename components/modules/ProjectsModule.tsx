@@ -434,6 +434,10 @@ export function ProjectsModule() {
                 setActiveTab("overview");
               }}
               onCollapse={() => setLeftPaneVisible(false)}
+              onProjectAction={(projectId, action) =>
+                emitProjectEvent("project.navigator.menu", { projectId, action })
+              }
+              onCreateProject={handleAdd}
             />
           ) : (
             <CollapsedRail side="left" onClick={() => setLeftPaneVisible(true)} ariaKeyshortcuts="]" />
@@ -456,7 +460,6 @@ export function ProjectsModule() {
                       project={selectedProject}
                       milestones={overviewData.milestones}
                       artifacts={overviewData.artifacts}
-                      onAddAction={handleAdd}
                     />
                   ) : activeTab === "tasks" ? (
                     <TasksBoard

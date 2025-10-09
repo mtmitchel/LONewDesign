@@ -55,40 +55,15 @@ export function ProjectContextPanel({ onCollapse, project, taskLists = [] }: Pro
 
   return (
     <PaneColumn className="h-full" showLeftDivider showRightDivider={false}>
-      <PaneHeader role="tablist" className="justify-between px-[var(--panel-pad-x)]">
-        <div className="flex items-center gap-[var(--space-4)] text-sm font-medium text-[color:var(--text-secondary)]">
-          <button
-            type="button"
-            className={cn(
-              "relative pb-2 transition-colors",
-              activeTab === "context" ? "text-[color:var(--text-primary)]" : "text-[color:var(--text-tertiary)]",
-            )}
-            onClick={() => setActiveTab("context")}
-          >
-            Context
-            {activeTab === "context" ? (
-              <span className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-[var(--primary)]" aria-hidden />
-            ) : null}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "relative pb-2 transition-colors",
-              activeTab === "settings" ? "text-[color:var(--text-primary)]" : "text-[color:var(--text-tertiary)]",
-            )}
-            onClick={() => setActiveTab("settings")}
-          >
-            Settings
-            {activeTab === "settings" ? (
-              <span className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-[var(--primary)]" aria-hidden />
-            ) : null}
-          </button>
-        </div>
-      </PaneHeader>
+      <PaneHeader
+        role="tablist"
+        className="px-[var(--panel-pad-x)]"
+        tabs={<ContextSettingsTabs activeTab={activeTab} onSelect={setActiveTab} />}
+      />
 
       <div className="flex-1 overflow-y-auto border-t border-[var(--border-subtle)] px-[var(--panel-pad-x)] py-[var(--panel-pad-y)]">
         {activeTab === "context" ? (
-          <ContextTab />
+          <ContextTab project={project} />
         ) : (
           <SettingsTabContent taskLists={taskLists} settings={settings} onChange={handleSettingChange} />
         )}
@@ -101,37 +76,88 @@ export function ProjectContextPanel({ onCollapse, project, taskLists = [] }: Pro
   );
 }
 
-function ContextTab() {
+function ContextTab({ project }: { project?: Project }) {
+  const relatedNotes: Array<{ id: string; title: string; snippet: string }> = [];
+  const relatedTasks: Array<{ id: string; title: string; list: string }> = [];
+  const suggestions: Array<{ id: string; title: string; hint: string }> = [];
+  const backlinks: Array<{ id: string; title: string; source: string }> = [];
+  const upcomingEvents = getUpcomingEventsForProject(project?.id);
+
+  const showLinkHint =
+    relatedNotes.length === 0 && relatedTasks.length === 0 && suggestions.length === 0 && backlinks.length === 0;
+
   return (
     <div className="space-y-[var(--space-6)]">
-      <ContextSection title="Related notes" icon={<NotebookPen className="size-4" aria-hidden />}>
-        <PlaceholderBody label="No related notes" hint="Capture one with ⌘/Ctrl+K to pin it here." />
-      </ContextSection>
+      {showLinkHint ? (
+        <p className="px-[var(--space-1)] text-sm text-[color:var(--text-tertiary)]">
+          Link work with ⌘K or from item menus.
+        </p>
+      ) : null}
 
-      <ContextSection title="Related tasks" icon={<ListTodo className="size-4" aria-hidden />}>
-        <PlaceholderBody label="No linked tasks" hint="Use the board or press ⌘/Ctrl+K to add one." />
-      </ContextSection>
+      {relatedNotes.length > 0 ? (
+        <ContextSection title="Related notes" icon={<NotebookPen className="size-4" aria-hidden />}>
+          <ul className="space-y-[var(--space-3)] text-sm text-[color:var(--text-secondary)]">
+            {relatedNotes.map((note) => (
+              <li key={note.id}>
+                <p className="font-medium text-[color:var(--text-primary)]">{note.title}</p>
+                <p className="truncate text-xs text-[color:var(--text-tertiary)]">{note.snippet}</p>
+              </li>
+            ))}
+          </ul>
+        </ContextSection>
+      ) : null}
 
-      <ContextSection title="Upcoming events" icon={<Calendar className="size-4" aria-hidden />}>
-        <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
-          <li className="flex items-center justify-between">
-            <span>Sync with success team</span>
-            <span className="text-xs text-[color:var(--text-tertiary)]">Oct 15 · 2:00 PM</span>
-          </li>
-          <li className="flex items-center justify-between">
-            <span>Dashboard QA sweep</span>
-            <span className="text-xs text-[color:var(--text-tertiary)]">Oct 17 · 10:30 AM</span>
-          </li>
-        </ul>
-      </ContextSection>
+      {relatedTasks.length > 0 ? (
+        <ContextSection title="Related tasks" icon={<ListTodo className="size-4" aria-hidden />}>
+          <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
+            {relatedTasks.map((task) => (
+              <li key={task.id} className="flex items-center justify-between gap-[var(--space-3)]">
+                <span className="truncate font-medium text-[color:var(--text-primary)]">{task.title}</span>
+                <span className="text-xs text-[color:var(--text-tertiary)]">{task.list}</span>
+              </li>
+            ))}
+          </ul>
+        </ContextSection>
+      ) : null}
 
-      <ContextSection title="Suggestions" icon={<Sparkles className="size-4" aria-hidden />}>
-        <PlaceholderBody label="Assistant is learning" hint="Link work to surface smarter prompts over time." />
-      </ContextSection>
+      {upcomingEvents.length > 0 ? (
+        <ContextSection title="Upcoming events" icon={<Calendar className="size-4" aria-hidden />}>
+          <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
+            {upcomingEvents.map((event) => (
+              <li key={event.id} className="flex items-center justify-between gap-[var(--space-3)]">
+                <span className="truncate">{event.title}</span>
+                <span className="shrink-0 text-xs text-[color:var(--text-tertiary)]">{event.when}</span>
+              </li>
+            ))}
+          </ul>
+        </ContextSection>
+      ) : null}
 
-      <ContextSection title="Backlinks" icon={<Link className="size-4" aria-hidden />}>
-        <PlaceholderBody label="No backlinks yet" hint="Notes that reference this project will land here automatically." />
-      </ContextSection>
+      {suggestions.length > 0 ? (
+        <ContextSection title="Suggestions" icon={<Sparkles className="size-4" aria-hidden />}>
+          <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
+            {suggestions.map((suggestion) => (
+              <li key={suggestion.id}>
+                <p className="font-medium text-[color:var(--text-primary)]">{suggestion.title}</p>
+                <p className="text-xs text-[color:var(--text-tertiary)]">{suggestion.hint}</p>
+              </li>
+            ))}
+          </ul>
+        </ContextSection>
+      ) : null}
+
+      {backlinks.length > 0 ? (
+        <ContextSection title="Backlinks" icon={<Link className="size-4" aria-hidden />}>
+          <ul className="space-y-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
+            {backlinks.map((backlink) => (
+              <li key={backlink.id} className="flex items-center justify-between gap-[var(--space-3)]">
+                <span className="truncate font-medium text-[color:var(--text-primary)]">{backlink.title}</span>
+                <span className="text-xs text-[color:var(--text-tertiary)]">{backlink.source}</span>
+              </li>
+            ))}
+          </ul>
+        </ContextSection>
+      ) : null}
     </div>
   );
 }
@@ -248,6 +274,39 @@ function SettingsTabContent({
   );
 }
 
+function ContextSettingsTabs({ activeTab, onSelect }: { activeTab: TabId; onSelect: (tab: TabId) => void }) {
+  return (
+    <div className="flex items-center gap-[var(--space-4)] text-sm font-medium text-[color:var(--text-secondary)]">
+      <button
+        type="button"
+        className={cn(
+          "relative pb-2 transition-colors",
+          activeTab === "context" ? "text-[color:var(--text-primary)]" : "text-[color:var(--text-tertiary)]",
+        )}
+        onClick={() => onSelect("context")}
+      >
+        Context
+        {activeTab === "context" ? (
+          <span className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-[var(--primary)]" aria-hidden />
+        ) : null}
+      </button>
+      <button
+        type="button"
+        className={cn(
+          "relative pb-2 transition-colors",
+          activeTab === "settings" ? "text-[color:var(--text-primary)]" : "text-[color:var(--text-tertiary)]",
+        )}
+        onClick={() => onSelect("settings")}
+      >
+        Settings
+        {activeTab === "settings" ? (
+          <span className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-[var(--primary)]" aria-hidden />
+        ) : null}
+      </button>
+    </div>
+  );
+}
+
 function ContextSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="space-y-[var(--space-3)]">
@@ -264,13 +323,15 @@ function ContextSection({ title, icon, children }: { title: string; icon: React.
   );
 }
 
-function PlaceholderBody({ label, hint }: { label: string; hint: string }) {
-  return (
-    <div className="text-sm text-[color:var(--text-secondary)]">
-      <p className="font-medium text-[color:var(--text-primary)]">{label}</p>
-      <p className="text-xs text-[color:var(--text-tertiary)]">{hint}</p>
-    </div>
-  );
+const UPCOMING_EVENTS: Array<{ id: string; projectId?: string; title: string; when: string }> = [
+  { id: "event-sync", projectId: "proj-unified-ui", title: "Sync with success team", when: "Oct 15 · 2:00 PM" },
+  { id: "event-qa", projectId: "proj-unified-ui", title: "Dashboard QA sweep", when: "Oct 17 · 10:30 AM" },
+  { id: "event-canvas", projectId: "proj-canvas-ai", title: "Canvas prompt review", when: "Oct 18 · 4:00 PM" },
+  { id: "event-ops", projectId: "proj-ops-enablement", title: "Enablement pilot prep", when: "Oct 19 · 11:15 AM" },
+];
+
+function getUpcomingEventsForProject(projectId?: string) {
+  return UPCOMING_EVENTS.filter((event) => !projectId || event.projectId === projectId);
 }
 
 function SettingsSection({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {

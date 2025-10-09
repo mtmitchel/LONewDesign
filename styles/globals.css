@@ -97,6 +97,8 @@
   --content-measure-short: 420px;
 
   --dash-gap: 24px;
+  --overview-card-gap: var(--space-6);
+  --overview-card-pad: var(--space-4);
   --card-pad: 16px;
   --row-pad: 12px;
   --dash-header-py: 16px;
@@ -120,7 +122,7 @@
 
   --badge-radius: var(--radius-sm);
   --icon-sm: 16px;
-  --icon-md: 18px;
+  --icon-md: 20px;
 
   --canvas-accent-indigo: #5d5aff;
   --canvas-accent-iris: #8b7cf7;
@@ -978,11 +980,20 @@
   --tripane-border: 1px solid var(--border-default); /* Panel separators */
 
   /* Pane layout chrome */
-  --pane-header-h: 60px;
-  --pane-header-px: var(--space-4);
+  --pane-header-h: 44px;
+  --pane-header-px: var(--space-3);
   --pane-divider-color: var(--border-subtle);
   --pane-divider-w: 1px;
   --pane-sticky-z: var(--z-overlay);
+  /* Project navigation */
+  --project-nav-item-h: 44px;
+  --project-nav-gap: var(--space-2);
+  --project-nav-pad-x: var(--space-3);
+  --project-nav-hover: var(--bg-surface-elevated);
+  /* Micro progress */
+  --progress-thin-h: 4px;
+  --progress-thin-bg: var(--border-divider);
+  --progress-thin-fg: var(--primary);
   
   /* Semantic mappings for shadcn compatibility - Blue-Gray & Coral system */
   --background: var(--bg-canvas);

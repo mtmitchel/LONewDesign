@@ -1,13 +1,11 @@
 "use client";
 
 import React from 'react';
-import { Plus, FileText, FolderPlus } from 'lucide-react';
 import { TriPane } from '../TriPane';
 import { PaneHeader } from '../layout/PaneHeader';
 import { PaneCaret } from '../dev/PaneCaret';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import {
   NotesLeftPane,
   NotesCenterPane,
@@ -593,31 +591,23 @@ export function NotesModule() {
         }
         leftHeader={
           leftPaneVisible ? (
-            <PaneHeader className="px-[var(--space-4)]">
-              <div className="flex w-full items-center justify-between">
-                <h2 className="text-[length:var(--text-lg)] font-semibold">Notes</h2>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="sm" aria-label="Create new content">
-                      <Plus size={14} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => createNote(null)}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      New note
-                    </DropdownMenuItem>
-                    
-                    <DropdownMenuSeparator />
-                    
-                    <DropdownMenuItem onClick={() => createFolder()}>
-                      <FolderPlus className="w-4 h-4 mr-2" />
-                      New folder
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </PaneHeader>
+            <PaneHeader
+              className="px-[var(--space-4)]"
+              label="Notes"
+              actions={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="solid"
+                  className="gap-[var(--space-1)] px-[var(--space-3)]"
+                  onClick={handleCreateNote}
+                  title="New note"
+                  aria-keyshortcuts="KeyN"
+                >
+                  + New
+                </Button>
+              }
+            />
           ) : undefined
         }
         center={<div className="relative h-full">{centerContent}</div>}

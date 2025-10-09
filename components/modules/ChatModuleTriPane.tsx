@@ -404,22 +404,22 @@ export function ChatModuleTriPane() {
         }
         leftHeader={
           leftPaneVisible ? (
-            <PaneHeader>
-              <div className="flex items-center justify-between w-full">
-                <div className="font-medium">Conversations</div>
+            <PaneHeader
+              label="Conversations"
+              actions={
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
-                  className="gap-[var(--space-1)] border-[color-mix(in_oklab,var(--primary) 35%, transparent)] text-[color:var(--primary)] hover:bg-[color-mix(in_oklab,var(--primary) 12%, transparent)] hover:text-[color:var(--primary)]"
+                  variant="solid"
+                  className="gap-[var(--space-1)] px-[var(--space-3)]"
                   onClick={onStartNewConversation}
                   title="New chat (N)"
                   aria-keyshortcuts="KeyN"
                 >
                   + New
                 </Button>
-              </div>
-            </PaneHeader>
+              }
+            />
           ) : undefined
         }
         center={
