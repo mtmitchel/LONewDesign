@@ -62,6 +62,13 @@
 - Provide skeleton/loading states for asynchronous data sources.
 - Update sidebar to label Dashboard as "Today + Inbox".
 
+#### Status – 2025-10-09
+- Header reflowed with slimmer vertical rhythm (`--dash-header-pad-y`, `--dash-header-gap`) and the calm time + weather chip anchored at parity on the right.
+- Top-row cards now run sentence-case titles without the "Now" eyebrow, keeping quiet links as dotted underlines.
+- Focus card renders only when a session is active or begins within 90 minutes, otherwise a "Start focus session" quiet link appears under the header.
+- Projects, Inbox, and Signals cards tightened to three-row caps with tertiary metadata, and Recent Activity stays hidden by default for single-user mode.
+- Dashboard tokens refreshed: chip padding, header typography, and card spacing now align with the unified design system sweep.
+
 ---
 
 ## 4. Context Panel 2.0 (Standardized Across Modules)

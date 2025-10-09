@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Dashboard single-user polish (2025-10-09)
+- Tightened the "Today + Inbox" header with new `--dash-*` tokens, compact spacing, and a calmer time + weather chip that hugs the right edge.
+- Removed redundant "Now"/"Workstreams" eyebrows, brought titles to sentence case, and ensured every quiet action uses dotted underlines for a low-ink surface.
+- Focus card now appears only when a session is running or starts within 90 minutes, falling back to a header "Start focus session" link otherwise.
+- Projects, Inbox, and Signals cards trimmed to three-row caps with tertiary metadata, while Recent Activity hides by default to keep the single-user layout effortless.
+- Synced chip padding and dashboard spacing tokens in `globals.css` with the new polish so future cards inherit the refined rhythm automatically.
+
 ### Settings module token-driven overhaul (2025-10-08)
 - Rebuilt Settings with comprehensive two-column desktop layout featuring sticky scroll-spy navigation and responsive mobile tabs + accordion.
 - Added complete sections for agents/models (Ollama server, local models, model defaults), AI writing assistant (provider/model selection, style/behavior controls), cloud providers (API key management with test/save actions), and Google account management.

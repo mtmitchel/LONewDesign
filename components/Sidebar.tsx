@@ -35,9 +35,16 @@ export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleColla
   return (
     <div className={`${collapsed ? 'w-16' : 'w-72'} bg-[var(--bg-surface)] border-r border-[var(--border-subtle)] flex flex-col transition-all duration-200`}>
       {/* Header */}
-      <div className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center flex-shrink-0">
+      <div className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-center flex-shrink-0">
         {!collapsed && (
-          <h1 className="text-lg font-semibold text-[color:var(--text-primary)]">LibreOllama</h1>
+          <button
+            type="button"
+            onClick={() => onModuleChange('dashboard')}
+            className="text-2xl font-semibold leading-none text-[color:var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-tint-20)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)] rounded-[var(--radius-sm)] px-1"
+            aria-label="Go to Dashboard"
+          >
+            ∴
+          </button>
         )}
       </div>
       

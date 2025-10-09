@@ -528,24 +528,34 @@ export function QuickAssistantProvider({
 
       {launcherPortal
         ? createPortal(
-            <div className="fixed bottom-[var(--space-8)] right-[var(--space-8)] z-[999]">
-              <Button
-                variant="assistant"
-                size="floating"
-                className={cn(
-                  "relative grid place-items-center",
-                  "shadow-[0_22px_45px_rgba(15,23,42,0.35)]",
-                  "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--bg-surface)] focus-visible:ring-[color:var(--focus-ring)]",
-                  "hover:shadow-[0_26px_55px_rgba(15,23,42,0.4)]",
-                  "active:scale-95",
-                  "transition-transform"
-                )}
-                title="Open Assistant"
-                aria-label="Open Assistant"
-                onClick={() => openAssistant()}
-              >
-                <Plus className="relative size-6 text-[rgba(15,23,42,0.85)]" aria-hidden />
-              </Button>
+            <div className="fixed bottom-[calc(var(--space-8)+12px)] right-[var(--space-8)] z-[999]">
+              <div className="group relative grid place-items-center">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "pointer-events-none absolute inset-[-4px] rounded-full border border-white/70",
+                    "shadow-[0_20px_45px_rgba(15,23,42,0.35)]",
+                    "transition-shadow duration-300",
+                    "group-hover:shadow-[0_26px_65px_rgba(15,23,42,0.45)]"
+                  )}
+                />
+                <Button
+                  variant="assistant"
+                  size="floating"
+                  className={cn(
+                    "relative z-[1] grid place-items-center",
+                    "!shadow-none hover:!shadow-none",
+                    "focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--bg-surface)] focus-visible:ring-[color:var(--focus-ring)]",
+                    "active:scale-95",
+                    "transition-transform"
+                  )}
+                  title="Open Assistant"
+                  aria-label="Open Assistant"
+                  onClick={() => openAssistant()}
+                >
+                  <Plus className="relative size-6 text-[rgba(15,23,42,0.85)]" aria-hidden />
+                </Button>
+              </div>
             </div>,
             launcherPortal
           )
