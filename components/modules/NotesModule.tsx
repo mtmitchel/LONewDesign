@@ -20,6 +20,7 @@ import {
   mockNotes,
 } from './notes';
 import { NotesRightPane } from './notes/NotesRightPane';
+import { QUICK_ASSISTANT_EVENTS } from '../quick-assistant/QuickAssistantProvider';
 
 export function NotesModule() {
   // State management for folders, notes, selections, search, and settings
@@ -259,6 +260,90 @@ export function NotesModule() {
     setNotes(prev => prev.map(n => (n.id === selectedNoteId ? { ...n, title: value, updatedAt: new Date().toISOString() } : n)));
     withSavingTick();
   };
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleQuickNote = (
+      event: Event | CustomEvent<{
+        id?: string;
+        title?: string;
+        body: string;
+        createdAt: string;
+        scope?: { folderId?: string | null } | null;
+        capture?: { originalContent: string; metadata?: Record<string, unknown> };
+      }>
+    ) => {
+      const detail = (event as CustomEvent<{
+        id?: string;
+        title?: string;
+        body: string;
+        createdAt: string;
+        scope?: { folderId?: string | null } | null;
+        capture?: { originalContent: string; metadata?: Record<string, unknown> };
+      }>).detail;
+      if (!detail) return;
+
+  const noteId = detail.id ?? `quick-note-${Date.now()}`;
+      const folderId = detail.scope?.folderId ?? null;
+      const body = detail.body ?? '';
+      const title = (detail.title ?? body.split('\n')[0] ?? 'Quick capture').trim() || 'Quick capture';
+      const rawTags =
+        detail.capture?.metadata && Array.isArray((detail.capture.metadata as any).tags)
+          ? ((detail.capture.metadata as any).tags as string[])
+          : null;
+      const captureTags = rawTags
+        ? rawTags.map(tag => tag.trim()).filter(Boolean)
+        : undefined;
+
+      setNotes(prev => {
+        const siblingOrder = prev
+          .filter(n => (n.folderId || null) === (folderId || null))
+          .reduce((max, n) => Math.max(max, n.order ?? 0), -1) + 1;
+
+        const next: Note = {
+          id: noteId,
+          title,
+          content: body,
+          folderId,
+          order: siblingOrder,
+          tags: captureTags ?? [],
+          isStarred: false,
+          isPinned: false,
+          lastModified: 'just now',
+          wordCount: body.trim() ? body.trim().split(/\s+/).length : 0,
+          createdAt: detail.createdAt,
+          updatedAt: detail.createdAt,
+          capture: detail.capture,
+        };
+
+        const existingIndex = prev.findIndex(n => n.id === noteId);
+        if (existingIndex !== -1) {
+          const clone = [...prev];
+          clone[existingIndex] = next;
+          return applySort(clone);
+        }
+
+        return applySort([next, ...prev]);
+      });
+
+      setSelectedItem({ id: noteId, type: 'note' });
+      if (folderId) {
+        setExpandFolderRequest(folderId);
+      }
+    };
+
+    window.addEventListener(
+      QUICK_ASSISTANT_EVENTS.createNote,
+      handleQuickNote as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        QUICK_ASSISTANT_EVENTS.createNote,
+        handleQuickNote as EventListener
+      );
+    };
+  }, [applySort]);
   const handleCreateNote = () => {
     createNote(selectedFolderId);
     if (selectedFolderId) setExpandFolderRequest(selectedFolderId);

@@ -8,12 +8,20 @@ type Props = {
   onOpenChange: (v: boolean) => void;
   portalContainer?: HTMLElement | null;
   onCreate: (payload: { title?: string; body: string }) => void;
+  initialTitle?: string;
+  initialBody?: string;
 };
 
-export function QuickNoteModal({ open, onOpenChange, onCreate, portalContainer }: Props) {
-  const [title, setTitle] = React.useState("");
-  const [body, setBody] = React.useState("");
+export function QuickNoteModal({ open, onOpenChange, onCreate, portalContainer, initialTitle, initialBody }: Props) {
+  const [title, setTitle] = React.useState(initialTitle ?? "");
+  const [body, setBody] = React.useState(initialBody ?? "");
   const canCreate = body.trim().length > 0 || title.trim().length > 0;
+
+  React.useEffect(() => {
+    if (!open) return;
+    setTitle(initialTitle ?? "");
+    setBody(initialBody ?? "");
+  }, [open, initialTitle, initialBody]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();

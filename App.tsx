@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppShell } from './components/AppShell';
 import { TaskStoreProvider } from './components/modules/tasks/taskStore';
+import { QuickAssistantProvider } from './components/quick-assistant/QuickAssistantProvider';
 
 // Production Modules
 import { DashboardModule } from './components/modules/DashboardModule';
@@ -71,9 +72,11 @@ export default function App() {
 
   return (
     <TaskStoreProvider>
-      <AppShell activeModule={activeModule} onModuleChange={setActiveModule}>
-        {renderActiveModule()}
-      </AppShell>
+      <QuickAssistantProvider>
+        <AppShell activeModule={activeModule} onModuleChange={setActiveModule}>
+          {renderActiveModule()}
+        </AppShell>
+      </QuickAssistantProvider>
     </TaskStoreProvider>
   );
 }

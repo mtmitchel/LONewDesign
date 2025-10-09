@@ -24,6 +24,7 @@ const buttonVariants = cva(
         destructive: "bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90 shadow-sm",
   secondary: "bg-[var(--bg-surface-elevated)] text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]/80",
   link: "text-[color:var(--primary)] underline-offset-4 hover:underline bg-transparent",
+  assistant: "bg-[color:var(--accent-primary)] text-[color:var(--bg-canvas)] shadow-[var(--elevation-lg)] hover:bg-[color:var(--accent-primary-strong)]",
       },
       size: {
         // Comfortable density for long sessions (Asana-style)
@@ -31,6 +32,7 @@ const buttonVariants = cva(
         sm: "h-8 rounded-[var(--radius-sm)] gap-1.5 px-[var(--space-3)] has-[>svg]:px-[var(--space-2)]",
         lg: "h-10 rounded-[var(--radius-sm)] px-[var(--space-6)] has-[>svg]:px-[var(--space-4)]",
         icon: "size-9 rounded-[var(--radius-sm)]",
+        floating: "size-[56px] rounded-full",
         // Compact for toolbars and dense interfaces
         compact: "h-7 px-[var(--space-2)] py-1 text-xs has-[>svg]:px-[var(--space-1)]",
       },

@@ -11,6 +11,10 @@ export interface Note {
   wordCount: number;
   createdAt?: string;
   updatedAt?: string;
+  capture?: {
+    originalContent: string;
+    metadata?: Record<string, unknown>;
+  };
 }
 
 export interface NoteFolder {

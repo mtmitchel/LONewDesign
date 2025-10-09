@@ -13,6 +13,7 @@ type Props = {
   defaultStart?: string; // HH:mm
   defaultEnd?: string; // HH:mm
   onCreate: (payload: { title: string; date: string; start?: string; end?: string }) => void;
+  initialTitle?: string;
 };
 
 export function QuickEventModal({
@@ -22,15 +23,24 @@ export function QuickEventModal({
   defaultDate,
   defaultStart,
   defaultEnd,
-  onCreate
+  onCreate,
+  initialTitle,
 }: Props) {
-  const [title, setTitle] = React.useState("");
+  const [title, setTitle] = React.useState(initialTitle ?? "");
   const [date, setDate] = React.useState<Date | undefined>(
     defaultDate ? new Date(defaultDate) : undefined
   );
   const [start, setStart] = React.useState(defaultStart ?? "");
   const [end, setEnd] = React.useState(defaultEnd ?? "");
   const canCreate = title.trim().length > 0 && !!date;
+
+  React.useEffect(() => {
+    if (!open) return;
+    setTitle(initialTitle ?? "");
+    setDate(defaultDate ? new Date(defaultDate) : undefined);
+    setStart(defaultStart ?? "");
+    setEnd(defaultEnd ?? "");
+  }, [open, initialTitle, defaultDate, defaultStart, defaultEnd]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();

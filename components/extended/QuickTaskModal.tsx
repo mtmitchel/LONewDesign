@@ -10,6 +10,7 @@ type Props = {
   defaultDate?: string; // yyyy-mm-dd
   portalContainer?: HTMLElement | null;
   onCreate: (payload: { title: string; date?: string }) => void;
+  initialTitle?: string;
 };
 
 export function QuickTaskModal({
@@ -17,13 +18,20 @@ export function QuickTaskModal({
   onOpenChange,
   defaultDate,
   onCreate,
-  portalContainer
+  portalContainer,
+  initialTitle,
 }: Props) {
-  const [title, setTitle] = React.useState("");
+  const [title, setTitle] = React.useState(initialTitle ?? "");
   const [date, setDate] = React.useState<Date | undefined>(
     defaultDate ? new Date(defaultDate) : undefined
   );
   const canCreate = title.trim().length > 0;
+
+  React.useEffect(() => {
+    if (!open) return;
+    setTitle(initialTitle ?? "");
+    setDate(defaultDate ? new Date(defaultDate) : undefined);
+  }, [open, initialTitle, defaultDate]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();

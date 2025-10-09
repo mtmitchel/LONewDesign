@@ -6,6 +6,7 @@ import { EventModalModern } from './calendar/EventModalModern';
 import { CalendarPopover } from './calendar/CalendarPopover';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { SegmentedToggle } from '../controls/SegmentedToggle';
+import { QUICK_ASSISTANT_EVENTS } from '../quick-assistant/QuickAssistantProvider';
 
 // Unified calendar engine and views
 import { useCalendarEngine, formatRangeLabel, navigate } from './calendar/useCalendarEngine';
@@ -222,6 +223,70 @@ export function CalendarModule() {
     setEvents(prev => [...prev, newEvent]);
     setModalState({ ...modalState, isOpen: false });
   };
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleQuickEvent = (
+      event: Event | CustomEvent<{
+        id: string;
+        title: string;
+        startsAt: string;
+        endsAt: string;
+        scope?: { projectId?: string | null } | null;
+        location?: string;
+        description?: string;
+        capture?: { originalContent: string; metadata?: Record<string, unknown> };
+      }>
+    ) => {
+      const detail = (event as CustomEvent<{
+        id: string;
+        title: string;
+        startsAt: string;
+        endsAt: string;
+        scope?: { projectId?: string | null } | null;
+        location?: string;
+        description?: string;
+        capture?: { originalContent: string; metadata?: Record<string, unknown> };
+      }>).detail;
+      if (!detail) return;
+
+      setEvents(prev => {
+        const next: UnifiedEvent = {
+          id: detail.id,
+          title: detail.title,
+          calendarId: detail.scope?.projectId ?? 'quick-assistant',
+          startsAt: detail.startsAt,
+          endsAt: detail.endsAt,
+          location: detail.location,
+          description: detail.description,
+        };
+
+        const existingIndex = prev.findIndex(evt => evt.id === next.id);
+        if (existingIndex !== -1) {
+          const clone = [...prev];
+          clone[existingIndex] = next;
+          return clone;
+        }
+
+        return [next, ...prev];
+      });
+
+      const nextDate = new Date(detail.startsAt);
+      setCurrentDate(nextDate);
+    };
+
+    window.addEventListener(
+      QUICK_ASSISTANT_EVENTS.createEvent,
+      handleQuickEvent as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        QUICK_ASSISTANT_EVENTS.createEvent,
+        handleQuickEvent as EventListener
+      );
+    };
+  }, [setCurrentDate, setEvents]);
 
   const goToToday = () => setCurrentDate(new Date());
   const navigateView = (dir: 'prev' | 'next') => setCurrentDate((d) => navigate(d, viewMode, dir));
