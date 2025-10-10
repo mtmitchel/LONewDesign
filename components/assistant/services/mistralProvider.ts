@@ -17,16 +17,24 @@ CLASSIFICATION RULES:
 - "event": Scheduled appointments, meetings, any activity with a specific TIME or DATE (e.g., "dentist Tuesday 2pm", "team meeting Friday", "lunch with Sarah tomorrow at noon", "appointment next week")
 - "unknown": Unclear or gibberish input
 
-CRITICAL: If the input contains ANY of these, classify as "event":
-- Appointment keywords: appointment, meeting, lunch, dinner, call, session, visit, interview
-- Time indicators: 2pm, 10am, morning, afternoon, evening, at [time]
-- Date indicators: Monday, Tuesday, today, tomorrow, next week, this Friday
+CRITICAL RULES - READ CAREFULLY:
+1. If input contains the word "appointment" → ALWAYS classify as "event", NEVER as "note"
+2. If input contains a time (2pm, 10am, 3:30, etc.) → ALWAYS classify as "event", NEVER as "note"
+3. If input contains meeting/lunch/dinner/call/session/visit/interview → ALWAYS classify as "event"
+4. "Meeting notes" = note (information about a past meeting)
+5. "Meeting with..." or "Meeting at..." = event (scheduled meeting)
+
+NEVER classify as "note" if the input:
+- Contains the word "appointment"
+- Contains a specific time (2pm, 10am, etc.)
+- Is about scheduling something in the future
+- Describes a calendar event
 
 Examples of events (NOT notes):
-- "Dentist appointment Tuesday 2pm" → event
-- "Call with client tomorrow" → event  
-- "Team lunch Friday noon" → event
-- "Doctor visit next week" → event
+- "Dentist appointment Tuesday 2pm" → event (has "appointment" + time)
+- "Call with client tomorrow" → event (has "call" + date)
+- "Team lunch Friday noon" → event (has "lunch" + time)
+- "Doctor visit next week" → event (has "visit" + date)
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -49,6 +57,9 @@ Output: {"intent":"note","confidence":0.85,"extracted":{"title":"Meeting notes f
 
 Input: "Dentist appointment next Tuesday at 2pm"
 Output: {"intent":"event","confidence":0.95,"extracted":{"title":"Dentist appointment","date":"next Tuesday","startTime":"2pm"}}
+
+Input: "Dentist appointment Tuesday 2pm"
+Output: {"intent":"event","confidence":0.95,"extracted":{"title":"Dentist appointment","date":"Tuesday","startTime":"2pm"}}
 
 Input: "Team sync Friday 10am"
 Output: {"intent":"event","confidence":0.9,"extracted":{"title":"Team sync","date":"Friday","startTime":"10am"}}
@@ -117,17 +128,18 @@ export class MistralProvider implements LLMProvider {
     ];
 
     try {
-      console.log('[MistralProvider] Calling mistral_complete for intent classification');
+      console.log('[MistralProvider] 🚀 Calling mistral_complete for intent classification');
+      console.log('[MistralProvider] Input:', input);
       const response = await invoke<string>('mistral_complete', {
         apiKey: this.apiKey,
         baseUrl: this.baseUrl,
         model: this.model,
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
-        temperature: 0.3, // Low temperature for consistent classification
+        temperature: 0.1, // Very low temperature for deterministic classification
         maxTokens: 500,
       });
 
-      console.log('[MistralProvider] Raw response:', response);
+      console.log('[MistralProvider] 📥 Raw API response:', response);
 
       // Extract JSON from response
       const jsonStr = extractJSON(response);

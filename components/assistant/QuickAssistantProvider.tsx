@@ -375,12 +375,14 @@ export function QuickAssistantProvider({
           console.log('[QuickAssistant] Creating Mistral provider');
           const provider = createMistralProvider();
           
-          console.log('[QuickAssistant] Classifying intent:', trimmed);
-          const toastId = toast.loading('Analyzing your input...');
+          console.log('[QuickAssistant] 🔍 Classifying intent for input:', trimmed);
           const intent = await provider.classifyIntent(trimmed);
-          toast.dismiss(toastId);
           
-          console.log('[QuickAssistant] Classified intent:', intent);
+          console.log('[QuickAssistant] 📊 Classification result:', {
+            type: intent.type,
+            confidence: intent.confidence,
+            extracted: intent.extracted
+          });
           
           dispatchAssistantEvent("assistant.intent_resolved", {
             intent: intent.type,
