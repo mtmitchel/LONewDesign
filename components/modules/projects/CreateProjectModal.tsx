@@ -187,7 +187,15 @@ export function CreateProjectModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[480px] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--elevation-xl)]">
+      <DialogContent 
+        className="max-w-[480px] bg-[var(--bg-surface)] border border-[var(--border-default)] shadow-[var(--elevation-xl)] fixed"
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          marginLeft: '-20px',
+          transform: 'translate(-50%, -50%)'
+        }}>
         <DialogHeader className="pb-[var(--space-6)] border-b border-[var(--border-subtle)]">
           <DialogTitle className="text-xl font-semibold text-[color:var(--text-primary)] mb-[var(--space-1)]">
             Create new project
@@ -432,14 +440,14 @@ export function CreateProjectModal({
                   Tell me about your project
                 </h3>
                 <p className="text-sm text-[color:var(--text-secondary)]">
-                  Describe what you want to accomplish, any constraints, timeline, or specific requirements
+                  Describe what you want to accomplish, any constraints, timeline, or specific requirements.
                 </p>
               </div>
               
               <div>
                 <Textarea
                   id="aiPrompt"
-                  placeholder="Describe your project goals, requirements, and timeline..."
+                  placeholder=""
                   rows={6}
                   className="px-[var(--space-4)] py-[var(--space-4)] border border-[var(--border-default)] rounded-[var(--radius-md)] bg-[var(--bg-surface)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-secondary)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] transition-all resize-none leading-relaxed"
                   value={projectData.aiPrompt || ''}
