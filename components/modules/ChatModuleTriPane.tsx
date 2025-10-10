@@ -20,6 +20,7 @@ import { openQuickAssistant } from "../assistant";
 import { useProviderSettings } from "./settings/state/providerSettings";
 import { toast } from "sonner";
 import { sanitizeLLMText, sanitizeTitle, stripMarkdown } from "../assistant/services/llmSanitizer";
+import { invoke } from '@tauri-apps/api/core';
 
 const CENTER_MIN_VAR = '--tripane-center-min';
 
@@ -240,6 +241,119 @@ export function ChatModuleTriPane() {
       }
     }
   }, [activeConversationId, conversations]);
+  
+  // Title generation with proper state management
+  React.useEffect(() => {
+    const generateTitleForConversation = async (conversationId: string) => {
+      const conversation = conversations.find(c => c.id === conversationId);
+      if (!conversation || conversation.title !== 'Untitled conversation') {
+        return;
+      }
+
+      const convMessages = messages.filter(m => m.conversationId === conversationId);
+      if (convMessages.length < 2) {
+        return;
+      }
+
+      const titleMessages = convMessages.slice(0, 2).map(msg => ({
+        role: msg.author === 'user' ? 'user' : 'assistant',
+        content: msg.text.substring(0, 400) // Increased for better context
+      }));
+
+      try {
+        console.log('[Title Generation] Starting for conversation:', conversationId);
+        
+        // Use appropriate provider configuration
+        const isMistralModel = selectedModel.startsWith('mistral-') || 
+                              selectedModel.startsWith('codestral-') || 
+                              selectedModel.startsWith('ministral-');
+        
+        let apiKey: string;
+        let baseUrl: string | null;
+        let titleModel: string;
+        
+        if (isMistralModel) {
+          apiKey = providers.mistral.apiKey.trim();
+          baseUrl = providers.mistral.baseUrl?.trim() || null;
+          titleModel = 'mistral-small-latest'; // Fast model for titles
+        } else {
+          // For OpenRouter and other providers
+          const providerType = MODEL_OPTIONS.find(opt => opt.value === selectedModel)?.provider;
+          if (providerType === 'openrouter') {
+            apiKey = providers.openrouter.apiKey.trim();
+            baseUrl = 'https://openrouter.ai/api/v1';
+            titleModel = 'meta-llama/llama-3.1-8b-instruct:free'; // Free model for titles
+          } else if (providerType === 'glm') {
+            apiKey = providers.glm.apiKey.trim();
+            baseUrl = providers.glm.baseUrl?.trim() || null;
+            titleModel = selectedModel;
+          } else if (providerType === 'deepseek') {
+            apiKey = providers.deepseek.apiKey.trim();
+            baseUrl = providers.deepseek.baseUrl?.trim() || null;
+            titleModel = selectedModel;
+          } else {
+            // Default to openai
+            apiKey = providers.openai.apiKey.trim();
+            baseUrl = providers.openai.baseUrl?.trim() || null;
+            titleModel = 'gpt-3.5-turbo';
+          }
+        }
+        
+        const title = await invoke('generate_conversation_title', {
+          apiKey: apiKey,
+          baseUrl: baseUrl,
+          model: titleModel,
+          messages: titleMessages,
+        });
+
+        console.log('[Title Generation] Received title:', title);
+        
+        if (title && typeof title === 'string') {
+          const sanitized = sanitizeTitle(title);
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.id === conversationId
+                ? { ...conv, title: sanitized }
+                : conv
+            )
+          );
+        }
+      } catch (error) {
+        console.error('[Title Generation] Failed:', error);
+        // Fallback: Use first user message as title
+        const firstUserMsg = convMessages.find(m => m.author === 'user');
+        if (firstUserMsg) {
+          const fallbackTitle = firstUserMsg.text
+            .substring(0, 50)
+            .replace(/[^\w\s]/g, '')
+            .trim();
+          if (fallbackTitle.length > 3) {
+            setConversations(prev =>
+              prev.map(conv =>
+                conv.id === conversationId
+                  ? { ...conv, title: fallbackTitle.substring(0, 30) + (fallbackTitle.length > 30 ? '...' : '') }
+                  : conv
+              )
+            );
+          }
+        }
+      }
+    };
+
+    // Trigger title generation when conversation gets its second message
+    if (activeConversationId && !isStreaming) {
+      const convMessages = messages.filter(m => m.conversationId === activeConversationId);
+      const conversation = conversations.find(c => c.id === activeConversationId);
+      
+      if (conversation && conversation.title === 'Untitled conversation' && convMessages.length >= 2) {
+        // Check if the last message has content (streaming is done)
+        const lastMessage = convMessages[convMessages.length - 1];
+        if (lastMessage && lastMessage.text && lastMessage.text.length > 0) {
+          generateTitleForConversation(activeConversationId);
+        }
+      }
+    }
+  }, [messages, conversations, activeConversationId, isStreaming, selectedModel, providers]);
 
   // Auto-save to localStorage
   React.useEffect(() => {
@@ -351,55 +465,7 @@ export function ChatModuleTriPane() {
             console.debug('Mistral stream completed');
             setIsStreaming(false);
             unlisten();
-            
-            // Generate title after first exchange (if title is still "Untitled conversation")
-            // Use setTimeout to ensure messages state is updated
-            setTimeout(() => {
-              const currentConv = conversations.find(c => c.id === activeConversationId);
-              if (currentConv && currentConv.title === 'Untitled conversation') {
-                // Get fresh messages from the DOM/state
-                setMessages(currentMessages => {
-                  const conversationMessages = currentMessages.filter(m => m.conversationId === activeConversationId);
-                  
-                  // Create a simplified assistant message for title generation
-                  const assistantMsg = {
-                    role: 'assistant' as const,
-                    content: accumulatedText.substring(0, 500), // Limit context for title generation
-                  };
-                  
-                  const titleMessages = [
-                    { role: 'user' as const, content: userMessage.text },
-                    assistantMsg
-                  ];
-                  
-                  console.log('[Title Generation] Starting for conversation:', activeConversationId);
-                  console.log('[Title Generation] Messages:', titleMessages);
-                  
-                  // Generate title in background
-                  invoke('generate_conversation_title', {
-                    apiKey: mistralConfig.apiKey.trim(),
-                    baseUrl: mistralConfig.baseUrl.trim() || null,
-                    model: selectedModel,
-                    messages: titleMessages,
-                  }).then((title) => {
-                    console.log('[Title Generation] Received title:', title);
-                    // Sanitize the generated title
-                    const sanitized = sanitizeTitle(title as string);
-                    setConversations(prev =>
-                      prev.map(conv =>
-                        conv.id === activeConversationId
-                          ? { ...conv, title: sanitized }
-                          : conv
-                      )
-                    );
-                  }).catch((error) => {
-                    console.error('[Title Generation] Failed:', error);
-                  });
-                  
-                  return currentMessages; // Don't modify messages
-                });
-              }
-            }, 100); // Small delay to ensure state updates
+            // Title generation is now handled by the useEffect hook
           } else if (payload.event === 'error') {
             console.error('Mistral stream error:', payload.error);
             toast.error(payload.error ?? 'Streaming failed');
@@ -486,47 +552,7 @@ export function ChatModuleTriPane() {
           } else if (payload.event === 'done') {
             setIsStreaming(false);
             unlisten();
-            
-            // Generate title after first exchange
-            // Use setTimeout to ensure messages state is updated
-            setTimeout(() => {
-              const currentConv = conversations.find(c => c.id === activeConversationId);
-              if (currentConv && currentConv.title === 'Untitled conversation') {
-                // Create messages for title generation with assistant response
-                const assistantMsg = {
-                  role: 'assistant' as const,
-                  content: accumulatedText.substring(0, 500), // Limit context for title generation
-                };
-                
-                const titleMessages = [
-                  { role: 'user' as const, content: userMessage.text },
-                  assistantMsg
-                ];
-                
-                console.log('[Title Generation] Starting for conversation:', activeConversationId);
-                console.log('[Title Generation] Provider:', providerType);
-                
-                // Generate title using the selected provider
-                invoke('generate_conversation_title', {
-                  apiKey: providerConfig.apiKey.trim(),
-                  baseUrl: providerConfig.baseUrl?.trim() || null,
-                  model: selectedModel || providerConfig.defaultModel,
-                  messages: titleMessages,
-                }).then((title) => {
-                  console.log('[Title Generation] Received title:', title);
-                  const sanitized = sanitizeTitle(title as string);
-                  setConversations(prev =>
-                    prev.map(conv =>
-                      conv.id === activeConversationId
-                        ? { ...conv, title: sanitized }
-                        : conv
-                    )
-                  );
-                }).catch((error) => {
-                  console.error('[Title Generation] Failed:', error);
-                });
-              }
-            }, 100); // Small delay to ensure state updates
+            // Title generation is now handled by the useEffect hook
           } else if (payload.event === 'error') {
             console.error(`[${providerType.toUpperCase()}] Stream error:`, payload.error);
             toast.error(payload.error || `Stream error from ${providerType.toUpperCase()}`);
