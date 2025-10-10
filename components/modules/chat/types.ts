@@ -6,6 +6,8 @@ export type Conversation = {
   unread?: boolean;
   pinned?: boolean;
   participants?: string[];
+  model?: string; // Model used for this conversation
+  provider?: string; // Provider type (mistral, openrouter, glm, etc)
 };
 
 export type ChatMessage = {

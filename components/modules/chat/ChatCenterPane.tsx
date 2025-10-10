@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import { cn } from '../../ui/utils';
 import type { ChatMessage } from './types';
+import { ThinkingIndicator, StreamingIndicator } from './ThinkingIndicator';
 
 interface ChatCenterPaneProps {
   conversationId: string | null;
@@ -13,6 +14,8 @@ interface ChatCenterPaneProps {
   onAttachFiles?: (files: FileList) => void;
   onRegenerateMessage?: (message: ChatMessage) => void;
   onEditMessage?: (message: ChatMessage) => void;
+  isStreaming?: boolean;
+  modelName?: string;
 }
 
 export function ChatCenterPane({
@@ -23,6 +26,8 @@ export function ChatCenterPane({
   onAttachFiles,
   onRegenerateMessage,
   onEditMessage,
+  isStreaming = false,
+  modelName = 'Assistant',
 }: ChatCenterPaneProps) {
   const [text, setText] = React.useState('');
   const [showScrollToLatest, setShowScrollToLatest] = React.useState(false);
@@ -292,6 +297,11 @@ export function ChatCenterPane({
         ) : filteredMessages.length ? (
           <div className="flex flex-col space-y-[var(--chat-bubble-gap-y)]">
             {filteredMessages.map(renderMessageBubble)}
+            {isStreaming && (
+              <div className="flex items-start gap-[var(--space-2)] px-[var(--space-2)]">
+                <StreamingIndicator modelName={modelName} />
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex h-full items-center justify-center text-[color:var(--text-secondary)]">

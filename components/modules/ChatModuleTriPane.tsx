@@ -228,6 +228,18 @@ export function ChatModuleTriPane() {
 
   const [conversations, setConversations] = React.useState<Conversation[]>(() => loadConversationsFromStorage());
   const [messages, setMessages] = React.useState<ChatMessage[]>(() => loadMessagesFromStorage());
+  const [isStreaming, setIsStreaming] = React.useState(false);
+
+  // Auto-select model when switching conversations
+  React.useEffect(() => {
+    if (activeConversationId) {
+      const conversation = conversations.find(c => c.id === activeConversationId);
+      if (conversation?.model && conversation.model !== selectedModel) {
+        setSelectedModel(conversation.model);
+        console.debug('chat:model:auto-selected', { model: conversation.model });
+      }
+    }
+  }, [activeConversationId, conversations]);
 
   // Auto-save to localStorage
   React.useEffect(() => {
@@ -277,6 +289,8 @@ export function ChatModuleTriPane() {
               lastMessageSnippet: text,
               updatedAt: now,
               unread: false,
+              model: selectedModel, // Update model used
+              provider: MODEL_OPTIONS.find(opt => opt.value === selectedModel)?.provider,
             }
           : conversation
       )
@@ -307,6 +321,7 @@ export function ChatModuleTriPane() {
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, assistantMessage]);
+      setIsStreaming(true);
       
       try {
         const { invoke, listen } = await Promise.all([
@@ -334,6 +349,7 @@ export function ChatModuleTriPane() {
             );
           } else if (payload.event === 'done') {
             console.debug('Mistral stream completed');
+            setIsStreaming(false);
             unlisten();
             
             // Generate title after first exchange (if title is still "Untitled conversation")
@@ -387,6 +403,7 @@ export function ChatModuleTriPane() {
           } else if (payload.event === 'error') {
             console.error('Mistral stream error:', payload.error);
             toast.error(payload.error ?? 'Streaming failed');
+            setIsStreaming(false);
             unlisten();
           }
         });
@@ -410,6 +427,7 @@ export function ChatModuleTriPane() {
       } catch (error) {
         console.error('[MISTRAL] Failed to start stream:', error);
         toast.error(`Failed to connect to Mistral AI: ${error}`);
+        setIsStreaming(false);
         
         // Remove the empty assistant message on error
         setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
@@ -439,6 +457,7 @@ export function ChatModuleTriPane() {
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, assistantMessage]);
+      setIsStreaming(true);
       
       try {
         const { invoke, listen } = await Promise.all([
@@ -465,6 +484,7 @@ export function ChatModuleTriPane() {
               )
             );
           } else if (payload.event === 'done') {
+            setIsStreaming(false);
             unlisten();
             
             // Generate title after first exchange
@@ -511,6 +531,7 @@ export function ChatModuleTriPane() {
             console.error(`[${providerType.toUpperCase()}] Stream error:`, payload.error);
             toast.error(payload.error || `Stream error from ${providerType.toUpperCase()}`);
             setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+            setIsStreaming(false);
             unlisten();
           }
         });
@@ -538,6 +559,7 @@ export function ChatModuleTriPane() {
       } catch (error) {
         console.error(`[${providerType.toUpperCase()}] Failed to start stream:`, error);
         toast.error(`Failed to connect to ${providerType.toUpperCase()}: ${error}`);
+        setIsStreaming(false);
         
         // Remove the empty assistant message on error
         setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
@@ -562,12 +584,14 @@ export function ChatModuleTriPane() {
         updatedAt: createdAt,
         participants: ['You'],
         unread: false,
+        model: selectedModel, // Store current model
+        provider: MODEL_OPTIONS.find(opt => opt.value === selectedModel)?.provider,
       },
       ...prev,
     ]);
     setActiveConversationId(id);
     console.debug('chat:conversation:new', { id });
-  }, [setActiveConversationId, setConversations]);
+  }, [setActiveConversationId, setConversations, selectedModel]);
 
   const onModelChange = React.useCallback((model: string) => {
     setSelectedModel(model);
@@ -760,6 +784,8 @@ export function ChatModuleTriPane() {
             onSend={onSend}
             onStartNewConversation={onStartNewConversation}
             onAttachFiles={onAttachFiles}
+            isStreaming={isStreaming}
+            modelName={selectedModelLabel}
           />
         }
         centerHeader={

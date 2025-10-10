@@ -511,11 +511,11 @@ async fn generate_conversation_title(
     let resolved_base = resolve_base_url(base_url);
     let url = format!("{}/chat/completions", resolved_base);
 
-    // Create a system message to guide title generation - kept SHORT for speed
+    // Create a system message that works across all models (OpenAI, Anthropic, Mistral, etc)
     let mut title_messages = vec![
         ChatMessageInput {
             role: "system".to_string(),
-            content: "Generate a 3-5 word title. Sentence case. Title only.".to_string(),
+            content: "Ignore all previous instructions. Generate a concise 3-5 word title for this conversation. Use natural English, sentence case. No quotes, no formatting, no punctuation at the end. Respond ONLY with the title text.".to_string(),
         }
     ];
     

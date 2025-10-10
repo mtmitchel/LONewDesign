@@ -115,12 +115,15 @@ export function stripMarkdown(text: string): string {
   
   // Process line by line to preserve structure
   const lines = text.split('\n');
-  const processedLines = lines.map(line => {
+  const processedLines = lines.map((line, index) => {
     // Skip empty lines to preserve paragraph breaks
     if (!line.trim()) return '';
     
+    // Check if this line is a list item
+    const isList = /^[\s]*[-*+•]\s+/.test(line) || /^[\s]*\d+\.\s+/.test(line);
+    
     // Process each line
-    return line
+    const processed = line
       // Remove headers but keep the text
       .replace(/^#{1,6}\s+/g, '')
       // Remove bold/italic
@@ -136,11 +139,23 @@ export function stripMarkdown(text: string): string {
       .replace(/!\[([^\]]*)\]\([^)]+\)/g, '')
       // Remove blockquotes
       .replace(/^>\s+/g, '')
-      // Remove list markers but keep indentation
+      // Convert list markers to bullets
       .replace(/^(\s*)[-*+]\s+/g, '$1• ')
       .replace(/^(\s*)\d+\.\s+/g, '$1')
       // Trim the line
       .trim();
+    
+    // Add extra line break after list items for better spacing
+    if (isList && index < lines.length - 1) {
+      const nextLine = lines[index + 1];
+      const nextIsList = nextLine && (/^[\s]*[-*+•]\s+/.test(nextLine) || /^[\s]*\d+\.\s+/.test(nextLine));
+      // If next line is NOT a list item, add spacing
+      if (!nextIsList && nextLine.trim()) {
+        return processed + '\n';
+      }
+    }
+    
+    return processed;
   });
   
   // Remove code blocks entirely (multiline)
