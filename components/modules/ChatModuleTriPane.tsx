@@ -237,9 +237,11 @@ export function ChatModuleTriPane() {
             const currentConv = conversations.find(c => c.id === activeConversationId);
             if (currentConv && currentConv.title === 'Untitled conversation') {
               const conversationMessages = messages.filter(m => m.conversationId === activeConversationId);
-              const allMessages = [...conversationMessages, userMessage, { ...assistantMessage, text: accumulatedText }];
+              // Include only messages up to and including the user's message
+              // Mistral API requires last message to be from user, not assistant
+              const allMessages = [...conversationMessages, userMessage];
               
-              if (allMessages.length >= 2) {
+              if (allMessages.length >= 1) {
                 // Generate title in background
                 invoke('generate_conversation_title', {
                   apiKey: mistralConfig.apiKey.trim(),
