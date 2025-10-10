@@ -61,15 +61,22 @@ export const useProviderSettings = create(
       assistantProvider: null,
       assistantModel: null,
       updateProvider: (id, config) => {
-        set((state) => ({
-          providers: {
-            ...state.providers,
-            [id]: {
-              ...state.providers[id],
-              ...config,
+        set((state) => {
+          const updated = {
+            providers: {
+              ...state.providers,
+              [id]: {
+                ...state.providers[id],
+                ...config,
+              },
             },
-          },
-        }));
+          };
+          console.log(`[providerSettings] updateProvider(${id}):`, {
+            configUpdate: config,
+            resultingProvider: updated.providers[id],
+          });
+          return updated;
+        });
       },
       resetProvider: (id) => {
         set((state) => ({

@@ -184,6 +184,14 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       setAssistantModel: state.setAssistantModel,
     }))
   );
+  
+  // Debug: Log which providers have API keys
+  React.useEffect(() => {
+    console.log('[SettingsProviders] Provider API keys:', Object.entries(providers).reduce((acc, [id, config]) => {
+      acc[id] = config.apiKey ? `${config.apiKey.substring(0, 10)}... (${config.apiKey.length} chars)` : '(empty)';
+      return acc;
+    }, {} as Record<string, string>));
+  }, [providers]);
   const [providerState, setProviderState] = useState<Record<ProviderId, ProviderState>>(() =>
     buildViewState(providers),
   );
