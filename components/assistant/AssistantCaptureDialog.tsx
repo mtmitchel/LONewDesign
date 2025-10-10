@@ -12,6 +12,32 @@ import { ResultsPane } from "./ResultsPane";
 
 export type AssistantCommand = "capture" | "task" | "note" | "event" | "summarize";
 
+// Language definitions with T-V distinction support
+type LanguageOption = {
+  code: string;
+  label: string;
+  hasTVDistinction: boolean;
+  formalExample?: string;
+  informalExample?: string;
+};
+
+const LANGUAGES: LanguageOption[] = [
+  { code: "es", label: "Spanish", hasTVDistinction: true, formalExample: "usted", informalExample: "tú" },
+  { code: "fr", label: "French", hasTVDistinction: true, formalExample: "vous", informalExample: "tu" },
+  { code: "de", label: "German", hasTVDistinction: true, formalExample: "Sie", informalExample: "du" },
+  { code: "it", label: "Italian", hasTVDistinction: true, formalExample: "Lei", informalExample: "tu" },
+  { code: "pt", label: "Portuguese", hasTVDistinction: true, formalExample: "você", informalExample: "tu" },
+  { code: "ru", label: "Russian", hasTVDistinction: true, formalExample: "вы", informalExample: "ты" },
+  { code: "pl", label: "Polish", hasTVDistinction: true, formalExample: "pan/pani", informalExample: "ty" },
+  { code: "nl", label: "Dutch", hasTVDistinction: true, formalExample: "u", informalExample: "je" },
+  { code: "ja", label: "Japanese", hasTVDistinction: true, formalExample: "keigo", informalExample: "casual" },
+  { code: "ko", label: "Korean", hasTVDistinction: true, formalExample: "formal", informalExample: "informal" },
+  { code: "en", label: "English", hasTVDistinction: false },
+  { code: "zh", label: "Chinese (Simplified)", hasTVDistinction: false },
+  { code: "ar", label: "Arabic", hasTVDistinction: true, formalExample: "formal", informalExample: "informal" },
+  { code: "hi", label: "Hindi", hasTVDistinction: true, formalExample: "aap", informalExample: "tum/tu" },
+];
+
 export type AssistantSubmitPayload = {
   text: string;
   command: AssistantCommand;
@@ -146,6 +172,11 @@ export function AssistantCaptureDialog({
   const [activeTool, setActiveTool] = React.useState<WritingTool | null>(null);
   const [toolResult, setToolResult] = React.useState("");
   const [isToolRunning, setIsToolRunning] = React.useState(false);
+  
+  // Translation configuration
+  const [showTranslateConfig, setShowTranslateConfig] = React.useState(false);
+  const [targetLanguage, setTargetLanguage] = React.useState("es"); // Default: Spanish
+  const [formality, setFormality] = React.useState<"formal" | "informal" | "neutral">("neutral");
 
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const prevCommandRef = React.useRef<AssistantCommand | null>(null);
@@ -209,6 +240,9 @@ export function AssistantCaptureDialog({
       setText("");
       setCommand("capture");
       setShowCommands(false);
+      setShowTranslateConfig(false);
+      setActiveTool(null);
+      setToolResult("");
       setHighlightIndex(0);
       setBusy(false);
       setError(null);
@@ -427,6 +461,22 @@ export function AssistantCaptureDialog({
     }
   }, [onError, onSubmit, text]);
 
+  const handleToolSelect = React.useCallback((tool: WritingTool) => {
+    // Special case: Show config dialog for translate
+    if (tool === 'translate') {
+      setShowTranslateConfig(true);
+      return;
+    }
+    
+    // Execute other tools immediately
+    executeWritingTool(tool);
+  }, []);
+
+  const executeTranslation = React.useCallback(async () => {
+    setShowTranslateConfig(false);
+    executeWritingTool('translate');
+  }, [targetLanguage, formality, selectedText]);
+
   const executeWritingTool = React.useCallback(async (tool: WritingTool) => {
     if (!selectedText) return;
     
@@ -435,6 +485,25 @@ export function AssistantCaptureDialog({
     setToolResult("");
     
     try {
+      // Build translation prompt with selected language and formality
+      const buildTranslatePrompt = () => {
+        const selectedLang = LANGUAGES.find(l => l.code === targetLanguage);
+        const langName = selectedLang?.label || "Spanish";
+        
+        let formalityInstruction = "";
+        if (selectedLang?.hasTVDistinction) {
+          if (formality === "formal") {
+            formalityInstruction = `Use FORMAL register${selectedLang.formalExample ? ` (e.g., ${selectedLang.formalExample})` : ''}.`;
+          } else if (formality === "informal") {
+            formalityInstruction = `Use INFORMAL register${selectedLang.informalExample ? ` (e.g., ${selectedLang.informalExample})` : ''}.`;
+          } else {
+            formalityInstruction = `Use neutral/standard register (not overly formal or informal).`;
+          }
+        }
+        
+        return `Translate the following text to ${langName}. ${formalityInstruction} Return ONLY the translation, no explanations:\n\n${selectedText}`;
+      };
+
       // Build prompt based on tool
       const prompts: Record<WritingTool, string> = {
         professional: `Rewrite the following text in a more professional and formal tone. Return ONLY the rewritten text, no explanations:\n\n${selectedText}`,
@@ -443,7 +512,7 @@ export function AssistantCaptureDialog({
         expand: `Expand and elaborate on the following text with more detail and context. Return ONLY the expanded text:\n\n${selectedText}`,
         proofread: `Proofread and fix any grammar, spelling, or punctuation errors. Return ONLY the corrected text, no explanations:\n\n${selectedText}`,
         summarize: `Summarize the following text in 2-3 sentences. Return ONLY the summary:\n\n${selectedText}`,
-        translate: `Translate the following text to Spanish. Use neutral/standard register (not overly formal or informal). Return ONLY the translation:\n\n${selectedText}\n\n(Note: For formal Spanish, use "usted". For informal, use "tú". Default to neutral when context is unclear.)`,
+        translate: buildTranslatePrompt(),
         explain: `Explain the following concept in simple, clear terms that anyone can understand. Return ONLY the explanation:\n\n${selectedText}`,
         list: `Convert the following text into a well-formatted bullet point list. Return ONLY the list:\n\n${selectedText}`,
         extract: `Extract the key points from the following text as a numbered list. Return ONLY the list:\n\n${selectedText}`,
@@ -539,9 +608,98 @@ export function AssistantCaptureDialog({
                   setToolResult("");
                 }}
               />
+            ) : showTranslateConfig ? (
+              // Translation configuration
+              <div className="px-[var(--space-6)] py-[var(--space-4)]">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)] mb-2 block">
+                      Target Language
+                    </label>
+                    <select
+                      value={targetLanguage}
+                      onChange={(e) => setTargetLanguage(e.target.value)}
+                      className="w-full px-3 py-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[color:var(--text-primary)] text-[length:var(--text-sm)]"
+                    >
+                      {LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {LANGUAGES.find(l => l.code === targetLanguage)?.hasTVDistinction && (
+                    <div>
+                      <label className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)] mb-2 block">
+                        Formality Level
+                      </label>
+                      <div className="space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="formality"
+                            value="formal"
+                            checked={formality === "formal"}
+                            onChange={(e) => setFormality(e.target.value as "formal" | "informal" | "neutral")}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)]">
+                            Formal {LANGUAGES.find(l => l.code === targetLanguage)?.formalExample && 
+                              `(${LANGUAGES.find(l => l.code === targetLanguage)?.formalExample})`}
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="formality"
+                            value="informal"
+                            checked={formality === "informal"}
+                            onChange={(e) => setFormality(e.target.value as "formal" | "informal" | "neutral")}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)]">
+                            Informal {LANGUAGES.find(l => l.code === targetLanguage)?.informalExample && 
+                              `(${LANGUAGES.find(l => l.code === targetLanguage)?.informalExample})`}
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="formality"
+                            value="neutral"
+                            checked={formality === "neutral"}
+                            onChange={(e) => setFormality(e.target.value as "formal" | "informal" | "neutral")}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)]">
+                            Neutral (default)
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      onClick={() => setShowTranslateConfig(false)}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      onClick={executeTranslation}
+                      className="flex-1"
+                    >
+                      Translate
+                    </Button>
+                  </div>
+                </div>
+              </div>
             ) : (
               <WritingToolsGrid
-                onToolSelect={executeWritingTool}
+                onToolSelect={handleToolSelect}
                 disabled={isToolRunning}
               />
             )}
