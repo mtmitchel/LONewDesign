@@ -366,6 +366,95 @@ async fn mistral_chat_stream(
     Ok(())
 }
 
+#[tauri::command]
+async fn generate_conversation_title(
+    state: State<'_, ApiState>,
+    api_key: String,
+    base_url: Option<String>,
+    model: Option<String>,
+    messages: Vec<ChatMessageInput>,
+) -> Result<String, String> {
+    if api_key.trim().is_empty() {
+        return Err("Missing Mistral API key".into());
+    }
+
+    if messages.is_empty() {
+        return Err("Messages payload is empty".into());
+    }
+
+    let resolved_base = resolve_base_url(base_url);
+    let url = format!("{}/chat/completions", resolved_base);
+
+    // Create a system message to guide title generation
+    let mut title_messages = vec![
+        ChatMessageInput {
+            role: "system".to_string(),
+            content: "Generate a concise 3-5 word title that summarizes this conversation. Respond with ONLY the title, no quotes, no punctuation at the end.".to_string(),
+        }
+    ];
+    
+    // Add the conversation messages
+    title_messages.extend(messages);
+
+    let payload = ChatRequest {
+        model: model.unwrap_or_else(|| "mistral-small-latest".to_string()),
+        messages: title_messages,
+        temperature: Some(0.7),
+        top_p: None,
+        max_tokens: Some(20),
+        stop: None,
+        random_seed: None,
+        stream: false,
+    };
+
+    let response = state
+        .client
+        .post(&url)
+        .bearer_auth(api_key.trim())
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|err| err.to_string())?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(if body.is_empty() {
+            format!("Mistral responded with status {}", status)
+        } else {
+            format!("{}: {}", status, body)
+        });
+    }
+
+    #[derive(Deserialize)]
+    struct TitleResponse {
+        choices: Vec<TitleChoice>,
+    }
+
+    #[derive(Deserialize)]
+    struct TitleChoice {
+        message: TitleMessage,
+    }
+
+    #[derive(Deserialize)]
+    struct TitleMessage {
+        content: String,
+    }
+
+    let title_response = response
+        .json::<TitleResponse>()
+        .await
+        .map_err(|err| format!("Failed to parse title response: {}", err))?;
+
+    let title = title_response
+        .choices
+        .first()
+        .map(|choice| choice.message.content.trim().to_string())
+        .unwrap_or_else(|| "New Conversation".to_string());
+
+    Ok(title)
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -375,7 +464,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             test_mistral_credentials,
             fetch_mistral_models,
-            mistral_chat_stream
+            mistral_chat_stream,
+            generate_conversation_title
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

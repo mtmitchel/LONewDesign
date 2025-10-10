@@ -146,75 +146,8 @@ export function ChatModuleTriPane() {
     () => `Model set to ${selectedModelLabel}`,
     [selectedModelLabel]
   );
-  const [conversations, setConversations] = React.useState<Conversation[]>([
-    {
-      id: 'c1',
-      title: 'Summarize strategy brief',
-      lastMessageSnippet: 'Here’s the executive summary you asked for.',
-      updatedAt: '2025-01-15T10:30:00Z',
-      unread: true,
-      pinned: true,
-      participants: ['You', 'LibreOllama'],
-    },
-    {
-      id: 'c2',
-      title: 'Draft release notes',
-      lastMessageSnippet: 'Release notes for 0.9.3 are ready to review.',
-      updatedAt: '2025-01-14T08:12:00Z',
-      participants: ['You', 'LibreOllama'],
-    },
-    {
-      id: 'c3',
-      title: 'Customer follow-up reply',
-      lastMessageSnippet: 'Prepared a calm response about the sync fix.',
-      updatedAt: '2025-01-13T13:45:00Z',
-      participants: ['You', 'LibreOllama'],
-    },
-  ]);
-  const [messages, setMessages] = React.useState<ChatMessage[]>([
-    {
-      id: 'm1',
-      conversationId: 'c1',
-      author: 'user',
-      text: 'Summarize the attached strategy brief into a concise executive summary with three key takeaways.',
-      timestamp: '2025-01-15T09:34:00Z',
-    },
-    {
-      id: 'm2',
-      conversationId: 'c1',
-      author: 'assistant',
-      text: 'Here’s a concise executive summary:\n• Growth focus shifts to onboarding enterprise teams.\n• Automation program reduces manual triage by ~35%.\n• New privacy commitments unlock regulated vertical pilots.',
-      timestamp: '2025-01-15T09:35:00Z',
-    },
-    {
-      id: 'm3',
-      conversationId: 'c2',
-      author: 'user',
-      text: 'Draft release notes for LibreOllama Desktop 0.9.3. Highlight the chat refinements and any notable bug fixes in a friendly tone.',
-      timestamp: '2025-01-14T08:10:00Z',
-    },
-    {
-      id: 'm4',
-      conversationId: 'c2',
-      author: 'assistant',
-      text: 'Release notes — LibreOllama Desktop 0.9.3\n1. Chat tri-pane polish with smarter composer and quick actions.\n2. Calmer conversation list that keeps pinned threads in view.\n3. Bug fixes for token namespace drift and attachment previews.',
-      timestamp: '2025-01-14T08:12:00Z',
-    },
-    {
-      id: 'm5',
-      conversationId: 'c3',
-      author: 'user',
-      text: 'Help me draft a calm reply letting the customer know the sync bug is fixed and we’re still monitoring.',
-      timestamp: '2025-01-13T13:38:00Z',
-    },
-    {
-      id: 'm6',
-      conversationId: 'c3',
-      author: 'assistant',
-      text: 'Here’s a friendly response you can send:\n---\nHi Sam,\nThanks for the detailed report last week. We identified the sync break and shipped a fix this morning. Your workspace is already on the patched build, and early telemetry shows the queues clearing. Please keep me posted if you notice anything else—we’ll continue monitoring through Friday.\n---',
-      timestamp: '2025-01-13T13:41:00Z',
-    },
-  ]);
+  const [conversations, setConversations] = React.useState<Conversation[]>([]);
+  const [messages, setMessages] = React.useState<ChatMessage[]>([]);
 
   const activeConversation = React.useMemo(
     () => conversations.find(conversation => conversation.id === activeConversationId) ?? null,
@@ -299,6 +232,36 @@ export function ChatModuleTriPane() {
           } else if (payload.event === 'done') {
             console.debug('Mistral stream completed');
             unlisten();
+            
+            // Generate title after first exchange (if title is still "Untitled conversation")
+            const currentConv = conversations.find(c => c.id === activeConversationId);
+            if (currentConv && currentConv.title === 'Untitled conversation') {
+              const conversationMessages = messages.filter(m => m.conversationId === activeConversationId);
+              const allMessages = [...conversationMessages, userMessage, { ...assistantMessage, text: accumulatedText }];
+              
+              if (allMessages.length >= 2) {
+                // Generate title in background
+                invoke('generate_conversation_title', {
+                  apiKey: mistralConfig.apiKey.trim(),
+                  baseUrl: mistralConfig.baseUrl.trim() || null,
+                  model: selectedModel,
+                  messages: allMessages.map(m => ({
+                    role: m.author === 'user' ? 'user' : 'assistant',
+                    content: m.text,
+                  })),
+                }).then((title) => {
+                  setConversations(prev =>
+                    prev.map(conv =>
+                      conv.id === activeConversationId
+                        ? { ...conv, title: title as string }
+                        : conv
+                    )
+                  );
+                }).catch((error) => {
+                  console.error('Failed to generate title:', error);
+                });
+              }
+            }
           } else if (payload.event === 'error') {
             console.error('Mistral stream error:', payload.error);
             toast.error(payload.error ?? 'Streaming failed');
