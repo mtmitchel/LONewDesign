@@ -223,6 +223,17 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       const mapped = buildViewState(providers);
       PROVIDERS.forEach((provider) => {
         if (prev[provider.id]) {
+          // Don't rebuild the provider that's currently being edited
+          // (preserves unsaved API key/baseUrl from local state)
+          if (editing === provider.id) {
+            mapped[provider.id] = {
+              ...prev[provider.id],
+              // But do update the testing flag (in case it was stuck)
+              testing: false,
+            };
+            return;
+          }
+          
           // Preserve status from previous state if a test was performed
           // Otherwise, derive it based on API key presence
           const shouldPreserveStatus = prev[provider.id].lastTested !== null;
@@ -239,7 +250,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       return mapped;
     });
     setBaseline(buildBaseline(providers));
-  }, [providers]);
+  }, [providers, editing]);
 
   useEffect(() => {
     if (!editing) return;
