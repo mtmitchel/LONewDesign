@@ -39,6 +39,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../../../../ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../../../../ui/tooltip";
+
+type Tool =
+  | "select" | "pan"
+  | "text" | "sticky-note" | "table" | "image"
+  | "shapes" | "connector" | "mindmap"
+  | "pen" | "marker" | "highlighter" | "eraser"
+  | "undo" | "redo" | "clear";
 
 type ToolbarProps = {
   selectedTool?: string;
@@ -54,47 +62,63 @@ type ToolbarProps = {
 };
 
 const getIcon = (toolId: string) => {
-  const iconProps = { size: 22, strokeWidth: 2.4 } as const;
+  const iconProps = { size: 16, strokeWidth: 2 } as const; // --canvas-icon-size
   switch (toolId) {
-    case "select":
-      return <MousePointer {...iconProps} />;
-    case "pan":
-      return <Hand {...iconProps} />;
-    case "text":
-      return <TypeIcon {...iconProps} />;
-    case "sticky-note":
-      return <StickyNoteLucide {...iconProps} />;
-    case "table":
-      return <TableLucide {...iconProps} />;
-    case "mindmap":
-      return <GitBranch {...iconProps} />;
-    case "image":
-      return <ImageIcon {...iconProps} />;
-    case "shapes":
-      return <ShapesLucide {...iconProps} />;
-    case "connector-line":
-      return <ArrowRight {...iconProps} />;
-    case "pen":
-      return <PenLine {...iconProps} />;
-    case "marker":
-      return <Brush {...iconProps} />;
-    case "highlighter":
-      return <HighlighterLucide {...iconProps} />;
-    case "eraser":
-      return <EraserLucide {...iconProps} />;
-    case "undo":
-      return <Undo2 {...iconProps} />;
-    case "redo":
-      return <Redo2 {...iconProps} />;
-    case "clear":
-      return <Trash2 {...iconProps} />;
-    case "zoom-in":
-      return <ZoomIn {...iconProps} />;
-    case "zoom-out":
-      return <ZoomOut {...iconProps} />;
-    default:
-      return null;
+    case "select": return <MousePointer {...iconProps} />;
+    case "pan": return <Hand {...iconProps} />;
+    case "text": return <TypeIcon {...iconProps} />;
+    case "sticky-note": return <StickyNoteLucide {...iconProps} />;
+    case "table": return <TableLucide {...iconProps} />;
+    case "mindmap": return <GitBranch {...iconProps} />;
+    case "image": return <ImageIcon {...iconProps} />;
+    case "shapes": return <ShapesLucide {...iconProps} />;
+    case "connector": case "connector-line": case "connector-arrow": return <ArrowRight {...iconProps} />;
+    case "pen": return <PenLine {...iconProps} />;
+    case "marker": return <Brush {...iconProps} />;
+    case "highlighter": return <HighlighterLucide {...iconProps} />;
+    case "eraser": return <EraserLucide {...iconProps} />;
+    case "undo": return <Undo2 {...iconProps} />;
+    case "redo": return <Redo2 {...iconProps} />;
+    case "clear": return <Trash2 {...iconProps} />;
+    case "zoom-in": return <ZoomIn {...iconProps} />;
+    case "zoom-out": return <ZoomOut {...iconProps} />;
+    default: return null;
   }
+};
+
+const getLabel = (tool: Tool): string => {
+  const labels: Record<Tool, string> = {
+    select: "Select",
+    pan: "Pan",
+    text: "Text",
+    "sticky-note": "Sticky note",
+    table: "Table",
+    image: "Image",
+    shapes: "Shapes",
+    connector: "Connector",
+    mindmap: "Mind map",
+    pen: "Pen",
+    marker: "Marker",
+    highlighter: "Highlighter",
+    eraser: "Eraser",
+    undo: "Undo",
+    redo: "Redo",
+    clear: "Clear canvas",
+  };
+  return labels[tool] || tool;
+};
+
+const getShortcut = (tool: Tool): string | undefined => {
+  const shortcuts: Partial<Record<Tool, string>> = {
+    select: "v",
+    pan: "h",
+    text: "t",
+    shapes: "r", // rectangle as primary shape
+    pen: "p",
+    undo: "Meta+z Ctrl+z",
+    redo: "Meta+Shift+z Ctrl+Shift+z",
+  };
+  return shortcuts[tool];
 };
 
 const CanvasToolbar: React.FC<ToolbarProps> = ({
@@ -107,26 +131,23 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
   const viewportScale = useUnifiedCanvasStore((state) => state.viewport.scale);
   const currentTool = selectedTool ?? "select";
 
+  // Store handlers
   const handleToolSelect = useMemo(() =>
-    onSelectTool ||
-    ((_toolId: string) => {
-      // Tool selection handled
-    }), [onSelectTool]);
+    onSelectTool || ((_toolId: string) => {}), [onSelectTool]);
 
   const handleUndo = onUndo || (() => store.undo?.());
   const handleRedo = onRedo || (() => store.redo?.());
 
-  // Zoom control handlers
+  // Can undo/redo state (for aria-disabled)
+  // Note: Some store implementations don't expose canUndo/canRedo, so we default to true
+  const canUndo = true; // Simplified for compatibility
+  const canRedo = true;
+
+  // Zoom handlers
   const getViewportCenter = useCallback(() => {
-    if (typeof window === "undefined") {
-      return { x: 0, y: 0 };
-    }
-
+    if (typeof window === "undefined") return { x: 0, y: 0 };
     const stage = (window as KonvaWindow).konvaStage;
-    if (stage) {
-      return { x: stage.width() / 2, y: stage.height() / 2 };
-    }
-
+    if (stage) return { x: stage.width() / 2, y: stage.height() / 2 };
     return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   }, []);
 
@@ -148,19 +169,16 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
 
   const handleZoomReset = useCallback(() => {
     const state = useUnifiedCanvasStore.getState();
-    // Reset to exactly 100% zoom and center viewport
     state.viewport?.reset?.();
   }, []);
 
+  // Clear canvas
   const performClearCanvas = useCallback(() => {
     const s = useUnifiedCanvasStore.getState();
     const begin = s.history?.beginBatch;
     const end = s.history?.endBatch;
     begin?.("clear-canvas");
-    const order: string[] =
-      s.elementOrder && Array.isArray(s.elementOrder)
-        ? [...s.elementOrder]
-        : [];
+    const order: string[] = s.elementOrder && Array.isArray(s.elementOrder) ? [...s.elementOrder] : [];
     if (order.length > 0 && s.removeElements) {
       s.removeElements(order, { pushHistory: true, deselect: true });
     } else {
@@ -171,13 +189,12 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     (s.selection?.clear || s.clearSelection)?.();
     end?.(true);
 
-    // Clear Konva main/preview/overlay layers immediately (keep background)
+    // Clear Konva layers
     try {
       const stages = (Konva as { stages?: Konva.Stage[] }).stages;
       const stage = stages && stages.length > 0 ? stages[0] : undefined;
       if (stage) {
         const layers = stage.getLayers();
-        // Start from index 1 to keep background grid (index 0)
         for (let i = 1; i < layers.length; i++) {
           const ly = layers[i];
           ly.destroyChildren();
@@ -188,7 +205,6 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
       // Ignore cleanup errors
     }
 
-    // Force a render by nudging selection version if present
     StoreActions.bumpSelectionVersion?.();
   }, []);
 
@@ -211,12 +227,12 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     setConfirmingClear(false);
   }, []);
 
+  // Shape/Sticky/Connector dropdowns
   const [shapesOpen, setShapesOpen] = useState(false);
   const [connectorsOpen, setConnectorsOpen] = useState(false);
   const [stickyNoteColorsOpen, setStickyNoteColorsOpen] = useState(false);
   const [shapeAnchorRect, setShapeAnchorRect] = useState<DOMRect | null>(null);
-  const [stickyNoteAnchorRect, setStickyNoteAnchorRect] =
-    useState<DOMRect | null>(null);
+  const [stickyNoteAnchorRect, setStickyNoteAnchorRect] = useState<DOMRect | null>(null);
   const shapesBtnRef = useRef<HTMLButtonElement | null>(null);
   const stickyNoteBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -257,14 +273,11 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
   useLayoutEffect(() => {
     updateShapeAnchorRect();
     if (!shapesOpen) return;
-
     const handleWindowChange = () => updateShapeAnchorRect();
-
     if (typeof window !== "undefined") {
       window.addEventListener("resize", handleWindowChange);
       window.addEventListener("scroll", handleWindowChange, true);
     }
-
     return () => {
       if (typeof window !== "undefined") {
         window.removeEventListener("resize", handleWindowChange);
@@ -276,14 +289,11 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
   useLayoutEffect(() => {
     updateStickyNoteAnchorRect();
     if (!stickyNoteColorsOpen) return;
-
     const handleWindowChange = () => updateStickyNoteAnchorRect();
-
     if (typeof window !== "undefined") {
       window.addEventListener("resize", handleWindowChange);
       window.addEventListener("scroll", handleWindowChange, true);
     }
-
     return () => {
       if (typeof window !== "undefined") {
         window.removeEventListener("resize", handleWindowChange);
@@ -417,7 +427,6 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
   const handleSelectStickyColor = useCallback((color: string) => {
     applyStickyColorToSelection(color);
 
-    // Update the default sticky note color for NEW sticky notes
     const state = useUnifiedCanvasStore.getState();
     const setUiStickyColor = state.ui?.setStickyNoteColor;
     const setLegacyStickyColor = state.setStickyNoteColor;
@@ -428,52 +437,79 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
       setLegacyStickyColor(color);
     }
 
-    // Close portal, keep tool active for quick placement
     setStickyNoteColorsOpen(false);
   }, [applyStickyColorToSelection]);
 
-  const baseButtonClass =
-    "group inline-flex items-center justify-center rounded-[var(--radius-md)] border border-[color:var(--border-subtle)] bg-transparent text-[color:var(--text-secondary)] transition-colors duration-[var(--duration-fast)] ease-[var(--easing-standard)] hover:border-[color:var(--border-default)] hover:bg-[color:var(--primary-tint-10)] hover:text-[color:var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--canvas-toolbar-bg)]";
+  // Tool groups (logical clustering)
+  const toolGroups: Tool[][] = [
+    ["select", "pan"],
+    ["sticky-note", "text", "table", "image"],
+    ["shapes", "connector"],
+    ["pen", "marker", "highlighter", "eraser"],
+    ["undo", "redo", "clear"],
+  ];
 
-  const iconButtonClass = (isActive: boolean) =>
+  // Styling (using new tokens)
+  const toolButtonClass = (isActive: boolean, isDisabled?: boolean) =>
     cn(
-      baseButtonClass,
-      "h-11 w-11",
-      isActive &&
-        "border-transparent bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-[0_12px_28px_rgba(15,23,42,0.18)]",
+      "h-9 w-9 grid place-items-center rounded-[var(--radius-md)]",
+      "border border-transparent",
+      "transition-[var(--duration-fast)] ease-[var(--easing-standard)]",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--canvas-active-ring)]",
+      isDisabled && "opacity-40 pointer-events-none",
+      isActive
+        ? "bg-[var(--canvas-active-bg)] text-[var(--text-primary)]"
+        : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)]"
     );
-
-  const destructiveButtonClass = cn(
-    baseButtonClass,
-    "h-11 w-11 text-[color:var(--danger)] hover:border-[color:var(--danger)]/30 hover:bg-[color:var(--danger)]/12 hover:text-[color:var(--danger)] focus-visible:ring-[var(--danger)] focus-visible:ring-offset-[var(--canvas-toolbar-bg)]",
-  );
-
-  const zoomLabelButtonClass = cn(
-    baseButtonClass,
-    "h-11 min-w-[72px] px-[var(--space-3)] text-[length:var(--text-sm)] font-medium tracking-tight justify-center text-[color:var(--text-primary)]",
-  );
 
   const Divider = () => (
     <span
       aria-hidden="true"
-      className="h-8 w-px rounded-full bg-[color:var(--border-subtle)]/80"
+      className="h-6 w-px bg-[var(--canvas-sep)]"
     />
   );
 
-  const toolBtn = (id: string, title: string) => (
-    <button
-      key={id}
-      type="button"
-      className={iconButtonClass(currentTool === id)}
-      aria-pressed={currentTool === id}
-      aria-label={title}
-      title={title}
-      data-testid={`tool-${id === "draw-rectangle" ? "rectangle" : id}`}
-      onClick={() => handleToolSelect(id)}
-    >
-      {getIcon(id)}
-    </button>
-  );
+  const ToolButton = ({ tool }: { tool: Tool }) => {
+    const isActive = currentTool === tool;
+    const isDisabled = (tool === "undo" && !canUndo) || (tool === "redo" && !canRedo);
+    const label = getLabel(tool);
+    const shortcut = getShortcut(tool);
+
+    const button = (
+      <button
+        type="button"
+        className={toolButtonClass(isActive, isDisabled)}
+        aria-pressed={isActive}
+        aria-disabled={isDisabled}
+        aria-label={label}
+        aria-keyshortcuts={shortcut}
+        title={label}
+        onClick={() => {
+          if (tool === "undo") handleUndo();
+          else if (tool === "redo") handleRedo();
+          else if (tool === "clear") handleClearCanvas();
+          else handleToolSelect(tool);
+        }}
+      >
+        {getIcon(tool)}
+      </button>
+    );
+
+    if (shortcut || isDisabled) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>{button}</TooltipTrigger>
+          <TooltipContent>
+            {label}
+            {shortcut && <span className="text-[var(--text-tertiary)] ml-2">({shortcut})</span>}
+            {isDisabled && <span className="text-[var(--text-tertiary)]"> - No history</span>}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return button;
+  };
 
   const stickySwatchColor =
     store.ui?.stickyNoteColor || store.colors?.stickyNote || "#FFEFC8";
@@ -483,227 +519,221 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
       <div
         role="toolbar"
         aria-label="Canvas tools"
-        className="flex items-center gap-[var(--space-2)]"
+        className={cn(
+          "flex items-center overflow-hidden",
+          "bg-[var(--canvas-toolbar-bg)] border border-[var(--canvas-toolbar-border)]",
+          "rounded-[var(--canvas-toolbar-radius)] shadow-[var(--canvas-toolbar-elevation)]",
+          "px-[var(--canvas-toolbar-pad-x)] py-[var(--canvas-toolbar-pad-y)] gap-[var(--canvas-toolbar-gap)]"
+        )}
       >
-        <div className="flex items-center gap-[var(--space-1)]">
-          {toolBtn("select", "Select")}
-          {toolBtn("pan", "Pan")}
-        </div>
+        {toolGroups.map((group, gi) => (
+          <React.Fragment key={gi}>
+            <div className="flex items-center gap-[var(--space-1)]">
+              {group.map((tool) => {
+                // Special handling for certain tools
+                if (tool === "sticky-note") {
+                  return (
+                    <Tooltip key={tool}>
+                      <TooltipTrigger asChild>
+                        <button
+                          ref={stickyNoteBtnRef}
+                          type="button"
+                          className={cn(toolButtonClass(currentTool === "sticky-note"), "relative")}
+                          aria-pressed={currentTool === "sticky-note"}
+                          aria-expanded={stickyNoteColorsOpen}
+                          aria-haspopup="menu"
+                          aria-label={getLabel(tool)}
+                          onClick={handleStickyClick}
+                        >
+                          {getIcon(tool)}
+                          <span
+                            aria-hidden="true"
+                            className="absolute bottom-1 right-1 h-2 w-2 rounded-full border border-white shadow-sm"
+                            style={{ backgroundColor: stickySwatchColor }}
+                          />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{getLabel(tool)}</TooltipContent>
+                    </Tooltip>
+                  );
+                }
+                if (tool === "shapes") {
+                  return (
+                    <Tooltip key={tool}>
+                      <TooltipTrigger asChild>
+                        <button
+                          ref={shapesBtnRef}
+                          type="button"
+                          className={toolButtonClass(false)}
+                          aria-expanded={shapesOpen}
+                          aria-haspopup="menu"
+                          aria-label={getLabel(tool)}
+                          aria-keyshortcuts="r"
+                          onClick={toggleShapesDropdown}
+                        >
+                          {getIcon(tool)}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{getLabel(tool)} (r)</TooltipContent>
+                    </Tooltip>
+                  );
+                }
+                if (tool === "connector") {
+                  return (
+                    <DropdownMenu key={tool} open={connectorsOpen} onOpenChange={handleConnectorOpenChange}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className={toolButtonClass(
+                                currentTool === "connector-line" || currentTool === "connector-arrow"
+                              )}
+                              aria-pressed={currentTool === "connector-line" || currentTool === "connector-arrow"}
+                              aria-haspopup="menu"
+                              aria-expanded={connectorsOpen}
+                              aria-label="Connector"
+                            >
+                              {getIcon("mindmap")}
+                            </button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>Connector</TooltipContent>
+                      </Tooltip>
+                      <DropdownMenuContent
+                        align="start"
+                        sideOffset={8}
+                        className={cn(
+                          "rounded-[var(--canvas-popover-radius)] shadow-[var(--canvas-popover-elevation)]",
+                          "bg-[var(--bg-surface)] border border-[var(--border-subtle)]",
+                          "p-[var(--canvas-popover-pad)]"
+                        )}
+                      >
+                        <DropdownMenuItem
+                          onSelect={() => handleConnectorSelect("connector-line")}
+                          className="text-[length:var(--text-sm)]"
+                        >
+                          Line
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => handleConnectorSelect("connector-arrow")}
+                          className="text-[length:var(--text-sm)]"
+                        >
+                          Arrow
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  );
+                }
+                return <ToolButton key={tool} tool={tool} />;
+              })}
+            </div>
+            {gi < toolGroups.length - 1 && <Divider />}
+          </React.Fragment>
+        ))}
+
+        {/* Zoom controls */}
         <Divider />
         <div className="flex items-center gap-[var(--space-1)]">
-          <button
-            type="button"
-            ref={stickyNoteBtnRef}
-            className={iconButtonClass(currentTool === "sticky-note")}
-            aria-expanded={stickyNoteColorsOpen}
-            aria-haspopup="menu"
-            aria-pressed={currentTool === "sticky-note"}
-            aria-label="Sticky note colors"
-            title="Sticky Note"
-            data-testid="tool-sticky-note"
-            onClick={handleStickyClick}
-          >
-            {getIcon("sticky-note")}
-            <span
-              aria-hidden="true"
-              className="absolute bottom-1.5 right-1.5 h-2.5 w-2.5 rounded-full border border-white/70 shadow-[0_1px_2px_rgba(15,23,42,0.18)]"
-              style={{ backgroundColor: stickySwatchColor }}
-            />
-          </button>
-          {toolBtn("text", "Text")}
-          {toolBtn("table", "Table")}
-          {toolBtn("image", "Image")}
-          <button
-            type="button"
-            ref={shapesBtnRef}
-            className={iconButtonClass(false)}
-            aria-expanded={shapesOpen}
-            aria-haspopup="menu"
-            aria-label="Shapes"
-            title="Shapes"
-            onClick={toggleShapesDropdown}
-          >
-            {getIcon("shapes")}
-          </button>
-          <DropdownMenu open={connectorsOpen} onOpenChange={handleConnectorOpenChange}>
-            <DropdownMenuTrigger asChild>
+          <Tooltip>
+            <TooltipTrigger asChild>
               <button
                 type="button"
-                className={iconButtonClass(
-                  currentTool === "connector-line" || currentTool === "connector-arrow",
-                )}
-                aria-haspopup="menu"
-                aria-expanded={connectorsOpen}
-                aria-pressed={currentTool === "connector-line" || currentTool === "connector-arrow"}
-                aria-label="Connector"
-                title="Connector"
+                className={toolButtonClass(false)}
+                aria-label="Zoom out"
+                aria-keyshortcuts="-"
+                onClick={handleZoomOut}
               >
-                {getIcon("mindmap")}
+                {getIcon("zoom-out")}
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              sideOffset={8}
-              className="min-w-[11rem] rounded-[var(--radius-md)] border-[color:var(--border-subtle)] bg-[var(--bg-surface)] p-1 shadow-[var(--elevation-lg)]"
-            >
-              <DropdownMenuItem
-                onSelect={() => handleConnectorSelect("connector-line")}
-                className="text-[length:var(--text-sm)]"
+            </TooltipTrigger>
+            <TooltipContent>Zoom out (-)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "h-9 px-[var(--canvas-zoom-pad-x)] py-[var(--canvas-zoom-pad-y)]",
+                  "rounded-[var(--canvas-zoom-radius)]",
+                  "text-[length:var(--text-sm)] font-medium text-[var(--text-primary)]",
+                  "hover:bg-[var(--bg-surface-elevated)]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--canvas-active-ring)]"
+                )}
+                aria-label="Reset zoom"
+                onClick={handleZoomReset}
               >
-                Line
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => handleConnectorSelect("connector-arrow")}
-                className="text-[length:var(--text-sm)]"
+                {Math.round((viewportScale ?? 1) * 100)}%
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Reset zoom (100%)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={toolButtonClass(false)}
+                aria-label="Zoom in"
+                aria-keyshortcuts="+"
+                onClick={handleZoomIn}
               >
-                Arrow
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <Divider />
-        <div className="flex items-center gap-[var(--space-1)]">
-          {toolBtn("pen", "Pen")}
-          {toolBtn("marker", "Marker")}
-          {toolBtn("highlighter", "Highlighter")}
-          {toolBtn("eraser", "Eraser")}
-        </div>
-        <Divider />
-        <div className="flex items-center gap-[var(--space-1)]">
-          <button
-            type="button"
-            className={iconButtonClass(false)}
-            title="Undo"
-            aria-label="Undo"
-            onClick={handleUndo}
-          >
-            {getIcon("undo")}
-          </button>
-          <button
-            type="button"
-            className={iconButtonClass(false)}
-            title="Redo"
-            aria-label="Redo"
-            onClick={handleRedo}
-          >
-            {getIcon("redo")}
-          </button>
-          <button
-            type="button"
-            className={destructiveButtonClass}
-            title="Clear canvas"
-            aria-label="Clear canvas"
-            onClick={handleClearCanvas}
-          >
-            {getIcon("clear")}
-          </button>
-        </div>
-        <Divider />
-        <div className="flex items-center gap-[var(--space-1)]">
-          <button
-            type="button"
-            className={iconButtonClass(false)}
-            title="Zoom in"
-            aria-label="Zoom in"
-            onClick={handleZoomIn}
-            data-testid="zoom-in"
-          >
-            {getIcon("zoom-in")}
-          </button>
-          <button
-            type="button"
-            className={zoomLabelButtonClass}
-            title="Reset zoom (100%)"
-            aria-label="Reset zoom"
-            onClick={handleZoomReset}
-            data-testid="zoom-reset"
-          >
-            {Math.round((viewportScale ?? 1) * 100)}%
-          </button>
-          <button
-            type="button"
-            className={iconButtonClass(false)}
-            title="Zoom out"
-            aria-label="Zoom out"
-            onClick={handleZoomOut}
-            data-testid="zoom-out"
-          >
-            {getIcon("zoom-out")}
-          </button>
+                {getIcon("zoom-in")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom in (+)</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
-      {/* Popovers/Portals */}
-      <ShapesDropdown
-        open={shapesOpen}
-        anchorRect={shapeAnchorRect}
-        onClose={() => setShapesOpen(false)}
-        onSelectShape={selectAndCloseShapes}
-      />
-      <UnifiedColorPicker
-        open={stickyNoteColorsOpen}
-        mode="figma-horizontal"
-        anchorRect={stickyNoteAnchorRect}
-        onClose={() => setStickyNoteColorsOpen(false)}
-        onChange={handleSelectStickyColor}
-        color={stickySwatchColor}
-      />
+      {/* Popovers */}
+      {shapesOpen && (
+        <ShapesDropdown
+          open={shapesOpen}
+          anchorRect={shapeAnchorRect}
+          onClose={() => setShapesOpen(false)}
+          onSelectShape={selectAndCloseShapes}
+        />
+      )}
+      {stickyNoteColorsOpen && (
+        <UnifiedColorPicker
+          open={stickyNoteColorsOpen}
+          mode="figma-horizontal"
+          anchorRect={stickyNoteAnchorRect}
+          onClose={() => setStickyNoteColorsOpen(false)}
+          onChange={handleSelectStickyColor}
+          color={stickySwatchColor}
+        />
+      )}
+
+      {/* Clear canvas confirmation dialog */}
       {confirmingClear && typeof document !== "undefined"
         ? createPortal(
             <div
-              style={{
-                position: "fixed",
-                inset: 0,
-                background: "rgba(22, 24, 35, 0.45)",
-                display: "grid",
-                placeItems: "center",
-                padding: "32px",
-                zIndex: 1000,
-              }}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="clear-canvas-title"
+              aria-describedby="clear-canvas-description"
+              className="fixed inset-0 grid place-items-center p-8 z-[var(--z-overlay)] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)]"
             >
-              <div
-                style={{
-                  background: "var(--bg-panel, #ffffff)",
-                  color: "var(--text-primary, #1f2544)",
-                  padding: "24px",
-                  borderRadius: "16px",
-                  minWidth: "320px",
-                  boxShadow: "0 26px 54px rgba(24,25,32,0.22)",
-                  border: "1px solid var(--border-subtle, rgba(82,88,126,0.16))",
-                }}
-              >
-                <h3 style={{ margin: "0 0 12px", fontSize: "18px" }}>Clear canvas?</h3>
-                <p style={{ margin: "0 0 20px", lineHeight: 1.5 }}>
+              <div className="bg-[var(--bg-surface)] rounded-[var(--radius-lg)] shadow-[var(--elevation-xl)] border border-[var(--border-subtle)] p-6 min-w-[320px] max-w-[480px]">
+                <h3 id="clear-canvas-title" className="text-[length:var(--text-lg)] font-semibold text-[var(--text-primary)] mb-2">
+                  Clear canvas?
+                </h3>
+                <p id="clear-canvas-description" className="text-[length:var(--text-sm)] text-[var(--text-secondary)] mb-5 leading-relaxed">
                   This removes every element from the canvas. You can undo afterwards if you change your mind.
                 </p>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                <div className="flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={cancelClearCanvas}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "10px",
-                      border: "1px solid var(--border-subtle, rgba(82,88,126,0.16))",
-                      background: "transparent",
-                      color: "var(--text-secondary, #4c5570)",
-                      cursor: "pointer",
-                    }}
+                    className="px-4 py-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] transition-[var(--duration-fast)]"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={confirmClearCanvas}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "10px",
-                      border: "none",
-                      background: "linear-gradient(135deg, #ef4444, #f97316)",
-                      color: "#ffffff",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      boxShadow: "0 12px 28px rgba(239, 68, 68, 0.25)",
-                    }}
+                    className="px-4 py-2 rounded-[var(--radius-md)] bg-[var(--danger)] text-white font-medium hover:bg-[var(--danger-hover)] transition-[var(--duration-fast)] shadow-[var(--elevation-sm)]"
                   >
                     Delete
                   </button>
@@ -719,6 +749,7 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
 
 export default CanvasToolbar;
 
-// Legacy export aliases for backward compatibility
+// Legacy export aliases
 export { CanvasToolbar as ModernKonvaToolbar, CanvasToolbar as FigJamToolbar };
+
 type KonvaWindow = Window & { konvaStage?: Konva.Stage };

@@ -283,7 +283,7 @@ export function CreateProjectModal({
                       {projectData.dueDate ? format(projectData.dueDate, 'PPP') : 'Select due date'}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0 z-[110]" align="start">
                     <CalendarComponent
                       mode="single"
                       selected={projectData.dueDate}

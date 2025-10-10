@@ -1,10 +1,22 @@
 import * as React from 'react';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { TASK_LISTS } from './constants';
 import { Task, Priority } from './types';
 import { TaskColumnHeader } from './TaskColumnHeader';
 import { TaskAddButton } from './TaskAddButton';
 import { TaskCard } from './TaskCard';
 import { TaskComposer } from './TaskComposer';
+import { SortableTaskCard } from './SortableTaskCard';
+import { DroppableColumn } from './DroppableColumn';
 
 type Column = {
   id: string;
@@ -27,6 +39,8 @@ type TasksBoardProps = {
   onDuplicateTask?: (task: Task) => void;
   onTaskSelect?: (task: Task) => void;
   onEditTask?: (task: Task) => void;
+  onDeleteList?: (listId: string) => void;
+  onMoveTask?: (taskId: string, newListId: string) => void;
   className?: string;
   trailingColumn?: React.ReactNode;
 };
@@ -41,11 +55,22 @@ export function TasksBoard({
   onDuplicateTask,
   onTaskSelect,
   onEditTask,
+  onDeleteList,
+  onMoveTask,
   className,
   trailingColumn,
 }: TasksBoardProps) {
   const [activeComposer, setActiveComposer] = React.useState<string | null>(null);
   const [sortOption, setSortOption] = React.useState<Record<string, string>>({});
+  const [activeTaskId, setActiveTaskId] = React.useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  );
 
   const handleComposerOpen = React.useCallback((columnId: string) => {
     setActiveComposer(columnId);
@@ -77,7 +102,33 @@ export function TasksBoard({
     setSortOption((prev) => ({ ...prev, [columnId]: nextSort }));
   }, []);
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveTaskId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTaskId(null);
+
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const overId = over.id as string;
+
+    // If dropped on a column (droppable area)
+    if (overId.startsWith('column-')) {
+      const newListId = overId.replace('column-', '');
+      const task = tasks.find(t => t.id === taskId);
+      if (task && task.listId !== newListId) {
+        onMoveTask?.(taskId, newListId);
+      }
+    }
+  };
+
+  const activeTask = activeTaskId ? tasks.find(t => t.id === activeTaskId) : null;
+
   return (
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
     <div
       className={[
         'min-h-full overflow-x-auto px-6 py-4 bg-[var(--bg-canvas)]',
@@ -104,37 +155,35 @@ export function TasksBoard({
                 onSort={(value) => handleSortChange(columnId, value)}
                 onHideCompleted={noop}
                 onRenameList={noop}
-                onDeleteList={noop}
+                onDeleteList={() => onDeleteList?.(columnId)}
               />
 
-              <div
-                className={[
-                  'flex flex-col rounded-[var(--board-lane-radius)] bg-[var(--board-lane-bg)] px-[var(--lane-padding-x)]',
-                  hasTasks ? 'py-[var(--lane-padding-y)] min-h-[160px]' : 'pb-[var(--lane-padding-y)] pt-[var(--space-3)]',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              >
-                {hasTasks ? (
-                  <ul className="space-y-[var(--gap-card-to-card)]">
-                    {columnTasks.map((task) => (
-                      <li key={task.id} className="mx-[var(--board-card-inset-x)]">
-                        <TaskCard
-                          taskTitle={task.title}
-                          dueDate={task.dueDate}
-                          priority={task.priority ?? 'none'}
-                          labels={task.labels ?? []}
-                          isCompleted={Boolean(task.isCompleted)}
-                          onToggleCompletion={() => onToggleTaskCompletion(task.id)}
-                          onClick={() => onTaskSelect?.(task)}
-                          onEdit={() => onEditTask?.(task)}
-                          onDuplicate={() => onDuplicateTask?.(task)}
-                          onDelete={() => onDeleteTask?.(task.id)}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
+              <SortableContext items={columnTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                <DroppableColumn
+                  id={`column-${columnId}`}
+                  className={[
+                    'flex flex-col rounded-[var(--board-lane-radius)] bg-[var(--board-lane-bg)] px-[var(--lane-padding-x)]',
+                    hasTasks ? 'py-[var(--lane-padding-y)] min-h-[160px]' : 'pb-[var(--lane-padding-y)] pt-[var(--space-3)]',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  {hasTasks ? (
+                    <ul className="space-y-[var(--gap-card-to-card)]">
+                      {columnTasks.map((task) => (
+                        <li key={task.id} className="mx-[var(--board-card-inset-x)]">
+                          <SortableTaskCard
+                            task={task}
+                            onToggleCompletion={() => onToggleTaskCompletion(task.id)}
+                            onClick={() => onTaskSelect?.(task)}
+                            onEdit={() => onEditTask?.(task)}
+                            onDuplicate={() => onDuplicateTask?.(task)}
+                            onDelete={() => onDeleteTask?.(task.id)}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
 
                 {composerIsActive ? (
                   <div
@@ -161,13 +210,35 @@ export function TasksBoard({
                     onClick={() => handleComposerOpen(columnId)}
                   />
                 )}
-              </div>
+                </DroppableColumn>
+              </SortableContext>
             </section>
           );
         })}
         {trailingColumn}
       </div>
+
+      {/* Drag overlay */}
+      <DragOverlay>
+        {activeTask ? (
+          <div style={{ opacity: 0.8 }}>
+            <TaskCard
+              taskTitle={activeTask.title}
+              dueDate={activeTask.dueDate}
+              priority={activeTask.priority ?? 'none'}
+              labels={activeTask.labels ?? []}
+              isCompleted={Boolean(activeTask.isCompleted)}
+              onToggleCompletion={() => {}}
+              onClick={() => {}}
+              onEdit={() => {}}
+              onDuplicate={() => {}}
+              onDelete={() => {}}
+            />
+          </div>
+        ) : null}
+      </DragOverlay>
     </div>
+    </DndContext>
   );
 }
 

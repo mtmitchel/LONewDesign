@@ -93,6 +93,36 @@
   --canvas-radius-pill: 999px;
   --canvas-toolbar-h: 56px;
 
+  /* Canvas UI micro-tokens */
+  --canvas-toolbar-pad-x: var(--space-2);
+  --canvas-toolbar-pad-y: var(--space-2);
+  --canvas-toolbar-gap: var(--space-2);
+  --canvas-toolbar-radius: var(--radius-lg);
+  --canvas-toolbar-elevation: var(--canvas-shadow-sm);
+
+  --canvas-icon-size: 16px;              /* matches --icon-sm */
+  --canvas-icon-pad: var(--space-1);     /* touch target = 32–36 via padding */
+
+  --canvas-sep: var(--border-subtle);    /* group separators */
+
+  --canvas-active-bg: var(--primary-tint-10);
+  --canvas-active-ring: var(--focus-ring);
+
+  /* Grid feel */
+  --canvas-grid-size: 16px;              /* dot spacing (8pt multiple) */
+  --canvas-grid-alpha-idle: 0.08;        /* lighter at rest */
+  --canvas-grid-alpha-focus: 0.14;       /* on drag/zoom */
+
+  /* Popover shape */
+  --canvas-popover-radius: var(--radius-md);
+  --canvas-popover-elevation: var(--canvas-shadow-md);
+  --canvas-popover-pad: var(--space-2);
+
+  /* Zoom chip */
+  --canvas-zoom-radius: var(--radius-pill);
+  --canvas-zoom-pad-x: var(--space-2);
+  --canvas-zoom-pad-y: var(--space-1);
+
   /* Dashboard layout */
   --dashboard-max-w: 1120px;
   --dashboard-col-w: 1fr;

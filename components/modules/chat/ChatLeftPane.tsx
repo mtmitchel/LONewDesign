@@ -167,7 +167,10 @@ export const ChatLeftPane = React.forwardRef<ChatLeftPaneHandle, ChatLeftPanePro
                     console.debug('chat:conversation:open', { id: conversation.id, via: 'pointer' });
                     onSelect(conversation.id);
                   }}
-                  onContextMenu={() => focusRow(index)}
+                  onContextMenu={() => {
+                    focusRow(index);
+                    onSelect(conversation.id);
+                  }}
                   className={cn(
                     'group relative flex min-h-[var(--list-row-min-h)] items-center justify-between rounded-[var(--radius-md)] border border-transparent px-[var(--list-row-pad-x)] py-[var(--space-2-5,10px)]',
                     'cursor-pointer motion-safe:transition-all duration-[var(--duration-fast)] ease-[var(--easing-standard)]',

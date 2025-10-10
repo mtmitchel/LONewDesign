@@ -187,8 +187,33 @@ function emitTaskEvent(event: string, payload?: Record<string, unknown>) {
   }
 }
 
+const STORAGE_KEY = 'libreollama_tasks';
+
+function loadTasksFromStorage(): Task[] {
+  if (typeof window === 'undefined') return initialTasks;
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : initialTasks;
+    }
+  } catch (error) {
+    console.warn('Failed to load tasks from localStorage:', error);
+  }
+  return initialTasks;
+}
+
+function saveTasksToStorage(tasks: Task[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  } catch (error) {
+    console.warn('Failed to save tasks to localStorage:', error);
+  }
+}
+
 export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, { tasks: initialTasks });
+  const [state, dispatch] = useReducer(reducer, { tasks: loadTasksFromStorage() });
 
   const addTask = useCallback((input: TaskInput) => {
     const { source, ...payload } = input;
@@ -241,6 +266,11 @@ export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'UPDATE', id, updates: { dueDate } });
     emitTaskEvent('task_due_changed', { id, dueDate });
   }, []);
+
+  // Sync to localStorage whenever tasks change
+  React.useEffect(() => {
+    saveTasksToStorage(state.tasks);
+  }, [state.tasks]);
 
   const value = useMemo(
     () => ({

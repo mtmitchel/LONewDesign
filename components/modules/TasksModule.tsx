@@ -25,7 +25,7 @@ import {
   ContextMenuTrigger,
   ContextMenuSeparator
 } from '../ui/context-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
@@ -159,8 +159,6 @@ const mockTasks: Task[] = [
   },
 ];
 
-const columns = TASK_LISTS;
-
 // Sort comparator: completed tasks at bottom, manual order for active tasks
 function compareTasks(a: Task, b: Task): number {
   // 1) Incomplete tasks above completed tasks
@@ -210,6 +208,33 @@ export function TasksModule() {
   const [listComposerSection, setListComposerSection] = useState<string | null>(null);
   const [labelsColorMap, setLabelsColorMap] = useState<Map<string, string>>(new Map());
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  
+  // Load columns from localStorage or use defaults
+  const [columns, setColumns] = useState<Array<{ id: string; title: string }>>(() => {
+    if (typeof window === 'undefined') return [...TASK_LISTS];
+    try {
+      const stored = localStorage.getItem('libreollama_task_lists');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? parsed : [...TASK_LISTS];
+      }
+    } catch (error) {
+      console.warn('Failed to load task lists from localStorage:', error);
+    }
+    return [...TASK_LISTS];
+  });
+  
+  const [deleteListDialog, setDeleteListDialog] = useState<{ isOpen: boolean; listId: string; listTitle: string; taskCount: number } | null>(null);
+
+  // Save columns to localStorage whenever they change
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('libreollama_task_lists', JSON.stringify(columns));
+    } catch (error) {
+      console.warn('Failed to save task lists to localStorage:', error);
+    }
+  }, [columns]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -274,6 +299,13 @@ export function TasksModule() {
     });
   };
 
+  const handleMoveTask = (taskId: string, newListId: string) => {
+    updateTask(taskId, {
+      listId: newListId,
+      status: newListId as any,
+    });
+  };
+
   const getTasksByStatus = (status: string) => {
     const tasksForStatus = filteredTasks.filter(task => task.status === status);
 
@@ -320,12 +352,49 @@ export function TasksModule() {
 
   const handleAddList = () => {
     if (newListName.trim()) {
-      // In a real app, this would create a new column/list
-      console.log('Creating new list:', newListName.trim());
-      // For now, we'll just reset the form
+      const newList = {
+        id: `list-${Date.now()}`,
+        title: newListName.trim()
+      };
+      setColumns([...columns, newList]);
       setNewListName('');
       setIsAddingList(false);
     }
+  };
+
+  const handleDeleteList = (listId: string) => {
+    // Don't allow deleting default lists
+    const defaultListIds = TASK_LISTS.map(list => list.id as string);
+    if (defaultListIds.includes(listId)) {
+      return; // Silently ignore - default lists shouldn't show delete option
+    }
+    
+    const list = columns.find(col => col.id === listId);
+    const tasksInList = tasks.filter(task => task.listId === listId);
+    
+    // Show confirmation dialog
+    setDeleteListDialog({
+      isOpen: true,
+      listId,
+      listTitle: list?.title || 'this list',
+      taskCount: tasksInList.length
+    });
+  };
+
+  const confirmDeleteList = () => {
+    if (!deleteListDialog) return;
+    
+    const { listId } = deleteListDialog;
+    const tasksInList = tasks.filter(task => task.listId === listId);
+    
+    setColumns(columns.filter(col => col.id !== listId));
+    
+    // Move tasks from deleted list to "todo"
+    tasksInList.forEach(task => {
+      updateTask(task.id, { listId: 'todo', status: 'todo' as any });
+    });
+    
+    setDeleteListDialog(null);
   };
 
   const BoardView = () => (
@@ -340,6 +409,8 @@ export function TasksModule() {
         onDuplicateTask={handleDuplicateTask}
         onTaskSelect={setSelectedTask}
         onEditTask={handleEditTask}
+        onDeleteList={handleDeleteList}
+        onMoveTask={handleMoveTask}
         className="bg-[var(--bg-canvas)] min-h-full"
         trailingColumn={
           isAddingList ? (
@@ -349,7 +420,7 @@ export function TasksModule() {
                 autoFocus
                 value={newListName}
                 onChange={(e) => setNewListName(e.target.value)}
-                placeholder="New section"
+                placeholder="New list"
                 className="h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleAddList();
@@ -824,6 +895,41 @@ export function TasksModule() {
         onUpdateTask={handleUpdateTask}
         onDeleteTask={handleDeleteTask}
       />
+
+      {/* Delete List Confirmation Dialog */}
+      <Dialog open={deleteListDialog?.isOpen || false} onOpenChange={(open) => !open && setDeleteListDialog(null)}>
+        <DialogContent className="max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Delete list?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-[color:var(--text-secondary)]">
+              {deleteListDialog?.taskCount ? (
+                <>
+                  Delete <span className="font-semibold text-[color:var(--text-primary)]">"{deleteListDialog.listTitle}"</span>? 
+                  {' '}{deleteListDialog.taskCount} task{deleteListDialog.taskCount > 1 ? 's' : ''} will be moved to "To Do".
+                </>
+              ) : (
+                <>
+                  Delete <span className="font-semibold text-[color:var(--text-primary)]">"{deleteListDialog?.listTitle}"</span>?
+                </>
+              )}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteListDialog(null)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDeleteList}
+              className="bg-[var(--danger)] hover:bg-[var(--danger-hover)] text-white"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
