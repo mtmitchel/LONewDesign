@@ -14,25 +14,58 @@ import {
   type NoteFolder,
   type NotesSettings,
   DEFAULT_NOTES_SETTINGS,
-  mockFolders,
-  mockNotes,
 } from './notes';
 import { NotesRightPane } from './notes/NotesRightPane';
 import { QUICK_ASSISTANT_EVENTS } from '../assistant';
 import { openQuickAssistant } from '../assistant';
 
+// localStorage helpers
+const STORAGE_KEYS = {
+  folders: 'libreollama:notes:folders',
+  notes: 'libreollama:notes:notes',
+};
+
+const loadFromStorage = <T,>(key: string, fallback: T): T => {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+  } catch (error) {
+    console.error('Failed to load from localStorage:', error);
+    return fallback;
+  }
+};
+
+const saveToStorage = <T,>(key: string, value: T): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error('Failed to save to localStorage:', error);
+  }
+};
+
 export function NotesModule() {
   // State management for folders, notes, selections, search, and settings
-  const [folders, setFolders] = React.useState<NoteFolder[]>(() => mockFolders);
-  const [notes, setNotes] = React.useState<Note[]>(() => mockNotes);
+  const [folders, setFolders] = React.useState<NoteFolder[]>(() => loadFromStorage(STORAGE_KEYS.folders, []));
+  const [notes, setNotes] = React.useState<Note[]>(() => loadFromStorage(STORAGE_KEYS.notes, []));
   const [selectedItem, setSelectedItem] = React.useState<{id: string, type: 'folder' | 'note'} | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [settings, setSettings] = React.useState<NotesSettings>(DEFAULT_NOTES_SETTINGS);
   const [isSaving, setIsSaving] = React.useState(false);
   const [lastSavedLabel, setLastSavedLabel] = React.useState<string | undefined>(undefined);
-  const [rightPaneVisible, setRightPaneVisible] = React.useState(true);
+  const [rightPaneVisible, setRightPaneVisible] = React.useState(false);
   const [leftPaneVisible, setLeftPaneVisible] = React.useState(true);
   const [expandFolderRequest, setExpandFolderRequest] = React.useState<string | null>(null);
+
+  // Persist folders and notes to localStorage
+  React.useEffect(() => {
+    saveToStorage(STORAGE_KEYS.folders, folders);
+  }, [folders]);
+
+  React.useEffect(() => {
+    saveToStorage(STORAGE_KEYS.notes, notes);
+  }, [notes]);
 
   // Derived state from new selection model
   const selectedFolderId = selectedItem?.type === 'folder' ? selectedItem.id : null;

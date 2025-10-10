@@ -12,12 +12,21 @@ import { useProviderSettings } from '../../modules/settings/state/providerSettin
 const INTENT_CLASSIFICATION_SYSTEM_PROMPT = `You are an intent classifier. Analyze user input and classify it into one of: task, note, event, or unknown.
 
 CLASSIFICATION RULES:
-- "task": Action items, todos, reminders (e.g., "buy milk", "call mom", "finish report")
-- "note": Information to save, thoughts, meeting notes (e.g., "meeting notes", "remember that...", "idea for...")
-- "event": Scheduled appointments, meetings with specific times/dates (e.g., "dentist Tuesday 2pm", "team meeting Friday")
+- "task": Action items, todos, reminders to do something (e.g., "buy milk", "call mom", "finish report", "email John")
+- "note": Information to save, thoughts, meeting notes - NOT appointments (e.g., "meeting notes", "remember that...", "idea for...")
+- "event": Scheduled appointments, meetings, any activity with a specific TIME or DATE (e.g., "dentist Tuesday 2pm", "team meeting Friday", "lunch with Sarah tomorrow at noon", "appointment next week")
 - "unknown": Unclear or gibberish input
 
-KEY: If input mentions a SPECIFIC TIME or APPOINTMENT, classify as "event", NOT "note".
+CRITICAL: If the input contains ANY of these, classify as "event":
+- Appointment keywords: appointment, meeting, lunch, dinner, call, session, visit, interview
+- Time indicators: 2pm, 10am, morning, afternoon, evening, at [time]
+- Date indicators: Monday, Tuesday, today, tomorrow, next week, this Friday
+
+Examples of events (NOT notes):
+- "Dentist appointment Tuesday 2pm" → event
+- "Call with client tomorrow" → event  
+- "Team lunch Friday noon" → event
+- "Doctor visit next week" → event
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -149,7 +158,8 @@ export class MistralProvider implements LLMProvider {
       }
 
       const validated = validationResult.data;
-      console.log('[MistralProvider] Validated intent:', validated);
+      console.log('[MistralProvider] ✅ Classified as:', validated.intent, 'with confidence:', validated.confidence);
+      console.log('[MistralProvider] Extracted data:', JSON.stringify(validated.extracted, null, 2));
 
       // Apply confidence threshold
       if (validated.confidence < 0.6) {

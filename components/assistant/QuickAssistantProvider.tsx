@@ -376,8 +376,9 @@ export function QuickAssistantProvider({
           const provider = createMistralProvider();
           
           console.log('[QuickAssistant] Classifying intent:', trimmed);
-          toast.info('Analyzing your input...', { duration: 2000 });
+          const toastId = toast.loading('Analyzing your input...');
           const intent = await provider.classifyIntent(trimmed);
+          toast.dismiss(toastId);
           
           console.log('[QuickAssistant] Classified intent:', intent);
           
@@ -438,8 +439,11 @@ export function QuickAssistantProvider({
             case 'unknown':
             default: {
               console.log('[QuickAssistant] Unknown intent, creating note');
-              toast.info('Could not determine intent, saving as note');
-              emitCreateNote({ body: trimmed });
+              // emitCreateNote already shows success toast, so just explain why it's a note
+              emitCreateNote({ 
+                body: trimmed,
+                title: 'Quick note'
+              });
               return;
             }
           }
