@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 import { cn } from '../utils';
 
@@ -36,7 +36,7 @@ export function SidebarAssistantLauncher({ collapsed, onOpen, className }: Sideb
           'transition-opacity motion-safe:duration-[var(--duration-fast)]',
         )}
       >
-        <Plus className="h-[var(--launcher-icon)] w-[var(--launcher-icon)]" aria-hidden="true" />
+        <Sparkles className="h-[var(--launcher-icon)] w-[var(--launcher-icon)]" aria-hidden="true" />
       </button>
     </div>
   );
