@@ -1,28 +1,29 @@
 "use client";
 
 import React from 'react';
-import { GitCommit, FileText, CheckSquare, Clock, AlertCircle, Target, Archive, Edit } from 'lucide-react';
+import { FileText, CheckSquare, Clock, Edit, FolderOpen, StickyNote, Code, ArrowRight } from 'lucide-react';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { cn } from '../../ui/utils';
 
 const iconMap = {
-  GitCommit,
   FileText,
   CheckSquare,
   Clock,
-  AlertCircle,
-  Target,
-  Archive,
-  Edit
+  Edit,
+  FolderOpen,
+  StickyNote,
+  Code,
+  ArrowRight
 };
 
 export interface ProjectActivity {
   id: string;
-  type: 'commit' | 'task' | 'milestone' | 'phase' | 'note' | 'deadline' | 'archive' | 'edit';
+  type: 'note' | 'task' | 'document' | 'code' | 'phase' | 'spec';
   title: string;
   description: string;
   timestamp: string;
+  status?: 'in-progress' | 'draft' | 'active';
   icon: keyof typeof iconMap;
   color?: string;
 }
@@ -37,71 +38,72 @@ interface ProjectActivityWidgetProps {
 const mockProjectActivities: ProjectActivity[] = [
   {
     id: '1',
-    type: 'milestone',
-    title: 'Milestone completed',
-    description: 'Design system v2.0 finalized',
-    timestamp: '30 minutes ago',
-    icon: 'Target',
-    color: 'var(--success)'
+    type: 'task',
+    title: 'Implement data export',
+    description: 'Working on CSV export functionality',
+    timestamp: '30 min ago',
+    status: 'in-progress',
+    icon: 'CheckSquare',
+    color: 'var(--primary)'
   },
   {
     id: '2',
-    type: 'task',
-    title: 'Task completed',
-    description: 'Gantt chart visualization implemented',
+    type: 'note',
+    title: 'API integration notes',
+    description: 'Draft notes on REST endpoint structure',
     timestamp: '2 hours ago',
-    icon: 'CheckSquare'
+    status: 'draft',
+    icon: 'StickyNote'
   },
   {
     id: '3',
-    type: 'commit',
-    title: 'Changes saved',
-    description: 'Timeline widget transformed to Gantt',
+    type: 'code',
+    title: 'ProjectTimelineWidget.tsx',
+    description: 'Last edited: Gantt chart implementation',
     timestamp: '3 hours ago',
-    icon: 'GitCommit'
+    icon: 'Code'
   },
   {
     id: '4',
-    type: 'note',
-    title: 'Note created',
-    description: 'Added implementation details',
-    timestamp: '4 hours ago',
+    type: 'document',
+    title: 'Project requirements',
+    description: 'MVP feature list and timeline',
+    timestamp: '5 hours ago',
     icon: 'FileText'
   },
   {
     id: '5',
     type: 'phase',
-    title: 'Phase started',
-    description: 'Implementation phase',
+    title: 'Implementation phase',
+    description: '3 tasks remaining',
     timestamp: 'Yesterday',
-    icon: 'Clock',
+    status: 'active',
+    icon: 'FolderOpen',
     color: 'var(--primary)'
   },
   {
     id: '6',
-    type: 'deadline',
-    title: 'Deadline approaching',
-    description: 'MVP release in 5 days',
-    timestamp: '2 days ago',
-    icon: 'AlertCircle',
-    color: 'var(--warning)'
-  },
-  {
-    id: '7',
-    type: 'edit',
-    title: 'Project updated',
-    description: 'Revised project timeline',
-    timestamp: '3 days ago',
+    type: 'spec',
+    title: 'Dashboard redesign spec',
+    description: 'Component architecture planning',
+    timestamp: 'Yesterday',
     icon: 'Edit'
   },
   {
+    id: '7',
+    type: 'task',
+    title: 'Review PR feedback',
+    description: 'Address code review comments',
+    timestamp: '2 days ago',
+    icon: 'CheckSquare'
+  },
+  {
     id: '8',
-    type: 'archive',
-    title: 'Phase archived',
-    description: 'Research phase completed',
+    type: 'note',
+    title: 'Meeting notes',
+    description: 'Q4 planning discussion points',
     timestamp: '3 days ago',
-    icon: 'Archive',
-    color: 'var(--text-tertiary)'
+    icon: 'StickyNote'
   }
 ];
 
@@ -123,7 +125,7 @@ export function ProjectActivityWidget({
     >
       <CardHeader className="pb-[var(--space-3)]">
         <CardTitle className="text-sm font-medium text-[color:var(--text-primary)]">
-          Activity log
+          Recent work
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
@@ -138,7 +140,7 @@ export function ProjectActivityWidget({
                   key={activity.id}
                   type="button"
                   className={cn(
-                    "flex w-full items-start gap-[var(--space-2)] p-[var(--space-2)] rounded-[var(--radius-md)]",
+                    "group flex w-full items-start gap-[var(--space-2)] p-[var(--space-2)] rounded-[var(--radius-md)]",
                     "hover:bg-[var(--bg-surface-elevated)] transition-colors text-left",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
                   )}
@@ -151,17 +153,35 @@ export function ProjectActivityWidget({
                   />
                   
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-[var(--space-2)]">
-                      <p className="text-sm font-medium text-[color:var(--text-primary)]">
-                        {activity.title}
+                    <div className="flex items-center justify-between gap-[var(--space-2)]">
+                      <div className="flex items-center gap-[var(--space-2)] min-w-0">
+                        <p className="text-sm font-medium text-[color:var(--text-primary)] truncate">
+                          {activity.title}
+                        </p>
+                        {activity.status && (
+                          <span className={cn(
+                            "text-xs px-[var(--space-1)] py-[1px] rounded-[var(--radius-sm)]",
+                            activity.status === 'in-progress' && "bg-[var(--primary-tint-10)] text-[color:var(--primary)]",
+                            activity.status === 'draft' && "bg-[var(--warning-tint-10)] text-[color:var(--warning)]",
+                            activity.status === 'active' && "bg-[var(--success-tint-10)] text-[color:var(--success)]"
+                          )}>
+                            {activity.status}
+                          </span>
+                        )}
+                      </div>
+                      <ArrowRight 
+                        size={14} 
+                        className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-[color:var(--text-tertiary)]" 
+                      />
+                    </div>
+                    <div className="flex items-center gap-[var(--space-2)] mt-[var(--space-1)]">
+                      <p className="text-xs text-[color:var(--text-secondary)]">
+                        {activity.description}
                       </p>
-                      <span className="text-xs text-[color:var(--text-tertiary)]">
+                      <span className="text-xs text-[color:var(--text-tertiary)] flex-shrink-0">
                         {activity.timestamp}
                       </span>
                     </div>
-                    <p className="text-xs text-[color:var(--text-secondary)] mt-[var(--space-1)]">
-                      {activity.description}
-                    </p>
                   </div>
                 </button>
               );
