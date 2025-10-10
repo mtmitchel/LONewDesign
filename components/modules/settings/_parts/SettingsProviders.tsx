@@ -185,6 +185,10 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     }))
   );
   
+  const [providerState, setProviderState] = useState<Record<ProviderId, ProviderState>>(() =>
+    buildViewState(providers),
+  );
+  
   // Debug: Log which providers have API keys
   React.useEffect(() => {
     console.log('[SettingsProviders] Provider API keys:', Object.entries(providers).reduce((acc, [id, config]) => {
@@ -192,9 +196,18 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       return acc;
     }, {} as Record<string, string>));
   }, [providers]);
-  const [providerState, setProviderState] = useState<Record<ProviderId, ProviderState>>(() =>
-    buildViewState(providers),
-  );
+  
+  // Debug: Log providerState status
+  React.useEffect(() => {
+    console.log('[SettingsProviders] Provider states:', Object.entries(providerState).reduce((acc, [id, state]) => {
+      acc[id] = {
+        status: state.status,
+        lastTested: state.lastTested || '(never)',
+        hasApiKey: !!state.apiKey
+      };
+      return acc;
+    }, {} as Record<string, any>));
+  }, [providerState]);
   const [baseline, setBaseline] = useState<ProviderBaseline>(() => buildBaseline(providers));
   const [editing, setEditing] = useState<ProviderId | null>(null);
   const [revealKey, setRevealKey] = useState(false);
@@ -210,10 +223,14 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       const mapped = buildViewState(providers);
       PROVIDERS.forEach((provider) => {
         if (prev[provider.id]) {
+          // Preserve status from previous state if a test was performed
+          // Otherwise, derive it based on API key presence
+          const shouldPreserveStatus = prev[provider.id].lastTested !== null;
+          
           mapped[provider.id] = {
             apiKey: mapped[provider.id].apiKey,
             baseUrl: mapped[provider.id].baseUrl,
-            status: deriveStatus(provider.id, mapped[provider.id].apiKey),
+            status: shouldPreserveStatus ? prev[provider.id].status : deriveStatus(provider.id, mapped[provider.id].apiKey),
             lastTested: prev[provider.id].lastTested,
             testing: false,
           };
