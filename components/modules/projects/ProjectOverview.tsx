@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Project, ProjectArtifact, ProjectMilestone, getPhasesForProject } from "./data";
 import { ProjectTimelineWidget, ProjectMilestoneTimeline, ProjectPhase as TimelinePhase } from "./ProjectTimelineWidget";
+import { ProjectActivityWidget } from "./ProjectActivityWidget";
 
 interface ProjectOverviewProps {
   project: Project;
@@ -80,8 +81,14 @@ export function ProjectOverview({ project, milestones, artifacts, onPhaseNavigat
               onMilestoneSelect={onMilestoneNavigate}
             />
           </div>
-          <div className="md:col-span-12 order-2">
+          <div className="md:col-span-7 order-2">
             <RecentWorkCard items={recentWorkItems} onViewAll={() => {}} />
+          </div>
+          <div className="md:col-span-5 order-3">
+            <ProjectActivityWidget 
+              maxItems={8}
+              onActivitySelect={(id) => console.log('Activity selected:', id)}
+            />
           </div>
         </div>
       </div>
