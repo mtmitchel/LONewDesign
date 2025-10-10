@@ -613,6 +613,172 @@ async fn deepl_translate(
     Ok(translated_text.to_string())
 }
 
+#[tauri::command]
+async fn openai_chat_stream(
+    app: AppHandle,
+    state: State<'_, ApiState>,
+    window_label: String,
+    event_name: String,
+    api_key: String,
+    base_url: Option<String>,
+    model: String,
+    messages: Vec<ChatMessageInput>,
+) -> Result<(), String> {
+    if api_key.trim().is_empty() {
+        return Err("Missing API key".into());
+    }
+
+    let window = app
+        .get_webview_window(&window_label)
+        .ok_or_else(|| format!("Window '{}' not found", window_label))?;
+
+    let url = format!(
+        "{}/chat/completions",
+        base_url.as_deref().unwrap_or("https://api.openai.com/v1").trim_end_matches('/')
+    );
+
+    let payload = serde_json::json!({
+        "model": model,
+        "messages": messages,
+        "stream": true,
+    });
+
+    let response = state
+        .client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", api_key.trim()))
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await;
+
+    let mut stream = match response {
+        Ok(resp) if resp.status() == StatusCode::OK => resp.bytes_stream(),
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_else(|_| "unknown".into());
+            let _ = emit(
+                &window,
+                &event_name,
+                StreamEvent {
+                    event: "error".into(),
+                    content: None,
+                    finish_reason: None,
+                    error: Some(format!("HTTP {}: {}", status, body)),
+                },
+            );
+            return Err(format!("HTTP {}: {}", status, body));
+        }
+        Err(e) => {
+            let _ = emit(
+                &window,
+                &event_name,
+                StreamEvent {
+                    event: "error".into(),
+                    content: None,
+                    finish_reason: None,
+                    error: Some(e.to_string()),
+                },
+            );
+            return Err(e.to_string());
+        }
+    };
+
+    let mut buffer = String::new();
+    while let Some(chunk_result) = stream.next().await {
+        let chunk = chunk_result.map_err(|e| {
+            let _ = emit(
+                &window,
+                &event_name,
+                StreamEvent {
+                    event: "error".into(),
+                    content: None,
+                    finish_reason: None,
+                    error: Some(e.to_string()),
+                },
+            );
+            e.to_string()
+        })?;
+
+        buffer.push_str(&String::from_utf8_lossy(&chunk));
+
+        while let Some(line_end) = buffer.find('\n') {
+            let line = buffer[..line_end].trim().to_string();
+            buffer.drain(..=line_end);
+
+            if line.is_empty() || !line.starts_with("data: ") {
+                continue;
+            }
+
+            let data_str = &line[6..];
+            if data_str == "[DONE]" {
+                let _ = emit(
+                    &window,
+                    &event_name,
+                    StreamEvent {
+                        event: "done".into(),
+                        content: None,
+                        finish_reason: Some("stop".into()),
+                        error: None,
+                    },
+                );
+                return Ok(());
+            }
+
+            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data_str) {
+                if let Some(choices) = parsed["choices"].as_array() {
+                    if let Some(choice) = choices.first() {
+                        if let Some(content) = choice["delta"]["content"].as_str() {
+                            let _ = emit(
+                                &window,
+                                &event_name,
+                                StreamEvent {
+                                    event: "delta".into(),
+                                    content: Some(content.to_string()),
+                                    finish_reason: None,
+                                    error: None,
+                                },
+                            );
+                        }
+                        if let Some(reason) = choice["finish_reason"].as_str() {
+                            let _ = emit(
+                                &window,
+                                &event_name,
+                                StreamEvent {
+                                    event: "done".into(),
+                                    content: None,
+                                    finish_reason: Some(reason.to_string()),
+                                    error: None,
+                                },
+                            );
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let finish_reason = if buffer.contains("[DONE]") {
+        Some("stop".into())
+    } else {
+        Some("length".into())
+    };
+
+    let _ = emit(
+        &window,
+        &event_name,
+        StreamEvent {
+            event: "done".into(),
+            content: None,
+            finish_reason,
+            error: None,
+        },
+    );
+
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -625,7 +791,8 @@ fn main() {
             mistral_chat_stream,
             mistral_complete,
             generate_conversation_title,
-            deepl_translate
+            deepl_translate,
+            openai_chat_stream
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

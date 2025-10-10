@@ -62,9 +62,9 @@ function usePaneVisibilityPersistence(key: string, initial: { left: boolean; rig
 export function ChatModuleTriPane() {
   const { providers } = useProviderSettings();
   
-  // Build model options dynamically from enabled models
+  // Build model options dynamically from enabled models across all providers
   const MODEL_OPTIONS = React.useMemo(() => {
-    const options: Array<{ value: string; label: string; provider?: string }> = [];
+    const options: Array<{ value: string; label: string; provider: string }> = [];
     
     // Add enabled Mistral models
     providers.mistral.enabledModels.forEach(modelId => {
@@ -75,8 +75,50 @@ export function ChatModuleTriPane() {
       });
     });
     
+    // Add GLM models if configured
+    if (providers.glm.apiKey.trim() && providers.glm.defaultModel) {
+      options.push({
+        value: providers.glm.defaultModel,
+        label: 'GLM-4.6',
+        provider: 'glm',
+      });
+    }
+    
+    // Add OpenAI models if configured
+    if (providers.openai.apiKey.trim()) {
+      providers.openai.enabledModels.forEach(modelId => {
+        options.push({
+          value: modelId,
+          label: modelId,
+          provider: 'openai',
+        });
+      });
+    }
+    
+    // Add DeepSeek models if configured
+    if (providers.deepseek.apiKey.trim()) {
+      providers.deepseek.enabledModels.forEach(modelId => {
+        options.push({
+          value: modelId,
+          label: modelId,
+          provider: 'deepseek',
+        });
+      });
+    }
+    
+    // Add OpenRouter models if configured
+    if (providers.openrouter.apiKey.trim()) {
+      providers.openrouter.enabledModels.forEach(modelId => {
+        options.push({
+          value: modelId,
+          label: modelId,
+          provider: 'openrouter',
+        });
+      });
+    }
+    
     return options;
-  }, [providers.mistral.enabledModels]);
+  }, [providers]);
   
   const [{ left: leftPaneVisible, right: rightPaneVisible }, setVisibility] = usePaneVisibilityPersistence(
     'chat:prefs:v1',
@@ -136,7 +178,13 @@ export function ChatModuleTriPane() {
 // Sample handlers passed to panes
   const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null);
   const [selectedModel, setSelectedModel] = React.useState<string>(() => {
-    return providers.mistral.enabledModels[0] || '';
+    // Try to find the first available model from any provider
+    if (providers.mistral.enabledModels[0]) return providers.mistral.enabledModels[0];
+    if (providers.glm.apiKey.trim() && providers.glm.defaultModel) return providers.glm.defaultModel;
+    if (providers.openai.enabledModels[0]) return providers.openai.enabledModels[0];
+    if (providers.deepseek.enabledModels[0]) return providers.deepseek.enabledModels[0];
+    if (providers.openrouter.enabledModels[0]) return providers.openrouter.enabledModels[0];
+    return '';
   });
   const selectedModelLabel = React.useMemo(() => {
     const match = MODEL_OPTIONS.find(option => option.value === selectedModel);
@@ -225,8 +273,12 @@ export function ChatModuleTriPane() {
 
     console.debug('chat:message:send', { conversation: activeConversationId, length: text.length, model: selectedModel });
     
-    // Handle Mistral streaming if a Mistral model is selected
-    if (isMistralModel(selectedModel)) {
+    // Detect which provider this model belongs to
+    const selectedOption = MODEL_OPTIONS.find(opt => opt.value === selectedModel);
+    const providerType = selectedOption?.provider || 'mistral';
+    
+    // Handle streaming based on provider type
+    if (providerType === 'mistral' && isMistralModel(selectedModel)) {
       const mistralConfig = providers.mistral;
       
       if (!mistralConfig.apiKey.trim()) {
@@ -332,6 +384,92 @@ export function ChatModuleTriPane() {
         // Remove the empty assistant message on error
         setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
       }
+    } else if (['glm', 'openai', 'deepseek', 'openrouter'].includes(providerType)) {
+      // Handle OpenAI-compatible providers (GLM, OpenAI, DeepSeek, OpenRouter)
+      const providerConfig = providers[providerType as 'glm' | 'openai' | 'deepseek' | 'openrouter'];
+      
+      if (!providerConfig.apiKey.trim()) {
+        toast.error(`Please configure your ${providerType.toUpperCase()} API key in Settings`);
+        return;
+      }
+      
+      // Create placeholder assistant message
+      const assistantMessageId = `m-${Date.now() + 1}`;
+      const assistantMessage: ChatMessage = {
+        id: assistantMessageId,
+        conversationId: activeConversationId,
+        author: 'assistant',
+        text: '',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      
+      try {
+        const { invoke, listen } = await Promise.all([
+          import('@tauri-apps/api/core').then(m => ({ invoke: m.invoke })),
+          import('@tauri-apps/api/event').then(m => ({ listen: m.listen })),
+        ]).then(([core, event]) => ({ ...core, ...event }));
+        
+        const eventName = `openai-stream-${assistantMessageId}`;
+        let accumulatedText = '';
+        
+        // Set up event listener
+        const unlisten = await listen<StreamEvent>(eventName, (event) => {
+          const payload = event.payload;
+          
+          if (payload.event === 'delta' && payload.content) {
+            accumulatedText += payload.content;
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.id === assistantMessageId
+                  ? { ...msg, text: accumulatedText }
+                  : msg
+              )
+            );
+          } else if (payload.event === 'done') {
+            unlisten();
+            
+            // Generate title if this is the first exchange
+            const conversationMessages = messages.filter(m => m.conversationId === activeConversationId);
+            const allMessages = [...conversationMessages, userMessage];
+            
+            if (allMessages.length >= 1) {
+              // For now, skip title generation for non-Mistral providers
+              // Can add support later if needed
+            }
+          } else if (payload.event === 'error') {
+            console.error(`[${providerType.toUpperCase()}] Stream error:`, payload.error);
+            toast.error(payload.error || `Stream error from ${providerType.toUpperCase()}`);
+            setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+            unlisten();
+          }
+        });
+        
+        // Build API messages
+        const conversationMessages = messages.filter(m => m.conversationId === activeConversationId);
+        const apiMessages = [...conversationMessages, userMessage].map(m => ({
+          role: m.author === 'user' ? 'user' : 'assistant',
+          content: m.text,
+        }));
+        
+        // Invoke streaming
+        await invoke('openai_chat_stream', {
+          windowLabel: 'main',
+          eventName: eventName,
+          apiKey: providerConfig.apiKey.trim(),
+          baseUrl: providerConfig.baseUrl.trim() || null,
+          model: selectedModel,
+          messages: apiMessages,
+        });
+      } catch (error) {
+        console.error(`[${providerType.toUpperCase()}] Failed to start stream:`, error);
+        toast.error(`Failed to connect to ${providerType.toUpperCase()}: ${error}`);
+        
+        // Remove the empty assistant message on error
+        setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+      }
+    } else {
+      toast.error('Selected model is not supported for streaming yet');
     }
   };
 

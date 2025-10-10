@@ -95,6 +95,12 @@ const PROVIDERS: ProviderMeta[] = [
     hint: 'Professional translation API with native formality support. Use https://api-free.deepl.com for Free plan.',
     base: 'https://api-free.deepl.com',
   },
+  {
+    id: 'glm',
+    label: 'GLM (ZhipuAI)',
+    hint: 'GLM-4.6 model with 200K context window. OpenAI-compatible API for chat, coding, and reasoning tasks.',
+    base: 'https://api.z.ai/api/paas/v4',
+  },
 ];
 
 
