@@ -7,6 +7,8 @@ import { Textarea } from "../ui/textarea";
 import { cn } from "../ui/utils";
 import { useProviderSettings } from "../modules/settings/state/providerSettings";
 import { createMistralProvider } from "./services/mistralProvider";
+import { WritingToolsGrid, type WritingTool } from "./WritingToolsGrid";
+import { ResultsPane } from "./ResultsPane";
 
 export type AssistantCommand = "capture" | "task" | "note" | "event" | "summarize";
 
@@ -108,19 +110,25 @@ function predictIntentLocally(text: string): "task" | "note" | "event" | null {
 export interface AssistantCaptureDialogProps {
   open: boolean;
   initialValue?: string;
+  selectedText?: string; // Text selected before opening assistant
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: AssistantSubmitPayload) => Promise<void>;
   onCommandSelect?: (command: AssistantCommand) => void;
   onError?: (message: string) => void;
+  onReplace?: (text: string) => void; // Replace selected text with result
+  onInsert?: (text: string) => void; // Insert result at cursor
 }
 
 export function AssistantCaptureDialog({
   open,
   initialValue,
+  selectedText,
   onOpenChange,
   onSubmit,
   onCommandSelect,
   onError,
+  onReplace,
+  onInsert,
 }: AssistantCaptureDialogProps) {
   const [text, setText] = React.useState(initialValue ?? "");
   const [command, setCommand] = React.useState<AssistantCommand>("capture");
@@ -130,6 +138,12 @@ export function AssistantCaptureDialog({
   const [error, setError] = React.useState<string | null>(null);
   const [predictedIntent, setPredictedIntent] = React.useState<"task" | "note" | "event" | null>(null);
   const [predicting, setPredicting] = React.useState(false);
+  
+  // Writing tools state
+  const [showWritingTools, setShowWritingTools] = React.useState(false);
+  const [activeTool, setActiveTool] = React.useState<WritingTool | null>(null);
+  const [toolResult, setToolResult] = React.useState("");
+  const [isToolRunning, setIsToolRunning] = React.useState(false);
 
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const prevCommandRef = React.useRef<AssistantCommand | null>(null);
@@ -196,6 +210,10 @@ export function AssistantCaptureDialog({
       setHighlightIndex(0);
       setBusy(false);
       setError(null);
+      setShowWritingTools(false);
+      setActiveTool(null);
+      setToolResult("");
+      setIsToolRunning(false);
       return;
     }
 
@@ -207,12 +225,21 @@ export function AssistantCaptureDialog({
     setHighlightIndex(0);
     setBusy(false);
     setError(null);
+    
+    // Show writing tools if text is selected
+    if (selectedText && selectedText.trim().length > 0) {
+      setShowWritingTools(true);
+      setToolResult("");
+      setActiveTool(null);
+    } else {
+      setShowWritingTools(false);
+    }
 
     requestAnimationFrame(() => {
       textareaRef.current?.focus();
       autoResize();
     });
-  }, [open, initialValue, autoResize]);
+  }, [open, initialValue, selectedText, autoResize]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -398,6 +425,46 @@ export function AssistantCaptureDialog({
     }
   }, [onError, onSubmit, text]);
 
+  const executeWritingTool = React.useCallback(async (tool: WritingTool) => {
+    if (!selectedText) return;
+    
+    setActiveTool(tool);
+    setIsToolRunning(true);
+    setToolResult("");
+    
+    try {
+      const mistralProvider = createMistralProvider();
+      
+      // Build prompt based on tool
+      const prompts: Record<WritingTool, string> = {
+        professional: `Rewrite the following text in a more professional and formal tone:\n\n${selectedText}`,
+        friendly: `Rewrite the following text in a more friendly and casual tone:\n\n${selectedText}`,
+        concise: `Make the following text more concise while preserving the key information:\n\n${selectedText}`,
+        expand: `Expand and elaborate on the following text with more detail:\n\n${selectedText}`,
+        proofread: `Proofread and fix any grammar, spelling, or punctuation errors in the following text:\n\n${selectedText}`,
+        summarize: `Summarize the following text in a brief, clear way:\n\n${selectedText}`,
+        translate: `Translate the following text to Spanish:\n\n${selectedText}`,
+        explain: `Explain the following concept in simple terms:\n\n${selectedText}`,
+        list: `Convert the following text into a well-formatted bullet point list:\n\n${selectedText}`,
+        extract: `Extract the key points from the following text as a list:\n\n${selectedText}`,
+      };
+      
+      // For now, use classifyIntent's underlying mistral_complete command
+      // In a real implementation, you'd add a dedicated streaming tool command
+      const response = await mistralProvider.classifyIntent(prompts[tool]);
+      
+      // Since classifyIntent returns structured data, we'll use a simple workaround
+      // TODO: Add proper mistral_tool_execute command with streaming
+      setToolResult("Feature in progress - streaming tool execution coming soon!");
+      
+    } catch (err) {
+      console.error('[WritingTool] Execution failed:', err);
+      setToolResult("Failed to execute tool. Please try again.");
+    } finally {
+      setIsToolRunning(false);
+    }
+  }, [selectedText]);
+
   const suggestionRailVisible = contentIsEmpty && !showCommands;
   const describedBy = error ? "assistant-hint assistant-error" : "assistant-hint";
 
@@ -428,26 +495,67 @@ export function AssistantCaptureDialog({
           </DialogClose>
         </header>
 
-        <div className="px-[var(--space-6)] pt-[var(--space-4)] pb-[var(--space-2)]">
-          <div className="relative">
-            <Textarea
-              ref={textareaRef}
-              rows={3}
-              value={text}
-              onChange={(event) => handleTextChange(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Capture a thought… Type `/` for commands"
-              aria-describedby={describedBy}
-              autoFocus
-              className={cn(
-                "w-full resize-none bg-transparent text-[length:var(--text-base)] text-[color:var(--text-primary)]",
-                "rounded-[var(--radius-md)] border border-[var(--border-subtle)]",
-                "px-[var(--space-4)] py-[var(--space-3)] shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]"
-              )}
-              style={{ maxHeight: "var(--assistant-field-max-h)" }}
-            />
+        {/* Writing Tools Mode */}
+        {showWritingTools && selectedText && (
+          <div className="flex flex-col">
+            {/* Show selected text */}
+            <div className="px-[var(--space-6)] pt-[var(--space-4)] pb-[var(--space-2)]">
+              <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-[var(--space-4)] py-[var(--space-3)]">
+                <p className="text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] mb-2">Selected text:</p>
+                <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] line-clamp-3">{selectedText}</p>
+              </div>
+            </div>
+            
+            {/* Show tools grid or results */}
+            {activeTool || toolResult ? (
+              <ResultsPane
+                result={toolResult}
+                isStreaming={isToolRunning}
+                onReplace={onReplace ? () => {
+                  onReplace(toolResult);
+                  onOpenChange(false);
+                } : undefined}
+                onInsert={onInsert ? () => {
+                  onInsert(toolResult);
+                  onOpenChange(false);
+                } : undefined}
+                onClose={() => {
+                  setActiveTool(null);
+                  setToolResult("");
+                }}
+              />
+            ) : (
+              <WritingToolsGrid
+                onToolSelect={executeWritingTool}
+                disabled={isToolRunning}
+              />
+            )}
+          </div>
+        )}
 
-            {showCommands && (
+        {/* Normal Mode */}
+        {!showWritingTools && (
+          <>
+            <div className="px-[var(--space-6)] pt-[var(--space-4)] pb-[var(--space-2)]">
+              <div className="relative">
+                <Textarea
+                  ref={textareaRef}
+                  rows={3}
+                  value={text}
+                  onChange={(event) => handleTextChange(event.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Capture a thought… Type `/` for commands"
+                  aria-describedby={describedBy}
+                  autoFocus
+                  className={cn(
+                    "w-full resize-none bg-transparent text-[length:var(--text-base)] text-[color:var(--text-primary)]",
+                    "rounded-[var(--radius-md)] border border-[var(--border-subtle)]",
+                    "px-[var(--space-4)] py-[var(--space-3)] shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]"
+                  )}
+                  style={{ maxHeight: "var(--assistant-field-max-h)" }}
+                />
+
+              {showCommands && (
               <div
                 role="listbox"
                 aria-label="Assistant commands"
@@ -483,39 +591,43 @@ export function AssistantCaptureDialog({
               </div>
             )}
 
-            <p id="assistant-hint" className="sr-only">
-              Press Enter to {primaryLabel}. Press Shift+Enter for a new line.
-            </p>
-            {error ? (
-              <p id="assistant-error" className="mt-[var(--space-2)] text-sm text-[color:var(--danger)]" role="alert" aria-live="polite">
-                {error}
+              <p id="assistant-hint" className="sr-only">
+                Press Enter to {primaryLabel}. Press Shift+Enter for a new line.
               </p>
-            ) : null}
-          </div>
-        </div>
-
-        {suggestionRailVisible && (
-          <div className="px-[var(--space-6)] pb-[var(--space-2)]">
-            <div className="flex flex-wrap items-center gap-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
-              <span className="text-xs uppercase tracking-wide text-[color:var(--text-secondary)]">Suggestions:</span>
-              {COMMANDS.map((cmd) => (
-                <button
-                  key={cmd.id}
-                  type="button"
-                  className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-1)] text-sm text-[color:var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-elevated)]"
-                  onClick={() => {
-                    applyCommand(cmd);
-                  }}
-                  title={cmd.desc}
-                >
-                  {cmd.label}
-                </button>
-              ))}
+                {error ? (
+                  <p id="assistant-error" className="mt-[var(--space-2)] text-sm text-[color:var(--danger)]" role="alert" aria-live="polite">
+                    {error}
+                  </p>
+                ) : null}
+              </div>
             </div>
-          </div>
+
+            {suggestionRailVisible && (
+              <div className="px-[var(--space-6)] pb-[var(--space-2)]">
+                <div className="flex flex-wrap items-center gap-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
+                  <span className="text-xs uppercase tracking-wide text-[color:var(--text-secondary)]">Suggestions:</span>
+                  {COMMANDS.map((cmd) => (
+                    <button
+                      key={cmd.id}
+                      type="button"
+                      className="rounded-full border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-[var(--space-3)] py-[var(--space-1)] text-sm text-[color:var(--text-secondary)] transition-colors hover:bg-[var(--bg-surface-elevated)]"
+                      onClick={() => {
+                        applyCommand(cmd);
+                      }}
+                      title={cmd.desc}
+                    >
+                      {cmd.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
-        <footer className="border-t border-[var(--border-subtle)] px-[var(--space-6)] py-[var(--space-4)]">
+        {/* Footer - only show in normal mode */}
+        {!showWritingTools && (
+          <footer className="border-t border-[var(--border-subtle)] px-[var(--space-6)] py-[var(--space-4)]">
           <div className="flex flex-col gap-[var(--space-3)] sm:flex-row sm:items-center sm:justify-between">
             <a
               href="/notes"
@@ -543,7 +655,8 @@ export function AssistantCaptureDialog({
               </Button>
             </div>
           </div>
-        </footer>
+          </footer>
+        )}
       </DialogContent>
     </Dialog>
   );
