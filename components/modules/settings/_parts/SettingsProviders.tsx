@@ -552,10 +552,16 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
             } else if (assistantProvider === 'glm' && providerConfig.defaultModel) {
               availableModels.push(providerConfig.defaultModel);
             } else if (assistantProvider === 'openrouter') {
-              availableModels.push('openrouter/auto', ...providerConfig.enabledModels);
+              // Add openrouter/auto first if not already in enabled models
+              if (!providerConfig.enabledModels.includes('openrouter/auto')) {
+                availableModels.push('openrouter/auto');
+              }
+              availableModels.push(...providerConfig.enabledModels);
             } else {
               availableModels.push(...providerConfig.enabledModels);
             }
+
+            const currentAssistantModel = assistantModel; // Capture from parent scope
 
             return availableModels.length > 0 ? (
               <div className="space-y-1.5">
@@ -564,7 +570,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
                 </Label>
                 <select
                   id="assistant-model-select"
-                  value={assistantModel ?? ''}
+                  value={currentAssistantModel ?? ''}
                   onChange={(e) => {
                     const value = e.target.value;
                     setAssistantModel(value === '' ? null : value);

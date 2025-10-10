@@ -92,13 +92,23 @@ export const useProviderSettings = create(
       storage,
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<ProviderSettingsState>;
-        const providers = persisted.providers ?? {};
+        const persistedProviders = (persisted.providers ?? {}) as Partial<Record<ProviderId, Partial<ProviderConfig>>>;
+        
+        // Deep merge per provider to preserve default baseUrl, defaultModel, etc.
+        const mergedProviders = (Object.keys(DEFAULT_PROVIDERS) as ProviderId[]).reduce(
+          (acc, providerId) => {
+            acc[providerId] = {
+              ...DEFAULT_PROVIDERS[providerId],
+              ...(persistedProviders[providerId] || {}),
+            };
+            return acc;
+          },
+          {} as Record<ProviderId, ProviderConfig>
+        );
+        
         return {
           ...currentState,
-          providers: {
-            ...DEFAULT_PROVIDERS,
-            ...providers,
-          },
+          providers: mergedProviders,
           assistantProvider: persisted.assistantProvider ?? null,
           assistantModel: persisted.assistantModel ?? null,
         };

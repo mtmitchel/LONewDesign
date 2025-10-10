@@ -403,6 +403,12 @@ export function ChatModuleTriPane() {
         return;
       }
       
+      console.log(`[${providerType.toUpperCase()}] Config:`, {
+        apiKey: `${providerConfig.apiKey.substring(0, 10)}...`,
+        baseUrl: providerConfig.baseUrl,
+        model: selectedModel
+      });
+      
       // Create placeholder assistant message
       const assistantMessageId = `m-${Date.now() + 1}`;
       const assistantMessage: ChatMessage = {
@@ -462,12 +468,16 @@ export function ChatModuleTriPane() {
           content: m.text,
         }));
         
+        // Prepare baseUrl (ensure non-empty string or null)
+        const baseUrl = providerConfig.baseUrl && providerConfig.baseUrl.trim() ? providerConfig.baseUrl.trim() : null;
+        console.log(`[${providerType.toUpperCase()}] Calling openai_chat_stream with baseUrl:`, baseUrl);
+        
         // Invoke streaming
         await invoke('openai_chat_stream', {
           windowLabel: 'main',
           eventName: eventName,
           apiKey: providerConfig.apiKey.trim(),
-          baseUrl: providerConfig.baseUrl.trim() || null,
+          baseUrl: baseUrl,
           model: selectedModel,
           messages: apiMessages,
         });
