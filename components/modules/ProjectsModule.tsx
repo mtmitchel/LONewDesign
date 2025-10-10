@@ -8,6 +8,7 @@ import { PaneCaret } from "../dev/PaneCaret";
 import { ProjectNavigator } from "./projects/ProjectNavigator";
 import { ProjectOverview } from "./projects/ProjectOverview";
 import { ProjectContextPanel } from "./projects/ProjectContextPanel";
+import { CreateProjectModal } from "./projects/CreateProjectModal";
 import { TasksBoard } from "./tasks/TasksBoard";
 import { TaskSidePanel } from "./tasks/TaskSidePanel";
 import type { Task as BoardTask } from "./tasks/types";
@@ -56,6 +57,7 @@ export function ProjectsModule() {
   const [activeTab, setActiveTab] = React.useState<string>(() => parseProjectRouteFromLocation().tab ?? "overview");
   const [search, setSearch] = React.useState("");
   const [selectedProjectId, setSelectedProjectId] = React.useState(() => parseProjectRouteFromLocation().projectId ?? projects[0]?.id ?? "");
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [taskListsByProject, setTaskListsByProject] = React.useState<Record<string, ProjectTaskList[]>>(() => {
     const map: Record<string, ProjectTaskList[]> = {};
     projects.forEach((project) => {
@@ -203,13 +205,8 @@ export function ProjectsModule() {
   }, [rightPaneVisible, selectedBoardTask, showInlineTaskPanel]);
 
   const handleAdd = React.useCallback(() => {
-    if (!selectedProject) return;
-    emitProjectEvent("project.add_clicked", { source: "overview", projectId: selectedProject.id });
-    openQuickAssistant({
-      scope: { projectId: selectedProject.id },
-      mode: "capture",
-    });
-  }, [selectedProject]);
+    setIsCreateModalOpen(true);
+  }, []);
 
   const handlePhaseNavigate = React.useCallback(
     (phaseId: string) => {
@@ -600,6 +597,16 @@ export function ProjectsModule() {
           </DialogContent>
         </Dialog>
       ) : null}
+      <CreateProjectModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onProjectCreated={(project) => {
+          console.log('New project created:', project);
+          // TODO: Add the new project to the projects list
+          // For now, just close the modal
+          setIsCreateModalOpen(false);
+        }}
+      />
     </div>
   );
 }
