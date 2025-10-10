@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppShell } from './components/AppShell';
 import { TaskStoreProvider } from './components/modules/tasks/taskStore';
 import { QuickAssistantProvider } from './components/assistant';
+import { Toaster } from './components/ui/sonner';
 
 // Production Modules
 import { DashboardModule } from './components/modules/DashboardModule';
@@ -79,6 +80,7 @@ export default function App() {
         <AppShell activeModule={activeModule} onModuleChange={setActiveModule}>
           {renderActiveModule()}
         </AppShell>
+        <Toaster />
       </QuickAssistantProvider>
     </TaskStoreProvider>
   );

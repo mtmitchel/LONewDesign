@@ -8,7 +8,8 @@ import {
   Mail,
   MessageSquare,
   PenTool,
-  Settings
+  Settings,
+  Sun
 } from 'lucide-react';
 import { PaneCaret, PaneFooter } from './dev/PaneCaret';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -24,14 +25,14 @@ interface SidebarProps {
 }
 
 const modules = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'dashboard', label: 'Today', icon: Sun },
   { id: 'projects', label: 'Projects', icon: FolderKanban },
-  { id: 'canvas', label: 'Canvas', icon: PenTool },
+  { id: 'calendar', label: 'Calendar', icon: Calendar },
+  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
   { id: 'mail', label: 'Mail', icon: Mail },
   { id: 'chat', label: 'Chat', icon: MessageSquare },
   { id: 'notes', label: 'Notes', icon: FileText },
-  { id: 'tasks', label: 'Tasks', icon: CheckSquare },
-  { id: 'calendar', label: 'Calendar', icon: Calendar },
+  { id: 'canvas', label: 'Canvas', icon: PenTool },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
