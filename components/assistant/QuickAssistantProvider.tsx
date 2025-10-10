@@ -117,7 +117,7 @@ function buildNoteFromBody(input: { title?: string; body: string }) {
   };
 }
 
-// Convert natural language date (e.g., "tuesday", "next monday") to ISO date
+// Convert natural language date (e.g., "tuesday", "next monday", "in 3 days") to ISO date
 function parseNaturalDate(naturalDate: string): string {
   const today = new Date();
   const lower = naturalDate.toLowerCase().trim();
@@ -132,6 +132,59 @@ function parseNaturalDate(naturalDate: string): string {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     return tomorrow.toISOString().slice(0, 10);
+  }
+  
+  // Handle "this weekend" (Saturday)
+  if (lower.includes("this weekend") || lower === "weekend") {
+    const currentDay = today.getDay();
+    const daysUntilSaturday = (6 - currentDay + 7) % 7 || 7;
+    const saturday = new Date(today);
+    saturday.setDate(today.getDate() + daysUntilSaturday);
+    return saturday.toISOString().slice(0, 10);
+  }
+  
+  // Handle "next weekend" (Saturday of next week)
+  if (lower.includes("next weekend")) {
+    const currentDay = today.getDay();
+    const daysUntilSaturday = (6 - currentDay + 7) % 7 || 7;
+    const nextSaturday = new Date(today);
+    nextSaturday.setDate(today.getDate() + daysUntilSaturday + 7);
+    return nextSaturday.toISOString().slice(0, 10);
+  }
+  
+  // Handle "this week" (end of week - Friday)
+  if (lower.includes("this week")) {
+    const currentDay = today.getDay();
+    const daysUntilFriday = (5 - currentDay + 7) % 7 || 7;
+    const friday = new Date(today);
+    friday.setDate(today.getDate() + daysUntilFriday);
+    return friday.toISOString().slice(0, 10);
+  }
+  
+  // Handle "next week" (Monday of next week)
+  if (lower.includes("next week")) {
+    const currentDay = today.getDay();
+    const daysUntilMonday = (1 - currentDay + 7) % 7 || 7;
+    const nextMonday = new Date(today);
+    nextMonday.setDate(today.getDate() + daysUntilMonday + 7);
+    return nextMonday.toISOString().slice(0, 10);
+  }
+  
+  // Handle "in X days/weeks"
+  const inDaysMatch = lower.match(/in (\d+) days?/);
+  if (inDaysMatch) {
+    const days = parseInt(inDaysMatch[1], 10);
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + days);
+    return targetDate.toISOString().slice(0, 10);
+  }
+  
+  const inWeeksMatch = lower.match(/in (\d+) weeks?/);
+  if (inWeeksMatch) {
+    const weeks = parseInt(inWeeksMatch[1], 10);
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + (weeks * 7));
+    return targetDate.toISOString().slice(0, 10);
   }
   
   // Handle day names (monday, tuesday, etc.)

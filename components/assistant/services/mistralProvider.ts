@@ -9,32 +9,50 @@ import {
 } from './types';
 import { useProviderSettings } from '../../modules/settings/state/providerSettings';
 
-const INTENT_CLASSIFICATION_SYSTEM_PROMPT = `You are an intent classifier. Analyze user input and classify it into one of: task, note, event, or unknown.
+const INTENT_CLASSIFICATION_SYSTEM_PROMPT = `You are an intent classifier for a productivity assistant. Classify user input into: task, note, event, or unknown.
 
-CLASSIFICATION RULES:
-- "task": Action items, todos, reminders to do something (e.g., "buy milk", "call mom", "finish report", "email John")
-- "note": Information to save, thoughts, meeting notes - NOT appointments (e.g., "meeting notes", "remember that...", "idea for...")
-- "event": Scheduled appointments, meetings, any activity with a specific TIME or DATE (e.g., "dentist Tuesday 2pm", "team meeting Friday", "lunch with Sarah tomorrow at noon", "appointment next week")
-- "unknown": Unclear or gibberish input
+━━━ EVENTS (scheduled, time-bound, often with others) ━━━
+Keywords: meeting, appointment, scheduled, conference, call with, lunch with, dinner with, visit, class, practice, rehearsal, session, interview
+Indicators:
+- Specific time mentioned (2pm, 10am, "at 3", etc.)
+- Involves coordination with others ("with John", "team meeting")
+- Location mentioned ("at the office", "at Starbucks")
+- Event-specific nouns (appointment, meeting, conference, lunch, dinner)
+Examples:
+✓ "Dentist appointment Tuesday 2pm" → event
+✓ "Team meeting tomorrow at 10am" → event
+✓ "Lunch with Sarah Friday noon" → event
+✓ "Coffee with Alex tomorrow 3pm" → event
 
-CRITICAL RULES - READ CAREFULLY:
-1. If input contains the word "appointment" → ALWAYS classify as "event", NEVER as "note"
-2. If input contains a time (2pm, 10am, 3:30, etc.) → ALWAYS classify as "event", NEVER as "note"
-3. If input contains meeting/lunch/dinner/call/session/visit/interview → ALWAYS classify as "event"
-4. "Meeting notes" = note (information about a past meeting)
-5. "Meeting with..." or "Meeting at..." = event (scheduled meeting)
+━━━ TASKS (action items, flexible completion) ━━━
+Keywords: remind me to, need to, have to, should, todo, task, must, don't forget to
+Action verbs: buy, call, email, write, create, submit, review, draft, edit, follow up, complete, deliver, finish, clean, fix, update, prepare, schedule, book, order, send
+Indicators:
+- Starts with action verb
+- Has "remind me to" or "need to" patterns
+- Flexible due date (by Friday, this weekend, soon)
+- Individual work, not coordinated with others
+Examples:
+✓ "Remind me to buy milk tomorrow" → task
+✓ "Need to submit report by Friday" → task
+✓ "Call dentist to schedule appointment" → task (calling is the action)
+✓ "Fix the sink this weekend" → task
+✓ "Have to finish presentation by Monday" → task
 
-NEVER classify as "note" if the input:
-- Contains the word "appointment"
-- Contains a specific time (2pm, 10am, etc.)
-- Is about scheduling something in the future
-- Describes a calendar event
+━━━ NOTES (informational, reference, no action) ━━━
+Keywords: note that, remember that, note to self, keep in mind, FYI, documented, noticed, mentioned, meeting notes
+Indicators:
+- Past tense ("Sarah mentioned...", "John said...")
+- Reference information (passwords, phone numbers, facts)
+- No action verb or scheduled time
+- Observational or documentary
+Examples:
+✓ "Note that John prefers email" → note
+✓ "Remember WiFi password is ABC123" → note
+✓ "Meeting notes from today's standup" → note (past event documentation)
+✓ "Sarah mentioned she'll be on vacation" → note
 
-Examples of events (NOT notes):
-- "Dentist appointment Tuesday 2pm" → event (has "appointment" + time)
-- "Call with client tomorrow" → event (has "call" + date)
-- "Team lunch Friday noon" → event (has "lunch" + time)
-- "Doctor visit next week" → event (has "visit" + date)
+CRITICAL: "Meeting notes" = note (past documentation) vs "Meeting at 2pm" = event (scheduled)
 
 Return ONLY valid JSON with this exact structure:
 {
@@ -49,21 +67,44 @@ Return ONLY valid JSON with this exact structure:
 }
 
 Examples:
+
+TASKS:
 Input: "Buy milk tomorrow"
 Output: {"intent":"task","confidence":0.9,"extracted":{"title":"Buy milk","dueDate":"tomorrow"}}
 
-Input: "Meeting notes from standup"
-Output: {"intent":"note","confidence":0.85,"extracted":{"title":"Meeting notes from standup","body":"Meeting notes from standup"}}
+Input: "Remind me to call dentist tomorrow"
+Output: {"intent":"task","confidence":0.95,"extracted":{"title":"Call dentist","dueDate":"tomorrow"}}
 
+Input: "Need to submit report by Friday"
+Output: {"intent":"task","confidence":0.9,"extracted":{"title":"Submit report","dueDate":"Friday"}}
+
+Input: "Have to fix the sink this weekend"
+Output: {"intent":"task","confidence":0.9,"extracted":{"title":"Fix the sink","dueDate":"this weekend"}}
+
+EVENTS:
 Input: "Dentist appointment next Tuesday at 2pm"
 Output: {"intent":"event","confidence":0.95,"extracted":{"title":"Dentist appointment","date":"next Tuesday","startTime":"2pm"}}
 
-Input: "Dentist appointment Tuesday 2pm"
-Output: {"intent":"event","confidence":0.95,"extracted":{"title":"Dentist appointment","date":"Tuesday","startTime":"2pm"}}
-
 Input: "Team sync Friday 10am"
-Output: {"intent":"event","confidence":0.9,"extracted":{"title":"Team sync","date":"Friday","startTime":"10am"}}
+Output: {"intent":"event","confidence":0.95,"extracted":{"title":"Team sync","date":"Friday","startTime":"10am"}}
 
+Input: "Lunch with Sarah tomorrow at noon"
+Output: {"intent":"event","confidence":0.95,"extracted":{"title":"Lunch with Sarah","date":"tomorrow","startTime":"noon"}}
+
+Input: "Coffee meeting with Alex next Monday 3pm"
+Output: {"intent":"event","confidence":0.95,"extracted":{"title":"Coffee meeting with Alex","date":"next Monday","startTime":"3pm"}}
+
+NOTES:
+Input: "Meeting notes from standup"
+Output: {"intent":"note","confidence":0.9,"extracted":{"title":"Meeting notes from standup","body":"Meeting notes from standup"}}
+
+Input: "Note that John prefers email communication"
+Output: {"intent":"note","confidence":0.95,"extracted":{"body":"John prefers email communication"}}
+
+Input: "Remember WiFi password is ABC123"
+Output: {"intent":"note","confidence":0.9,"extracted":{"title":"WiFi password","body":"WiFi password is ABC123"}}
+
+UNKNOWN:
 Input: "xyz random gibberish"
 Output: {"intent":"unknown","confidence":0.2,"extracted":{}}
 

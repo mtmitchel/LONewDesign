@@ -5,6 +5,8 @@ import { Dialog, DialogClose, DialogContent } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { cn } from "../ui/utils";
+import { useProviderSettings } from "../modules/settings/state/providerSettings";
+import { createMistralProvider } from "./services/mistralProvider";
 
 export type AssistantCommand = "capture" | "task" | "note" | "event" | "summarize";
 
@@ -72,9 +74,12 @@ export function AssistantCaptureDialog({
   const [highlightIndex, setHighlightIndex] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [predictedIntent, setPredictedIntent] = React.useState<"task" | "note" | "event" | null>(null);
+  const [predicting, setPredicting] = React.useState(false);
 
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const prevCommandRef = React.useRef<AssistantCommand | null>(null);
+  const predictionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const filteredCommands = React.useMemo(() => {
     if (!showCommands) return COMMANDS;
@@ -83,19 +88,35 @@ export function AssistantCaptureDialog({
   }, [showCommands, text]);
 
   const primaryLabel = React.useMemo(() => {
-    switch (command) {
-      case "task":
-        return "Create task";
-      case "note":
-        return "Save note";
-      case "event":
-        return "Create event";
-      case "summarize":
-        return "Summarize";
-      default:
-        return "Capture";
+    // If user typed a slash command, use that
+    if (command !== "capture") {
+      switch (command) {
+        case "task":
+          return "Create task";
+        case "note":
+          return "Save note";
+        case "event":
+          return "Create event";
+        case "summarize":
+          return "Summarize";
+      }
     }
-  }, [command]);
+    
+    // Otherwise use predicted intent from natural language
+    if (predictedIntent) {
+      switch (predictedIntent) {
+        case "task":
+          return "Create task";
+        case "note":
+          return "Save note";
+        case "event":
+          return "Create event";
+      }
+    }
+    
+    // Default fallback
+    return "Submit";
+  }, [command, predictedIntent]);
 
   const contentIsEmpty = text.trim().length === 0;
 
@@ -158,6 +179,79 @@ export function AssistantCaptureDialog({
       onCommandSelect?.(command);
     }
   }, [command, onCommandSelect, open]);
+
+  // Debounced intent prediction for natural language input
+  const providerSettings = useProviderSettings();
+  
+  React.useEffect(() => {
+    // Clear previous timeout
+    if (predictionTimeoutRef.current) {
+      clearTimeout(predictionTimeoutRef.current);
+    }
+    
+    // Reset predicted intent when empty or has slash command
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.startsWith("/") || command !== "capture") {
+      setPredictedIntent(null);
+      return;
+    }
+    
+    // Only predict if we have at least 5 characters (avoid premature classification)
+    if (trimmed.length < 5) {
+      setPredictedIntent(null);
+      return;
+    }
+    
+    // Debounce prediction by 500ms
+    predictionTimeoutRef.current = setTimeout(async () => {
+      try {
+        setPredicting(true);
+        
+        // Check if assistant provider is configured
+        const assistantProviderId = providerSettings.assistantProvider;
+        if (!assistantProviderId) {
+          setPredictedIntent(null);
+          return;
+        }
+        
+        // For now, only support Mistral (Phase 1)
+        if (assistantProviderId !== 'mistral') {
+          setPredictedIntent(null);
+          return;
+        }
+        
+        // Check if Mistral is configured
+        const mistralConfig = providerSettings.providers.mistral;
+        if (!mistralConfig?.apiKey) {
+          setPredictedIntent(null);
+          return;
+        }
+        
+        // Create Mistral provider and classify
+        const mistralProvider = createMistralProvider();
+        const intent = await mistralProvider.classifyIntent(trimmed);
+        
+        // Only update if intent is task/note/event (ignore unknown)
+        if (intent.type === "task" || intent.type === "note" || intent.type === "event") {
+          setPredictedIntent(intent.type);
+        } else {
+          setPredictedIntent(null);
+        }
+      } catch (err) {
+        console.warn("[AssistantDialog] Intent prediction failed:", err);
+        setPredictedIntent(null);
+      } finally {
+        setPredicting(false);
+      }
+    }, 500);
+    
+    // Cleanup on unmount or text change
+    return () => {
+      if (predictionTimeoutRef.current) {
+        clearTimeout(predictionTimeoutRef.current);
+      }
+    };
+  }, [text, command, open, providerSettings]);
 
   const applyCommand = React.useCallback(
     (definition: CommandDefinition) => {
