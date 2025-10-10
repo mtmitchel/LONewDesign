@@ -195,7 +195,32 @@ export function AssistantCaptureDialog({
   const [showTranslateConfig, setShowTranslateConfig] = React.useState(false);
   const [targetLanguage, setTargetLanguage] = React.useState("es"); // Default: Spanish
   const [formality, setFormality] = React.useState<"formal" | "informal" | "neutral">("neutral");
-  const [translationProvider, setTranslationProvider] = React.useState<"deepl" | "mistral">("deepl");
+  const [translationProvider, setTranslationProvider] = React.useState<"deepl" | "assistant">("deepl");
+  
+  // Get current assistant provider info for display
+  const assistantProviderInfo = React.useMemo(() => {
+    const settings = useProviderSettings.getState();
+    const providerId = settings.assistantProvider;
+    const modelId = settings.assistantModel;
+    
+    // Get provider display name
+    const providerName = providerId === 'mistral' ? 'Mistral' :
+                        providerId === 'openrouter' ? 'OpenRouter' :
+                        providerId === 'glm' ? 'GLM' :
+                        providerId === 'openai' ? 'OpenAI' :
+                        providerId === 'deepseek' ? 'DeepSeek' :
+                        'Assistant';
+    
+    // Get model display name (if set)
+    const modelName = modelId ? modelId.split('/').pop() : null;
+    
+    return {
+      providerId,
+      providerName,
+      modelName,
+      displayName: modelName ? `${providerName} (${modelName})` : providerName
+    };
+  }, []);
 
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const prevCommandRef = React.useRef<AssistantCommand | null>(null);
@@ -511,7 +536,7 @@ export function AssistantCaptureDialog({
         const deeplConfig = providerSettings.providers.deepl;
         
         if (!deeplConfig.apiKey) {
-          setToolResult("DeepL API key not configured. Please add it in Settings or use Mistral.");
+          setToolResult(`DeepL API key not configured. Please add it in Settings or use ${assistantProviderInfo.displayName}.`);
           return;
         }
 
@@ -593,7 +618,7 @@ export function AssistantCaptureDialog({
     } finally {
       setIsToolRunning(false);
     }
-  }, [storedSelectedText, translationProvider, targetLanguage, formality]);
+  }, [storedSelectedText, translationProvider, targetLanguage, formality, assistantProviderInfo]);
 
   const handleToolSelect = React.useCallback((tool: WritingTool) => {
     console.log('[handleToolSelect] Tool selected:', tool);
@@ -683,15 +708,15 @@ export function AssistantCaptureDialog({
                     </label>
                     <select
                       value={translationProvider}
-                      onChange={(e) => setTranslationProvider(e.target.value as "deepl" | "mistral")}
+                      onChange={(e) => setTranslationProvider(e.target.value as "deepl" | "assistant")}
                       className="w-full px-3 py-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[color:var(--text-primary)] text-[length:var(--text-sm)]"
                     >
                       <option value="deepl">DeepL (High quality, native formality)</option>
-                      <option value="mistral">Mistral (AI-based)</option>
+                      <option value="assistant">{assistantProviderInfo.displayName} (AI-based)</option>
                     </select>
                     {translationProvider === "deepl" && !useProviderSettings.getState().providers.deepl.apiKey && (
                       <p className="text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] mt-1">
-                        ⚠️ DeepL API key not configured. Add it in Settings or use Mistral.
+                        ⚠️ DeepL API key not configured. Add it in Settings or use {assistantProviderInfo.displayName}.
                       </p>
                     )}
                   </div>
