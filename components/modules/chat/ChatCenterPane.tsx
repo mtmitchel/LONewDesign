@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { ArrowDown, Braces, Copy, Paperclip, Pencil, RefreshCw, Send } from 'lucide-react';
+import { ArrowDown, Braces, Check, Copy, Paperclip, Pencil, RefreshCw, Send } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import { cn } from '../../ui/utils';
-import { toast } from 'sonner';
 import type { ChatMessage } from './types';
 
 interface ChatCenterPaneProps {
@@ -27,6 +26,7 @@ export function ChatCenterPane({
 }: ChatCenterPaneProps) {
   const [text, setText] = React.useState('');
   const [showScrollToLatest, setShowScrollToLatest] = React.useState(false);
+  const [copiedMessageIds, setCopiedMessageIds] = React.useState<Set<string>>(new Set());
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -134,11 +134,19 @@ export function ChatCenterPane({
         document.body.removeChild(textarea);
       }
       setLiveAnnouncement('Message copied to clipboard');
-      toast.success('Message copied!');
+      
+      // Show checkmark briefly
+      setCopiedMessageIds(prev => new Set(prev).add(message.id));
+      setTimeout(() => {
+        setCopiedMessageIds(prev => {
+          const next = new Set(prev);
+          next.delete(message.id);
+          return next;
+        });
+      }, 2000);
     } catch (error) {
       console.error('chat:message:copy:error', error);
       setLiveAnnouncement('Copy failed');
-      toast.error('Failed to copy message');
     }
   }, []);
 
@@ -239,7 +247,11 @@ export function ChatCenterPane({
             onClick={() => handleCopyMessage(message)}
             aria-label="Copy message"
           >
-            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+            {copiedMessageIds.has(message.id) ? (
+              <Check className="h-3.5 w-3.5 text-[color:var(--success)]" aria-hidden="true" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
           </Button>
           {isUser ? (
             <Button
