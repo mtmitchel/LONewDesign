@@ -395,8 +395,9 @@ export function QuickAssistantProvider({
         endsAt: endsAtBase.toISOString(),
       });
       
+      const eventId = generateId("event");
       const detail = {
-        id: generateId("event"),
+        id: eventId,
         title: payload.title,
         startsAt: startsAt.toISOString(),
         endsAt: endsAtBase.toISOString(),
@@ -409,6 +410,32 @@ export function QuickAssistantProvider({
             }
           : undefined,
       };
+      
+      // ALWAYS save to localStorage (even if CalendarModule isn't mounted)
+      try {
+        const STORAGE_KEY = 'calendar-events';
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const existingEvents = stored ? JSON.parse(stored) : [];
+        
+        const newEvent = {
+          id: eventId,
+          title: payload.title,
+          calendarId: scopeRef.current?.projectId ?? 'quick-assistant',
+          startsAt: startsAt.toISOString(),
+          endsAt: endsAtBase.toISOString(),
+          location: payload.location,
+          description: payload.notes,
+          allDay: false,
+        };
+        
+        // Add to beginning of array
+        const updatedEvents = [newEvent, ...existingEvents];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEvents));
+        
+        console.log('[QuickAssistant] 📅 Event saved to localStorage:', eventId);
+      } catch (err) {
+        console.error('[QuickAssistant] Failed to save event to localStorage:', err);
+      }
       
       console.log('[QuickAssistant] 📤 Dispatching event:', detail);
       window.dispatchEvent(

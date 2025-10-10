@@ -77,15 +77,16 @@ CRITICAL RULES for event classification:
 - Time indicators (Tuesday, 2pm, tomorrow, next week) → ALWAYS EVENT
 - Social plans (lunch, dinner, coffee) with time → ALWAYS EVENT
 
-Respond ONLY with valid JSON in this exact format:
+Respond with a JSON object containing EXACTLY these fields:
 {
-  "type": "task" | "note" | "event" | "unknown",
-  "confidence": 0.0-1.0,
+  "type": "task" or "note" or "event" or "unknown",
+  "confidence": number between 0 and 1,
   "title": "extracted title",
-  "description": "additional details",
-  "dueDate": "YYYY-MM-DD" (tasks only),
-  "eventDate": "YYYY-MM-DD" (events only),
-  "eventTime": "HH:MM" (events only, 24-hour format)
+  "description": "additional details if any",
+  "dueDate": "YYYY-MM-DD format for tasks",
+  "date": "natural language date like 'monday' or 'tomorrow' for events",
+  "startTime": "HH:MM in 24-hour format for events",
+  "endTime": "HH:MM in 24-hour format for events"
 }`,
       },
       {
@@ -95,7 +96,7 @@ Respond ONLY with valid JSON in this exact format:
     ];
 
     try {
-      const response = await this.complete(messages, 0.1, 500);
+      const response = await this.complete(messages, 0.1, 150); // Reduced to avoid truncation
       
       // Parse JSON response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -156,8 +157,9 @@ Respond ONLY with valid JSON in this exact format:
           originalInput: input,
           extracted: {
             title: parsed.title || input,
-            date: parsed.eventDate || '',
-            startTime: parsed.eventTime,
+            date: parsed.date || '', // Use 'date' not 'eventDate'
+            startTime: parsed.startTime, // Use 'startTime' not 'eventTime'
+            endTime: parsed.endTime,
             notes: parsed.description,
           },
         };
