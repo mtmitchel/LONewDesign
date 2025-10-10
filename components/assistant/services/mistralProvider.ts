@@ -13,6 +13,8 @@ import { parseJSONSafely, sanitizeLLMText } from './llmSanitizer';
 
 const INTENT_CLASSIFICATION_SYSTEM_PROMPT = `You are an intent classifier for a productivity assistant. Classify user input into: task, note, event, or unknown.
 
+━━━ CRITICAL RULE: Messages starting with "remember", "remind", "don't forget" → ALWAYS classify as TASK ━━━
+
 ━━━ EVENTS (scheduled, time-bound, often with others) ━━━
 Keywords: meeting, appointment, scheduled, conference, call with, lunch with, dinner with, visit, class, practice, rehearsal, session, interview
 Indicators:
@@ -20,14 +22,17 @@ Indicators:
 - Involves coordination with others ("with John", "team meeting")
 - Location mentioned ("at the office", "at Starbucks")
 - Event-specific nouns (appointment, meeting, conference, lunch, dinner)
+- BUT: If starts with "remember", "remind", "don't forget" → classify as TASK instead
 Examples:
 ✓ "Dentist appointment Tuesday 2pm" → event
 ✓ "Team meeting tomorrow at 10am" → event
 ✓ "Lunch with Sarah Friday noon" → event
 ✓ "Coffee with Alex tomorrow 3pm" → event
+✗ "Remember dentist appointment Tuesday 2pm" → task (starts with "remember")
+✗ "Remind me about meeting tomorrow at 10am" → task (starts with "remind")
 
 ━━━ TASKS (action items, flexible completion) ━━━
-Keywords: remind me to, need to, have to, should, todo, task, must, don't forget to
+Keywords: remember, remind, remind me to, need to, have to, should, todo, task, must, don't forget
 Action verbs: buy, call, email, write, create, submit, review, draft, edit, follow up, complete, deliver, finish, clean, fix, update, prepare, schedule, book, order, send
 Indicators:
 - Starts with action verb
@@ -76,6 +81,12 @@ Output: {"intent":"task","confidence":0.9,"extracted":{"title":"Buy milk","dueDa
 
 Input: "Remind me to call dentist tomorrow"
 Output: {"intent":"task","confidence":0.95,"extracted":{"title":"Call dentist","dueDate":"tomorrow"}}
+
+Input: "Remember dentist appointment Saturday at 10am"
+Output: {"intent":"task","confidence":0.95,"extracted":{"title":"Dentist appointment","dueDate":"Saturday at 10am"}}
+
+Input: "Remind meeting with John Monday 3pm"
+Output: {"intent":"task","confidence":0.95,"extracted":{"title":"Meeting with John","dueDate":"Monday 3pm"}}
 
 Input: "Need to submit report by Friday"
 Output: {"intent":"task","confidence":0.9,"extracted":{"title":"Submit report","dueDate":"Friday"}}

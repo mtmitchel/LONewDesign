@@ -87,7 +87,12 @@ function predictIntentLocally(text: string): "task" | "note" | "event" | null {
   
   if (lower.length < 5) return null;
   
-  // Event patterns (highest priority - most specific)
+  // CRITICAL: If starts with remember/remind, it's ALWAYS a task
+  if (lower.startsWith('remember') || lower.startsWith('remind') || lower.startsWith("don't forget")) {
+    return "task";
+  }
+  
+  // Event patterns (only if NOT starting with remember/remind)
   const eventKeywords = [
     'appointment', 'meeting', 'lunch with', 'dinner with', 'coffee with',
     'call with', 'session', 'conference', 'interview', 'visit', 'class'
@@ -101,8 +106,7 @@ function predictIntentLocally(text: string): "task" | "note" | "event" | null {
   
   // Task patterns (action-oriented)
   const taskKeywords = [
-    'remind me', 'need to', 'have to', 'should', 'todo', 'must',
-    'don\'t forget', 'remember to'
+    'need to', 'have to', 'should', 'todo', 'must'
   ];
   const taskVerbs = [
     'buy', 'call', 'email', 'write', 'create', 'submit', 'review',

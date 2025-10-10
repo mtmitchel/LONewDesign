@@ -72,10 +72,20 @@ export class OpenAIProvider implements LLMProvider {
 - CREATE A NOTE: Information to save, thoughts, reference material
 - CREATE AN EVENT: Appointments, meetings, calendar items with specific date/time
 
-CRITICAL RULES for event classification:
-- ANY mention of appointment, meeting, schedule, calendar → ALWAYS classify as EVENT
-- Time indicators (Tuesday, 2pm, tomorrow, next week) → ALWAYS EVENT
-- Social plans (lunch, dinner, coffee) with time → ALWAYS EVENT
+CRITICAL CLASSIFICATION RULES:
+1. If starts with "remember", "remind", "don't forget" → ALWAYS classify as TASK (even with date/time)
+2. If it's about doing something (action verb) → usually TASK
+3. Appointments, meetings, scheduled activities → EVENT (UNLESS it starts with remember/remind)
+4. Social plans (lunch, dinner, coffee) with specific time → EVENT (UNLESS it starts with remember/remind)
+5. Information to save without action → NOTE
+
+Examples:
+- "Remember to call dentist tomorrow at 2pm" → TASK (starts with "remember")
+- "Remind me to submit report by Friday 5pm" → TASK (starts with "remind")
+- "Remember dentist appointment tomorrow at 2pm" → TASK (starts with "remember")
+- "Remind Sarah about meeting Monday 3pm" → TASK (starts with "remind")
+- "Dentist appointment tomorrow at 2pm" → EVENT (it's an appointment, no remember/remind)
+- "Meeting with Sarah Monday 3pm" → EVENT (it's a meeting, no remember/remind)
 
 Respond with a JSON object containing EXACTLY these fields:
 {
