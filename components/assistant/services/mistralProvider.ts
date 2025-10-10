@@ -288,14 +288,74 @@ export class MistralProvider implements LLMProvider {
   }
 
   /**
-   * Run a writing tool (Phase 2 - not implemented yet)
+   * Run a writing tool on selected text
    */
-  async runTool(
+  async runWritingTool(
     tool: string,
     text: string,
-    options?: Record<string, unknown>
-  ): Promise<string> {
-    throw new Error('Writing tools not implemented yet (Phase 2)');
+    targetLanguage?: string,
+    formality?: 'formal' | 'informal'
+  ): Promise<{ text: string; tool: string }> {
+    let systemPrompt = '';
+    
+    switch (tool) {
+      case 'professional':
+        systemPrompt = 'Rewrite the following text in a professional, formal tone. Maintain the core message but elevate the language. Return ONLY the rewritten text, no explanations.';
+        break;
+      case 'friendly':
+        systemPrompt = 'Rewrite the following text in a warm, friendly, conversational tone. Keep it approachable and personable. Return ONLY the rewritten text, no explanations.';
+        break;
+      case 'concise':
+        systemPrompt = 'Make the following text more concise while preserving all key information. Remove unnecessary words and redundancy. Return ONLY the shortened text, no explanations.';
+        break;
+      case 'expand':
+        systemPrompt = 'Expand the following text with more detail, examples, and context. Make it more comprehensive and thorough. Return ONLY the expanded text, no explanations.';
+        break;
+      case 'proofread':
+        systemPrompt = 'Proofread and correct any spelling, grammar, or punctuation errors in the following text. Return ONLY the corrected text, no explanations.';
+        break;
+      case 'summarize':
+        systemPrompt = 'Summarize the following text into key points. Be concise but capture the main ideas. Return ONLY the summary, no explanations.';
+        break;
+      case 'translate':
+        const formalityNote = formality === 'formal' ? ' Use formal language and respectful tone.' : formality === 'informal' ? ' Use casual, informal language.' : '';
+        systemPrompt = `Translate the following text to ${targetLanguage}.${formalityNote} Return ONLY the translation, no explanations.`;
+        break;
+      case 'explain':
+        systemPrompt = 'Explain the following text in simpler terms. Make it easier to understand. Return ONLY the explanation, no meta-commentary.';
+        break;
+      case 'list':
+        systemPrompt = 'Convert the following text into a clear, organized bullet-point list. Return ONLY the list, no explanations.';
+        break;
+      case 'extract':
+        systemPrompt = 'Extract key information, dates, names, or important details from the following text. Present them in a clear format. Return ONLY the extracted information, no explanations.';
+        break;
+      default:
+        throw new Error(`Unknown writing tool: ${tool}`);
+    }
+
+    const messages = [
+      { role: 'user', content: systemPrompt + '\n\n' + text },
+    ];
+
+    try {
+      const response = await invoke<string>('mistral_complete', {
+        apiKey: this.apiKey,
+        baseUrl: this.baseUrl,
+        model: this.model,
+        messages,
+        temperature: 0.3,
+        maxTokens: 2000,
+      });
+      
+      return {
+        text: response.trim(),
+        tool,
+      };
+    } catch (error) {
+      console.error(`[MistralProvider] Writing tool error:`, error);
+      throw error;
+    }
   }
 
   /**

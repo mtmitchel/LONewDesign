@@ -128,10 +128,11 @@ export interface LLMProvider {
    * Run a writing tool on selected text
    * @param tool The tool name (e.g., "summarize", "translate")
    * @param text The selected text to transform
-   * @param options Tool-specific options
-   * @returns Promise resolving to transformed text
+   * @param targetLanguage Optional target language for translation
+   * @param formality Optional formality level for translation
+   * @returns Promise resolving to writing tool result
    */
-  runTool?(tool: string, text: string, options?: Record<string, unknown>): Promise<string>;
+  runWritingTool(tool: string, text: string, targetLanguage?: string, formality?: 'formal' | 'informal'): Promise<WritingToolResult>;
 
   /**
    * Ask the AI a question with optional context
@@ -165,6 +166,11 @@ export interface WritingTool {
   icon?: string;
   requiresOptions?: boolean;
   execute: (text: string, options?: Record<string, unknown>) => Promise<string>;
+}
+
+export interface WritingToolResult {
+  text: string;
+  tool: string;
 }
 
 // ============================================================================

@@ -6,7 +6,7 @@ import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { cn } from "../ui/utils";
 import { useProviderSettings } from "../modules/settings/state/providerSettings";
-import { createMistralProvider } from "./services/mistralProvider";
+import { createProviderFromSettings } from "./services/openaiProvider";
 import { WritingToolsGrid, type WritingTool } from "./WritingToolsGrid";
 import { ResultsPane } from "./ResultsPane";
 
@@ -351,9 +351,9 @@ export function AssistantCaptureDialog({
           return;
         }
         
-        // Create Mistral provider and classify (refines local prediction)
-        const mistralProvider = createMistralProvider();
-        const intent = await mistralProvider.classifyIntent(trimmed);
+        // Create provider and classify (refines local prediction)
+        const provider = createProviderFromSettings();
+        const intent = await provider.classifyIntent(trimmed);
         
         // Update prediction if AI classification is confident
         // AI result overrides local prediction for accuracy
@@ -553,26 +553,16 @@ export function AssistantCaptureDialog({
         extract: `Extract the key points from the following text as a numbered list. Return ONLY the list:\n\n${selectedText}`,
       };
       
-      // Use Mistral for all other tools (including Mistral-based translation)
-      const mistralConfig = providerSettings.providers.mistral;
-      
-      if (!mistralConfig.apiKey) {
-        setToolResult("Mistral API key not configured. Please add it in Settings.");
-        return;
+      // Use configured assistant provider for writing tools
+      try {
+        const provider = createProviderFromSettings();
+        // Convert 'neutral' to undefined for the provider API
+        const formalityParam = formality === 'neutral' ? undefined : formality;
+        const result = await provider.runWritingTool(tool, selectedText, targetLanguage, formalityParam);
+        setToolResult(result.text);
+      } catch (providerError) {
+        throw new Error(`Provider error: ${providerError instanceof Error ? providerError.message : String(providerError)}`);
       }
-      
-      const result = await invoke<string>('mistral_complete', {
-        apiKey: mistralConfig.apiKey.trim(),
-        baseUrl: mistralConfig.baseUrl?.trim() || null,
-        model: mistralConfig.defaultModel || 'mistral-small-latest',
-        messages: [
-          { role: 'user', content: prompts[tool] }
-        ],
-        temperature: 0.3,
-        maxTokens: 2000,
-      });
-      
-      setToolResult(result);
       
     } catch (err) {
       console.error('[WritingTool] Execution failed:', err);

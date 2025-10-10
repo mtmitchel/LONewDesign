@@ -15,7 +15,7 @@ import { QuickTaskModal } from "../extended/QuickTaskModal";
 import { QuickEventModal } from "../extended/QuickEventModal";
 import { AssistantCaptureDialog, type AssistantSubmitPayload } from "./AssistantCaptureDialog";
 import { useTaskStore } from "../modules/tasks/taskStore";
-import { createMistralProvider } from "./services/mistralProvider";
+import { createProviderFromSettings } from "./services/openaiProvider";
 import { useProviderSettings } from "../modules/settings/state/providerSettings";
 
 function generateId(prefix: string) {
@@ -546,17 +546,10 @@ export function QuickAssistantProvider({
           return;
         }
 
-        if (assistantProvider !== 'mistral') {
-          console.warn('[QuickAssistant] Only Mistral provider supported currently');
-          toast.info('Only Mistral provider is currently supported for AI classification');
-          emitCreateNote({ body: trimmed });
-          return;
-        }
-
         // Attempt intent classification
         try {
-          console.log('[QuickAssistant] Creating Mistral provider');
-          const provider = createMistralProvider();
+          console.log(`[QuickAssistant] Creating ${assistantProvider} provider`);
+          const provider = createProviderFromSettings();
           
           console.log('[QuickAssistant] 🔍 Classifying intent for input:', trimmed);
           const intent = await provider.classifyIntent(trimmed);
