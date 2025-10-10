@@ -111,6 +111,7 @@ export interface AssistantCaptureDialogProps {
   open: boolean;
   initialValue?: string;
   selectedText?: string; // Text selected before opening assistant
+  canEditSelection?: boolean; // Whether selected text is editable (shows Replace/Insert)
   onOpenChange: (open: boolean) => void;
   onSubmit: (payload: AssistantSubmitPayload) => Promise<void>;
   onCommandSelect?: (command: AssistantCommand) => void;
@@ -123,6 +124,7 @@ export function AssistantCaptureDialog({
   open,
   initialValue,
   selectedText,
+  canEditSelection = true,
   onOpenChange,
   onSubmit,
   onCommandSelect,
@@ -433,33 +435,42 @@ export function AssistantCaptureDialog({
     setToolResult("");
     
     try {
-      const mistralProvider = createMistralProvider();
-      
       // Build prompt based on tool
       const prompts: Record<WritingTool, string> = {
-        professional: `Rewrite the following text in a more professional and formal tone:\n\n${selectedText}`,
-        friendly: `Rewrite the following text in a more friendly and casual tone:\n\n${selectedText}`,
-        concise: `Make the following text more concise while preserving the key information:\n\n${selectedText}`,
-        expand: `Expand and elaborate on the following text with more detail:\n\n${selectedText}`,
-        proofread: `Proofread and fix any grammar, spelling, or punctuation errors in the following text:\n\n${selectedText}`,
-        summarize: `Summarize the following text in a brief, clear way:\n\n${selectedText}`,
-        translate: `Translate the following text to Spanish:\n\n${selectedText}`,
-        explain: `Explain the following concept in simple terms:\n\n${selectedText}`,
-        list: `Convert the following text into a well-formatted bullet point list:\n\n${selectedText}`,
-        extract: `Extract the key points from the following text as a list:\n\n${selectedText}`,
+        professional: `Rewrite the following text in a more professional and formal tone. Return ONLY the rewritten text, no explanations:\n\n${selectedText}`,
+        friendly: `Rewrite the following text in a more friendly and casual tone. Return ONLY the rewritten text, no explanations:\n\n${selectedText}`,
+        concise: `Make the following text more concise while preserving all key information. Return ONLY the concise version, no explanations:\n\n${selectedText}`,
+        expand: `Expand and elaborate on the following text with more detail and context. Return ONLY the expanded text:\n\n${selectedText}`,
+        proofread: `Proofread and fix any grammar, spelling, or punctuation errors. Return ONLY the corrected text, no explanations:\n\n${selectedText}`,
+        summarize: `Summarize the following text in 2-3 sentences. Return ONLY the summary:\n\n${selectedText}`,
+        translate: `Translate the following text to Spanish. Use neutral/standard register (not overly formal or informal). Return ONLY the translation:\n\n${selectedText}\n\n(Note: For formal Spanish, use "usted". For informal, use "tú". Default to neutral when context is unclear.)`,
+        explain: `Explain the following concept in simple, clear terms that anyone can understand. Return ONLY the explanation:\n\n${selectedText}`,
+        list: `Convert the following text into a well-formatted bullet point list. Return ONLY the list:\n\n${selectedText}`,
+        extract: `Extract the key points from the following text as a numbered list. Return ONLY the list:\n\n${selectedText}`,
       };
       
-      // For now, use classifyIntent's underlying mistral_complete command
-      // In a real implementation, you'd add a dedicated streaming tool command
-      const response = await mistralProvider.classifyIntent(prompts[tool]);
+      // Use mistral_complete via invoke
+      const { invoke } = await import('@tauri-apps/api/core');
+      const providerSettings = useProviderSettings.getState();
+      const mistralConfig = providerSettings.providers.mistral;
       
-      // Since classifyIntent returns structured data, we'll use a simple workaround
-      // TODO: Add proper mistral_tool_execute command with streaming
-      setToolResult("Feature in progress - streaming tool execution coming soon!");
+      if (!mistralConfig.apiKey) {
+        setToolResult("Mistral API key not configured. Please add it in Settings.");
+        return;
+      }
+      
+      const result = await invoke<string>('mistral_complete', {
+        apiKey: mistralConfig.apiKey.trim(),
+        baseUrl: mistralConfig.baseUrl?.trim() || null,
+        model: mistralConfig.defaultModel || 'mistral-small-latest',
+        prompt: prompts[tool],
+      });
+      
+      setToolResult(result);
       
     } catch (err) {
       console.error('[WritingTool] Execution failed:', err);
-      setToolResult("Failed to execute tool. Please try again.");
+      setToolResult(`Error: ${err instanceof Error ? err.message : 'Failed to execute tool'}`);
     } finally {
       setIsToolRunning(false);
     }
@@ -511,11 +522,11 @@ export function AssistantCaptureDialog({
               <ResultsPane
                 result={toolResult}
                 isStreaming={isToolRunning}
-                onReplace={onReplace ? () => {
+                onReplace={canEditSelection && onReplace ? () => {
                   onReplace(toolResult);
                   onOpenChange(false);
                 } : undefined}
-                onInsert={onInsert ? () => {
+                onInsert={canEditSelection && onInsert ? () => {
                   onInsert(toolResult);
                   onOpenChange(false);
                 } : undefined}
