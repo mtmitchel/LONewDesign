@@ -436,23 +436,15 @@ export function CreateProjectModal({
                 </p>
               </div>
               
-              <div className="space-y-[var(--space-2)]">
+              <div>
                 <Textarea
                   id="aiPrompt"
-                  placeholder="Example: I need to redesign our company website. We have 3 months, a budget of $50k, and need to integrate with our existing CMS. The design should be modern and mobile-first..."
+                  placeholder="Describe your project goals, requirements, and timeline..."
                   rows={6}
                   className="px-[var(--space-4)] py-[var(--space-4)] border border-[var(--border-default)] rounded-[var(--radius-md)] bg-[var(--bg-surface)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-secondary)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-tint-10)] transition-all resize-none leading-relaxed"
                   value={projectData.aiPrompt || ''}
                   onChange={(e) => setProjectData({ ...projectData, aiPrompt: e.target.value.slice(0, 1000) })}
                 />
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[color:var(--text-secondary)]">
-                    Be as specific as possible for better results
-                  </span>
-                  <span className="text-[color:var(--text-secondary)]">
-                    {(projectData.aiPrompt || '').length}/1000
-                  </span>
-                </div>
               </div>
               
               {error && (
