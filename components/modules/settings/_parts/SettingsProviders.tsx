@@ -173,13 +173,15 @@ function buildViewState(configs: Record<ProviderId, ProviderConfig>): Record<Pro
 
 export function SettingsProviders({ id, filter, registerSection }: SettingsProvidersProps) {
   const { setFieldDirty } = useSettingsState();
-  const { providers, updateProvider, resetProvider, assistantProvider, setAssistantProvider } = useProviderSettings(
+  const { providers, updateProvider, resetProvider, assistantProvider, assistantModel, setAssistantProvider, setAssistantModel } = useProviderSettings(
     useShallow((state) => ({
       providers: state.providers,
       updateProvider: state.updateProvider,
       resetProvider: state.resetProvider,
       assistantProvider: state.assistantProvider,
+      assistantModel: state.assistantModel,
       setAssistantProvider: state.setAssistantProvider,
+      setAssistantModel: state.setAssistantModel,
     }))
   );
   const [providerState, setProviderState] = useState<Record<ProviderId, ProviderState>>(() =>
@@ -366,6 +368,35 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
         }
         }
       }
+      
+      // Fetch available models for OpenRouter after successful auth
+      if (providerId === 'openrouter') {
+        if (!isTauriContext()) {
+          console.warn('Not in Tauri context - cannot fetch models');
+          toast.error('Model fetching requires Tauri app');
+        } else {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const models = (await invoke('fetch_openrouter_models', {
+            apiKey: current.apiKey.trim(),
+          })) as Array<{ id: string }>;
+          
+          const modelIds = models.map(m => m.id);
+          const currentEnabled = providers[providerId].enabledModels;
+          
+          updateProvider(providerId, {
+            availableModels: modelIds,
+            enabledModels: currentEnabled.length > 0 ? currentEnabled : ['openrouter/auto'],
+          });
+          
+          console.debug('Fetched OpenRouter models:', modelIds.length);
+          toast.success(`Found ${modelIds.length} OpenRouter models`);
+        } catch (error) {
+          console.error('Failed to fetch OpenRouter models:', error);
+          toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        }
+      }
     } else {
       toast.error(message ?? 'Couldn’t connect — check your key');
     }
@@ -488,7 +519,10 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
               value={assistantProvider ?? ''}
               onChange={(e) => {
                 const value = e.target.value;
-                setAssistantProvider(value === '' ? null : value as ProviderId);
+                const newProvider = value === '' ? null : value as ProviderId;
+                setAssistantProvider(newProvider);
+                // Clear model selection when provider changes
+                setAssistantModel(null);
                 toast.success(`Assistant provider ${value === '' ? 'cleared' : `set to ${value}`}`);
               }}
               className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
@@ -507,6 +541,50 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
               Only providers with configured API keys are shown. Configure providers below to add them.
             </p>
           </div>
+
+          {assistantProvider && (() => {
+            const providerConfig = providers[assistantProvider];
+            const availableModels: string[] = [];
+            
+            // Build available models based on provider
+            if (assistantProvider === 'mistral') {
+              availableModels.push(...providerConfig.enabledModels);
+            } else if (assistantProvider === 'glm' && providerConfig.defaultModel) {
+              availableModels.push(providerConfig.defaultModel);
+            } else if (assistantProvider === 'openrouter') {
+              availableModels.push('openrouter/auto', ...providerConfig.enabledModels);
+            } else {
+              availableModels.push(...providerConfig.enabledModels);
+            }
+
+            return availableModels.length > 0 ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="assistant-model-select" className="text-sm font-medium text-[var(--text-primary)]">
+                  Model
+                </Label>
+                <select
+                  id="assistant-model-select"
+                  value={assistantModel ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setAssistantModel(value === '' ? null : value);
+                    toast.success(`Assistant model ${value === '' ? 'cleared' : `set to ${value}`}`);
+                  }}
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                >
+                  <option value="">-- Use provider default --</option>
+                  {availableModels.map((modelId) => (
+                    <option key={modelId} value={modelId}>
+                      {modelId}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Select a specific model or leave blank to use the provider's default.
+                </p>
+              </div>
+            ) : null;
+          })()}
         </div>
       </SectionCard>
 

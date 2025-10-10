@@ -25,9 +25,11 @@ const DEFAULT_PROVIDERS: Record<ProviderId, ProviderConfig> = {
 type ProviderSettingsState = {
   providers: Record<ProviderId, ProviderConfig>;
   assistantProvider: ProviderId | null;
+  assistantModel: string | null;
   updateProvider: (id: ProviderId, config: Partial<ProviderConfig>) => void;
   resetProvider: (id: ProviderId) => void;
   setAssistantProvider: (id: ProviderId | null) => void;
+  setAssistantModel: (model: string | null) => void;
 };
 
 const fallbackStorage: Storage = {
@@ -57,6 +59,7 @@ export const useProviderSettings = create(
     (set, get) => ({
       providers: DEFAULT_PROVIDERS,
       assistantProvider: null,
+      assistantModel: null,
       updateProvider: (id, config) => {
         set((state) => ({
           providers: {
@@ -79,6 +82,9 @@ export const useProviderSettings = create(
       setAssistantProvider: (id) => {
         set({ assistantProvider: id });
       },
+      setAssistantModel: (model) => {
+        set({ assistantModel: model });
+      },
     }),
     {
       name: 'provider-settings-v1',
@@ -94,6 +100,7 @@ export const useProviderSettings = create(
             ...providers,
           },
           assistantProvider: persisted.assistantProvider ?? null,
+          assistantModel: persisted.assistantModel ?? null,
         };
       },
     },

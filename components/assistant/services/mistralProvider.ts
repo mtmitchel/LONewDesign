@@ -310,15 +310,19 @@ export class MistralProvider implements LLMProvider {
  * Factory function to create a Mistral provider from settings
  */
 export function createMistralProvider(): MistralProvider {
-  const config = useProviderSettings.getState().providers.mistral;
+  const state = useProviderSettings.getState();
+  const config = state.providers.mistral;
   
   if (!config.apiKey || config.apiKey.trim() === '') {
     throw new Error('Mistral API key not configured. Please add it in Settings.');
   }
 
+  // Use assistantModel if set, otherwise fall back to provider's defaultModel
+  const model = state.assistantModel || config.defaultModel || undefined;
+
   return new MistralProvider(
     config.apiKey,
     config.baseUrl || undefined,
-    config.defaultModel || undefined
+    model
   );
 }
