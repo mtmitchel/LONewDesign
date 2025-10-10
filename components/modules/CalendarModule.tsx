@@ -104,10 +104,36 @@ export function CalendarModule() {
   const [modalState, setModalState] = useState<{ mode: 'edit' | 'create'; isOpen: boolean }>({ mode: 'create', isOpen: false });
   const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
   
-  // State for managing events
+  // LocalStorage helpers
+  const loadEventsFromStorage = (): UnifiedEvent[] => {
+    try {
+      const stored = localStorage.getItem('calendar-events');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (err) {
+      console.warn('Failed to load events from localStorage:', err);
+    }
+    return [];
+  };
+
+  const saveEventsToStorage = (eventsToSave: UnifiedEvent[]) => {
+    try {
+      localStorage.setItem('calendar-events', JSON.stringify(eventsToSave));
+    } catch (err) {
+      console.warn('Failed to save events to localStorage:', err);
+    }
+  };
+  
+  // State for managing events - load from localStorage
   const [events, setEvents] = useState<UnifiedEvent[]>(() => {
-    // Map demo events to the current month spread across a few days
-    const baseDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 15);
+    const stored = loadEventsFromStorage();
+    if (stored.length > 0) {
+      return stored;
+    }
+    
+    // Fallback: Map demo events to the current month spread across a few days
+    const baseDay = new Date(new Date().getFullYear(), new Date().getMonth(), 15);
     return DEMO_EVENTS.map((e, idx) => {
       const day = new Date(baseDay);
       day.setDate(baseDay.getDate() + idx * 2);
@@ -125,6 +151,11 @@ export function CalendarModule() {
       };
     });
   });
+
+  // Auto-save events to localStorage whenever they change
+  React.useEffect(() => {
+    saveEventsToStorage(events);
+  }, [events]);
 
   const engine = useCalendarEngine(events, viewMode, currentDate);
 

@@ -117,6 +117,50 @@ function buildNoteFromBody(input: { title?: string; body: string }) {
   };
 }
 
+// Convert natural language date (e.g., "tuesday", "next monday") to ISO date
+function parseNaturalDate(naturalDate: string): string {
+  const today = new Date();
+  const lower = naturalDate.toLowerCase().trim();
+  
+  // Handle "today"
+  if (lower === "today") {
+    return today.toISOString().slice(0, 10);
+  }
+  
+  // Handle "tomorrow"
+  if (lower === "tomorrow") {
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+  }
+  
+  // Handle day names (monday, tuesday, etc.)
+  const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const targetDay = dayNames.findIndex(day => lower.includes(day));
+  
+  if (targetDay !== -1) {
+    const currentDay = today.getDay();
+    let daysToAdd = targetDay - currentDay;
+    
+    // If the day has passed this week, go to next week
+    if (daysToAdd <= 0) {
+      daysToAdd += 7;
+    }
+    
+    // Handle "next [day]" explicitly - always go to next week
+    if (lower.startsWith("next ")) {
+      if (daysToAdd < 7) daysToAdd += 7;
+    }
+    
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + daysToAdd);
+    return targetDate.toISOString().slice(0, 10);
+  }
+  
+  // Fallback to today if we can't parse
+  return today.toISOString().slice(0, 10);
+}
+
 // Convert 12-hour time (e.g., "2pm", "10am") to 24-hour format (e.g., "14:00", "10:00")
 function convertTo24Hour(time12: string): string {
   const match = time12.match(/(\d+)(?::(\d+))?\s*(am|pm)/i);
@@ -451,21 +495,21 @@ export function QuickAssistantProvider({
             }
             case 'event': {
               const eventTitle = intent.extracted.title || trimmed;
-              // For MVP, use today's date if date parsing would be complex
-              // The natural language date goes in notes so user can see it
-              const eventDate = new Date().toISOString().slice(0, 10);
-              const notes = intent.extracted.date 
-                ? `${trimmed} (Scheduled for: ${intent.extracted.date})`
-                : trimmed;
+              // Parse natural language date (e.g., "tuesday" → next Tuesday)
+              const eventDate = intent.extracted.date 
+                ? parseNaturalDate(intent.extracted.date)
+                : new Date().toISOString().slice(0, 10);
               
+              console.log('[QuickAssistant] 🗓️ Parsed date:', intent.extracted.date, '→', eventDate);
               console.log('[QuickAssistant] Creating event with extracted data:', intent.extracted);
+              
               emitCreateEvent({
                 title: eventTitle,
                 date: eventDate,
                 start: intent.extracted.startTime,
                 end: intent.extracted.endTime,
                 location: intent.extracted.location,
-                notes: notes,
+                notes: trimmed,
                 original: trimmed,
               });
               return;
