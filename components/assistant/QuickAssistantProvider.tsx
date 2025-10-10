@@ -15,6 +15,8 @@ import { QuickTaskModal } from "../extended/QuickTaskModal";
 import { QuickEventModal } from "../extended/QuickEventModal";
 import { AssistantCaptureDialog, type AssistantSubmitPayload } from "./AssistantCaptureDialog";
 import { useTaskStore } from "../modules/tasks/taskStore";
+import { createMistralProvider } from "./services/mistralProvider";
+import { useProviderSettings } from "../modules/settings/state/providerSettings";
 
 function generateId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -344,6 +346,115 @@ export function QuickAssistantProvider({
         scope: scopeRef.current ?? undefined,
       });
 
+      // Check if user entered a slash command (manual mode)
+      const isSlashCommand = trimmed.startsWith('/');
+      
+      // If not a slash command, try intent classification
+      if (!isSlashCommand) {
+        console.log('[QuickAssistant] No slash command, attempting intent classification');
+        
+        // Check if assistant provider is configured
+        const assistantProvider = useProviderSettings.getState().assistantProvider;
+        
+        if (!assistantProvider) {
+          console.warn('[QuickAssistant] No assistant provider configured, falling back to note');
+          toast.info('Configure an assistant provider in Settings to use AI classification');
+          emitCreateNote({ body: trimmed });
+          return;
+        }
+
+        if (assistantProvider !== 'mistral') {
+          console.warn('[QuickAssistant] Only Mistral provider supported currently');
+          toast.info('Only Mistral provider is currently supported for AI classification');
+          emitCreateNote({ body: trimmed });
+          return;
+        }
+
+        // Attempt intent classification
+        try {
+          console.log('[QuickAssistant] Creating Mistral provider');
+          const provider = createMistralProvider();
+          
+          console.log('[QuickAssistant] Classifying intent:', trimmed);
+          toast.info('Analyzing your input...', { duration: 2000 });
+          const intent = await provider.classifyIntent(trimmed);
+          
+          console.log('[QuickAssistant] Classified intent:', intent);
+          
+          dispatchAssistantEvent("assistant.intent_resolved", {
+            intent: intent.type,
+            confidence: intent.confidence,
+            provider: assistantProvider,
+            scope: scopeRef.current ?? undefined,
+          });
+
+          // Route based on classified intent
+          switch (intent.type) {
+            case 'task': {
+              const title = intent.extracted.title || trimmed;
+              console.log('[QuickAssistant] Creating task with extracted data:', intent.extracted);
+              
+              // handleTaskCreate already shows toast and closes dialog
+              handleTaskCreate({
+                title,
+                description: intent.extracted.notes || title,
+                date: intent.extracted.dueDate, // Pass the extracted due date
+                priority: intent.extracted.priority,
+              });
+              return;
+            }
+            case 'note': {
+              const noteTitle = intent.extracted.title;
+              const noteBody = intent.extracted.body || trimmed;
+              console.log('[QuickAssistant] Creating note with extracted data:', intent.extracted);
+              emitCreateNote({
+                title: noteTitle,
+                body: noteBody,
+                original: trimmed,
+              });
+              return;
+            }
+            case 'event': {
+              const eventTitle = intent.extracted.title || trimmed;
+              // For MVP, use today's date if date parsing would be complex
+              // The natural language date goes in notes so user can see it
+              const eventDate = new Date().toISOString().slice(0, 10);
+              const notes = intent.extracted.date 
+                ? `${trimmed} (Scheduled for: ${intent.extracted.date})`
+                : trimmed;
+              
+              console.log('[QuickAssistant] Creating event with extracted data:', intent.extracted);
+              emitCreateEvent({
+                title: eventTitle,
+                date: eventDate,
+                start: intent.extracted.startTime,
+                end: intent.extracted.endTime,
+                location: intent.extracted.location,
+                notes: notes,
+                original: trimmed,
+              });
+              return;
+            }
+            case 'unknown':
+            default: {
+              console.log('[QuickAssistant] Unknown intent, creating note');
+              toast.info('Could not determine intent, saving as note');
+              emitCreateNote({ body: trimmed });
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('[QuickAssistant] Intent classification failed:', error);
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          toast.error(`Classification failed: ${errorMsg}`);
+          
+          // Fallback to note on error
+          emitCreateNote({ body: trimmed });
+          return;
+        }
+      }
+
+      // Original slash command handling
       const parsed = parseCommand(trimmed);
 
       switch (parsed.kind) {

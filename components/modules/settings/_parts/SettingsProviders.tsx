@@ -161,10 +161,12 @@ function buildViewState(configs: Record<ProviderId, ProviderConfig>): Record<Pro
 
 export function SettingsProviders({ id, filter, registerSection }: SettingsProvidersProps) {
   const { setFieldDirty } = useSettingsState();
-  const { providers, updateProvider } = useProviderSettings(
+  const { providers, updateProvider, assistantProvider, setAssistantProvider } = useProviderSettings(
     useShallow((state) => ({
       providers: state.providers,
       updateProvider: state.updateProvider,
+      assistantProvider: state.assistantProvider,
+      setAssistantProvider: state.setAssistantProvider,
     }))
   );
   const [providerState, setProviderState] = useState<Record<ProviderId, ProviderState>>(() =>
@@ -420,6 +422,42 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           Cloud providers
         </h2>
       </header>
+
+      <SectionCard 
+        title="Assistant Provider" 
+        help="Choose which LLM provider powers the AI assistant for intent classification and writing tools."
+      >
+        <div className="space-y-3 px-4 py-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="assistant-provider-select" className="text-sm font-medium text-[var(--text-primary)]">
+              Provider
+            </Label>
+            <select
+              id="assistant-provider-select"
+              value={assistantProvider ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setAssistantProvider(value === '' ? null : value as ProviderId);
+                toast.success(`Assistant provider ${value === '' ? 'cleared' : `set to ${value}`}`);
+              }}
+              className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+            >
+              <option value="">-- None selected --</option>
+              {PROVIDERS.filter((p) => {
+                const config = providers[p.id];
+                return config && config.apiKey.trim() !== '';
+              }).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-[var(--text-secondary)]">
+              Only providers with configured API keys are shown. Configure providers below to add them.
+            </p>
+          </div>
+        </div>
+      </SectionCard>
 
       <SectionCard title="Providers" help="Select a provider to configure credentials.">
         <div className="divide-y divide-[var(--border-subtle)]">

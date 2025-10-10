@@ -367,6 +367,86 @@ async fn mistral_chat_stream(
 }
 
 #[tauri::command]
+async fn mistral_complete(
+    state: State<'_, ApiState>,
+    api_key: String,
+    base_url: Option<String>,
+    model: Option<String>,
+    messages: Vec<ChatMessageInput>,
+    temperature: Option<f32>,
+    max_tokens: Option<u32>,
+) -> Result<String, String> {
+    if api_key.trim().is_empty() {
+        return Err("Missing Mistral API key".into());
+    }
+
+    if messages.is_empty() {
+        return Err("Messages payload is empty".into());
+    }
+
+    let resolved_base = resolve_base_url(base_url);
+    let url = format!("{}/chat/completions", resolved_base);
+
+    let payload = ChatRequest {
+        model: model.unwrap_or_else(|| "mistral-small-latest".to_string()),
+        messages,
+        temperature,
+        top_p: None,
+        max_tokens,
+        stop: None,
+        random_seed: None,
+        stream: false,
+    };
+
+    let response = state
+        .client
+        .post(&url)
+        .bearer_auth(api_key.trim())
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|err| err.to_string())?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(if body.is_empty() {
+            format!("Mistral responded with status {}", status)
+        } else {
+            format!("{}: {}", status, body)
+        });
+    }
+
+    #[derive(Deserialize)]
+    struct CompletionResponse {
+        choices: Vec<CompletionChoice>,
+    }
+
+    #[derive(Deserialize)]
+    struct CompletionChoice {
+        message: CompletionMessage,
+    }
+
+    #[derive(Deserialize)]
+    struct CompletionMessage {
+        content: String,
+    }
+
+    let completion_response = response
+        .json::<CompletionResponse>()
+        .await
+        .map_err(|err| format!("Failed to parse completion response: {}", err))?;
+
+    let content = completion_response
+        .choices
+        .first()
+        .map(|choice| choice.message.content.trim().to_string())
+        .ok_or_else(|| "No completion in response".to_string())?;
+
+    Ok(content)
+}
+
+#[tauri::command]
 async fn generate_conversation_title(
     state: State<'_, ApiState>,
     api_key: String,
@@ -465,6 +545,7 @@ fn main() {
             test_mistral_credentials,
             fetch_mistral_models,
             mistral_chat_stream,
+            mistral_complete,
             generate_conversation_title
         ])
         .run(tauri::generate_context!())
