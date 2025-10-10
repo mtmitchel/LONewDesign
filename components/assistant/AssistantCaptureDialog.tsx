@@ -14,28 +14,30 @@ export type AssistantCommand = "capture" | "task" | "note" | "event" | "summariz
 
 // Language definitions with T-V distinction support
 type LanguageOption = {
-  code: string;
+  code: string; // ISO 639-1 code for LLMs
+  deeplCode: string; // DeepL API code
   label: string;
   hasTVDistinction: boolean;
+  deeplFormality: boolean; // Whether DeepL supports formality for this language
   formalExample?: string;
   informalExample?: string;
 };
 
 const LANGUAGES: LanguageOption[] = [
-  { code: "es", label: "Spanish", hasTVDistinction: true, formalExample: "usted", informalExample: "tú" },
-  { code: "fr", label: "French", hasTVDistinction: true, formalExample: "vous", informalExample: "tu" },
-  { code: "de", label: "German", hasTVDistinction: true, formalExample: "Sie", informalExample: "du" },
-  { code: "it", label: "Italian", hasTVDistinction: true, formalExample: "Lei", informalExample: "tu" },
-  { code: "pt", label: "Portuguese", hasTVDistinction: true, formalExample: "você", informalExample: "tu" },
-  { code: "ru", label: "Russian", hasTVDistinction: true, formalExample: "вы", informalExample: "ты" },
-  { code: "pl", label: "Polish", hasTVDistinction: true, formalExample: "pan/pani", informalExample: "ty" },
-  { code: "nl", label: "Dutch", hasTVDistinction: true, formalExample: "u", informalExample: "je" },
-  { code: "ja", label: "Japanese", hasTVDistinction: true, formalExample: "keigo", informalExample: "casual" },
-  { code: "ko", label: "Korean", hasTVDistinction: true, formalExample: "formal", informalExample: "informal" },
-  { code: "en", label: "English", hasTVDistinction: false },
-  { code: "zh", label: "Chinese (Simplified)", hasTVDistinction: false },
-  { code: "ar", label: "Arabic", hasTVDistinction: true, formalExample: "formal", informalExample: "informal" },
-  { code: "hi", label: "Hindi", hasTVDistinction: true, formalExample: "aap", informalExample: "tum/tu" },
+  { code: "es", deeplCode: "ES", label: "Spanish", hasTVDistinction: true, deeplFormality: true, formalExample: "usted", informalExample: "tú" },
+  { code: "fr", deeplCode: "FR", label: "French", hasTVDistinction: true, deeplFormality: true, formalExample: "vous", informalExample: "tu" },
+  { code: "de", deeplCode: "DE", label: "German", hasTVDistinction: true, deeplFormality: true, formalExample: "Sie", informalExample: "du" },
+  { code: "it", deeplCode: "IT", label: "Italian", hasTVDistinction: true, deeplFormality: true, formalExample: "Lei", informalExample: "tu" },
+  { code: "pt", deeplCode: "PT-PT", label: "Portuguese (Portugal)", hasTVDistinction: true, deeplFormality: true, formalExample: "você", informalExample: "tu" },
+  { code: "pt-br", deeplCode: "PT-BR", label: "Portuguese (Brazil)", hasTVDistinction: true, deeplFormality: true, formalExample: "você", informalExample: "tu" },
+  { code: "ru", deeplCode: "RU", label: "Russian", hasTVDistinction: true, deeplFormality: true, formalExample: "вы", informalExample: "ты" },
+  { code: "pl", deeplCode: "PL", label: "Polish", hasTVDistinction: true, deeplFormality: true, formalExample: "pan/pani", informalExample: "ty" },
+  { code: "nl", deeplCode: "NL", label: "Dutch", hasTVDistinction: true, deeplFormality: true, formalExample: "u", informalExample: "je" },
+  { code: "ja", deeplCode: "JA", label: "Japanese", hasTVDistinction: true, deeplFormality: true, formalExample: "keigo", informalExample: "casual" },
+  { code: "ko", deeplCode: "KO", label: "Korean", hasTVDistinction: true, deeplFormality: false, formalExample: "formal", informalExample: "informal" },
+  { code: "en", deeplCode: "EN-US", label: "English", hasTVDistinction: false, deeplFormality: false },
+  { code: "zh", deeplCode: "ZH", label: "Chinese (Simplified)", hasTVDistinction: false, deeplFormality: false },
+  { code: "ar", deeplCode: "AR", label: "Arabic", hasTVDistinction: true, deeplFormality: false, formalExample: "formal", informalExample: "informal" },
 ];
 
 export type AssistantSubmitPayload = {
@@ -177,6 +179,7 @@ export function AssistantCaptureDialog({
   const [showTranslateConfig, setShowTranslateConfig] = React.useState(false);
   const [targetLanguage, setTargetLanguage] = React.useState("es"); // Default: Spanish
   const [formality, setFormality] = React.useState<"formal" | "informal" | "neutral">("neutral");
+  const [translationProvider, setTranslationProvider] = React.useState<"deepl" | "mistral">("deepl");
 
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
   const prevCommandRef = React.useRef<AssistantCommand | null>(null);
@@ -485,6 +488,38 @@ export function AssistantCaptureDialog({
     setToolResult("");
     
     try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const providerSettings = useProviderSettings.getState();
+
+      // Special handling for translate tool with DeepL
+      if (tool === 'translate' && translationProvider === 'deepl') {
+        const deeplConfig = providerSettings.providers.deepl;
+        
+        if (!deeplConfig.apiKey) {
+          setToolResult("DeepL API key not configured. Please add it in Settings or use Mistral.");
+          return;
+        }
+
+        const selectedLang = LANGUAGES.find(l => l.code === targetLanguage);
+        if (!selectedLang) {
+          setToolResult("Invalid target language selected.");
+          return;
+        }
+
+        // Call DeepL API
+        const result = await invoke<string>('deepl_translate', {
+          apiKey: deeplConfig.apiKey.trim(),
+          baseUrl: deeplConfig.baseUrl?.trim() || 'https://api-free.deepl.com',
+          text: selectedText,
+          targetLang: selectedLang.deeplCode,
+          sourceLang: null, // Auto-detect
+          formality: selectedLang.deeplFormality && formality !== 'neutral' ? formality : null,
+        });
+
+        setToolResult(result);
+        return;
+      }
+
       // Build translation prompt with selected language and formality
       const buildTranslatePrompt = () => {
         const selectedLang = LANGUAGES.find(l => l.code === targetLanguage);
@@ -518,9 +553,7 @@ export function AssistantCaptureDialog({
         extract: `Extract the key points from the following text as a numbered list. Return ONLY the list:\n\n${selectedText}`,
       };
       
-      // Use mistral_complete via invoke
-      const { invoke } = await import('@tauri-apps/api/core');
-      const providerSettings = useProviderSettings.getState();
+      // Use Mistral for all other tools (including Mistral-based translation)
       const mistralConfig = providerSettings.providers.mistral;
       
       if (!mistralConfig.apiKey) {
@@ -547,7 +580,7 @@ export function AssistantCaptureDialog({
     } finally {
       setIsToolRunning(false);
     }
-  }, [selectedText]);
+  }, [selectedText, translationProvider, targetLanguage, formality]);
 
   const suggestionRailVisible = contentIsEmpty && !showCommands;
   const describedBy = error ? "assistant-hint assistant-error" : "assistant-hint";
@@ -612,6 +645,25 @@ export function AssistantCaptureDialog({
               // Translation configuration
               <div className="px-[var(--space-6)] py-[var(--space-4)]">
                 <div className="space-y-4">
+                  <div>
+                    <label className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)] mb-2 block">
+                      Translation Provider
+                    </label>
+                    <select
+                      value={translationProvider}
+                      onChange={(e) => setTranslationProvider(e.target.value as "deepl" | "mistral")}
+                      className="w-full px-3 py-2 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] text-[color:var(--text-primary)] text-[length:var(--text-sm)]"
+                    >
+                      <option value="deepl">DeepL (High quality, native formality)</option>
+                      <option value="mistral">Mistral (AI-based)</option>
+                    </select>
+                    {translationProvider === "deepl" && !useProviderSettings.getState().providers.deepl.apiKey && (
+                      <p className="text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] mt-1">
+                        ⚠️ DeepL API key not configured. Add it in Settings or use Mistral.
+                      </p>
+                    )}
+                  </div>
+
                   <div>
                     <label className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)] mb-2 block">
                       Target Language

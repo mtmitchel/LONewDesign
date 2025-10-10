@@ -89,6 +89,12 @@ const PROVIDERS: ProviderMeta[] = [
     hint: 'Google’s Gemini models via the Generative Language API.',
     base: 'https://generativelanguage.googleapis.com/v1beta',
   },
+  {
+    id: 'deepl',
+    label: 'DeepL',
+    hint: 'Professional translation API with native formality support. Use https://api-free.deepl.com for Free plan.',
+    base: 'https://api-free.deepl.com',
+  },
 ];
 
 

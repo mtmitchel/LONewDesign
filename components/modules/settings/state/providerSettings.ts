@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-export type ProviderId = 'openai' | 'anthropic' | 'openrouter' | 'deepseek' | 'mistral' | 'gemini';
+export type ProviderId = 'openai' | 'anthropic' | 'openrouter' | 'deepseek' | 'mistral' | 'gemini' | 'deepl';
 
 export interface ProviderConfig {
   apiKey: string;
@@ -18,6 +18,7 @@ const DEFAULT_PROVIDERS: Record<ProviderId, ProviderConfig> = {
   deepseek: { apiKey: '', baseUrl: '', defaultModel: 'deepseek-chat', availableModels: [], enabledModels: [] },
   mistral: { apiKey: '', baseUrl: '', defaultModel: 'mistral-small-latest', availableModels: [], enabledModels: [] },
   gemini: { apiKey: '', baseUrl: '', defaultModel: 'gemini-1.5-flash', availableModels: [], enabledModels: [] },
+  deepl: { apiKey: '', baseUrl: 'https://api-free.deepl.com', defaultModel: '', availableModels: [], enabledModels: [] },
 };
 
 type ProviderSettingsState = {
