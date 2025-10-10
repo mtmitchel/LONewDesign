@@ -51,6 +51,60 @@ function filterCommands(value: string): CommandDefinition[] {
   return COMMANDS.filter((cmd) => cmd.label.slice(1).startsWith(search));
 }
 
+// Fast local intent detection using keywords (for instant feedback)
+function predictIntentLocally(text: string): "task" | "note" | "event" | null {
+  const lower = text.toLowerCase().trim();
+  
+  if (lower.length < 5) return null;
+  
+  // Event patterns (highest priority - most specific)
+  const eventKeywords = [
+    'appointment', 'meeting', 'lunch with', 'dinner with', 'coffee with',
+    'call with', 'session', 'conference', 'interview', 'visit', 'class'
+  ];
+  const hasEventKeyword = eventKeywords.some(kw => lower.includes(kw));
+  const hasTime = /\d{1,2}(:\d{2})?\s*(am|pm|AM|PM)/.test(text) || /at \d/.test(lower);
+  
+  if (hasEventKeyword || hasTime) {
+    return "event";
+  }
+  
+  // Task patterns (action-oriented)
+  const taskKeywords = [
+    'remind me', 'need to', 'have to', 'should', 'todo', 'must',
+    'don\'t forget', 'remember to'
+  ];
+  const taskVerbs = [
+    'buy', 'call', 'email', 'write', 'create', 'submit', 'review',
+    'draft', 'edit', 'follow up', 'complete', 'deliver', 'finish',
+    'clean', 'fix', 'update', 'prepare', 'schedule', 'book', 'order', 'send'
+  ];
+  
+  const hasTaskKeyword = taskKeywords.some(kw => lower.includes(kw));
+  const startsWithTaskVerb = taskVerbs.some(verb => {
+    const pattern = new RegExp(`^${verb}\\s`, 'i');
+    return pattern.test(lower);
+  });
+  
+  if (hasTaskKeyword || startsWithTaskVerb) {
+    return "task";
+  }
+  
+  // Note patterns (informational)
+  const noteKeywords = [
+    'note that', 'note to self', 'remember that', 'keep in mind',
+    'fyi', 'noted', 'mentioned', 'said that'
+  ];
+  const hasNoteKeyword = noteKeywords.some(kw => lower.includes(kw));
+  
+  if (hasNoteKeyword) {
+    return "note";
+  }
+  
+  // Default: unknown
+  return null;
+}
+
 export interface AssistantCaptureDialogProps {
   open: boolean;
   initialValue?: string;
@@ -180,7 +234,7 @@ export function AssistantCaptureDialog({
     }
   }, [command, onCommandSelect, open]);
 
-  // Debounced intent prediction for natural language input
+  // Hybrid intent prediction: instant local + refined AI classification
   const providerSettings = useProviderSettings();
   
   React.useEffect(() => {
@@ -196,13 +250,17 @@ export function AssistantCaptureDialog({
       return;
     }
     
-    // Only predict if we have at least 5 characters (avoid premature classification)
+    // Only predict if we have at least 5 characters
     if (trimmed.length < 5) {
       setPredictedIntent(null);
       return;
     }
     
-    // Debounce prediction by 500ms
+    // INSTANT: Use local pattern matching for immediate feedback
+    const localIntent = predictIntentLocally(trimmed);
+    setPredictedIntent(localIntent);
+    
+    // REFINED: Debounce AI classification by 300ms to refine the prediction
     predictionTimeoutRef.current = setTimeout(async () => {
       try {
         setPredicting(true);
@@ -227,23 +285,25 @@ export function AssistantCaptureDialog({
           return;
         }
         
-        // Create Mistral provider and classify
+        // Create Mistral provider and classify (refines local prediction)
         const mistralProvider = createMistralProvider();
         const intent = await mistralProvider.classifyIntent(trimmed);
         
-        // Only update if intent is task/note/event (ignore unknown)
+        // Update prediction if AI classification is confident
+        // AI result overrides local prediction for accuracy
         if (intent.type === "task" || intent.type === "note" || intent.type === "event") {
           setPredictedIntent(intent.type);
         } else {
-          setPredictedIntent(null);
+          // If AI says unknown, keep local prediction if it exists
+          // (local pattern matching might be right)
         }
       } catch (err) {
         console.warn("[AssistantDialog] Intent prediction failed:", err);
-        setPredictedIntent(null);
+        // Keep local prediction on API error
       } finally {
         setPredicting(false);
       }
-    }, 500);
+    }, 300);
     
     // Cleanup on unmount or text change
     return () => {
