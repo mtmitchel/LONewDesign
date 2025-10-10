@@ -1,29 +1,28 @@
 "use client";
 
 import React from 'react';
-import { FileText, CheckSquare, Clock, Edit, FolderOpen, StickyNote, Code, ArrowRight } from 'lucide-react';
+import { CheckSquare, StickyNote, Calendar, Mail, MessageSquare, Palette, ArrowRight } from 'lucide-react';
 import { ScrollArea } from '../../ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { cn } from '../../ui/utils';
 
 const iconMap = {
-  FileText,
   CheckSquare,
-  Clock,
-  Edit,
-  FolderOpen,
   StickyNote,
-  Code,
+  Calendar,
+  Mail,
+  MessageSquare,
+  Palette,
   ArrowRight
 };
 
 export interface ProjectActivity {
   id: string;
-  type: 'note' | 'task' | 'document' | 'code' | 'phase' | 'spec';
+  type: 'task' | 'note' | 'calendar' | 'canvas' | 'chat' | 'email';
   title: string;
   description: string;
   timestamp: string;
-  status?: 'in-progress' | 'draft' | 'active';
+  status?: 'in-progress' | 'draft' | 'upcoming' | 'unread';
   icon: keyof typeof iconMap;
   color?: string;
 }
@@ -40,8 +39,8 @@ const mockProjectActivities: ProjectActivity[] = [
     id: '1',
     type: 'task',
     title: 'Implement data export',
-    description: 'Working on CSV export functionality',
-    timestamp: '30 min ago',
+    description: 'CSV export functionality',
+    timestamp: '15 min ago',
     status: 'in-progress',
     icon: 'CheckSquare',
     color: 'var(--primary)'
@@ -50,58 +49,61 @@ const mockProjectActivities: ProjectActivity[] = [
     id: '2',
     type: 'note',
     title: 'API integration notes',
-    description: 'Draft notes on REST endpoint structure',
-    timestamp: '2 hours ago',
+    description: 'REST endpoint structure planning',
+    timestamp: '1 hour ago',
     status: 'draft',
     icon: 'StickyNote'
   },
   {
     id: '3',
-    type: 'code',
-    title: 'ProjectTimelineWidget.tsx',
-    description: 'Last edited: Gantt chart implementation',
-    timestamp: '3 hours ago',
-    icon: 'Code'
+    type: 'canvas',
+    title: 'Architecture diagram',
+    description: 'System components overview',
+    timestamp: '2 hours ago',
+    icon: 'Palette'
   },
   {
     id: '4',
-    type: 'document',
-    title: 'Project requirements',
-    description: 'MVP feature list and timeline',
-    timestamp: '5 hours ago',
-    icon: 'FileText'
+    type: 'calendar',
+    title: 'Project review meeting',
+    description: 'Tomorrow at 2:00 PM',
+    timestamp: '3 hours ago',
+    status: 'upcoming',
+    icon: 'Calendar',
+    color: 'var(--warning)'
   },
   {
     id: '5',
-    type: 'phase',
-    title: 'Implementation phase',
-    description: '3 tasks remaining',
+    type: 'email',
+    title: 'Re: Budget approval',
+    description: 'From: sarah@company.com',
     timestamp: 'Yesterday',
-    status: 'active',
-    icon: 'FolderOpen',
-    color: 'var(--primary)'
+    status: 'unread',
+    icon: 'Mail',
+    color: 'var(--success)'
   },
   {
     id: '6',
-    type: 'spec',
-    title: 'Dashboard redesign spec',
-    description: 'Component architecture planning',
+    type: 'chat',
+    title: 'Design feedback thread',
+    description: '3 new messages',
     timestamp: 'Yesterday',
-    icon: 'Edit'
+    status: 'unread',
+    icon: 'MessageSquare'
   },
   {
     id: '7',
     type: 'task',
-    title: 'Review PR feedback',
-    description: 'Address code review comments',
+    title: 'Review pull request',
+    description: 'Timeline widget changes',
     timestamp: '2 days ago',
     icon: 'CheckSquare'
   },
   {
     id: '8',
     type: 'note',
-    title: 'Meeting notes',
-    description: 'Q4 planning discussion points',
+    title: 'Project requirements',
+    description: 'MVP feature list',
     timestamp: '3 days ago',
     icon: 'StickyNote'
   }
@@ -132,7 +134,7 @@ export function ProjectActivityWidget({
         <ScrollArea className="h-[300px] pr-[var(--space-3)]">
           <div className="space-y-[var(--space-1)]">
             {displayActivities.map((activity) => {
-              const Icon = iconMap[activity.icon] || FileText;
+              const Icon = iconMap[activity.icon] || StickyNote;
               const iconColor = activity.color || 'var(--text-secondary)';
               
               return (
@@ -160,12 +162,13 @@ export function ProjectActivityWidget({
                         </p>
                         {activity.status && (
                           <span className={cn(
-                            "text-xs px-[var(--space-1)] py-[1px] rounded-[var(--radius-sm)]",
+                            "text-xs px-[var(--space-1)] py-[1px] rounded-[var(--radius-sm)] flex-shrink-0",
                             activity.status === 'in-progress' && "bg-[var(--primary-tint-10)] text-[color:var(--primary)]",
                             activity.status === 'draft' && "bg-[var(--warning-tint-10)] text-[color:var(--warning)]",
-                            activity.status === 'active' && "bg-[var(--success-tint-10)] text-[color:var(--success)]"
+                            activity.status === 'upcoming' && "bg-[var(--info-tint-10)] text-[color:var(--info)]",
+                            activity.status === 'unread' && "bg-[var(--success-tint-10)] text-[color:var(--success)]"
                           )}>
-                            {activity.status}
+                            {activity.status === 'unread' && activity.type === 'email' ? 'new' : activity.status}
                           </span>
                         )}
                       </div>
