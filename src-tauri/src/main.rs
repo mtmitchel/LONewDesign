@@ -511,23 +511,34 @@ async fn generate_conversation_title(
     let resolved_base = resolve_base_url(base_url);
     let url = format!("{}/chat/completions", resolved_base);
 
-    // Create a system message to guide title generation
+    // Create a system message to guide title generation - kept SHORT for speed
     let mut title_messages = vec![
         ChatMessageInput {
             role: "system".to_string(),
-            content: "Generate a concise 3-5 word title that summarizes this conversation. Use sentence case (capitalize only the first word and proper nouns). Respond with ONLY the title, no quotes, no punctuation at the end.".to_string(),
+            content: "Generate a 3-5 word title. Sentence case. Title only.".to_string(),
         }
     ];
     
-    // Add the conversation messages
-    title_messages.extend(messages);
+    // Add ONLY the first user message and a truncated assistant response for speed
+    if let Some(first_user_msg) = messages.iter().find(|m| m.role == "user") {
+        title_messages.push(ChatMessageInput {
+            role: "user".to_string(),
+            content: first_user_msg.content.chars().take(200).collect(),
+        });
+    }
+    if let Some(first_asst_msg) = messages.iter().find(|m| m.role == "assistant") {
+        title_messages.push(ChatMessageInput {
+            role: "assistant".to_string(),
+            content: first_asst_msg.content.chars().take(200).collect(),
+        });
+    }
 
     let payload = ChatRequest {
         model: model.unwrap_or_else(|| "mistral-small-latest".to_string()),
         messages: title_messages,
-        temperature: Some(0.7),
+        temperature: Some(0.3), // Lower temperature for faster, more deterministic titles
         top_p: None,
-        max_tokens: Some(20),
+        max_tokens: Some(10), // Reduced for faster generation (3-5 words)
         stop: None,
         random_seed: None,
         stream: false,
