@@ -21,34 +21,28 @@ export class OpenAIProvider implements LLMProvider {
   }
 
   /**
-   * Call OpenAI-compatible completion API (non-streaming)
+   * Call OpenAI-compatible completion API (non-streaming) via Tauri backend
    */
   private async complete(messages: Array<{ role: string; content: string }>, temperature = 0.1, maxTokens = 500): Promise<string> {
     try {
-      // Use the openai_chat_stream command but we'll just take the first response
-      // For now, call via fetch since we need non-streaming
-      const response = await fetch(`${this.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages,
-          temperature,
-          max_tokens: maxTokens,
-          stream: false,
-        }),
+      console.log(`[OpenAIProvider] Calling openai_complete:`, {
+        provider: this.providerId,
+        model: this.model,
+        baseUrl: this.baseUrl,
+        messageCount: messages.length,
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
+      const response = await invoke<string>('openai_complete', {
+        apiKey: this.apiKey,
+        baseUrl: this.baseUrl,
+        model: this.model,
+        messages,
+        temperature,
+        maxTokens,
+      });
 
-      const data = await response.json();
-      return data.choices[0]?.message?.content || '';
+      console.log(`[OpenAIProvider] Response received:`, response.substring(0, 100));
+      return response;
     } catch (error) {
       console.error(`[OpenAIProvider] Completion error:`, error);
       throw error;

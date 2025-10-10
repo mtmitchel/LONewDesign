@@ -825,6 +825,62 @@ async fn openai_chat_stream(
     Ok(())
 }
 
+#[tauri::command]
+async fn openai_complete(
+    state: State<'_, ApiState>,
+    api_key: String,
+    base_url: Option<String>,
+    model: String,
+    messages: Vec<ChatMessageInput>,
+    temperature: Option<f32>,
+    max_tokens: Option<u32>,
+) -> Result<String, String> {
+    if api_key.trim().is_empty() {
+        return Err("Missing API key".into());
+    }
+
+    let url = format!(
+        "{}/chat/completions",
+        base_url.as_deref().unwrap_or("https://api.openai.com/v1").trim_end_matches('/')
+    );
+
+    let payload = serde_json::json!({
+        "model": model,
+        "messages": messages,
+        "temperature": temperature.unwrap_or(0.3),
+        "max_tokens": max_tokens.unwrap_or(2000),
+        "stream": false,
+    });
+
+    let response = state
+        .client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", api_key.trim()))
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_else(|_| "unknown".into());
+        return Err(format!("HTTP {}: {}", status, body));
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    let content = json["choices"][0]["message"]["content"]
+        .as_str()
+        .ok_or("No content in response")?
+        .to_string();
+
+    Ok(content)
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -839,7 +895,8 @@ fn main() {
             mistral_complete,
             generate_conversation_title,
             deepl_translate,
-            openai_chat_stream
+            openai_chat_stream,
+            openai_complete
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

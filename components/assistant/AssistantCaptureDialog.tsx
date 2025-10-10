@@ -481,11 +481,25 @@ export function AssistantCaptureDialog({
   }, [targetLanguage, formality, selectedText]);
 
   const executeWritingTool = React.useCallback(async (tool: WritingTool) => {
-    if (!selectedText) return;
+    console.log('[WritingTool] executeWritingTool called:', {
+      tool,
+      hasSelectedText: !!selectedText,
+      selectedTextLength: selectedText?.length || 0,
+      translationProvider,
+      targetLanguage,
+      formality,
+    });
+
+    if (!selectedText) {
+      console.warn('[WritingTool] No selected text, aborting');
+      return;
+    }
     
     setActiveTool(tool);
     setIsToolRunning(true);
     setToolResult("");
+    
+    console.log('[WritingTool] Starting execution via provider...');
     
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -554,13 +568,21 @@ export function AssistantCaptureDialog({
       };
       
       // Use configured assistant provider for writing tools
+      console.log('[WritingTool] Using provider-based execution');
       try {
         const provider = createProviderFromSettings();
+        console.log('[WritingTool] Provider created successfully');
+        
         // Convert 'neutral' to undefined for the provider API
         const formalityParam = formality === 'neutral' ? undefined : formality;
+        console.log('[WritingTool] Calling provider.runWritingTool...');
+        
         const result = await provider.runWritingTool(tool, selectedText, targetLanguage, formalityParam);
+        console.log('[WritingTool] Provider returned result:', result.text.substring(0, 100));
+        
         setToolResult(result.text);
       } catch (providerError) {
+        console.error('[WritingTool] Provider error:', providerError);
         throw new Error(`Provider error: ${providerError instanceof Error ? providerError.message : String(providerError)}`);
       }
       
