@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Sparkles, RefreshCw, Loader, AlertCircle } from 'lucide-react';
+import { X, Sparkles, RefreshCw, Loader, AlertCircle, Calendar } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../../ui/dialog';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Textarea } from '../../ui/textarea';
 import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
+import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
+import { Calendar as CalendarComponent } from '../../ui/calendar';
+import { format } from 'date-fns';
 import { cn } from '../../ui/utils';
 
 interface ProjectPhase {
@@ -216,11 +219,29 @@ export function CreateProjectModal({
                 <Label htmlFor="dueDate">
                   Due date <span className="text-[color:var(--text-secondary)]">(optional)</span>
                 </Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  onChange={(e) => setProjectData({ ...projectData, dueDate: new Date(e.target.value) })}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="dueDate"
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !projectData.dueDate && "text-[color:var(--text-tertiary)]"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {projectData.dueDate ? format(projectData.dueDate, 'PPP') : 'Select date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={projectData.dueDate}
+                      onSelect={(date) => setProjectData({ ...projectData, dueDate: date })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {error && (
