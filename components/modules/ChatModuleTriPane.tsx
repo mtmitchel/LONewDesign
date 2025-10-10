@@ -17,14 +17,21 @@ import {
 } from "../ui/select";
 import { Button } from "../ui/button";
 import { openQuickAssistant } from "../assistant";
-
-const MODEL_OPTIONS = [
-  { value: "gpt-4", label: "GPT-4" },
-  { value: "gpt-3.5", label: "GPT-3.5" },
-  { value: "claude", label: "Claude" },
-];
+import { useProviderSettings } from "./settings/state/providerSettings";
+import { toast } from "sonner";
 
 const CENTER_MIN_VAR = '--tripane-center-min';
+
+function isMistralModel(model: string): boolean {
+  return model.startsWith('mistral-');
+}
+
+interface StreamEvent {
+  event: 'delta' | 'error' | 'done';
+  content?: string;
+  finish_reason?: string;
+  error?: string;
+}
 
 function usePaneVisibilityPersistence(key: string, initial: { left: boolean; right: boolean }) {
   const [state, setState] = React.useState(() => {
@@ -41,9 +48,31 @@ function usePaneVisibilityPersistence(key: string, initial: { left: boolean; rig
 }
 
 export function ChatModuleTriPane() {
+  const { providers } = useProviderSettings();
+  
+  // Build model options dynamically from enabled models
+  const MODEL_OPTIONS = React.useMemo(() => {
+    const options: Array<{ value: string; label: string; provider?: string }> = [
+      { value: "gpt-4", label: "GPT-4", provider: "openai" },
+      { value: "gpt-3.5", label: "GPT-3.5", provider: "openai" },
+      { value: "claude", label: "Claude", provider: "anthropic" },
+    ];
+    
+    // Add enabled Mistral models
+    providers.mistral.enabledModels.forEach(modelId => {
+      options.push({
+        value: modelId,
+        label: modelId.replace('mistral-', 'Mistral ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        provider: "mistral",
+      });
+    });
+    
+    return options;
+  }, [providers.mistral.enabledModels]);
+  
   const [{ left: leftPaneVisible, right: rightPaneVisible }, setVisibility] = usePaneVisibilityPersistence(
     'chat:prefs:v1',
-    { left: true, right: true }
+    { left: true, right: false }
   );
 
   const setLeftPaneVisible = (v: boolean) => setVisibility(prev => ({ ...prev, left: v }));
@@ -187,18 +216,18 @@ export function ChatModuleTriPane() {
     console.debug('chat:conversation:open', { id, via: 'pointer' });
   };
 
-  const onSend = (text: string) => {
+  const onSend = async (text: string) => {
     if (!activeConversationId) return;
     const now = new Date().toISOString();
-    const id = `m-${Date.now()}`;
-    const message: ChatMessage = {
-      id,
+    const userMessageId = `m-${Date.now()}`;
+    const userMessage: ChatMessage = {
+      id: userMessageId,
       conversationId: activeConversationId,
       author: 'user',
       text,
       timestamp: now,
     };
-    setMessages(prev => [...prev, message]);
+    setMessages(prev => [...prev, userMessage]);
 
     setConversations(prev =>
       prev.map(conversation =>
@@ -214,6 +243,80 @@ export function ChatModuleTriPane() {
     );
 
     console.debug('chat:message:send', { conversation: activeConversationId, length: text.length });
+    
+    // Handle Mistral streaming if a Mistral model is selected
+    if (isMistralModel(selectedModel)) {
+      const mistralConfig = providers.mistral;
+      
+      if (!mistralConfig.apiKey.trim()) {
+        toast.error('Please configure your Mistral API key in Settings');
+        return;
+      }
+      
+      // Create placeholder assistant message
+      const assistantMessageId = `m-${Date.now() + 1}`;
+      const assistantMessage: ChatMessage = {
+        id: assistantMessageId,
+        conversationId: activeConversationId,
+        author: 'assistant',
+        text: '',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      
+      try {
+        const { invoke, listen } = await Promise.all([
+          import('@tauri-apps/api/core').then(m => ({ invoke: m.invoke })),
+          import('@tauri-apps/api/event').then(m => ({ listen: m.listen })),
+        ]).then(([core, event]) => ({ ...core, ...event }));
+        
+        const eventName = `mistral-stream-${assistantMessageId}`;
+        let accumulatedText = '';
+        
+        // Set up event listener
+        const unlisten = await listen<StreamEvent>(eventName, (event) => {
+          const payload = event.payload;
+          
+          if (payload.event === 'delta' && payload.content) {
+            accumulatedText += payload.content;
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.id === assistantMessageId
+                  ? { ...msg, text: accumulatedText }
+                  : msg
+              )
+            );
+          } else if (payload.event === 'done') {
+            console.debug('Mistral stream completed');
+            unlisten();
+          } else if (payload.event === 'error') {
+            console.error('Mistral stream error:', payload.error);
+            toast.error(payload.error ?? 'Streaming failed');
+            unlisten();
+          }
+        });
+        
+        // Get conversation history for this conversation
+        const conversationMessages = messages.filter(m => m.conversationId === activeConversationId);
+        const apiMessages = [...conversationMessages, userMessage].map(m => ({
+          role: m.author === 'user' ? 'user' : 'assistant',
+          content: m.text,
+        }));
+        
+        // Invoke streaming
+        await invoke('mistral_chat_stream', {
+          windowLabel: 'main',
+          eventName: eventName,
+          apiKey: mistralConfig.apiKey.trim(),
+          baseUrl: mistralConfig.baseUrl.trim() || null,
+          model: selectedModel,
+          messages: apiMessages,
+        });
+      } catch (error) {
+        console.error('Failed to start Mistral stream:', error);
+        toast.error('Failed to connect to Mistral AI');
+      }
+    }
   };
 
   const onAttachFiles = (files: FileList) => {

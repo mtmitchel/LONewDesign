@@ -5,6 +5,15 @@ import path from 'node:path';
 // https://tauri.app/v1/guides/getting-started/setup/vite/#vite-configuration
 export default defineConfig(() => ({
   plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './tests/setup.ts',
+    coverage: {
+      provider: 'v8' as const,
+      reporter: ['text', 'json', 'html'],
+    },
+  },
   resolve: {
     alias: {
       '@/features/canvas': path.resolve(__dirname, 'components/modules/Canvas/runtime/features'),

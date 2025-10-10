@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '../../../ui/sheet';
 import { Badge } from '../../../ui/badge';
 import { Button } from '../../../ui/button';
@@ -19,6 +20,12 @@ import { SectionCard } from './SectionCard';
 import { useSettingsState } from './SettingsState';
 import { reportSettingsEvent } from './analytics';
 import { toast } from 'sonner';
+import {
+  ProviderConfig,
+  ProviderId,
+  useProviderSettings,
+} from '../state/providerSettings';
+import { getModelMetadata, getTierLabel, getTierBadgeClass, sortModelsByTier } from '../state/mistralModelMetadata';
 
 interface SettingsProvidersProps {
   id: string;
@@ -26,7 +33,6 @@ interface SettingsProvidersProps {
   registerSection: (node: HTMLElement | null) => void;
 }
 
-type ProviderId = 'openai' | 'anthropic' | 'openrouter' | 'deepseek' | 'mistral' | 'gemini';
 type ProviderStatus = 'ok' | 'warn' | 'empty';
 
 interface ProviderMeta {
@@ -43,6 +49,8 @@ interface ProviderState {
   lastTested?: string | null;
   testing: boolean;
 }
+
+type ProviderBaseline = Record<ProviderId, { apiKey: string; baseUrl: string }>;
 
 const PROVIDERS: ProviderMeta[] = [
   {
@@ -83,19 +91,6 @@ const PROVIDERS: ProviderMeta[] = [
   },
 ];
 
-const INITIAL_STATE: Record<ProviderId, ProviderState> = PROVIDERS.reduce(
-  (acc, provider) => {
-    acc[provider.id] = {
-      apiKey: '',
-      baseUrl: '',
-      status: provider.id === 'openai' ? 'ok' : provider.id === 'mistral' ? 'warn' : 'empty',
-      lastTested: provider.id === 'openai' ? new Date().toLocaleString() : null,
-      testing: false,
-    };
-    return acc;
-  },
-  {} as Record<ProviderId, ProviderState>,
-);
 
 const STATUS_LABEL: Record<ProviderStatus, string> = {
   ok: 'Connected',
@@ -115,9 +110,67 @@ const STATUS_HELPER: Record<ProviderStatus, string> = {
   empty: 'Add an API key to enable this provider.',
 };
 
+type MistralTestResult = {
+  ok: boolean;
+  message?: string | null;
+};
+
+function isTauriContext(): boolean {
+  if (typeof window === 'undefined') return false;
+  const candidate = window as unknown as {
+    __TAURI_INTERNALS__?: unknown;
+    isTauri?: unknown;
+    __TAURI__?: unknown;
+  };
+  return Boolean(candidate.__TAURI_INTERNALS__ ?? candidate.isTauri ?? candidate.__TAURI__);
+}
+
+function deriveStatus(providerId: ProviderId, apiKey: string): ProviderStatus {
+  if (!apiKey.trim()) {
+    return providerId === 'mistral' ? 'warn' : 'empty';
+  }
+  return 'ok';
+}
+
+function buildBaseline(configs: Record<ProviderId, ProviderConfig>): ProviderBaseline {
+  return PROVIDERS.reduce((acc, provider) => {
+    const config = configs[provider.id];
+    acc[provider.id] = {
+      apiKey: config?.apiKey ?? '',
+      baseUrl: config?.baseUrl ?? '',
+    };
+    return acc;
+  }, {} as ProviderBaseline);
+}
+
+function buildViewState(configs: Record<ProviderId, ProviderConfig>): Record<ProviderId, ProviderState> {
+  return PROVIDERS.reduce((acc, provider) => {
+    const config = configs[provider.id];
+    const apiKey = config?.apiKey ?? '';
+    const baseUrl = config?.baseUrl ?? '';
+    acc[provider.id] = {
+      apiKey,
+      baseUrl,
+      status: deriveStatus(provider.id, apiKey),
+      lastTested: null,
+      testing: false,
+    };
+    return acc;
+  }, {} as Record<ProviderId, ProviderState>);
+}
+
 export function SettingsProviders({ id, filter, registerSection }: SettingsProvidersProps) {
   const { setFieldDirty } = useSettingsState();
-  const [providerState, setProviderState] = useState<Record<ProviderId, ProviderState>>(INITIAL_STATE);
+  const { providers, updateProvider } = useProviderSettings(
+    useShallow((state) => ({
+      providers: state.providers,
+      updateProvider: state.updateProvider,
+    }))
+  );
+  const [providerState, setProviderState] = useState<Record<ProviderId, ProviderState>>(() =>
+    buildViewState(providers),
+  );
+  const [baseline, setBaseline] = useState<ProviderBaseline>(() => buildBaseline(providers));
   const [editing, setEditing] = useState<ProviderId | null>(null);
   const [revealKey, setRevealKey] = useState(false);
 
@@ -125,6 +178,25 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     () => filter('providers cloud api keys base url vault status sheet edit'),
     [filter],
   );
+
+  useEffect(() => {
+    setProviderState((prev) => {
+      const mapped = buildViewState(providers);
+      PROVIDERS.forEach((provider) => {
+        if (prev[provider.id]) {
+          mapped[provider.id] = {
+            apiKey: mapped[provider.id].apiKey,
+            baseUrl: mapped[provider.id].baseUrl,
+            status: deriveStatus(provider.id, mapped[provider.id].apiKey),
+            lastTested: prev[provider.id].lastTested,
+            testing: false,
+          };
+        }
+      });
+      return mapped;
+    });
+    setBaseline(buildBaseline(providers));
+  }, [providers]);
 
   useEffect(() => {
     if (!editing) return;
@@ -169,49 +241,136 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       },
     }));
 
-    const initialValue = INITIAL_STATE[providerId][field];
-    setFieldDirty(`providers.${providerId}.${field}`, value.trim() !== initialValue);
+    const baseValue = baseline[providerId]?.[field] ?? '';
+    setFieldDirty(`providers.${providerId}.${field}`, value.trim() !== baseValue.trim());
   };
 
   const handleTest = async (providerId: ProviderId) => {
+    const provider = PROVIDERS.find((item) => item.id === providerId);
+    const current = providerState[providerId];
+
     setProviderState((prev) => ({
       ...prev,
-      [providerId]: { ...prev[providerId], testing: true },
+      [providerId]: {
+        ...prev[providerId],
+        testing: true,
+      },
     }));
 
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    let success = false;
-
-    setProviderState((prev) => {
-      success = prev[providerId].apiKey.trim().length > 4;
-      const status: ProviderStatus = success ? 'ok' : 'warn';
-      return {
+    if (!current?.apiKey.trim()) {
+      setProviderState((prev) => ({
         ...prev,
         [providerId]: {
           ...prev[providerId],
-          status,
+          status: 'warn',
           lastTested: new Date().toLocaleString(),
           testing: false,
         },
-      };
-    });
+      }));
+      toast.error('Add an API key before testing');
+      return;
+    }
+
+    const baseUrl = current.baseUrl.trim() || provider?.base || '';
+    let success = false;
+    let message: string | null = null;
+
+    try {
+      if (providerId === 'mistral' && isTauriContext()) {
+        console.log('[TEST] Testing Mistral credentials...');
+        const { invoke } = await import('@tauri-apps/api/core');
+        console.log('[TEST] Calling test_mistral_credentials');
+        const result = (await invoke('test_mistral_credentials', {
+          apiKey: current.apiKey.trim(),
+          baseUrl: baseUrl,
+        })) as MistralTestResult;
+        console.log('[TEST] Result:', result);
+        success = Boolean(result?.ok);
+        message = result?.message ?? null;
+        console.log('[TEST] Success:', success, 'Message:', message);
+      } else {
+        console.log('[TEST] Fallback test (not Tauri or not Mistral)');
+        success = current.apiKey.trim().length > 4;
+      }
+    } catch (error) {
+      console.error('[TEST] Error during test:', error);
+      success = false;
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    const testedAt = new Date().toLocaleString();
+
+    setProviderState((prev) => ({
+      ...prev,
+      [providerId]: {
+        ...prev[providerId],
+        status: success ? 'ok' : 'warn',
+        lastTested: testedAt,
+        testing: false,
+      },
+    }));
 
     reportSettingsEvent('settings.provider_test', {
       id: providerId,
       result: success ? 'success' : 'error',
     });
 
+    console.log('[TEST] Final result - Success:', success, 'Message:', message);
+    
     if (success) {
       toast.success('Connection successful');
+      
+      // Fetch available models for Mistral after successful auth
+      if (providerId === 'mistral') {
+        if (!isTauriContext()) {
+          console.warn('Not in Tauri context - cannot fetch models');
+          toast.error('Model fetching requires Tauri app');
+        } else {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const models = (await invoke('fetch_mistral_models', {
+            apiKey: current.apiKey.trim(),
+            baseUrl: baseUrl,
+          })) as Array<{ id: string }>;
+          
+          const modelIds = models.map(m => m.id);
+          const currentEnabled = providers[providerId].enabledModels;
+          
+          updateProvider(providerId, {
+            availableModels: modelIds,
+            // If no models are enabled yet, enable all by default
+            enabledModels: currentEnabled.length === 0 ? modelIds : currentEnabled,
+          });
+          
+          console.debug('Fetched Mistral models:', modelIds);
+          toast.success(`Found ${modelIds.length} Mistral models`);
+        } catch (error) {
+          console.error('Failed to fetch Mistral models:', error);
+          toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        }
+      }
     } else {
-      toast.error('Couldn’t connect — check your key');
+      toast.error(message ?? 'Couldn’t connect — check your key');
     }
   };
 
   const handleCancel = () => {
     if (editingMeta) {
       reportSettingsEvent('settings.provider_sheet_cancel', { id: editingMeta.id });
+      const snapshot = baseline[editingMeta.id] ?? { apiKey: '', baseUrl: '' };
+      setProviderState((prev) => ({
+        ...prev,
+        [editingMeta.id]: {
+          ...prev[editingMeta.id],
+          apiKey: snapshot.apiKey,
+          baseUrl: snapshot.baseUrl,
+          status: deriveStatus(editingMeta.id, snapshot.apiKey),
+          testing: false,
+        },
+      }));
+      setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
+      setFieldDirty(`providers.${editingMeta.id}.baseUrl`, false);
     }
     handleClose();
   };
@@ -221,8 +380,30 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       handleClose();
       return;
     }
+    const snapshot = providerState[editingMeta.id];
+    updateProvider(editingMeta.id, {
+      apiKey: snapshot.apiKey,
+      baseUrl: snapshot.baseUrl,
+    });
+    setBaseline((prev) => ({
+      ...prev,
+      [editingMeta.id]: {
+        apiKey: snapshot.apiKey,
+        baseUrl: snapshot.baseUrl,
+      },
+    }));
+    setProviderState((prev) => ({
+      ...prev,
+      [editingMeta.id]: {
+        ...prev[editingMeta.id],
+        status: deriveStatus(editingMeta.id, snapshot.apiKey),
+        testing: false,
+      },
+    }));
+    setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
+    setFieldDirty(`providers.${editingMeta.id}.baseUrl`, false);
     reportSettingsEvent('settings.provider_sheet_save', { id: editingMeta.id });
-    toast.success(`${editingMeta.label} updated — remember to save changes.`);
+    toast.success(`${editingMeta.label} updated.`);
     handleClose();
   };
 
@@ -376,6 +557,87 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
                     </Button>
                   </div>
                 </section>
+
+                {editing === 'mistral' && (() => {
+                  console.log('[DEBUG] Mistral models check:', {
+                    editing,
+                    availableModels: providers.mistral.availableModels,
+                    enabledModels: providers.mistral.enabledModels,
+                    shouldShow: providers.mistral.availableModels.length > 0
+                  });
+                  return providers.mistral.availableModels.length > 0;
+                })() && (
+                  <>
+                    <Separator />
+                    <section className="space-y-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Available Models</h3>
+                            <p className="text-sm text-[var(--text-secondary)]">
+                              Select which models appear in your chat dropdown
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const allModels = providers.mistral.availableModels;
+                              const allSelected = allModels.length === providers.mistral.enabledModels.length;
+                              updateProvider('mistral', {
+                                enabledModels: allSelected ? [] : [...allModels],
+                              });
+                            }}
+                            className="text-sm text-[var(--primary)] hover:text-[var(--primary-hover)] font-medium shrink-0"
+                          >
+                            {providers.mistral.availableModels.length === providers.mistral.enabledModels.length
+                              ? 'Deselect All'
+                              : 'Select All'}
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {sortModelsByTier(providers.mistral.availableModels).map((modelId) => {
+                          const isEnabled = providers.mistral.enabledModels.includes(modelId);
+                          const metadata = getModelMetadata(modelId);
+                          const tierLabel = getTierLabel(metadata.tier);
+                          const tierBadgeClass = getTierBadgeClass(metadata.tier);
+                          
+                          return (
+                            <label
+                              key={modelId}
+                              className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3 cursor-pointer hover:bg-[var(--hover-bg)]"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={(e) => {
+                                  const currentEnabled = providers.mistral.enabledModels;
+                                  updateProvider('mistral', {
+                                    enabledModels: e.target.checked
+                                      ? [...currentEnabled, modelId]
+                                      : currentEnabled.filter(id => id !== modelId),
+                                  });
+                                }}
+                                className="h-4 w-4 rounded border-[var(--border-default)] text-[var(--primary)]"
+                              />
+                              <div className="flex-1 flex items-center gap-2">
+                                <span className="text-sm font-mono text-[var(--text-primary)]">{metadata.displayName}</span>
+                                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${tierBadgeClass}`}>
+                                  {tierLabel}
+                                </span>
+                              </div>
+                              {metadata.description && (
+                                <span className="text-xs text-[var(--text-tertiary)] hidden lg:inline">
+                                  {metadata.description}
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  </>
+                )}
 
                 <Separator />
 
