@@ -308,8 +308,13 @@ export function QuickAssistantProvider({
       original?: string;
     }) => {
       const now = new Date().toISOString();
+      const noteId = generateId("note");
+      const folderId = scopeRef.current?.folderId ?? null;
+      const body = payload.body ?? '';
+      const title = (payload.title ?? body.split('\n')[0] ?? 'Quick capture').trim() || 'Quick capture';
+      
       const detail = {
-        id: generateId("note"),
+        id: noteId,
         title: payload.title,
         body: payload.body,
         createdAt: now,
@@ -320,6 +325,43 @@ export function QuickAssistantProvider({
             }
           : undefined,
       };
+      
+      // ALWAYS save to localStorage (even if NotesModule isn't mounted)
+      try {
+        const STORAGE_KEY = 'libreollama:notes:notes';
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const existingNotes = stored ? JSON.parse(stored) : [];
+        
+        const siblingOrder = existingNotes
+          .filter((n: any) => (n.folderId || null) === (folderId || null))
+          .reduce((max: number, n: any) => Math.max(max, n.order ?? 0), -1) + 1;
+        
+        const newNote = {
+          id: noteId,
+          title,
+          content: body,
+          folderId,
+          order: siblingOrder,
+          tags: [],
+          isStarred: false,
+          isPinned: false,
+          lastModified: 'just now',
+          wordCount: body.trim() ? body.trim().split(/\s+/).length : 0,
+          createdAt: now,
+          updatedAt: now,
+          capture: detail.capture,
+        };
+        
+        // Add to beginning of array
+        const updatedNotes = [newNote, ...existingNotes];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedNotes));
+        
+        console.log('[QuickAssistant] 📝 Note saved to localStorage:', noteId);
+      } catch (err) {
+        console.error('[QuickAssistant] Failed to save note to localStorage:', err);
+      }
+      
+      // Still dispatch event for NotesModule to update UI if it's mounted
       window.dispatchEvent(
         new CustomEvent(QUICK_ASSISTANT_EVENTS.createNote, { detail })
       );
