@@ -469,7 +469,7 @@ async fn generate_conversation_title(
     let mut title_messages = vec![
         ChatMessageInput {
             role: "system".to_string(),
-            content: "Generate a concise 3-5 word title that summarizes this conversation. Respond with ONLY the title, no quotes, no punctuation at the end.".to_string(),
+            content: "Generate a concise 3-5 word title that summarizes this conversation. Use sentence case (capitalize only the first word and proper nouns). Respond with ONLY the title, no quotes, no punctuation at the end.".to_string(),
         }
     ];
     
