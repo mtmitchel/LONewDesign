@@ -145,13 +145,13 @@ export function ProjectQuickActionsWidget({
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-2 gap-[var(--space-3)]">
+        <div className="grid grid-cols-3 gap-[var(--space-3)]">
           {actionConfig.map(({ type, icon: Icon, label }) => (
             <Button
               key={type}
               variant="ghost"
               className={cn(
-                "h-auto p-[var(--space-4)] flex flex-col items-center justify-center",
+                "h-auto py-[var(--space-3)] px-[var(--space-2)] flex flex-col items-center justify-center",
                 "hover:bg-[var(--bg-surface-elevated)] transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
               )}
