@@ -10,6 +10,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      position="top-center"
+      expand={false}
+      richColors
+      closeButton
+      // Default duration: 3 seconds for all toast types
+      duration={3000}
+      toastOptions={{
+        // Define default duration for all toasts
+        duration: 3000,
+      }}
       style={
         {
           "--normal-bg": "var(--popover)",
