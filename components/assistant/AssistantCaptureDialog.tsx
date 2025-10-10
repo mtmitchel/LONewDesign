@@ -375,20 +375,16 @@ export function AssistantCaptureDialog({
         // Check if assistant provider is configured
         const assistantProviderId = providerSettings.assistantProvider;
         if (!assistantProviderId) {
-          setPredictedIntent(null);
+          console.log('[AssistantDialog] No assistant provider configured');
+          // Keep local prediction if no AI provider
           return;
         }
         
-        // For now, only support Mistral (Phase 1)
-        if (assistantProviderId !== 'mistral') {
-          setPredictedIntent(null);
-          return;
-        }
-        
-        // Check if Mistral is configured
-        const mistralConfig = providerSettings.providers.mistral;
-        if (!mistralConfig?.apiKey) {
-          setPredictedIntent(null);
+        // Check if the selected provider is configured with API key
+        const providerConfig = providerSettings.providers[assistantProviderId as keyof typeof providerSettings.providers];
+        if (!providerConfig?.apiKey) {
+          console.log('[AssistantDialog] Provider not configured:', assistantProviderId);
+          // Keep local prediction if provider not configured
           return;
         }
         
