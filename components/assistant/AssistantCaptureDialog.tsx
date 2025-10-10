@@ -463,7 +463,11 @@ export function AssistantCaptureDialog({
         apiKey: mistralConfig.apiKey.trim(),
         baseUrl: mistralConfig.baseUrl?.trim() || null,
         model: mistralConfig.defaultModel || 'mistral-small-latest',
-        prompt: prompts[tool],
+        messages: [
+          { role: 'user', content: prompts[tool] }
+        ],
+        temperature: 0.3,
+        maxTokens: 2000,
       });
       
       setToolResult(result);
