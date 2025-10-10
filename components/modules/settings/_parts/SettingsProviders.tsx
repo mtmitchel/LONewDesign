@@ -167,10 +167,11 @@ function buildViewState(configs: Record<ProviderId, ProviderConfig>): Record<Pro
 
 export function SettingsProviders({ id, filter, registerSection }: SettingsProvidersProps) {
   const { setFieldDirty } = useSettingsState();
-  const { providers, updateProvider, assistantProvider, setAssistantProvider } = useProviderSettings(
+  const { providers, updateProvider, resetProvider, assistantProvider, setAssistantProvider } = useProviderSettings(
     useShallow((state) => ({
       providers: state.providers,
       updateProvider: state.updateProvider,
+      resetProvider: state.resetProvider,
       assistantProvider: state.assistantProvider,
       setAssistantProvider: state.setAssistantProvider,
     }))
@@ -412,6 +413,43 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     setFieldDirty(`providers.${editingMeta.id}.baseUrl`, false);
     reportSettingsEvent('settings.provider_sheet_save', { id: editingMeta.id });
     toast.success(`${editingMeta.label} updated.`);
+    handleClose();
+  };
+
+  const handleClear = () => {
+    if (!editingMeta) return;
+    
+    const confirmed = window.confirm(
+      `Clear all settings for ${editingMeta.label}?\n\nThis will remove your API key and reset the base URL. This action cannot be undone.`
+    );
+    
+    if (!confirmed) return;
+
+    resetProvider(editingMeta.id);
+    
+    const providerMeta = PROVIDERS.find((p) => p.id === editingMeta.id);
+    setProviderState((prev) => ({
+      ...prev,
+      [editingMeta.id]: {
+        apiKey: '',
+        baseUrl: providerMeta?.base ?? '',
+        status: 'empty',
+        lastTested: null,
+        testing: false,
+      },
+    }));
+    setBaseline((prev) => ({
+      ...prev,
+      [editingMeta.id]: {
+        apiKey: '',
+        baseUrl: providerMeta?.base ?? '',
+      },
+    }));
+    setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
+    setFieldDirty(`providers.${editingMeta.id}.baseUrl`, false);
+    
+    reportSettingsEvent('settings.provider_clear', { id: editingMeta.id });
+    toast.success(`${editingMeta.label} settings cleared.`);
     handleClose();
   };
 
@@ -714,11 +752,20 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
               </div>
 
               <SheetFooter className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-4">
-                <div className="flex w-full justify-end gap-2">
-                  <Button variant="outline" onClick={handleCancel}>
-                    Cancel
+                <div className="flex w-full justify-between gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleClear}
+                    className="text-[var(--status-error)] hover:bg-[color-mix(in_oklab,var(--status-error)_10%,transparent)] hover:text-[var(--status-error)]"
+                  >
+                    Clear
                   </Button>
-                  <Button onClick={handleSheetSave}>Done</Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" onClick={handleCancel}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSheetSave}>Done</Button>
+                  </div>
                 </div>
               </SheetFooter>
             </div>

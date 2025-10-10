@@ -53,7 +53,7 @@ const tabs = [
 
 export function ProjectsModule() {
   const [leftPaneVisible, setLeftPaneVisible] = React.useState(true);
-  const [rightPaneVisible, setRightPaneVisible] = React.useState(true);
+  const [rightPaneVisible, setRightPaneVisible] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<string>(() => parseProjectRouteFromLocation().tab ?? "overview");
   const [search, setSearch] = React.useState("");
   const [selectedProjectId, setSelectedProjectId] = React.useState(() => parseProjectRouteFromLocation().projectId ?? projects[0]?.id ?? "");

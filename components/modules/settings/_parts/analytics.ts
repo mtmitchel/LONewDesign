@@ -11,6 +11,7 @@ export type SettingsEvent =
   | 'settings.provider_clipboard_unavailable'
   | 'settings.provider_sheet_save'
   | 'settings.provider_sheet_cancel'
+  | 'settings.provider_clear'
   | 'settings.model_pull_started'
   | 'settings.model_pull_completed'
   | 'settings.model_pull_failed'

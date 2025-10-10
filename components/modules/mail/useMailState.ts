@@ -21,7 +21,7 @@ export function useMailState() {
   const [showCompose, setShowCompose] = useState(false);
   const [selectedEmails, setSelectedEmails] = useState<number[]>([]);
   const [leftPaneVisible, setLeftPaneVisible] = useState(true);
-  const [rightPaneVisible, setRightPaneVisible] = useState(true);
+  const [rightPaneVisible, setRightPaneVisible] = useState(false);
   const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   
   // Advanced search filters
