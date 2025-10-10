@@ -2,6 +2,7 @@ import * as React from "react";
 import { Project, ProjectArtifact, ProjectMilestone, getPhasesForProject } from "./data";
 import { ProjectTimelineWidget, ProjectMilestoneTimeline, ProjectPhase as TimelinePhase } from "./ProjectTimelineWidget";
 import { ProjectActivityWidget } from "./ProjectActivityWidget";
+import { ProjectQuickActionsWidget } from "./ProjectQuickActionsWidget";
 
 interface ProjectOverviewProps {
   project: Project;
@@ -45,14 +46,7 @@ export function ProjectOverview({ project, milestones, artifacts, onPhaseNavigat
   const projectStart = React.useMemo(() => timelinePhases[0]?.startDate ?? new Date(project.lastUpdated ?? Date.now()), [timelinePhases, project.lastUpdated]);
   const projectEnd = React.useMemo(() => timelinePhases.at(-1)?.endDate ?? new Date(project.dueDate ?? Date.now()), [timelinePhases, project.dueDate]);
 
-  const recentWorkItems = artifacts.slice(0, 3).map((artifact) => ({
-    title: artifact.title,
-    kind: (artifact.kind === "note" ? "Note" : "Email") as WorkItem["kind"],
-    meta: formatRelativeToNow(artifact.updatedAt),
-    onOpen: () => {
-      /* no-op placeholder */
-    },
-  }));
+
 
   return (
     <div className="px-[var(--space-6)] py-[var(--space-6)]">
@@ -82,7 +76,15 @@ export function ProjectOverview({ project, milestones, artifacts, onPhaseNavigat
             />
           </div>
           <div className="md:col-span-7 order-2">
-            <RecentWorkCard items={recentWorkItems} onViewAll={() => {}} />
+            <ProjectQuickActionsWidget 
+              project={project}
+              onTaskCreate={(id) => console.log('Create task for project:', id)}
+              onNoteCreate={(id) => console.log('Create note for project:', id)}
+              onEventCreate={(id) => console.log('Create event for project:', id)}
+              onCanvasCreate={(id) => console.log('Create canvas for project:', id)}
+              onChatCreate={(id) => console.log('Create chat for project:', id)}
+              onEmailCreate={(id) => console.log('Create email for project:', id)}
+            />
           </div>
           <div className="md:col-span-5 order-3">
             <ProjectActivityWidget 
@@ -119,46 +121,7 @@ export function ProjectOverviewHeaderCompact({
   );
 }
 
-type WorkItem = { title: string; kind: "Note" | "Email"; meta: string; onOpen: () => void };
 
-export function RecentWorkCard({ items, onViewAll }: { items: WorkItem[]; onViewAll: () => void }) {
-  if (!items.length) {
-    return null;
-  }
-
-  return (
-    <section className="card">
-      <div className="card-header">
-        <h2 className="card-title">Recent work</h2>
-      </div>
-      <ul className="card-body space-y-[var(--space-1)]">
-        {items.map((item, index) => (
-          <li
-            key={`${item.title}-${index}`}
-            className="group flex h-[var(--list-row-h)] items-center justify-between rounded-[var(--radius-md)] px-[var(--list-row-pad-x)] hover:bg-[var(--bg-surface-elevated)]"
-          >
-            <div className="min-w-0 flex items-center gap-[var(--list-row-gap)] text-sm">
-              <span className="truncate text-[color:var(--text-primary)]">{item.title}</span>
-              <span className="shrink-0 text-[var(--meta-quiet)]">— {item.kind} • {item.meta}</span>
-            </div>
-            <button
-              type="button"
-              onClick={item.onOpen}
-              className="text-sm underline opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-            >
-              Open
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className="card-footer flex justify-end">
-        <button type="button" onClick={onViewAll} className="text-sm underline">
-          View all
-        </button>
-      </div>
-    </section>
-  );
-}
 
 function describeUpdated(iso?: string) {
   if (!iso) return undefined;
@@ -177,16 +140,4 @@ function formatDate(iso: string) {
   const date = new Date(iso);
   if (Number.isNaN(date.valueOf())) return "TBD";
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function formatRelativeToNow(iso: string) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.valueOf())) return "recently";
-  const diffDays = Math.round((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "yesterday";
-  if (diffDays > 1) return `${diffDays} days ago`;
-  const ahead = Math.abs(diffDays);
-  if (ahead === 1) return "tomorrow";
-  return `in ${ahead} days`;
 }
