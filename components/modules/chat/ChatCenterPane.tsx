@@ -229,7 +229,7 @@ export function ChatCenterPane({
     return (
       <div key={message.id} className={cn('group flex flex-col gap-[var(--space-1)]', alignment)}>
         <div className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}>
-          <div className={bubbleClasses}>{message.text}</div>
+          <div className={cn(bubbleClasses, 'whitespace-pre-wrap')}>{message.text}</div>
         </div>
         <div
           className={cn(

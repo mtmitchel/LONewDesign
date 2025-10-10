@@ -107,36 +107,52 @@ export function parseJSONSafely<T>(
 }
 
 /**
- * Remove markdown formatting from text
+ * Remove markdown formatting from text while preserving paragraph structure
  * Useful for plain text extraction from markdown-formatted responses
  */
 export function stripMarkdown(text: string): string {
   if (!text) return '';
   
-  return text
-    // Remove headers
-    .replace(/^#{1,6}\s+/gm, '')
-    // Remove bold/italic
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
-    .replace(/__([^_]+)__/g, '$1')
-    .replace(/_([^_]+)_/g, '$1')
-    // Remove code blocks
+  // Process line by line to preserve structure
+  const lines = text.split('\n');
+  const processedLines = lines.map(line => {
+    // Skip empty lines to preserve paragraph breaks
+    if (!line.trim()) return '';
+    
+    // Process each line
+    return line
+      // Remove headers but keep the text
+      .replace(/^#{1,6}\s+/g, '')
+      // Remove bold/italic
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      // Remove inline code
+      .replace(/`([^`]+)`/g, '$1')
+      // Remove links but keep text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      // Remove images
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '')
+      // Remove blockquotes
+      .replace(/^>\s+/g, '')
+      // Remove list markers but keep indentation
+      .replace(/^(\s*)[-*+]\s+/g, '$1• ')
+      .replace(/^(\s*)\d+\.\s+/g, '$1')
+      // Trim the line
+      .trim();
+  });
+  
+  // Remove code blocks entirely (multiline)
+  const withoutCodeBlocks = processedLines
+    .join('\n')
     .replace(/```[\s\S]*?```/g, '')
-    .replace(/`([^`]+)`/g, '$1')
-    // Remove links but keep text
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    // Remove images
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '')
-    // Remove blockquotes
-    .replace(/^>\s+/gm, '')
     // Remove horizontal rules
     .replace(/^[\s]*[-*_]{3,}[\s]*$/gm, '')
-    // Remove lists markers
-    .replace(/^[\s]*[-*+]\s+/gm, '')
-    .replace(/^[\s]*\d+\.\s+/gm, '')
-    // Clean up
-    .trim();
+    // Collapse excessive newlines (more than 2)
+    .replace(/\n{3,}/g, '\n\n');
+  
+  return withoutCodeBlocks.trim();
 }
 
 /**
