@@ -192,8 +192,7 @@ export function CreateProjectModal({
         style={{
           position: 'fixed',
           top: '50%',
-          left: '50%',
-          marginLeft: '-20px',
+          left: 'calc(280px + ((100vw - 280px - 320px) / 2))',
           transform: 'translate(-50%, -50%)'
         }}>
         <DialogHeader className="pb-[var(--space-6)] border-b border-[var(--border-subtle)]">
