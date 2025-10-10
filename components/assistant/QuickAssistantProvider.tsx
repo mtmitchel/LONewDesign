@@ -254,6 +254,7 @@ function dispatchAssistantEvent(eventName: string, detail?: Record<string, unkno
 type AssistantModalState = {
   open: boolean;
   initialValue: string;
+  selectedText?: string;
 };
 
 type TaskModalState = {
@@ -298,7 +299,7 @@ export function QuickAssistantProvider({
 
   const resetAssistant = useCallback(() => {
     scopeRef.current = null;
-    setAssistant((prev) => ({ ...prev, open: false, initialValue: "" }));
+    setAssistant((prev) => ({ ...prev, open: false, initialValue: "", selectedText: undefined }));
   }, []);
 
   const emitCreateNote = useCallback(
@@ -432,9 +433,20 @@ export function QuickAssistantProvider({
         }
       }
 
+      // Capture selected text from window
+      let selectedText: string | undefined;
+      if (typeof window !== 'undefined') {
+        const selection = window.getSelection();
+        const selected = selection?.toString().trim();
+        if (selected && selected.length > 0) {
+          selectedText = selected;
+        }
+      }
+
       setAssistant({
         open: true,
         initialValue: initialText,
+        selectedText,
       });
 
       dispatchAssistantEvent("assistant.opened", {
@@ -786,6 +798,7 @@ export function QuickAssistantProvider({
       <AssistantCaptureDialog
         open={assistant.open}
         initialValue={assistant.initialValue}
+        selectedText={assistant.selectedText}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             resetAssistant();
@@ -794,6 +807,16 @@ export function QuickAssistantProvider({
           }
         }}
         onSubmit={handleAssistantSubmit}
+        onReplace={(text) => {
+          // TODO: Implement text replacement in parent
+          console.log('[QuickAssistant] Replace text:', text);
+          toast.success('Replace functionality coming soon!');
+        }}
+        onInsert={(text) => {
+          // TODO: Implement text insertion in parent
+          console.log('[QuickAssistant] Insert text:', text);
+          toast.success('Insert functionality coming soon!');
+        }}
         onCommandSelect={(selected) => {
           dispatchAssistantEvent("assistant.command_selected", {
             command: selected,
