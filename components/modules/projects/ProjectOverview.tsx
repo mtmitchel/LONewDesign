@@ -1,23 +1,48 @@
 import * as React from "react";
-import { Project, ProjectArtifact, ProjectMilestone } from "./data";
+import { Project, ProjectArtifact, ProjectMilestone, getPhasesForProject } from "./data";
+import { ProjectTimelineWidget, ProjectMilestoneTimeline, ProjectPhase as TimelinePhase } from "./ProjectTimelineWidget";
 
 interface ProjectOverviewProps {
   project: Project;
   milestones: ProjectMilestone[];
   artifacts: ProjectArtifact[];
+  onPhaseNavigate?: (phaseId: string) => void;
+  onMilestoneNavigate?: (milestoneId: string) => void;
 }
 
-export function ProjectOverview({ project, milestones, artifacts }: ProjectOverviewProps) {
+export function ProjectOverview({ project, milestones, artifacts, onPhaseNavigate, onMilestoneNavigate }: ProjectOverviewProps) {
   const progressPercent = Math.min(100, Math.max(0, Math.round(project.progress * 100)));
   const dueMeta = project.dueDate ? `Due ${formatDate(project.dueDate)}` : undefined;
   const updatedMeta = describeUpdated(project.lastUpdated);
-  const nextLabel = project.nextStep ?? milestones[0]?.title ?? undefined;
-  const nextDue = describeDue(project.dueDate);
 
-  const milestoneItems = milestones.slice(0, 3).map((milestone) => ({
-    title: milestone.title,
-    date: formatDate(milestone.date),
-  }));
+  const timelinePhases = React.useMemo<TimelinePhase[]>(
+    () =>
+      getPhasesForProject(project.id).map((phase) => ({
+        id: phase.id,
+        name: phase.name,
+        startDate: new Date(phase.startDate),
+        endDate: new Date(phase.endDate),
+        status: phase.status,
+        completionPercentage: phase.completionPercentage,
+        taskCount: phase.taskCount,
+      })),
+    [project.id],
+  );
+
+  const timelineMilestones = React.useMemo<ProjectMilestoneTimeline[]>(
+    () =>
+      milestones.map((milestone) => ({
+        id: milestone.id,
+        title: milestone.title,
+        date: new Date(milestone.date),
+        status: milestone.status === "at-risk" ? "at-risk" : milestone.status,
+        description: milestone.description,
+      })),
+    [milestones],
+  );
+
+  const projectStart = React.useMemo(() => timelinePhases[0]?.startDate ?? new Date(project.lastUpdated ?? Date.now()), [timelinePhases, project.lastUpdated]);
+  const projectEnd = React.useMemo(() => timelinePhases.at(-1)?.endDate ?? new Date(project.dueDate ?? Date.now()), [timelinePhases, project.dueDate]);
 
   const recentWorkItems = artifacts.slice(0, 3).map((artifact) => ({
     title: artifact.title,
@@ -43,13 +68,19 @@ export function ProjectOverview({ project, milestones, artifacts }: ProjectOverv
         ) : null}
 
         <div className="grid gap-[var(--overview-card-gap)] md:grid-cols-12">
-          <div className="md:col-span-7 md:order-none order-1">
-            <ProgressCard percent={progressPercent} nextLabel={nextLabel} nextDue={nextDue} />
+          <div className="md:col-span-12 order-1">
+            <ProjectTimelineWidget
+              projectName={project.name}
+              phases={timelinePhases}
+              milestones={timelineMilestones}
+              startDate={projectStart}
+              endDate={projectEnd}
+              currentProgress={progressPercent}
+              onPhaseSelect={onPhaseNavigate}
+              onMilestoneSelect={onMilestoneNavigate}
+            />
           </div>
-          <div className="md:col-span-5 md:order-none order-2">
-            <MilestonesCard items={milestoneItems} />
-          </div>
-          <div className="md:col-span-12 order-3">
+          <div className="md:col-span-12 order-2">
             <RecentWorkCard items={recentWorkItems} onViewAll={() => {}} />
           </div>
         </div>
@@ -78,74 +109,6 @@ export function ProjectOverviewHeaderCompact({
         ) : null}
       </div>
     </header>
-  );
-}
-
-export function ProgressCard({
-  percent,
-  nextLabel,
-  nextDue,
-}: {
-  percent: number;
-  nextLabel?: string;
-  nextDue?: string;
-}) {
-  return (
-    <section className="card">
-      <div className="card-header">
-        <h2 className="card-title">Progress</h2>
-      </div>
-      <div className="card-body">
-        <div className="grid gap-[var(--space-2)]">
-          <div
-            className="h-[var(--progress-h)] overflow-hidden rounded-[var(--radius-sm)] bg-[var(--border-divider)]"
-            role="progressbar"
-            aria-label="Completion"
-            aria-valuenow={percent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            <span className="block h-full bg-[var(--primary)]" style={{ width: `${percent}%` }} />
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-[color:var(--text-secondary)]">{percent}%</span>
-            {nextLabel ? (
-              <span className="truncate text-[var(--meta-quiet)]">
-                Next up: <span className="text-[color:var(--text-primary)]">{nextLabel}</span>
-                {nextDue ? ` • ${nextDue}` : ""}
-              </span>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-type MilestoneItem = { title: string; date: string };
-
-export function MilestonesCard({ items }: { items: MilestoneItem[] }) {
-  if (!items.length) {
-    return null;
-  }
-
-  return (
-    <section className="card">
-      <div className="card-header">
-        <h2 className="card-title">Milestones</h2>
-      </div>
-      <ul className="card-body space-y-[var(--space-1)]">
-        {items.map((item, index) => (
-          <li
-            key={`${item.title}-${index}`}
-            className="flex h-[var(--list-row-h)] items-center justify-between rounded-[var(--radius-md)] px-[var(--list-row-pad-x)] hover:bg-[var(--bg-surface-elevated)]"
-          >
-            <span className="truncate text-[color:var(--text-primary)]">{item.title}</span>
-            <time className="ml-[var(--space-3)] shrink-0 text-sm text-[var(--meta-quiet)]">{item.date}</time>
-          </li>
-        ))}
-      </ul>
-    </section>
   );
 }
 
@@ -201,19 +164,6 @@ function describeUpdated(iso?: string) {
   const ahead = Math.abs(diffDays);
   if (ahead === 1) return "Updates tomorrow";
   return `Updates in ${ahead} days`;
-}
-
-function describeDue(iso?: string) {
-  if (!iso) return undefined;
-  const date = new Date(iso);
-  if (Number.isNaN(date.valueOf())) return undefined;
-  const diffDays = Math.round((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return "Due today";
-  if (diffDays === 1) return "Due tomorrow";
-  if (diffDays > 1) return `Due in ${diffDays} days`;
-  const overdue = Math.abs(diffDays);
-  if (overdue === 1) return "Past due by 1 day";
-  return `Past due by ${overdue} days`;
 }
 
 function formatDate(iso: string) {

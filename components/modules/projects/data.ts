@@ -14,12 +14,24 @@ export type Project = {
   pinned?: boolean;
 };
 
+export type ProjectPhase = {
+  id: string;
+  projectId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: "completed" | "current" | "upcoming";
+  completionPercentage: number;
+  taskCount?: number;
+};
+
 export type ProjectMilestone = {
   id: string;
   projectId: string;
   title: string;
   date: string;
-  status: "upcoming" | "at-risk";
+  status: "completed" | "upcoming" | "at-risk";
+  description?: string;
 };
 
 export type ProjectArtifact = {
@@ -92,6 +104,99 @@ export const projects: Project[] = [
     focusArea: "Enablement",
     lastUpdated: "2025-10-07T18:30:00Z",
     nextStep: "Draft rollout announcement",
+  },
+];
+
+export const phases: ProjectPhase[] = [
+  {
+    id: "phase-uui-discover",
+    projectId: "proj-unified-ui",
+    name: "Discovery & framing",
+    startDate: "2025-08-12",
+    endDate: "2025-09-05",
+    status: "completed",
+    completionPercentage: 100,
+    taskCount: 18,
+  },
+  {
+    id: "phase-uui-build",
+    projectId: "proj-unified-ui",
+    name: "Systems integration",
+    startDate: "2025-09-06",
+    endDate: "2025-10-20",
+    status: "current",
+    completionPercentage: 65,
+    taskCount: 26,
+  },
+  {
+    id: "phase-uui-polish",
+    projectId: "proj-unified-ui",
+    name: "Polish & launch prep",
+    startDate: "2025-10-21",
+    endDate: "2025-11-10",
+    status: "upcoming",
+    completionPercentage: 10,
+    taskCount: 14,
+  },
+  {
+    id: "phase-can-plan",
+    projectId: "proj-canvas-ai",
+    name: "Scope & modeling",
+    startDate: "2025-08-25",
+    endDate: "2025-09-18",
+    status: "completed",
+    completionPercentage: 100,
+    taskCount: 16,
+  },
+  {
+    id: "phase-can-compose",
+    projectId: "proj-canvas-ai",
+    name: "Prompt orchestration",
+    startDate: "2025-09-19",
+    endDate: "2025-10-22",
+    status: "current",
+    completionPercentage: 48,
+    taskCount: 22,
+  },
+  {
+    id: "phase-can-qa",
+    projectId: "proj-canvas-ai",
+    name: "QA & enablement",
+    startDate: "2025-10-23",
+    endDate: "2025-11-12",
+    status: "upcoming",
+    completionPercentage: 5,
+    taskCount: 11,
+  },
+  {
+    id: "phase-ops-plan",
+    projectId: "proj-ops-enablement",
+    name: "Rollout planning",
+    startDate: "2025-08-15",
+    endDate: "2025-09-10",
+    status: "completed",
+    completionPercentage: 100,
+    taskCount: 12,
+  },
+  {
+    id: "phase-ops-build",
+    projectId: "proj-ops-enablement",
+    name: "Automation build",
+    startDate: "2025-09-11",
+    endDate: "2025-10-24",
+    status: "current",
+    completionPercentage: 72,
+    taskCount: 19,
+  },
+  {
+    id: "phase-ops-launch",
+    projectId: "proj-ops-enablement",
+    name: "Launch & adoption",
+    startDate: "2025-10-25",
+    endDate: "2025-12-10",
+    status: "upcoming",
+    completionPercentage: 15,
+    taskCount: 15,
   },
 ];
 
@@ -267,6 +372,12 @@ export function getMilestonesForProject(projectId: string): ProjectMilestone[] {
     .filter((milestone) => milestone.projectId === projectId)
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 3);
+}
+
+export function getPhasesForProject(projectId: string): ProjectPhase[] {
+  return phases
+    .filter((phase) => phase.projectId === projectId)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
 }
 
 export function getArtifactsForProject(projectId: string): ProjectArtifact[] {

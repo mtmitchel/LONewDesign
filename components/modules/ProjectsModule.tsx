@@ -211,6 +211,24 @@ export function ProjectsModule() {
     });
   }, [selectedProject]);
 
+  const handlePhaseNavigate = React.useCallback(
+    (phaseId: string) => {
+      if (!selectedProject) return;
+      emitProjectEvent("project.timeline.phase_select", { projectId: selectedProject.id, phaseId });
+      setActiveTab("tasks");
+      setTasksModuleScope(selectedProject.id);
+    },
+    [selectedProject],
+  );
+
+  const handleMilestoneNavigate = React.useCallback(
+    (milestoneId: string) => {
+      if (!selectedProject) return;
+      emitProjectEvent("project.timeline.milestone_select", { projectId: selectedProject.id, milestoneId });
+    },
+    [selectedProject],
+  );
+
   React.useEffect(() => {
     setIsAddingProjectList(false);
     setNewProjectListName("");
@@ -461,6 +479,8 @@ export function ProjectsModule() {
                       project={selectedProject}
                       milestones={overviewData.milestones}
                       artifacts={overviewData.artifacts}
+                      onPhaseNavigate={handlePhaseNavigate}
+                      onMilestoneNavigate={handleMilestoneNavigate}
                     />
                   ) : activeTab === "tasks" ? (
                     <TasksBoard
