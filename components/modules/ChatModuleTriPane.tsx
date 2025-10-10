@@ -23,7 +23,19 @@ import { toast } from "sonner";
 const CENTER_MIN_VAR = '--tripane-center-min';
 
 function isMistralModel(model: string): boolean {
-  return model.startsWith('mistral-');
+  if (!model) return false;
+  
+  // Check for all Mistral model prefixes
+  return model.startsWith('mistral-') || 
+         model.startsWith('open-mistral-') || 
+         model.startsWith('mixtral-') ||
+         model.startsWith('open-mixtral-') ||
+         model.startsWith('codestral-') ||
+         model.startsWith('devstral-') ||
+         model.startsWith('pixtral-') ||
+         model.startsWith('voxtral-') ||
+         model.startsWith('magistral-') ||
+         model.startsWith('ministral-');
 }
 
 interface StreamEvent {
@@ -52,11 +64,7 @@ export function ChatModuleTriPane() {
   
   // Build model options dynamically from enabled models
   const MODEL_OPTIONS = React.useMemo(() => {
-    const options: Array<{ value: string; label: string; provider?: string }> = [
-      { value: "gpt-4", label: "GPT-4", provider: "openai" },
-      { value: "gpt-3.5", label: "GPT-3.5", provider: "openai" },
-      { value: "claude", label: "Claude", provider: "anthropic" },
-    ];
+    const options: Array<{ value: string; label: string; provider?: string }> = [];
     
     // Add enabled Mistral models
     providers.mistral.enabledModels.forEach(modelId => {
@@ -127,7 +135,9 @@ export function ChatModuleTriPane() {
 
 // Sample handlers passed to panes
   const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = React.useState<string>('gpt-4');
+  const [selectedModel, setSelectedModel] = React.useState<string>(() => {
+    return providers.mistral.enabledModels[0] || '';
+  });
   const selectedModelLabel = React.useMemo(() => {
     const match = MODEL_OPTIONS.find(option => option.value === selectedModel);
     return match ? match.label : selectedModel;
@@ -242,7 +252,7 @@ export function ChatModuleTriPane() {
       )
     );
 
-    console.debug('chat:message:send', { conversation: activeConversationId, length: text.length });
+    console.debug('chat:message:send', { conversation: activeConversationId, length: text.length, model: selectedModel });
     
     // Handle Mistral streaming if a Mistral model is selected
     if (isMistralModel(selectedModel)) {
@@ -313,8 +323,11 @@ export function ChatModuleTriPane() {
           messages: apiMessages,
         });
       } catch (error) {
-        console.error('Failed to start Mistral stream:', error);
-        toast.error('Failed to connect to Mistral AI');
+        console.error('[MISTRAL] Failed to start stream:', error);
+        toast.error(`Failed to connect to Mistral AI: ${error}`);
+        
+        // Remove the empty assistant message on error
+        setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
       }
     }
   };
