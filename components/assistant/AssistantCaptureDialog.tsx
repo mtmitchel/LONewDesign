@@ -169,6 +169,22 @@ export function AssistantCaptureDialog({
   const [predictedIntent, setPredictedIntent] = React.useState<"task" | "note" | "event" | null>(null);
   const [predicting, setPredicting] = React.useState(false);
   
+  // Store selected text in state so it persists when dialog opens
+  const [storedSelectedText, setStoredSelectedText] = React.useState<string | undefined>(() => {
+    console.log('[AssistantCaptureDialog] Initial selectedText:', selectedText?.substring(0, 100) || 'undefined');
+    return selectedText;
+  });
+  
+  // Update stored selected text when prop changes
+  React.useEffect(() => {
+    console.log('[AssistantCaptureDialog] useEffect - selectedText prop:', selectedText?.substring(0, 100) || 'undefined');
+    console.log('[AssistantCaptureDialog] useEffect - current storedSelectedText:', storedSelectedText?.substring(0, 100) || 'undefined');
+    if (selectedText !== storedSelectedText) {
+      console.log('[AssistantCaptureDialog] Updating storedSelectedText');
+      setStoredSelectedText(selectedText);
+    }
+  }, [selectedText, storedSelectedText]);
+  
   // Writing tools state
   const [showWritingTools, setShowWritingTools] = React.useState(false);
   const [activeTool, setActiveTool] = React.useState<WritingTool | null>(null);
@@ -266,7 +282,7 @@ export function AssistantCaptureDialog({
     setError(null);
     
     // Show writing tools if text is selected
-    if (selectedText && selectedText.trim().length > 0) {
+    if (storedSelectedText && storedSelectedText.trim().length > 0) {
       setShowWritingTools(true);
       setToolResult("");
       setActiveTool(null);
@@ -278,7 +294,7 @@ export function AssistantCaptureDialog({
       textareaRef.current?.focus();
       autoResize();
     });
-  }, [open, initialValue, selectedText, autoResize]);
+  }, [open, initialValue, storedSelectedText, autoResize]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -464,33 +480,18 @@ export function AssistantCaptureDialog({
     }
   }, [onError, onSubmit, text]);
 
-  const handleToolSelect = React.useCallback((tool: WritingTool) => {
-    // Special case: Show config dialog for translate
-    if (tool === 'translate') {
-      setShowTranslateConfig(true);
-      return;
-    }
-    
-    // Execute other tools immediately
-    executeWritingTool(tool);
-  }, []);
-
-  const executeTranslation = React.useCallback(async () => {
-    setShowTranslateConfig(false);
-    executeWritingTool('translate');
-  }, [targetLanguage, formality, selectedText]);
-
+  // Define executeWritingTool first since other callbacks depend on it
   const executeWritingTool = React.useCallback(async (tool: WritingTool) => {
     console.log('[WritingTool] executeWritingTool called:', {
       tool,
-      hasSelectedText: !!selectedText,
-      selectedTextLength: selectedText?.length || 0,
+      hasSelectedText: !!storedSelectedText,
+      selectedTextLength: storedSelectedText?.length || 0,
       translationProvider,
       targetLanguage,
       formality,
     });
 
-    if (!selectedText) {
+    if (!storedSelectedText) {
       console.warn('[WritingTool] No selected text, aborting');
       return;
     }
@@ -524,7 +525,7 @@ export function AssistantCaptureDialog({
         const result = await invoke<string>('deepl_translate', {
           apiKey: deeplConfig.apiKey.trim(),
           baseUrl: deeplConfig.baseUrl?.trim() || 'https://api-free.deepl.com',
-          text: selectedText,
+          text: storedSelectedText,
           targetLang: selectedLang.deeplCode,
           sourceLang: null, // Auto-detect
           formality: selectedLang.deeplFormality && formality !== 'neutral' ? formality : null,
@@ -550,21 +551,21 @@ export function AssistantCaptureDialog({
           }
         }
         
-        return `Translate the following text to ${langName}. ${formalityInstruction} Return ONLY the translation, no explanations:\n\n${selectedText}`;
+        return `Translate the following text to ${langName}. ${formalityInstruction} Return ONLY the translation, no explanations:\n\n${storedSelectedText}`;
       };
 
       // Build prompt based on tool
       const prompts: Record<WritingTool, string> = {
-        professional: `Rewrite the following text in a more professional and formal tone. Return ONLY the rewritten text, no explanations:\n\n${selectedText}`,
-        friendly: `Rewrite the following text in a more friendly and casual tone. Return ONLY the rewritten text, no explanations:\n\n${selectedText}`,
-        concise: `Make the following text more concise while preserving all key information. Return ONLY the concise version, no explanations:\n\n${selectedText}`,
-        expand: `Expand and elaborate on the following text with more detail and context. Return ONLY the expanded text:\n\n${selectedText}`,
-        proofread: `Proofread and fix any grammar, spelling, or punctuation errors. Return ONLY the corrected text, no explanations:\n\n${selectedText}`,
-        summarize: `Summarize the following text in 2-3 sentences. Return ONLY the summary:\n\n${selectedText}`,
+        professional: `Rewrite the following text in a more professional and formal tone. Return ONLY the rewritten text, no explanations:\n\n${storedSelectedText}`,
+        friendly: `Rewrite the following text in a more friendly and casual tone. Return ONLY the rewritten text, no explanations:\n\n${storedSelectedText}`,
+        concise: `Make the following text more concise while preserving all key information. Return ONLY the concise version, no explanations:\n\n${storedSelectedText}`,
+        expand: `Expand and elaborate on the following text with more detail and context. Return ONLY the expanded text:\n\n${storedSelectedText}`,
+        proofread: `Proofread and fix any grammar, spelling, or punctuation errors. Return ONLY the corrected text, no explanations:\n\n${storedSelectedText}`,
+        summarize: `Summarize the following text in 2-3 sentences. Return ONLY the summary:\n\n${storedSelectedText}`,
         translate: buildTranslatePrompt(),
-        explain: `Explain the following concept in simple, clear terms that anyone can understand. Return ONLY the explanation:\n\n${selectedText}`,
-        list: `Convert the following text into a well-formatted bullet point list. Return ONLY the list:\n\n${selectedText}`,
-        extract: `Extract the key points from the following text as a numbered list. Return ONLY the list:\n\n${selectedText}`,
+        explain: `Explain the following concept in simple, clear terms that anyone can understand. Return ONLY the explanation:\n\n${storedSelectedText}`,
+        list: `Convert the following text into a well-formatted bullet point list. Return ONLY the list:\n\n${storedSelectedText}`,
+        extract: `Extract the key points from the following text as a numbered list. Return ONLY the list:\n\n${storedSelectedText}`,
       };
       
       // Use configured assistant provider for writing tools
@@ -577,7 +578,7 @@ export function AssistantCaptureDialog({
         const formalityParam = formality === 'neutral' ? undefined : formality;
         console.log('[WritingTool] Calling provider.runWritingTool...');
         
-        const result = await provider.runWritingTool(tool, selectedText, targetLanguage, formalityParam);
+        const result = await provider.runWritingTool(tool, storedSelectedText, targetLanguage, formalityParam);
         console.log('[WritingTool] Provider returned result:', result.text.substring(0, 100));
         
         setToolResult(result.text);
@@ -592,7 +593,26 @@ export function AssistantCaptureDialog({
     } finally {
       setIsToolRunning(false);
     }
-  }, [selectedText, translationProvider, targetLanguage, formality]);
+  }, [storedSelectedText, translationProvider, targetLanguage, formality]);
+
+  const handleToolSelect = React.useCallback((tool: WritingTool) => {
+    console.log('[handleToolSelect] Tool selected:', tool);
+    console.log('[handleToolSelect] storedSelectedText:', storedSelectedText?.substring(0, 100) || 'undefined');
+    
+    // Special case: Show config dialog for translate
+    if (tool === 'translate') {
+      setShowTranslateConfig(true);
+      return;
+    }
+    
+    // Execute other tools immediately
+    executeWritingTool(tool);
+  }, [executeWritingTool, storedSelectedText]);
+
+  const executeTranslation = React.useCallback(async () => {
+    setShowTranslateConfig(false);
+    executeWritingTool('translate');
+  }, [executeWritingTool]);
 
   const suggestionRailVisible = contentIsEmpty && !showCommands;
   const describedBy = error ? "assistant-hint assistant-error" : "assistant-hint";
@@ -625,13 +645,13 @@ export function AssistantCaptureDialog({
         </header>
 
         {/* Writing Tools Mode */}
-        {showWritingTools && selectedText && (
+        {showWritingTools && storedSelectedText && (
           <div className="flex flex-col">
             {/* Show selected text */}
             <div className="px-[var(--space-6)] pt-[var(--space-4)] pb-[var(--space-2)]">
               <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-[var(--space-4)] py-[var(--space-3)]">
                 <p className="text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] mb-2">Selected text:</p>
-                <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] line-clamp-3">{selectedText}</p>
+                <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)] line-clamp-3">{storedSelectedText}</p>
               </div>
             </div>
             
