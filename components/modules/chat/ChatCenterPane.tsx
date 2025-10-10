@@ -3,6 +3,7 @@ import { ArrowDown, Braces, Copy, Paperclip, Pencil, RefreshCw, Send } from 'luc
 import { Button } from '../../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import { cn } from '../../ui/utils';
+import { toast } from 'sonner';
 import type { ChatMessage } from './types';
 
 interface ChatCenterPaneProps {
@@ -88,7 +89,12 @@ export function ChatCenterPane({
   }, [onSend, resetTextareaHeight, scrollToLatest, text]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    if (event.key === 'Enter') {
+      if (event.ctrlKey || event.metaKey) {
+        // Ctrl/Cmd+Enter: insert line break (default behavior)
+        return;
+      }
+      // Plain Enter: send message
       event.preventDefault();
       handleSend();
     }
@@ -128,9 +134,11 @@ export function ChatCenterPane({
         document.body.removeChild(textarea);
       }
       setLiveAnnouncement('Message copied to clipboard');
+      toast.success('Message copied!');
     } catch (error) {
       console.error('chat:message:copy:error', error);
       setLiveAnnouncement('Copy failed');
+      toast.error('Failed to copy message');
     }
   }, []);
 
@@ -351,7 +359,7 @@ export function ChatCenterPane({
                 <Send className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="top">Send (⌘/Ctrl+Enter) • New line (Shift+Enter)</TooltipContent>
+            <TooltipContent side="top">Send (Enter) • New line (Ctrl+Enter)</TooltipContent>
           </Tooltip>
         </div>
         <input
