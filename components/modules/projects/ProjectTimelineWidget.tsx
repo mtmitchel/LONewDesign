@@ -1,4 +1,5 @@
 import * as React from "react";
+import { differenceInDays, format, startOfMonth, addMonths, isAfter, isBefore } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { cn } from "../../ui/utils";
@@ -74,22 +75,28 @@ export function ProjectTimelineWidget({
   const normalized = React.useMemo(() => normalizeTimelineBounds({ phases, milestones, startDate, endDate }), [phases, milestones, startDate, endDate]);
 
   const computedPhases = React.useMemo<ComputedPhase[]>(
-    () =>
-      phases.map((phase) => {
-        const start = new Date(phase.startDate).getTime();
-        const endMs = new Date(phase.endDate).getTime();
-        const { rangeStart, rangeDuration } = normalized;
-        const phaseStart = Math.max(start, rangeStart);
-        const phaseEnd = Math.max(endMs, phaseStart + 1);
-        const startPercentage = ((phaseStart - rangeStart) / rangeDuration) * 100;
-        const widthPercentage = ((phaseEnd - phaseStart) / rangeDuration) * 100;
+    () => {
+      const projectStart = new Date(normalized.rangeStart);
+      const projectEnd = new Date(normalized.rangeStart + normalized.rangeDuration);
+      const totalDays = differenceInDays(projectEnd, projectStart);
+
+      return phases.map((phase) => {
+        const phaseStartDate = new Date(phase.startDate);
+        const phaseEndDate = new Date(phase.endDate);
+        const daysFromStart = differenceInDays(phaseStartDate, projectStart);
+        const phaseDuration = differenceInDays(phaseEndDate, phaseStartDate);
+        
+        const startPercentage = (daysFromStart / totalDays) * 100;
+        const widthPercentage = (phaseDuration / totalDays) * 100;
+        
         return {
           ...phase,
           startPercentage: clamp(startPercentage, 0, 100),
           widthPercentage: clamp(widthPercentage, 1, 100),
           isCurrent: phase.status === "current",
         };
-      }),
+      });
+    },
     [normalized, phases],
   );
 
@@ -107,6 +114,43 @@ export function ProjectTimelineWidget({
   );
 
   const clampedProgress = clamp(currentProgress, 0, 100);
+
+  const timeMarkers = React.useMemo(() => {
+    const projectStart = new Date(normalized.rangeStart);
+    const projectEnd = new Date(normalized.rangeStart + normalized.rangeDuration);
+    const markers: Array<{ date: Date; label: string; position: number }> = [];
+    
+    let currentMarker = startOfMonth(projectStart);
+    const totalDays = differenceInDays(projectEnd, projectStart);
+    
+    while (isBefore(currentMarker, projectEnd) || currentMarker.getTime() === projectEnd.getTime()) {
+      if (isAfter(currentMarker, projectStart) || currentMarker.getTime() === projectStart.getTime()) {
+        const daysFromStart = differenceInDays(currentMarker, projectStart);
+        const position = (daysFromStart / totalDays) * 100;
+        markers.push({
+          date: currentMarker,
+          label: format(currentMarker, 'MMM d'),
+          position: clamp(position, 0, 100),
+        });
+      }
+      currentMarker = addMonths(currentMarker, 1);
+    }
+    
+    return markers;
+  }, [normalized]);
+
+  const todayPosition = React.useMemo(() => {
+    const projectStart = new Date(normalized.rangeStart);
+    const projectEnd = new Date(normalized.rangeStart + normalized.rangeDuration);
+    const today = new Date();
+    
+    if (isBefore(today, projectStart)) return -1;
+    if (isAfter(today, projectEnd)) return -1;
+    
+    const totalDays = differenceInDays(projectEnd, projectStart);
+    const daysFromStart = differenceInDays(today, projectStart);
+    return clamp((daysFromStart / totalDays) * 100, 0, 100);
+  }, [normalized]);
 
   return (
     <Card
@@ -127,10 +171,11 @@ export function ProjectTimelineWidget({
               phases={computedPhases}
               milestones={computedMilestones}
               progress={clampedProgress}
+              timeMarkers={timeMarkers}
+              todayPosition={todayPosition}
               onPhaseSelect={onPhaseSelect}
               onMilestoneSelect={onMilestoneSelect}
             />
-            <PhaseList phases={computedPhases} onPhaseSelect={onPhaseSelect} />
           </div>
         ) : (
           <EmptyTimelineState />
@@ -144,102 +189,161 @@ function TimelineTrack({
   phases,
   milestones,
   progress,
+  timeMarkers,
+  todayPosition,
   onPhaseSelect,
   onMilestoneSelect,
 }: {
   phases: ComputedPhase[];
   milestones: ComputedMilestone[];
   progress: number;
+  timeMarkers: Array<{ date: Date; label: string; position: number }>;
+  todayPosition: number;
   onPhaseSelect?: (phaseId: string) => void;
   onMilestoneSelect?: (milestoneId: string) => void;
 }) {
   return (
-    <div className="relative">
-      <div className="h-2 rounded-[var(--radius-sm)] bg-[var(--bg-surface-elevated)]" aria-hidden />
-      {phases.map((phase) => {
-        const colors = PHASE_COLORS[phase.status];
-        const label = buildPhaseLabel(phase);
-        return (
-          <Tooltip key={phase.id}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  "absolute top-0 h-2 rounded-[var(--radius-sm)] transition-all",
-                  colors.fill,
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]",
-                  phase.isCurrent && "shadow-[var(--elevation-sm)]",
-                )}
-                style={{
-                  left: `${phase.startPercentage}%`,
-                  width: `${phase.widthPercentage}%`,
-                }}
-                aria-label={label}
-                onClick={() => onPhaseSelect?.(phase.id)}
-              />
-            </TooltipTrigger>
-            <TooltipContent sideOffset={12}>
-              <span className="font-medium">{phase.name}</span>
-              <div className="text-xs opacity-85">{formatPhaseDates(phase.startDate, phase.endDate)}</div>
-            </TooltipContent>
-          </Tooltip>
-        );
-      })}
-      {milestones.map((milestone) => (
-        <Tooltip key={milestone.id}>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "absolute -top-1 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-[var(--bg-surface)] transition-transform",
-                getMilestoneColor(milestone.status),
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]",
-              )}
-              style={{ left: `${milestone.position}%` }}
-              aria-label={buildMilestoneLabel(milestone)}
-              onClick={() => onMilestoneSelect?.(milestone.id)}
-            />
-          </TooltipTrigger>
-          <TooltipContent sideOffset={10}>
-            <span className="font-medium">{milestone.title}</span>
-            <div className="text-xs opacity-85">{formatDate(milestone.date)}</div>
-            {milestone.description ? (
-              <div className="mt-1 max-w-[240px] text-xs opacity-80">{milestone.description}</div>
-            ) : null}
-          </TooltipContent>
-        </Tooltip>
-      ))}
-      <div
-        className="absolute -top-2 h-6 w-0.5 rounded-full bg-[var(--primary)]"
-        style={{ left: `${progress}%` }}
-        aria-hidden
-      />
+    <div className="space-y-[var(--space-3)]">
+      {/* Time scale header */}
+      <div className="flex">
+        <div className="w-28 shrink-0" /> {/* Spacer for phase name column */}
+        <div className="flex-1 relative">
+          <div className="flex justify-between border-b border-[var(--border-subtle)] pb-2 text-xs text-[color:var(--text-secondary)]">
+            {timeMarkers.map((marker, index) => (
+              <div
+                key={`${marker.label}-${index}`}
+                className="absolute -translate-x-1/2"
+                style={{ left: `${marker.position}%` }}
+              >
+                {marker.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Vertically stacked phase rows */}
+      <div className="space-y-[var(--space-2)] relative">
+        {/* Today indicator - spans all rows */}
+        {todayPosition >= 0 && (
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-[var(--primary)] z-10 pointer-events-none"
+            style={{ 
+              left: `calc(7rem + (100% - 7rem) * ${todayPosition / 100})`,
+            }}
+            aria-label="Current date"
+          >
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-xs font-medium text-[color:var(--primary)] whitespace-nowrap">
+              Today
+            </div>
+          </div>
+        )}
+        
+        {phases.map((phase, index) => {
+          const colors = PHASE_COLORS[phase.status];
+          const label = buildPhaseLabel(phase);
+          
+          return (
+            <div key={phase.id} className="flex items-center">
+              {/* Phase name column */}
+              <div className="w-28 shrink-0 pr-3">
+                <button
+                  type="button"
+                  onClick={() => onPhaseSelect?.(phase.id)}
+                  className={cn(
+                    "text-sm text-left hover:text-[color:var(--text-primary)] transition-colors",
+                    phase.isCurrent 
+                      ? "text-[color:var(--text-primary)] font-medium" 
+                      : "text-[color:var(--text-secondary)]"
+                  )}
+                >
+                  {phase.name}
+                </button>
+              </div>
+              
+              {/* Timeline row with positioned bar */}
+              <div className="flex-1 relative h-6">
+                {/* Track background */}
+                <div className="absolute inset-0 bg-[var(--bg-surface-elevated)] rounded-[var(--radius-sm)]" />
+                
+                {/* Phase bar */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "absolute h-4 rounded-[var(--radius-sm)] transition-all",
+                        colors.fill,
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]",
+                        phase.isCurrent && "shadow-[var(--elevation-sm)]",
+                      )}
+                      style={{
+                        left: `${phase.startPercentage}%`,
+                        width: `${phase.widthPercentage}%`,
+                        top: '4px',
+                      }}
+                      aria-label={label}
+                      onClick={() => onPhaseSelect?.(phase.id)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={8}>
+                    <span className="font-medium">{phase.name}</span>
+                    <div className="text-xs opacity-85">{formatPhaseDates(phase.startDate, phase.endDate)}</div>
+                    <div className="text-xs opacity-75 mt-1">
+                      {phase.completionPercentage}% complete
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+                
+
+              </div>
+            </div>
+          );
+        })}
+        
+        {/* Milestone row - no label needed */}
+        {milestones.length > 0 && (
+          <div className="flex items-center pt-2">
+            <div className="w-28 shrink-0 pr-3">
+              {/* Empty spacer to align with phase columns */}
+            </div>
+            <div className="flex-1 relative h-6">
+              <div className="absolute inset-0 border-t border-[var(--border-subtle)]" />
+              {milestones.map((milestone) => (
+                <Tooltip key={milestone.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "absolute h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[var(--bg-surface)] transition-transform z-20",
+                        getMilestoneColor(milestone.status),
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]",
+                      )}
+                      style={{ 
+                        left: `${milestone.position}%`,
+                        top: '12px'
+                      }}
+                      aria-label={buildMilestoneLabel(milestone)}
+                      onClick={() => onMilestoneSelect?.(milestone.id)}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={10}>
+                    <span className="font-medium">{milestone.title}</span>
+                    <div className="text-xs opacity-85">{formatDate(milestone.date)}</div>
+                    {milestone.description ? (
+                      <div className="mt-1 max-w-[240px] text-xs opacity-80">{milestone.description}</div>
+                    ) : null}
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function PhaseList({ phases, onPhaseSelect }: { phases: ComputedPhase[]; onPhaseSelect?: (phaseId: string) => void }) {
-  return (
-    <div className="space-y-[var(--space-2)]">
-      {phases.map((phase) => (
-        <button
-          key={phase.id}
-          type="button"
-          className={cn(
-            "flex w-full items-center justify-between rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-left text-sm transition-colors",
-            phase.isCurrent ? "text-[color:var(--text-primary)] font-medium" : "text-[color:var(--text-secondary)]",
-            "hover:bg-[var(--bg-surface-elevated)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-surface)]",
-          )}
-          onClick={() => onPhaseSelect?.(phase.id)}
-          aria-label={`${phase.name}, ends ${formatDate(phase.endDate)}`}
-        >
-          <span className="truncate">{phase.name}</span>
-          <span className="ml-[var(--space-3)] shrink-0 text-[color:var(--text-secondary)]">{formatDate(phase.endDate)}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function EmptyTimelineState() {
   return (
