@@ -37,6 +37,7 @@ import { TASK_LISTS } from './tasks/constants';
 import type { Task, TaskLabel } from './tasks/types';
 import { projects } from './projects/data';
 import { openQuickAssistant } from '../assistant';
+import { useTaskStore } from './tasks/taskStore';
 
 const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
 const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
@@ -197,10 +198,10 @@ function compareTasks(a: Task, b: Task): number {
 }
 
 export function TasksModule() {
+  const { tasks, addTask, updateTask, deleteTask, toggleTaskCompletion, duplicateTask } = useTaskStore();
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [tasks, setTasks] = useState(mockTasks);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
   const [selectedList, setSelectedList] = useState<string | null>(null); // null means "All lists"
   const [globalSort, setGlobalSort] = useState<'due-date' | 'date-created' | 'priority'>('date-created');
@@ -260,21 +261,17 @@ export function TasksModule() {
     listId: string,
     draft: { title: string; dueDate?: string; priority?: 'low' | 'medium' | 'high' | 'none' },
   ) => {
-    const timestamp = new Date().toISOString();
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
+    addTask({
       title: draft.title,
       status: listId,
       priority: draft.priority ?? 'none',
       dueDate: draft.dueDate,
       labels: [],
       isCompleted: false,
-      dateCreated: timestamp,
-      createdAt: timestamp,
       listId,
       projectId: projectFilter ?? undefined,
-    };
-    setTasks(prevTasks => [newTask, ...prevTasks]);
+      source: 'tasks_module',
+    });
   };
 
   const getTasksByStatus = (status: string) => {
@@ -298,32 +295,19 @@ export function TasksModule() {
     return [...tasksForStatus].sort(compareTasks);
   };
 
-  const toggleTaskCompletion = (taskId: string) => {
-    setTasks(prev =>
-      prev.map(task => {
-        if (task.id === taskId) {
-          const newCompletedState = !task.isCompleted;
-          return {
-            ...task,
-            isCompleted: newCompletedState,
-            completedAt: newCompletedState ? new Date().toISOString() : null,
-          };
-        }
-        return task;
-      }),
-    );
-  };
-
   const handleEditTask = (task: Task) => console.log("Edit task", task);
-  const handleDuplicateTask = (task: Task) => console.log("Duplicate task", task);
+  
+  const handleDuplicateTask = (task: Task) => {
+    duplicateTask(task.id);
+  };
   
   const handleUpdateTask = (updatedTask: Task) => {
-    setTasks(prev => prev.map(task => (task.id === updatedTask.id ? updatedTask : task)));
+    updateTask(updatedTask.id, updatedTask);
     setSelectedTask(null); // Close side panel after update
   };
 
   const handleDeleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+    deleteTask(taskId);
     if (selectedTask?.id === taskId) {
       setSelectedTask(null); // Close side panel if the deleted task was open
     }
