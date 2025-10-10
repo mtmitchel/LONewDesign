@@ -185,6 +185,52 @@ async fn fetch_mistral_models(
 }
 
 #[tauri::command]
+async fn fetch_openrouter_models(
+    state: State<'_, ApiState>,
+    api_key: String,
+) -> Result<Vec<ModelInfo>, String> {
+    if api_key.trim().is_empty() {
+        return Err("Missing API key".into());
+    }
+
+    let url = "https://openrouter.ai/api/v1/models";
+    
+    let response = state
+        .client
+        .get(url)
+        .header("Authorization", format!("Bearer {}", api_key.trim()))
+        .send()
+        .await
+        .map_err(|err| err.to_string())?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("OpenRouter API error {}: {}", status, body));
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|err| format!("Failed to parse response: {}", err))?;
+
+    let mut models = Vec::new();
+    if let Some(data) = json["data"].as_array() {
+        for model in data {
+            if let Some(id) = model["id"].as_str() {
+                models.push(ModelInfo {
+                    id: id.to_string(),
+                    object: "model".to_string(),
+                    owned_by: model["owned_by"].as_str().map(|s| s.to_string()),
+                });
+            }
+        }
+    }
+
+    Ok(models)
+}
+
+#[tauri::command]
 async fn mistral_chat_stream(
     app: AppHandle,
     state: State<'_, ApiState>,
@@ -788,6 +834,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             test_mistral_credentials,
             fetch_mistral_models,
+            fetch_openrouter_models,
             mistral_chat_stream,
             mistral_complete,
             generate_conversation_title,

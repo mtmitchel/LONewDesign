@@ -188,6 +188,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
   const [baseline, setBaseline] = useState<ProviderBaseline>(() => buildBaseline(providers));
   const [editing, setEditing] = useState<ProviderId | null>(null);
   const [revealKey, setRevealKey] = useState(false);
+  const [openrouterSearch, setOpenrouterSearch] = useState('');
 
   const sectionMatches = useMemo(
     () => filter('providers cloud api keys base url vault status sheet edit'),
@@ -722,6 +723,75 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
                             </label>
                           );
                         })}
+                      </div>
+                    </section>
+                  </>
+                )}
+
+                {editing === 'openrouter' && providers.openrouter.availableModels.length > 0 && (
+                  <>
+                    <Separator />
+                    <section className="space-y-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Available Models</h3>
+                            <p className="text-sm text-[color:var(--text-secondary)]">
+                              Search and select from 200+ models across 80+ providers
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <Input
+                          placeholder="Search models (e.g., claude, gpt, llama)..."
+                          value={openrouterSearch}
+                          onChange={(e) => setOpenrouterSearch(e.target.value)}
+                          className="text-sm"
+                        />
+                        
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {providers.openrouter.availableModels
+                            .filter(modelId => 
+                              openrouterSearch === '' || 
+                              modelId.toLowerCase().includes(openrouterSearch.toLowerCase())
+                            )
+                            .slice(0, 100)
+                            .map((modelId) => {
+                              const isEnabled = providers.openrouter.enabledModels.includes(modelId);
+                              
+                              return (
+                                <label
+                                  key={modelId}
+                                  className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 cursor-pointer hover:bg-[var(--hover-bg)]"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isEnabled}
+                                    onChange={(e) => {
+                                      const currentEnabled = providers.openrouter.enabledModels;
+                                      updateProvider('openrouter', {
+                                        enabledModels: e.target.checked
+                                          ? [...currentEnabled, modelId]
+                                          : currentEnabled.filter(id => id !== modelId),
+                                      });
+                                    }}
+                                    className="h-4 w-4 rounded border-[var(--border-default)] text-[var(--primary)]"
+                                  />
+                                  <span className="text-sm font-mono text-[color:var(--text-primary)]">{modelId}</span>
+                                </label>
+                              );
+                            })}
+                          {providers.openrouter.availableModels.filter(modelId => 
+                            openrouterSearch === '' || 
+                            modelId.toLowerCase().includes(openrouterSearch.toLowerCase())
+                          ).length > 100 && (
+                            <p className="text-xs text-[color:var(--text-tertiary)] text-center py-2">
+                              Showing first 100 results. Refine your search to see more.
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </section>
                   </>

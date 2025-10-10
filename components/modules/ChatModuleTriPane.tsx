@@ -108,13 +108,23 @@ export function ChatModuleTriPane() {
     
     // Add OpenRouter models if configured
     if (providers.openrouter.apiKey.trim()) {
-      providers.openrouter.enabledModels.forEach(modelId => {
-        options.push({
-          value: modelId,
-          label: modelId,
-          provider: 'openrouter',
-        });
+      // Always add OpenRouter Auto (smart routing)
+      options.push({
+        value: 'openrouter/auto',
+        label: 'OpenRouter Auto',
+        provider: 'openrouter',
       });
+      
+      // Add any additional enabled models
+      providers.openrouter.enabledModels
+        .filter(modelId => modelId !== 'openrouter/auto')
+        .forEach(modelId => {
+          options.push({
+            value: modelId,
+            label: modelId.replace('openrouter/', '').replace(/-/g, ' ').replace(/\//g, ' / '),
+            provider: 'openrouter',
+          });
+        });
     }
     
     return options;
@@ -181,9 +191,9 @@ export function ChatModuleTriPane() {
     // Try to find the first available model from any provider
     if (providers.mistral.enabledModels[0]) return providers.mistral.enabledModels[0];
     if (providers.glm.apiKey.trim() && providers.glm.defaultModel) return providers.glm.defaultModel;
+    if (providers.openrouter.apiKey.trim()) return 'openrouter/auto';
     if (providers.openai.enabledModels[0]) return providers.openai.enabledModels[0];
     if (providers.deepseek.enabledModels[0]) return providers.deepseek.enabledModels[0];
-    if (providers.openrouter.enabledModels[0]) return providers.openrouter.enabledModels[0];
     return '';
   });
   const selectedModelLabel = React.useMemo(() => {

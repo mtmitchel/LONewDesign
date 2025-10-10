@@ -14,7 +14,7 @@ export interface ProviderConfig {
 const DEFAULT_PROVIDERS: Record<ProviderId, ProviderConfig> = {
   openai: { apiKey: '', baseUrl: '', defaultModel: 'gpt-4o-mini', availableModels: [], enabledModels: [] },
   anthropic: { apiKey: '', baseUrl: '', defaultModel: 'claude-3-5-sonnet-latest', availableModels: [], enabledModels: [] },
-  openrouter: { apiKey: '', baseUrl: '', defaultModel: 'openrouter/auto', availableModels: [], enabledModels: [] },
+  openrouter: { apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', defaultModel: 'openrouter/auto', availableModels: [], enabledModels: [] },
   deepseek: { apiKey: '', baseUrl: '', defaultModel: 'deepseek-chat', availableModels: [], enabledModels: [] },
   mistral: { apiKey: '', baseUrl: '', defaultModel: 'mistral-small-latest', availableModels: [], enabledModels: [] },
   gemini: { apiKey: '', baseUrl: '', defaultModel: 'gemini-1.5-flash', availableModels: [], enabledModels: [] },
