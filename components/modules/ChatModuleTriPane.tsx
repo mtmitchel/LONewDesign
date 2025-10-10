@@ -19,7 +19,7 @@ import { Button } from "../ui/button";
 import { openQuickAssistant } from "../assistant";
 import { useProviderSettings } from "./settings/state/providerSettings";
 import { toast } from "sonner";
-import { sanitizeLLMText, sanitizeTitle } from "../assistant/services/llmSanitizer";
+import { sanitizeLLMText, sanitizeTitle, stripMarkdown } from "../assistant/services/llmSanitizer";
 
 const CENTER_MIN_VAR = '--tripane-center-min';
 
@@ -323,8 +323,8 @@ export function ChatModuleTriPane() {
           
           if (payload.event === 'delta' && payload.content) {
             accumulatedText += payload.content;
-            // Sanitize the accumulated text for display
-            const sanitizedText = sanitizeLLMText(accumulatedText);
+            // Sanitize and strip markdown for display
+            const sanitizedText = stripMarkdown(sanitizeLLMText(accumulatedText));
             setMessages(prev =>
               prev.map(msg =>
                 msg.id === assistantMessageId
@@ -440,8 +440,8 @@ export function ChatModuleTriPane() {
           
           if (payload.event === 'delta' && payload.content) {
             accumulatedText += payload.content;
-            // Sanitize the accumulated text for display
-            const sanitizedText = sanitizeLLMText(accumulatedText);
+            // Sanitize and strip markdown for display
+            const sanitizedText = stripMarkdown(sanitizeLLMText(accumulatedText));
             setMessages(prev =>
               prev.map(msg =>
                 msg.id === assistantMessageId
@@ -453,12 +453,35 @@ export function ChatModuleTriPane() {
             unlisten();
             
             // Generate title if this is the first exchange
-            const conversationMessages = messages.filter(m => m.conversationId === activeConversationId);
-            const allMessages = [...conversationMessages, userMessage];
-            
-            if (allMessages.length >= 1) {
-              // For now, skip title generation for non-Mistral providers
-              // Can add support later if needed
+            const currentConv = conversations.find(c => c.id === activeConversationId);
+            if (currentConv && currentConv.title === 'Untitled conversation') {
+              const conversationMessages = messages.filter(m => m.conversationId === activeConversationId);
+              const allMessages = [...conversationMessages, userMessage];
+              
+              if (allMessages.length >= 1) {
+                // Generate title using the selected provider
+                // For OpenRouter and other OpenAI-compatible providers
+                invoke('generate_conversation_title', {
+                  apiKey: providerConfig.apiKey.trim(),
+                  baseUrl: providerConfig.baseUrl?.trim() || null,
+                  model: selectedModel || providerConfig.defaultModel,
+                    messages: allMessages.map(m => ({
+                      role: m.author === 'user' ? 'user' : 'assistant',
+                      content: m.text,
+                    })),
+                  }).then((title) => {
+                    const sanitized = sanitizeTitle(title as string);
+                    setConversations(prev =>
+                      prev.map(conv =>
+                        conv.id === activeConversationId
+                          ? { ...conv, title: sanitized }
+                          : conv
+                      )
+                    );
+                }).catch((error) => {
+                  console.error('Failed to generate title:', error);
+                });
+              }
             }
           } else if (payload.event === 'error') {
             console.error(`[${providerType.toUpperCase()}] Stream error:`, payload.error);

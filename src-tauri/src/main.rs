@@ -501,7 +501,7 @@ async fn generate_conversation_title(
     messages: Vec<ChatMessageInput>,
 ) -> Result<String, String> {
     if api_key.trim().is_empty() {
-        return Err("Missing Mistral API key".into());
+        return Err("Missing API key".into());
     }
 
     if messages.is_empty() {
