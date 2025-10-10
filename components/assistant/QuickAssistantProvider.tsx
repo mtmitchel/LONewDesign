@@ -117,14 +117,36 @@ function buildNoteFromBody(input: { title?: string; body: string }) {
   };
 }
 
+// Convert 12-hour time (e.g., "2pm", "10am") to 24-hour format (e.g., "14:00", "10:00")
+function convertTo24Hour(time12: string): string {
+  const match = time12.match(/(\d+)(?::(\d+))?\s*(am|pm)/i);
+  if (!match) return "09:00"; // Default to 9am if parse fails
+  
+  let hours = parseInt(match[1], 10);
+  const minutes = match[2] || "00";
+  const meridiem = match[3].toLowerCase();
+  
+  if (meridiem === "pm" && hours !== 12) {
+    hours += 12;
+  } else if (meridiem === "am" && hours === 12) {
+    hours = 0;
+  }
+  
+  return `${hours.toString().padStart(2, "0")}:${minutes.padStart(2, "0")}`;
+}
+
 function combineDateTime(date: string, time?: string) {
   if (!time) {
     return new Date(`${date}T09:00:00`);
   }
-  if (time.length === 5) {
-    return new Date(`${date}T${time}:00`);
+  
+  // Convert 12-hour format to 24-hour if needed
+  const time24 = time.match(/am|pm/i) ? convertTo24Hour(time) : time;
+  
+  if (time24.length === 5) {
+    return new Date(`${date}T${time24}:00`);
   }
-  return new Date(`${date}T${time}`);
+  return new Date(`${date}T${time24}`);
 }
 
 function dispatchAssistantEvent(eventName: string, detail?: Record<string, unknown>) {
@@ -452,10 +474,9 @@ export function QuickAssistantProvider({
         } catch (error) {
           console.error('[QuickAssistant] Intent classification failed:', error);
           const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          toast.error(`Classification failed: ${errorMsg}`);
+          toast.error(`Failed to process: ${errorMsg}`);
           
-          // Fallback to note on error
-          emitCreateNote({ body: trimmed });
+          // Don't create anything on error - let user try again
           return;
         }
       }

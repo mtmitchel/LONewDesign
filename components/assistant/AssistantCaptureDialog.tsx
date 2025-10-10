@@ -284,6 +284,7 @@ export function AssistantCaptureDialog({
               onKeyDown={handleKeyDown}
               placeholder="Capture a thought… Type `/` for commands"
               aria-describedby={describedBy}
+              autoFocus
               className={cn(
                 "w-full resize-none bg-transparent text-[length:var(--text-base)] text-[color:var(--text-primary)]",
                 "rounded-[var(--radius-md)] border border-[var(--border-subtle)]",
