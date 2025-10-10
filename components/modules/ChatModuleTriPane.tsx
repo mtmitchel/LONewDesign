@@ -19,6 +19,7 @@ import { Button } from "../ui/button";
 import { openQuickAssistant } from "../assistant";
 import { useProviderSettings } from "./settings/state/providerSettings";
 import { toast } from "sonner";
+import { sanitizeLLMText, sanitizeTitle } from "../assistant/services/llmSanitizer";
 
 const CENTER_MIN_VAR = '--tripane-center-min';
 
@@ -322,10 +323,12 @@ export function ChatModuleTriPane() {
           
           if (payload.event === 'delta' && payload.content) {
             accumulatedText += payload.content;
+            // Sanitize the accumulated text for display
+            const sanitizedText = sanitizeLLMText(accumulatedText);
             setMessages(prev =>
               prev.map(msg =>
                 msg.id === assistantMessageId
-                  ? { ...msg, text: accumulatedText }
+                  ? { ...msg, text: sanitizedText }
                   : msg
               )
             );
@@ -352,10 +355,12 @@ export function ChatModuleTriPane() {
                     content: m.text,
                   })),
                 }).then((title) => {
+                  // Sanitize the generated title
+                  const sanitized = sanitizeTitle(title as string);
                   setConversations(prev =>
                     prev.map(conv =>
                       conv.id === activeConversationId
-                        ? { ...conv, title: title as string }
+                        ? { ...conv, title: sanitized }
                         : conv
                     )
                   );
@@ -435,10 +440,12 @@ export function ChatModuleTriPane() {
           
           if (payload.event === 'delta' && payload.content) {
             accumulatedText += payload.content;
+            // Sanitize the accumulated text for display
+            const sanitizedText = sanitizeLLMText(accumulatedText);
             setMessages(prev =>
               prev.map(msg =>
                 msg.id === assistantMessageId
-                  ? { ...msg, text: accumulatedText }
+                  ? { ...msg, text: sanitizedText }
                   : msg
               )
             );

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { LLMProvider, Intent, TaskIntent, NoteIntent, EventIntent, WritingToolResult } from './types';
 import { useProviderSettings } from '../../modules/settings/state/providerSettings';
 import type { ProviderId } from '../../modules/settings/state/providerSettings';
+import { parseJSONSafely, sanitizeLLMText } from './llmSanitizer';
 
 /**
  * Generic OpenAI-compatible provider
@@ -42,7 +43,8 @@ export class OpenAIProvider implements LLMProvider {
       });
 
       console.log(`[OpenAIProvider] Response received:`, response.substring(0, 100));
-      return response;
+      // Sanitize the response before returning
+      return sanitizeLLMText(response);
     } catch (error) {
       console.error(`[OpenAIProvider] Completion error:`, error);
       throw error;
@@ -107,7 +109,22 @@ Respond ONLY with valid JSON in this exact format:
         };
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      // Use safe JSON parsing with fallback
+      const parsed = parseJSONSafely<any>(jsonMatch[0], undefined, {
+        type: 'unknown',
+        confidence: 0,
+        title: input,
+      });
+      
+      if (!parsed) {
+        return { 
+          type: 'unknown', 
+          confidence: 0, 
+          originalInput: input,
+          extracted: {},
+        };
+      }
+      
       const intentType = parsed.type?.toLowerCase();
 
       // Map to our intent types

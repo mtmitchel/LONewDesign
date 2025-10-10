@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import {
   Intent,
+  IntentType,
   IntentResponseSchema,
   IntentClassificationError,
   ProviderAPIError,
@@ -8,6 +9,7 @@ import {
   Message,
 } from './types';
 import { useProviderSettings } from '../../modules/settings/state/providerSettings';
+import { parseJSONSafely, sanitizeLLMText } from './llmSanitizer';
 
 const INTENT_CLASSIFICATION_SYSTEM_PROMPT = `You are an intent classifier for a productivity assistant. Classify user input into: task, note, event, or unknown.
 
@@ -111,26 +113,6 @@ Output: {"intent":"unknown","confidence":0.2,"extracted":{}}
 Respond with ONLY the JSON object, no markdown, no code blocks, no additional text.`;
 
 /**
- * Extract JSON from LLM response, handling code blocks and extra text
- */
-function extractJSON(text: string): string {
-  // Try to find JSON in code blocks first
-  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  if (codeBlockMatch) {
-    return codeBlockMatch[1];
-  }
-
-  // Try to find raw JSON object
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return jsonMatch[0];
-  }
-
-  // Return as-is if no patterns match
-  return text;
-}
-
-/**
  * Mistral provider implementation using Tauri backend
  */
 export class MistralProvider implements LLMProvider {
@@ -182,87 +164,45 @@ export class MistralProvider implements LLMProvider {
 
       console.log('[MistralProvider] 📥 Raw API response:', response);
 
-      // Extract JSON from response
-      const jsonStr = extractJSON(response);
-      console.log('[MistralProvider] Extracted JSON:', jsonStr);
+      // Parse JSON safely with fallback
+      const parsed = parseJSONSafely(response, IntentResponseSchema, {
+        intent: 'unknown',
+        confidence: 0,
+        extracted: {}
+      });
 
-      // Parse JSON
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(jsonStr);
-      } catch (parseError) {
-        console.error('[MistralProvider] JSON parse error:', parseError);
+      if (!parsed) {
+        console.error('[MistralProvider] Failed to parse JSON response');
         throw new IntentClassificationError(
           'Failed to parse LLM response as JSON',
-          parseError,
+          undefined,
           true
         );
       }
 
-      // Validate with Zod
-      const validationResult = IntentResponseSchema.safeParse(parsed);
-      if (!validationResult.success) {
-        console.error('[MistralProvider] Validation error:', validationResult.error);
-        throw new IntentClassificationError(
-          `Invalid intent response: ${validationResult.error.message}`,
-          validationResult.error,
-          true
-        );
-      }
-
-      const validated = validationResult.data;
-      console.log('[MistralProvider] ✅ Classified as:', validated.intent, 'with confidence:', validated.confidence);
-      console.log('[MistralProvider] Extracted data:', JSON.stringify(validated.extracted, null, 2));
+      console.log('[MistralProvider] ✅ Classified as:', parsed.intent, 'with confidence:', parsed.confidence);
+      console.log('[MistralProvider] Extracted data:', JSON.stringify(parsed.extracted, null, 2));
 
       // Apply confidence threshold
-      if (validated.confidence < 0.6) {
+      if (parsed.confidence < 0.6) {
         console.log('[MistralProvider] Low confidence, returning unknown intent');
         return {
           type: 'unknown',
-          confidence: validated.confidence,
+          confidence: parsed.confidence,
           originalInput: input,
           extracted: {},
         };
       }
 
-      // Map validated response to Intent type based on discriminated union
-      let intent: Intent;
-      
-      switch (validated.intent) {
-        case 'task':
-          intent = {
-            type: 'task',
-            confidence: validated.confidence,
-            originalInput: input,
-            extracted: validated.extracted,
-          } as Intent;
-          break;
-        case 'note':
-          intent = {
-            type: 'note',
-            confidence: validated.confidence,
-            originalInput: input,
-            extracted: validated.extracted,
-          } as Intent;
-          break;
-        case 'event':
-          intent = {
-            type: 'event',
-            confidence: validated.confidence,
-            originalInput: input,
-            extracted: validated.extracted,
-          } as Intent;
-          break;
-        default:
-          intent = {
-            type: 'unknown',
-            confidence: validated.confidence,
-            originalInput: input,
-            extracted: {},
-          };
-      }
+      // Map the parsed response to Intent type (convert 'intent' field to 'type' field)
+      const finalIntent: Intent = {
+        type: parsed.intent as IntentType,
+        confidence: parsed.confidence,
+        originalInput: input,
+        extracted: parsed.extracted as any, // Type assertion needed due to discriminated union
+      } as Intent;
 
-      return intent;
+      return finalIntent;
     } catch (error) {
       console.error('[MistralProvider] Classification error:', error);
 
@@ -348,8 +288,9 @@ export class MistralProvider implements LLMProvider {
         maxTokens: 2000,
       });
       
+      // Sanitize the response before returning
       return {
-        text: response.trim(),
+        text: sanitizeLLMText(response),
         tool,
       };
     } catch (error) {
