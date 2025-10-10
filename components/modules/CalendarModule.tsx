@@ -290,6 +290,12 @@ export function CalendarModule() {
 
   const goToToday = () => setCurrentDate(new Date());
   const navigateView = (dir: 'prev' | 'next') => setCurrentDate((d) => navigate(d, viewMode, dir));
+  
+  const handleOpenCreateModal = React.useCallback(() => {
+    setSelectedEvent(null);
+    setModalState({ mode: 'create', isOpen: true });
+  }, []);
+  
   const handleOpenAssistant = React.useCallback(() => {
     openQuickAssistant({ mode: 'event', scope: { source: 'calendar' } });
   }, []);
@@ -348,9 +354,8 @@ export function CalendarModule() {
             dense
           />
           <Button
-            className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] ml-[var(--space-3)] md:hidden"
-            onClick={handleOpenAssistant}
-            aria-keyshortcuts="Meta+K,Control+K"
+            className="h-8 px-[var(--space-3)] bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)] ml-[var(--space-3)]"
+            onClick={handleOpenCreateModal}
           >
             <Plus className="w-4 h-4 mr-1.5" />
             Add event

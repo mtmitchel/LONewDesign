@@ -247,6 +247,14 @@ export function QuickAssistantProvider({
       const endsAtBase = payload.end
         ? combineDateTime(payload.date, payload.end)
         : new Date(startsAt.getTime() + 60 * 60 * 1000);
+      console.log('[QuickAssistant] 📅 Creating event with:', {
+        title: payload.title,
+        date: payload.date,
+        start: payload.start,
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAtBase.toISOString(),
+      });
+      
       const detail = {
         id: generateId("event"),
         title: payload.title,
@@ -261,6 +269,8 @@ export function QuickAssistantProvider({
             }
           : undefined,
       };
+      
+      console.log('[QuickAssistant] 📤 Dispatching event:', detail);
       window.dispatchEvent(
         new CustomEvent(QUICK_ASSISTANT_EVENTS.createEvent, { detail })
       );
