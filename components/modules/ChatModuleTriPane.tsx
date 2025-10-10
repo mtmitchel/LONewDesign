@@ -146,8 +146,46 @@ export function ChatModuleTriPane() {
     () => `Model set to ${selectedModelLabel}`,
     [selectedModelLabel]
   );
-  const [conversations, setConversations] = React.useState<Conversation[]>([]);
-  const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+  // LocalStorage helpers
+  const loadConversationsFromStorage = (): Conversation[] => {
+    try {
+      const stored = localStorage.getItem('chat-conversations');
+      return stored ? JSON.parse(stored) : [];
+    } catch (err) {
+      console.warn('Failed to load conversations from localStorage:', err);
+      return [];
+    }
+  };
+
+  const loadMessagesFromStorage = (): ChatMessage[] => {
+    try {
+      const stored = localStorage.getItem('chat-messages');
+      return stored ? JSON.parse(stored) : [];
+    } catch (err) {
+      console.warn('Failed to load messages from localStorage:', err);
+      return [];
+    }
+  };
+
+  const [conversations, setConversations] = React.useState<Conversation[]>(() => loadConversationsFromStorage());
+  const [messages, setMessages] = React.useState<ChatMessage[]>(() => loadMessagesFromStorage());
+
+  // Auto-save to localStorage
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('chat-conversations', JSON.stringify(conversations));
+    } catch (err) {
+      console.warn('Failed to save conversations to localStorage:', err);
+    }
+  }, [conversations]);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('chat-messages', JSON.stringify(messages));
+    } catch (err) {
+      console.warn('Failed to save messages to localStorage:', err);
+    }
+  }, [messages]);
 
   const activeConversation = React.useMemo(
     () => conversations.find(conversation => conversation.id === activeConversationId) ?? null,
