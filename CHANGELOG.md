@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Settings IA refinement & Ollama sync (2025-10-11)
+- Replaced the card pile with four focused sections (Cloud, Local, Assistant, Accounts) that ride a sticky desktop nav and mobile tabs/accordion for faster scanning.
+- Wired the Local models section to Tauri commands so `Test connection` now fetches Ollama models, updates enabled/default selections, and mirrors pull/delete actions in the UI while gracefully falling back when Tauri APIs are unavailable.
+- Consolidated assistant defaults into a single model selector that surfaces local Ollama models alongside cloud catalog options, retiring the redundant writing defaults card in the process.
+- Tuned the provider accordion controls with a shared secret-input affordance for copy/test feedback and lean badge statuses so hosted API setup stays tidy.
+
 ### Dashboard single-user polish (2025-10-09)
 - Tightened the "Today + Inbox" header with new `--dash-*` tokens, compact spacing, and a calmer time + weather chip that hugs the right edge.
 - Removed redundant "Now"/"Workstreams" eyebrows, brought titles to sentence case, and ensured every quiet action uses dotted underlines for a low-ink surface.

@@ -15,7 +15,7 @@
 | Tool registry (`AssistantTool`) | Deterministic prompt builders + Zod validation per tool/command. | 🔄 Slash commands mapped; deterministic prompts live for writing tools and NL routing, Ask AI backlog. |
 | Assistant service | Coordinates provider selection, handles streaming, telemetry, error pathways. | 🔄 Confidence gating + low-confidence UX shipped; Ask AI fallback / history still open. |
 | React integration (`QuickAssistantProvider`, dialog) | Launcher, hotkeys, scoped context, UI shell. | ✅ Launcher, selection capture, Replace/Insert actions, telemetry hooks all wired. |
-| Settings integration | Provider selection/testing, key management. | ✅ Ships with provider settings store and Mistral model fetch. |
+| Settings integration | Provider selection/testing, key management. | ✅ Reorganized into Cloud/Local/Assistant/Accounts sections with provider store, Tauri-driven Ollama discovery, and inline test/save feedback. |
 
 ## Phase Progress
 1. **Phase 1 &mdash; Intent Classification** ✔️\

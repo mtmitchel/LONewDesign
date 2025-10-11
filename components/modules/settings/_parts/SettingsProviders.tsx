@@ -592,65 +592,85 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       </header>
 
       <SectionCard 
-        title="Assistant Provider" 
-        help="Choose which LLM provider powers the AI assistant for intent classification and writing tools."
+        title="Assistant" 
+        help="Select the AI provider that powers assistant features like chat and writing tools."
       >
-        <div className="space-y-3 px-4 py-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="assistant-provider-select" className="text-sm font-medium text-[var(--text-primary)]">
-              Provider
-            </Label>
-            <select
-              id="assistant-provider-select"
-              value={assistantProvider ?? ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                const newProvider = value === '' ? null : value as ProviderId;
-                setAssistantProvider(newProvider);
-                // Clear model selection when provider changes
-                setAssistantModel(null);
-                toast.success(`Assistant provider ${value === '' ? 'cleared' : `set to ${value}`}`);
-              }}
-              className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-            >
-              <option value="">-- None selected --</option>
-              {PROVIDERS.filter((p) => {
-                const config = providers[p.id];
-                return config && config.apiKey.trim() !== '';
-              }).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-[var(--text-secondary)]">
-              Only providers with configured API keys are shown. Configure providers below to add them.
-            </p>
+        <div className="space-y-4">
+          {/* Primary Provider Selection */}
+          <div className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <Label htmlFor="assistant-provider-select" className="text-sm font-medium text-[var(--text-primary)]">
+                  Primary provider
+                </Label>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  Used for chat, intent classification, and writing assistance
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  id="assistant-provider-select"
+                  value={assistantProvider ?? ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const newProvider = value === '' ? null : value as ProviderId;
+                    setAssistantProvider(newProvider);
+                    setAssistantModel(null);
+                    if (value !== '') {
+                      toast.success(`Assistant provider set to ${PROVIDERS.find(p => p.id === value)?.label ?? value}`);
+                    }
+                  }}
+                  className="w-48 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:border-[var(--border-default)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                >
+                  <option value="">Choose provider...</option>
+                  <optgroup label="Cloud Providers">
+                    {PROVIDERS.filter((p) => p.id !== 'local' && providers[p.id]?.apiKey?.trim()).map((p) => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </optgroup>
+                  {providers.local?.baseUrl?.trim() && (
+                    <optgroup label="Local">
+                      <option value="local">Local (Ollama)</option>
+                    </optgroup>
+                  )}
+                </select>
+                {assistantProvider && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditing(assistantProvider)}
+                  >
+                    Configure
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
 
+          {/* Model Selection - Only show when provider is selected */}
           {assistantProvider && (() => {
             const providerConfig = providers[assistantProvider];
             const availableModels: string[] = [];
             
-            // Build available models based on provider
             if (assistantProvider === 'mistral') {
               availableModels.push(...providerConfig.enabledModels);
             } else if (assistantProvider === 'glm' && providerConfig.defaultModel) {
               availableModels.push(providerConfig.defaultModel);
             } else if (assistantProvider === 'openrouter') {
-              // Add openrouter/auto first if not already in enabled models
               if (!providerConfig.enabledModels.includes('openrouter/auto')) {
                 availableModels.push('openrouter/auto');
               }
               availableModels.push(...providerConfig.enabledModels);
+            } else if (assistantProvider === 'local') {
+              availableModels.push(...providerConfig.availableModels);
             } else {
               availableModels.push(...providerConfig.enabledModels);
             }
 
-            const currentAssistantModel = assistantModel; // Capture from parent scope
+            const currentAssistantModel = assistantModel;
 
             return availableModels.length > 0 ? (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="assistant-model-select" className="text-sm font-medium text-[var(--text-primary)]">
                   Model
                 </Label>
@@ -660,55 +680,118 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
                   onChange={(e) => {
                     const value = e.target.value;
                     setAssistantModel(value === '' ? null : value);
-                    toast.success(`Assistant model ${value === '' ? 'cleared' : `set to ${value}`}`);
+                    if (value !== '') {
+                      const shortName = value.length > 30 ? value.substring(0, 30) + '...' : value;
+                      toast.success(`Model set to ${shortName}`);
+                    }
                   }}
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:border-[var(--border-default)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
                 >
-                  <option value="">-- Use provider default --</option>
-                  {availableModels.map((modelId) => (
-                    <option key={modelId} value={modelId}>
-                      {modelId}
-                    </option>
-                  ))}
+                  <option value="">Use provider default</option>
+                  {availableModels.map((modelId) => {
+                    const displayName = assistantProvider === 'mistral' 
+                      ? getModelMetadata(modelId).displayName 
+                      : modelId;
+                    return (
+                      <option key={modelId} value={modelId}>
+                        {displayName}
+                      </option>
+                    );
+                  })}
                 </select>
-                <p className="text-xs text-[var(--text-secondary)]">
-                  Select a specific model or leave blank to use the provider's default.
-                </p>
               </div>
             ) : null;
           })()}
         </div>
       </SectionCard>
 
-      <SectionCard title="Providers" help="Select a provider to configure credentials.">
-        <div className="divide-y divide-[var(--border-subtle)]">
-          {PROVIDERS.map((provider) => {
-            const state = providerState[provider.id];
-            const badgeClassName = state.testing
-              ? 'bg-[color-mix(in_oklab,var(--primary)_18%,transparent)] text-[var(--primary)]'
-              : STATUS_BADGE_CLASS[state.status];
-            const BadgeIcon = state.testing
-              ? Loader2
-              : state.status === 'ok'
-              ? CheckCircle2
-              : state.status === 'warn'
-              ? AlertTriangle
-              : Circle;
-            return (
-              <button
-                key={provider.id}
-                type="button"
-                onClick={() => setEditing(provider.id)}
-                className="group flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition-colors hover:bg-[var(--bg-surface)]"
-              >
-                <span className="text-sm font-medium text-[var(--text-primary)]">{provider.label}</span>
-                <Badge variant="soft" size="sm" className={badgeClassName}>
-                  <BadgeIcon className={`size-3 ${state.testing ? 'animate-spin' : ''}`} />
-                  {state.testing ? 'Testing…' : STATUS_LABEL[state.status]}
-                </Badge>
-              </button>
+      <SectionCard title="Providers" help="Manage API credentials for AI services.">
+        <div className="space-y-2">
+          {/* Only show configured providers */}
+          {(() => {
+            const configuredProviders = PROVIDERS.filter(p => 
+              providerState[p.id].status === 'ok' || p.id === assistantProvider
             );
-          })}
+            const hasLocal = providers.local?.baseUrl?.trim();
+            
+            if (configuredProviders.length === 0 && !hasLocal) {
+              return (
+                <div className="text-center py-8">
+                  <p className="text-sm text-[var(--text-secondary)] mb-4">
+                    No providers configured yet
+                  </p>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setEditing(PROVIDERS[0].id)}
+                  >
+                    Add your first provider
+                  </Button>
+                </div>
+              );
+            }
+            
+            return (
+              <div className="space-y-1">
+                {configuredProviders.map(provider => {
+                  const state = providerState[provider.id];
+                  return (
+                    <div
+                      key={provider.id}
+                      className="flex items-center justify-between px-3 py-2 rounded-[var(--radius-md)] hover:bg-[var(--bg-surface)]" 
+                    >
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="size-4 text-[var(--success)]" />
+                        <span className="text-sm">{provider.label}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditing(provider.id)}
+                      >
+                        Configure
+                      </Button>
+                    </div>
+                  );
+                })}
+                
+                {hasLocal && (
+                  <div className="flex items-center justify-between px-3 py-2 rounded-[var(--radius-md)] hover:bg-[var(--bg-surface)]">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="size-4 text-[var(--success)]" />
+                      <span className="text-sm">Local (Ollama)</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditing('local')}
+                    >
+                      Configure
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Single add provider button at the bottom */}
+                <div className="pt-2 border-t border-[var(--border-subtle)]">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start text-[var(--text-secondary)]"
+                    onClick={() => {
+                      // Find first unconfigured provider
+                      const unconfigured = PROVIDERS.find(p => 
+                        providerState[p.id].status !== 'ok'
+                      );
+                      if (unconfigured) setEditing(unconfigured.id);
+                      else if (!hasLocal) setEditing('local');
+                    }}
+                  >
+                    <Circle className="size-4 mr-2" />
+                    Add provider
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </SectionCard>
 

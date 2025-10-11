@@ -10,10 +10,11 @@
 ## Checklist
 
 ### 1. Endpoint & Model Discovery
-1. Open **Settings → Providers**.
-2. Select **Ollama (Local)** and click **Test connection**.
-3. Expect toasts `Connection successful` and `Found N local models`.
-4. Verify the Model dropdown lists the models returned by `/api/tags`.
+1. Open **Settings** and pick **Local models** from the sidebar (or tabs on mobile).
+2. Click **Test connection**.
+3. Expect the inline status copy to flip to `Connection successful.` and the models status to read `Found N models`.
+4. Confirm the models table lists your pulled models with size/modified metadata and that one model is marked as the default.
+5. Optional: use **Pull model** or the delete action and ensure the table + enabled/default state stay in sync.
 
 ### 2. Assistant Routing
 1. Ensure **Settings → Assistant → Model defaults** uses the Ollama provider + model.

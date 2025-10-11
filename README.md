@@ -28,6 +28,6 @@ This prevents "port already in use" errors when running multiple instances.
 - Design tokens live in `styles/globals.css` and `docs/technical/design-tokens-reference.md`.
 - Assistant roadmap + testing lives in `docs/assistant/Advanced-Assistant-Roadmap.md`.
 - Component coverage + usage patterns sit in `docs/technical/LibreOllama-UI-Kit-Plan.md`.
-- Local Ollama providers are supported for Assistant + Chat (configure under Settings → Providers).
+- Local Ollama providers are supported for Assistant + Chat (configure under Settings → Local models and Assistant → Model defaults).
 - Keyboard: `[` hides left pane, `]` shows left pane, `\` toggles right context.
 - Use `:smart` variants for automatic port management.

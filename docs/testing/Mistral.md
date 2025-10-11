@@ -18,15 +18,15 @@ The Mistral integration now ships with 46 automated Vitest cases plus manual flo
 
 ### 1. Provider Setup
 1. Launch desktop app (`npm run tauri:dev`).
-2. Settings → Providers → **Mistral AI**.
+2. Settings → **Cloud models** → expand **Mistral AI**.
 3. Enter API key, click **Test**.
-   - Expect toast `"Connection successful"` and `"Found X Mistral models"`.
-   - Console log: `Fetched Mistral models: [...]`.
+   - Expect the badge to flip to **Connected**, the footer to read `Credentials look good.`, and `Last tested …` to populate.
+   - Console log: `[settings.provider_test]` event shows the provider id if devtools is open.
 
-### 2. Model Management
-- After a successful test, verify the **Available Models** list renders checkboxes.
-- Toggle enabled models; confirm state persists via `localStorage.getItem('provider-settings-v1')`.
-- Re-open chat and ensure the dropdown only lists checked models.
+### 2. Persistence
+- Click **Save** and watch for the inline `Saved just now.` status.
+- Refresh the app; confirm API key and base URL repopulate from `localStorage.getItem('provider-settings-v1')`.
+- Toggle the badge by clearing the key and testing again to ensure warning state returns.
 
 ### 3. Streaming Chat
 1. Choose a Mistral model in chat header.
@@ -46,6 +46,7 @@ The Mistral integration now ships with 46 automated Vitest cases plus manual flo
 - Models require a fresh fetch per session; no cached metadata or refresh button yet.
 - Writing tools still call placeholder execution; integration with `mistral_tool_execute` remains on the roadmap.
 - Model descriptions/capabilities are not surfaced in the UI.
+- **Load models** button in Settings currently logs analytics only; full metadata fetch is still planned.
 
 ## Historical Notes
 - Legacy standalone documents (`MISTRAL_TESTING_GUIDE.md`, `MISTRAL_TESTING_SUMMARY.md`) now live in `docs/archive/testing/` for reference only.

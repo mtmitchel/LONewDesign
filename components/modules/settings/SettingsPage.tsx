@@ -899,187 +899,118 @@ export default function SettingsPage(): JSX.Element {
     () => (
       <SectionCard
         title="Local models"
-        subtitle="Connect your Ollama server and manage downloaded models."
+        subtitle="Connect to Ollama for local AI models."
       >
-        <div className="space-y-[var(--space-6)]">
-          <div className="space-y-[var(--space-2)]">
-            <Label htmlFor="ollama-endpoint">Endpoint URL</Label>
-            <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+        <div className="space-y-[var(--space-4)]">
+          {/* Simplified connection status */}
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <Label htmlFor="ollama-endpoint">Ollama endpoint</Label>
               <Input
                 id="ollama-endpoint"
                 value={ollamaEndpoint}
                 onChange={(event) => setOllamaEndpoint(event.target.value)}
-                className="max-w-[var(--field-max-w)] shadow-[var(--elevation-sm)] bg-[color:var(--bg-surface)]"
+                className="w-[300px] mt-2"
                 placeholder="http://localhost:11434"
                 spellCheck={false}
                 autoComplete="off"
               />
+            </div>
+            <div className="flex items-center gap-3">
+              {ollamaStatus === 'ok' && (
+                <Badge className="bg-[color-mix(in_oklab,var(--success) 18%,transparent)] text-[color:var(--success)]">
+                  <CheckCircle2 className="size-3 mr-1" />
+                  Connected
+                </Badge>
+              )}
               <Button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="text-[color:var(--text-secondary)]"
-                onClick={() => {
-                  if (!ollamaEndpoint.trim()) return;
-                  window.open(ollamaEndpoint.trim(), '_blank', 'noopener,noreferrer');
-                  reportEvent('settings.open_endpoint', { target: 'ollama' });
-                }}
-              >
-                <Link2 className="mr-2 size-4" />
-                Open
-              </Button>
-              <Button
-                type="button"
-                variant="default"
+                variant="outline"
                 size="sm"
                 onClick={testOllama}
                 disabled={ollamaStatus === 'busy'}
               >
                 {ollamaStatus === 'busy' ? (
-                  <Loader2 className="mr-2 size-4 motion-safe:animate-spin" />
-                ) : ollamaStatus === 'ok' ? (
-                  <CheckCircle2 className="mr-2 size-4" />
-                ) : ollamaStatus === 'error' ? (
-                  <AlertCircle className="mr-2 size-4" />
+                  <>
+                    <Loader2 className="mr-2 size-4 motion-safe:animate-spin" />
+                    Testing…
+                  </>
                 ) : (
-                  <TestTube className="mr-2 size-4" />
+                  'Test'
                 )}
-                {ollamaStatus === 'busy'
-                  ? 'Testing…'
-                  : ollamaStatus === 'ok'
-                    ? 'Connected'
-                    : ollamaStatus === 'error'
-                      ? 'Retry'
-                      : 'Test connection'}
               </Button>
             </div>
-            {ollamaMessage ? (
-              <span
-                className={`flex items-center gap-[var(--space-1)] text-sm ${statusToneClass[
-                  ollamaStatus === 'error'
-                    ? 'error'
-                    : ollamaStatus === 'ok'
-                      ? 'success'
-                      : 'neutral'
-                ]}`}
-                aria-live="polite"
-              >
-                {ollamaStatus === 'ok' ? (
-                  <CheckCircle2 className="size-[14px]" aria-hidden="true" />
-                ) : ollamaStatus === 'error' ? (
-                  <AlertCircle className="size-[14px]" aria-hidden="true" />
-                ) : (
-                  <Circle className="size-[14px]" aria-hidden="true" />
-                )}
-                {ollamaMessage}
-              </span>
-            ) : null}
           </div>
 
-          <Separator />
-
-          <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)]">
-            <div className="space-y-[var(--space-1)]">
-              <p className="text-sm font-medium text-[color:var(--text-primary)]">Models</p>
-              {modelsStatus ? (
-                <span
-                  className={`flex items-center gap-[var(--space-1)] text-xs ${statusToneClass[modelsTone]}`}
-                  aria-live="polite"
-                >
-                  {modelsTone === 'success' ? (
-                    <CheckCircle2 className="size-[14px]" aria-hidden="true" />
-                  ) : modelsTone === 'error' ? (
-                    <AlertCircle className="size-[14px]" aria-hidden="true" />
-                  ) : (
-                    <Circle className="size-[14px]" aria-hidden="true" />
-                  )}
-                  {modelsStatus}
-                </span>
-              ) : (
-                <span className="text-xs text-[color:var(--text-secondary)]">
-                  Set a default model to surface it in Assistant.
-                </span>
-              )}
-            </div>
-            <Button onClick={pullModel} variant="outline" size="sm">
-              <Plus className="mr-2 size-4" />
-              Pull model
-            </Button>
-          </div>
-
-          {localModels.length === 0 ? (
-            <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] p-[var(--space-4)] text-center text-sm text-[color:var(--text-secondary)] shadow-[var(--elevation-sm)]">
-              Connect to Ollama, then run{' '}
-              <code className="rounded-[var(--radius-sm)] bg-[color:var(--bg-surface)] px-[var(--space-1)] py-[2px]">
-                ollama pull
-              </code>{' '}
-              to add your first model.
-            </div>
-          ) : (
-            <div className="grid gap-[var(--space-3)]">
-              {localModels.map((model) => (
-                <div
-                  key={model.id}
-                  className="space-y-[var(--space-3)] rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface)] p-[var(--space-4)] shadow-[var(--elevation-sm)]"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-[var(--space-2)]">
-                    <div className="space-y-[var(--space-1)]">
-                      <span className="text-sm font-medium text-[color:var(--text-primary)]">
-                        {model.name}
-                      </span>
-                      <span className="text-xs text-[color:var(--text-secondary)]">
-                        Updated {model.modified}
-                      </span>
+          {/* Models table - ALWAYS show all models with actions */}
+          {localModels.length > 0 && (
+            <div className="pt-4 border-t border-[color:var(--border-subtle)]">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-[color:var(--text-primary)]">
+                  Installed Models ({localModels.length})
+                </p>
+                <Button onClick={pullModel} variant="outline" size="sm">
+                  <Plus className="mr-2 size-4" />
+                  Pull model
+                </Button>
+              </div>
+              
+              {/* Simplified model list - key info visible, actions accessible */}
+              <div className="space-y-2">
+                {localModels.map((model) => (
+                  <div
+                    key={model.id}
+                    className="flex items-center justify-between p-3 rounded-[var(--radius-md)] border border-[color:var(--border-subtle)] hover:bg-[color:var(--bg-surface-elevated)]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <span className="text-sm font-medium text-[color:var(--text-primary)]">
+                          {model.name}
+                        </span>
+                        <span className="text-xs text-[color:var(--text-secondary)] ml-2">
+                          {model.size}
+                        </span>
+                      </div>
+                      {model.isDefault && (
+                        <Badge className="text-xs bg-[color-mix(in_oklab,var(--primary) 18%,transparent)] text-[color:var(--primary)]">
+                          Default
+                        </Badge>
+                      )}
                     </div>
-                    {model.isDefault ? (
-                      <Badge className="border-transparent bg-[color-mix(in_oklab,var(--primary) 18%,transparent)] text-[color:var(--primary)]">
-                        Default
-                      </Badge>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDefaultModel(model.id)}
-                      >
-                        Set default
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
-                    <span>{model.size}</span>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
+                    <div className="flex items-center gap-2">
+                      {!model.isDefault && (
                         <Button
                           variant="ghost"
-                          size="icon"
-                          className="text-[color:var(--text-secondary)]"
-                          title={`Delete ${model.name}`}
+                          size="sm"
+                          onClick={() => setDefaultModel(model.id)}
                         >
-                          <Trash2 className="size-4" />
+                          Set default
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-[color:var(--bg-surface)] border border-[color:var(--border-subtle)] shadow-[var(--elevation-lg)]">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete model?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This removes <strong>{model.name}</strong> from disk. Pull it again anytime.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => removeModel(model.id)}
-                            className="bg-[color:var(--danger)] hover:bg-[color:var(--danger)]/90"
-                          >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-[color:var(--text-secondary)] hover:text-[color:var(--danger)]"
+                        onClick={() => removeModel(model.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+          )}
+
+          {localModels.length === 0 && ollamaStatus === 'ok' && (
+            <div className="text-center py-6">
+              <p className="text-sm text-[color:var(--text-secondary)]">
+                No models found
+              </p>
+              <Button onClick={pullModel} variant="outline" size="sm" className="mt-3">
+                <Plus className="mr-2 size-4" />
+                Pull your first model
+              </Button>
             </div>
           )}
         </div>
@@ -1087,10 +1018,7 @@ export default function SettingsPage(): JSX.Element {
     ),
     [
       localModels,
-      modelsStatus,
-      modelsTone,
       ollamaEndpoint,
-      ollamaMessage,
       ollamaStatus,
       pullModel,
       removeModel,
@@ -1136,164 +1064,63 @@ export default function SettingsPage(): JSX.Element {
       PROVIDERS.find((provider) => provider.id === activeProviderId) ??
       PROVIDERS[0];
     const activeState = providers[activeProvider.id];
-    const isExpanded = expandedProviderId === activeProvider.id;
-    const otherProviders = PROVIDERS.filter(
-      (provider) => provider.id !== activeProvider.id,
-    );
 
-    const handleToggleAdvanced = () => {
-      setExpandedProviderId((prev) =>
-        prev === activeProvider.id ? null : activeProvider.id,
-      );
-      reportEvent('settings.provider_configure_toggle', {
-        provider: activeProvider.id,
-        open: expandedProviderId !== activeProvider.id,
-      });
-    };
-
-    const handleSwitchProvider = (nextId: ProviderId, surface: string) => {
+    const handleSwitchProvider = (nextId: ProviderId) => {
       setActiveProviderId(nextId);
-      setExpandedProviderId(null);
-      reportEvent('settings.provider_focus', { provider: nextId, surface });
+      setExpandedProviderId(nextId);
+      reportEvent('settings.provider_focus', { provider: nextId });
     };
 
     return (
       <SectionCard
         title="Cloud providers"
-        subtitle="Start with your primary provider, then expand configuration when you need it."
+        subtitle="Configure AI services for chat and assistant features."
       >
-        <div className="flex flex-col gap-[var(--space-6)]">
-          <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] p-[var(--space-4)] shadow-[var(--elevation-sm)]">
-            <div className="flex flex-col gap-[var(--space-4)]">
-              <div className="flex flex-wrap items-start justify-between gap-[var(--space-3)]">
-                <div className="space-y-[var(--space-1)]">
-                  <h4 className="text-[color:var(--text-primary)] text-base font-medium">
-                    Primary provider
-                  </h4>
-                  <p className="text-sm text-[color:var(--text-secondary)]">
-                    Pick the service you rely on most. You can still manage other
-                    providers below.
-                  </p>
-                </div>
-                <ProviderStatusBadge status={activeState.status} />
-              </div>
-
-              <div className="flex flex-col gap-[var(--space-3)] sm:flex-row sm:items-end sm:gap-[var(--space-4)]">
-                <div className="flex flex-col gap-[var(--space-2)] sm:flex-1">
-                  <Label htmlFor="primary-provider">Provider</Label>
-                  <Select
-                    value={activeProvider.id}
-                    onValueChange={(value) =>
-                      handleSwitchProvider(value as ProviderId, 'primary-select')
-                    }
-                  >
-                    <SelectTrigger
-                      id="primary-provider"
-                      className="max-w-[var(--field-max-w)]"
-                    >
-                      <SelectValue placeholder="Choose provider" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROVIDERS.map((provider) => (
-                        <SelectItem key={provider.id} value={provider.id}>
-                          {provider.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="button" variant="default" onClick={handleToggleAdvanced}>
-                  {isExpanded ? 'Hide configuration' : 'Configure access'}
-                </Button>
-              </div>
-
-              {activeProvider.hint ? (
-                <div className="rounded-[var(--radius-md)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface)] p-[var(--space-3)] text-sm text-[color:var(--text-secondary)]">
-                  {activeProvider.hint}
-                </div>
-              ) : null}
-              <div className="flex flex-wrap items-center gap-[var(--space-2)] text-xs text-[color:var(--text-secondary)]">
-                <span>Current status:</span>
-                <ProviderStatusBadge status={activeState.status} />
-                <span aria-live="polite">
-                  {activeState.lastTested
-                    ? `Last tested ${activeState.lastTested}`
-                    : 'Not tested yet'}
-                </span>
-              </div>
-            </div>
+        <div className="flex flex-col gap-[var(--space-4)]">
+          {/* Grid of ALL providers - following Perplexity guidance */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+            {PROVIDERS.map((provider) => {
+              const state = providers[provider.id];
+              const isActive = provider.id === activeProviderId;
+              return (
+                <button
+                  key={provider.id}
+                  type="button"
+                  onClick={() => handleSwitchProvider(provider.id)}
+                  className={`
+                    flex items-center justify-between p-3 rounded-[var(--radius-md)] border transition-all
+                    ${isActive 
+                      ? 'border-[var(--primary)] bg-[color-mix(in_oklab,var(--primary)_5%,transparent)]' 
+                      : 'border-[var(--border-subtle)] hover:border-[var(--border-default)]'}
+                  `}
+                >
+                  <span className="text-sm font-medium">{provider.label}</span>
+                  <ProviderStatusBadge status={state.status} />
+                </button>
+              );
+            })}
           </div>
 
-          <Collapsible open={isExpanded}>
-            <CollapsibleContent>
-              <ProviderAdvancedPanel
-                key={activeProvider.id}
-                provider={activeProvider}
-                state={activeState}
-                isDirty={
-                  activeState.apiKey !== activeState.savedApiKey ||
-                  activeState.baseUrl !== activeState.savedBaseUrl
-                }
-                onChange={updateProviderField}
-                onSave={saveProvider}
-                onTest={testProvider}
-                onLoadModels={loadProviderModels}
-              />
-            </CollapsibleContent>
-          </Collapsible>
-
-          {otherProviders.length ? (
-            <div className="flex flex-col gap-[var(--space-3)]">
-              <span className="text-sm font-medium text-[color:var(--text-primary)]">
-                Other providers
-              </span>
-              <div className="grid gap-[var(--space-3)] lg:grid-cols-2">
-                {otherProviders.map((provider) => {
-                  const state = providers[provider.id];
-                  const isCurrent = provider.id === activeProviderId;
-                  return (
-                    <button
-                      key={provider.id}
-                      type="button"
-                      onClick={() => {
-                        handleSwitchProvider(provider.id, 'provider-grid');
-                        setExpandedProviderId((prev) =>
-                          prev === provider.id ? null : provider.id,
-                        );
-                      }}
-                      onFocus={() =>
-                        handleSwitchProvider(provider.id, 'provider-grid')
-                      }
-                      className={[
-                        'rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface)] p-[var(--space-4)] text-left shadow-[var(--elevation-sm)] transition-all',
-                        'hover:border-[color:var(--primary)] hover:shadow-[var(--elevation-lg)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[color:var(--focus-ring)]',
-                        isCurrent ? 'border-[color:var(--primary)]' : '',
-                      ].join(' ')}
-                    >
-                      <div className="flex flex-col gap-[var(--space-2)]">
-                        <div className="flex items-start justify-between gap-[var(--space-2)]">
-                          <span className="text-[color:var(--text-primary)] font-medium">
-                            {provider.label}
-                          </span>
-                          <ProviderStatusBadge status={state.status} />
-                        </div>
-                        {provider.hint ? (
-                          <p className="text-sm text-[color:var(--text-secondary)]">
-                            {provider.hint}
-                          </p>
-                        ) : null}
-                        <span className="text-xs text-[color:var(--text-secondary)]">
-                          {state.lastTested
-                            ? `Last tested ${state.lastTested}`
-                            : 'Not tested yet'}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
+          {/* Configuration panel for selected provider */}
+          {expandedProviderId && (
+            <Collapsible open={expandedProviderId === activeProviderId}>
+              <CollapsibleContent>
+                <ProviderAdvancedPanel
+                  key={activeProvider.id}
+                  provider={activeProvider}
+                  state={activeState}
+                  isDirty={
+                    activeState.apiKey !== activeState.savedApiKey ||
+                    activeState.baseUrl !== activeState.savedBaseUrl
+                  }
+                  onChange={updateProviderField}
+                  onSave={saveProvider}
+                  onTest={testProvider}
+                  onLoadModels={loadProviderModels}
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       </SectionCard>
     );
