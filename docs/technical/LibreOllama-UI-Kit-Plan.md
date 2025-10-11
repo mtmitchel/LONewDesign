@@ -3,7 +3,7 @@
 
 ## 🎯 **Overview**
 
-This plan outlines how to effectively use the LibreOllama UI Kit, featuring the Asana + Sunsama inspired design system with soft lilac accents, comfortable spacing, and productivity-focused components.
+This plan outlines how to effectively use the LibreOllama UI Kit. The system leans on warm canvas neutrals, blue-gray primary accents, and coral highlights while borrowing structure from Asana + Sunsama. Treat this as the day-to-day reference for composing new surfaces with the tokenized primitives.
 
 ---
 
@@ -11,15 +11,27 @@ This plan outlines how to effectively use the LibreOllama UI Kit, featuring the 
 
 ### **🎨 Color Token Strategy**
 ```css
-/* Primary Usage - Soft Lilac Theme */
---primary: hsl(267 60% 70%)           /* Main actions, CTAs */
---primary-hover: hsl(267 60% 64%)     /* Interactive states */
---primary-tint-10: hsl(267 60% 70% / 0.1)  /* Subtle backgrounds */
+/* Primary Usage - Calm Blue-Gray */
+--primary: hsl(214 25% 27%);              /* Main actions, CTAs */
+--primary-hover: hsl(220 39% 18%);        /* Interactive states */
+--primary-tint-10: hsl(214 25% 27% / 0.1);/* Selection + hover */
 
 /* Surface Hierarchy */
---bg-canvas: hsl(220 10% 97%)         /* Main app background */
---bg-surface: hsl(0 0% 100%)          /* Cards, modals */
---bg-surface-elevated: hsl(220 12% 95%) /* Sidebars, elevated elements */
+--bg-canvas: hsl(60 9% 98%);              /* Warm off-white canvas */
+--bg-surface: hsl(0 0% 100%);             /* Cards, modals */
+--bg-surface-elevated: hsl(210 20% 95%);  /* Raised panels, hover shells */
+
+/* Accent + Status */
+--accent-coral: hsl(0 85% 71%);           /* Highlights, urgent states */
+--success: hsl(160 50% 60%);              /* Success feedback */
+--warning: hsl(38 85% 63%);               /* Attention states */
+--danger: var(--accent-coral);            /* Errors & destructive */
+
+/* Text + Borders (namespaced in Tailwind via text-[color:...] etc.) */
+--text-primary: hsl(223 44% 12%);
+--text-secondary: hsl(215 25% 27%);
+--border-subtle: hsl(220 13% 91%);
+--border-divider: hsl(210 20% 95%);
 ```
 
 ### **📏 Spacing System (8pt Grid)**
@@ -110,20 +122,24 @@ Complete feature implementations following the design system.
 </Card>
 ```
 
-### **🎯 Color Application**
+### **🎯 Color & Token Application**
 ```tsx
-// Text hierarchy
-className="text-[var(--text-primary)]"    // Headers, important content
-className="text-[var(--text-secondary)]"  // Supporting text, metadata
+// Text hierarchy (namespaced arbitrary values)
+className="text-[color:var(--text-primary)]"    // Headers, important content
+className="text-[color:var(--text-secondary)]"  // Supporting text, metadata
 
 // Interactive elements
-className="border-[var(--border-default)]"  // Standard borders
-className="border-[var(--border-subtle)]"   // Subtle separators
+className="border-[color:var(--border-subtle)]"   // Default borders
+className="hover:bg-[color:var(--primary-tint-10)]" // Calm hover
 
 // Status indicators
-className="text-[var(--success)]"  // Positive states
-className="text-[var(--warning)]"  // Attention needed
-className="text-[var(--danger)]"   // Error states
+className="text-[color:var(--success)]"   // Positive states
+className="text-[color:var(--warning)]"   // Attention needed
+className="text-[color:var(--danger)]"    // Error states
+
+// Shadow + elevation helpers
+className="shadow-[var(--elevation-sm)]"
+className="rounded-[var(--radius-md)]"
 ```
 
 ---

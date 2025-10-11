@@ -57,3 +57,48 @@ Approved production baseline for the Gmail-style docked Compose modal. This docu
 - Date: 2025-10-05
 
 Use this as the design-system reference for future modules (e.g., Notes editor, Chat composer) to ensure visual parity.
+
+---
+
+## Implementation Snapshot (2025-10-05)
+
+All baseline requirements are live in `components/modules/compose/`. Key references:
+
+```
+/components/modules/compose/
+├── ComposeDocked.tsx        // Main wrapper, positioning, header chrome
+├── ComposeEnvelope.tsx      // Recipients + subject
+├── ComposeChips.tsx         // Email chip entry with validation
+├── ComposeEditor.tsx        // Rich text editor with DOMPurify
+├── ComposeToolbar.tsx       // Formatting controls + send split button
+├── types.ts                 // Draft + metadata types
+├── utils.ts                 // Email parsing helpers
+└── index.ts                 // Exports
+```
+
+### Feature Highlights
+- Docked modal: 720×560px default, smooth fade/slide animation, Gmail-style header actions (minimize, pop out, close).
+- Recipients: chip input with validation, duplicate prevention, `Cc/Bcc` toggles that collapse when empty, smart parsing for `Name <email>`.
+- Subject + editor: focus styling via tokens, contentEditable editor sanitized by DOMPurify, maintains formatting on paste.
+- Toolbar: undo/redo, font controls, B/I/U, color picker, alignment, list toggles, quote, emoji, attachments, "More" menu. Send split button supports keyboard shortcuts (`⌘/Ctrl+Enter`).
+- Keyboard and a11y: focus trap, `Escape` guard with dirty draft confirmation, ARIA labels on controls, chip announcements, tooltip hints.
+- Footer: sticky action row with primary send button, secondary options, consistent spacing.
+
+### Token Alignment
+- Custom compose-specific tokens (`--compose-docked-width`, `--compose-header-height`, etc.) applied for dimensions, spacing, and shadow.
+- Reuses shared palette tokens for borders (`--border-subtle`), text hierarchy, hover states, and motion (`--duration-fast`, `--easing-standard`).
+
+### Integration Notes
+```tsx
+import { ComposeDocked } from '@/components/modules/compose';
+
+<ComposeDocked
+  open={showCompose}
+  onClose={() => setShowCompose(false)}
+  onSend={(draft) => {/* send via backend */}}
+  onMinimize={() => setMinimized(true)}
+  onPopout={() => openExternalCompose(draft)}
+/>
+```
+
+The center-pane compose replaces the legacy modal in the Mail module and stays anchored regardless of right-pane visibility. Use these patterns when building sibling experiences such as Notes or Chat composers.

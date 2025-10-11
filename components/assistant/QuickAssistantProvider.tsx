@@ -292,6 +292,7 @@ export function QuickAssistantProvider({
   const [noteState, setNoteState] = useState<NoteModalState>({ open: false });
   const [eventState, setEventState] = useState<EventModalState>({ open: false });
   const scopeRef = useRef<QuickAssistantScope | null>(null);
+  const selectionSnapshotRef = useRef<SelectionSnapshot | null>(null);
 
   const setScope = useCallback((scope: QuickAssistantScope | null) => {
     scopeRef.current = scope ?? null;
@@ -299,6 +300,7 @@ export function QuickAssistantProvider({
 
   const resetAssistant = useCallback(() => {
     scopeRef.current = null;
+    selectionSnapshotRef.current = null;
     setAssistant((prev) => ({ ...prev, open: false, initialValue: "", selectedText: undefined }));
   }, []);
 
@@ -451,6 +453,42 @@ export function QuickAssistantProvider({
       const nextScope = options?.scope ?? null;
       setScope(nextScope);
       let initialText = options?.initialValue ?? "";
+
+      let capturedSelectedText: string | undefined;
+      selectionSnapshotRef.current = null;
+      if (typeof window !== "undefined") {
+        const activeElement = document.activeElement;
+        if (
+          activeElement instanceof HTMLInputElement ||
+          activeElement instanceof HTMLTextAreaElement
+        ) {
+          const start = activeElement.selectionStart ?? activeElement.value.length;
+          const end = activeElement.selectionEnd ?? activeElement.value.length;
+          selectionSnapshotRef.current = {
+            kind: "input",
+            element: activeElement,
+            start,
+            end,
+          };
+          if (start !== end) {
+            capturedSelectedText = activeElement.value.slice(start, end);
+          }
+        } else {
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            if (!range.collapsed) {
+              capturedSelectedText = selection.toString();
+            }
+            selectionSnapshotRef.current = {
+              kind: "range",
+              range: range.cloneRange(),
+              focusElement: (document.activeElement instanceof HTMLElement ? document.activeElement : null),
+            };
+          }
+        }
+      }
+
       if (options?.mode && options.mode !== "capture") {
         const prefix = `/${options.mode}`;
         if (!initialText.trim()) {
@@ -460,20 +498,10 @@ export function QuickAssistantProvider({
         }
       }
 
-      // Capture selected text from window
-      let selectedText: string | undefined;
-      if (typeof window !== 'undefined') {
-        const selection = window.getSelection();
-        const selected = selection?.toString().trim();
-        if (selected && selected.length > 0) {
-          selectedText = selected;
-        }
-      }
-
       setAssistant({
         open: true,
         initialValue: initialText,
-        selectedText,
+        selectedText: capturedSelectedText,
       });
 
       dispatchAssistantEvent("assistant.opened", {
@@ -538,6 +566,99 @@ export function QuickAssistantProvider({
     [addTask]
   );
 
+  const applyWritingResult = useCallback(
+    (resultText: string, mode: "replace" | "insert") => {
+      if (!resultText) {
+        toast.error("Nothing to insert — try again.");
+        return false;
+      }
+
+      const snapshot = selectionSnapshotRef.current;
+      if (!snapshot) {
+        try {
+          void navigator.clipboard.writeText(resultText);
+          toast.info("Copied result — no selection to update.");
+        } catch {
+          toast.info("Result ready — select text to replace next time.");
+        }
+        return false;
+      }
+
+      const applyToInput = (element: HTMLInputElement | HTMLTextAreaElement, start: number, end: number) => {
+        const value = element.value ?? "";
+        const insertAt = mode === "replace" ? start : end;
+        const replaceTo = mode === "replace" ? end : end;
+        const nextValue =
+          value.slice(0, start) + resultText + value.slice(replaceTo);
+        const cursor = insertAt + resultText.length;
+        element.value = nextValue;
+        element.focus({ preventScroll: true });
+        element.selectionStart = cursor;
+        element.selectionEnd = cursor;
+        const inputEvent = typeof InputEvent !== "undefined"
+          ? new InputEvent("input", { bubbles: true })
+          : new Event("input", { bubbles: true });
+        element.dispatchEvent(inputEvent);
+        return true;
+      };
+
+      const applyToRange = (rangeSnapshot: { range: Range; focusElement: HTMLElement | null }) => {
+        const selection = window.getSelection();
+        if (!selection) {
+          return false;
+        }
+        const workingRange = rangeSnapshot.range.cloneRange();
+        selection.removeAllRanges();
+        selection.addRange(workingRange);
+
+        if (mode === "replace") {
+          workingRange.deleteContents();
+        } else {
+          workingRange.collapse(false);
+        }
+
+        const textNode = document.createTextNode(resultText);
+        workingRange.insertNode(textNode);
+
+        // Move caret to end of inserted text
+        const afterRange = document.createRange();
+        afterRange.setStartAfter(textNode);
+        afterRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(afterRange);
+
+        if (rangeSnapshot.focusElement) {
+          rangeSnapshot.focusElement.focus({ preventScroll: true });
+        }
+
+        const editable =
+          rangeSnapshot.focusElement?.closest('[contenteditable="true"]') ??
+          textNode.parentElement?.closest('[contenteditable="true"]');
+        if (editable instanceof HTMLElement) {
+          editable.dispatchEvent(
+            typeof InputEvent !== "undefined"
+              ? new InputEvent("input", { bubbles: true })
+              : new Event("input", { bubbles: true })
+          );
+        }
+        return true;
+      };
+
+      let applied = false;
+      if (snapshot.kind === "input") {
+        applied = applyToInput(snapshot.element, snapshot.start, snapshot.end);
+      } else {
+        applied = applyToRange(snapshot);
+      }
+
+      if (applied) {
+        selectionSnapshotRef.current = null;
+      }
+      return applied;
+    },
+    []
+  );
+
   const handleAssistantSubmit = useCallback(
     async ({ text, command }: AssistantSubmitPayload) => {
       const trimmed = text.trim();
@@ -593,6 +714,13 @@ export function QuickAssistantProvider({
             provider: assistantProvider,
             scope: scopeRef.current ?? undefined,
           });
+
+          if (intent.confidence < CONFIDENCE_THRESHOLD) {
+            toast.warning(
+              `Assistant is only ${(intent.confidence * 100).toFixed(0)}% confident. Add /task, /note, or /event to confirm.`,
+            );
+            return;
+          }
 
           // Route based on classified intent
           switch (intent.type) {
@@ -828,14 +956,26 @@ export function QuickAssistantProvider({
         }}
         onSubmit={handleAssistantSubmit}
         onReplace={(text) => {
-          // TODO: Implement text replacement in parent
-          console.log('[QuickAssistant] Replace text:', text);
-          toast.success('Replace functionality coming soon!');
+          const applied = applyWritingResult(text, "replace");
+          if (applied) {
+            toast.success("Selection replaced");
+            dispatchAssistantEvent("assistant.executed", {
+              action: "replace",
+              scope: scopeRef.current ?? undefined,
+            });
+            resetAssistant();
+          }
         }}
         onInsert={(text) => {
-          // TODO: Implement text insertion in parent
-          console.log('[QuickAssistant] Insert text:', text);
-          toast.success('Insert functionality coming soon!');
+          const applied = applyWritingResult(text, "insert");
+          if (applied) {
+            toast.success("Text inserted");
+            dispatchAssistantEvent("assistant.executed", {
+              action: "insert",
+              scope: scopeRef.current ?? undefined,
+            });
+            resetAssistant();
+          }
         }}
         onCommandSelect={(selected) => {
           dispatchAssistantEvent("assistant.command_selected", {
@@ -923,3 +1063,17 @@ export function openQuickAssistant(options?: OpenAssistantOptions) {
     new CustomEvent(QUICK_ASSISTANT_EVENTS.open, { detail: options })
   );
 }
+const CONFIDENCE_THRESHOLD = 0.6;
+
+type SelectionSnapshot =
+  | {
+      kind: "input";
+      element: HTMLInputElement | HTMLTextAreaElement;
+      start: number;
+      end: number;
+    }
+  | {
+      kind: "range";
+      range: Range;
+      focusElement: HTMLElement | null;
+    };

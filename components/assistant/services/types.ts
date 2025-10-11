@@ -4,7 +4,16 @@ import { z } from "zod";
 // Provider Types
 // ============================================================================
 
-export type ProviderId = "openai" | "anthropic" | "mistral" | "ollama" | "groq" | "openrouter";
+export type ProviderId =
+  | "openai"
+  | "anthropic"
+  | "mistral"
+  | "openrouter"
+  | "deepseek"
+  | "gemini"
+  | "deepl"
+  | "glm"
+  | "local";
 
 export interface ProviderConfig {
   id: ProviderId;

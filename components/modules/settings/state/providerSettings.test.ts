@@ -33,6 +33,7 @@ describe('providerSettings store', () => {
       expect(providers.deepseek).toBeDefined();
       expect(providers.mistral).toBeDefined();
       expect(providers.gemini).toBeDefined();
+      expect(providers.local).toBeDefined();
     });
   });
 
@@ -181,6 +182,8 @@ describe('providerSettings store', () => {
       expect(defaults.mistral.apiKey).toBe('');
       expect(defaults.mistral.defaultModel).toBe('mistral-small-latest');
       expect(defaults.mistral.availableModels).toEqual([]);
+      expect(defaults.local.baseUrl).toBe('http://127.0.0.1:11434');
+      expect(defaults.local.apiKey).toBe('');
     });
 
     it('should not modify store when called', () => {

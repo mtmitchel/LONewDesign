@@ -1,7 +1,16 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-export type ProviderId = 'openai' | 'anthropic' | 'openrouter' | 'deepseek' | 'mistral' | 'gemini' | 'deepl' | 'glm';
+export type ProviderId =
+  | 'openai'
+  | 'anthropic'
+  | 'openrouter'
+  | 'deepseek'
+  | 'mistral'
+  | 'gemini'
+  | 'deepl'
+  | 'glm'
+  | 'local';
 
 export interface ProviderConfig {
   apiKey: string;
@@ -20,6 +29,7 @@ const DEFAULT_PROVIDERS: Record<ProviderId, ProviderConfig> = {
   gemini: { apiKey: '', baseUrl: '', defaultModel: 'gemini-1.5-flash', availableModels: [], enabledModels: [] },
   deepl: { apiKey: '', baseUrl: 'https://api-free.deepl.com', defaultModel: '', availableModels: [], enabledModels: [] },
   glm: { apiKey: '', baseUrl: 'https://api.z.ai/api/paas/v4', defaultModel: 'glm-4.6', availableModels: [], enabledModels: [] },
+  local: { apiKey: '', baseUrl: 'http://127.0.0.1:11434', defaultModel: '', availableModels: [], enabledModels: [] },
 };
 
 type ProviderSettingsState = {

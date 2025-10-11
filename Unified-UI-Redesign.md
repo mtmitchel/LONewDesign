@@ -35,12 +35,13 @@
 * Accessibility: `role="dialog"`, `aria-modal`, `aria-labelledby`; `aria-live="polite"` for success/errors.
 * Instrumentation: `assistant.opened`, `assistant.intent_resolved` (intent, confidence, local/cloud), `assistant.executed`, `assistant.error`.
 
-#### Status – 2025-10-09
+#### Status – 2025-10-10
 
 * ✅ `QuickAssistantProvider` lives in `components/assistant/QuickAssistantProvider.tsx`, centralizing slash capture and wiring the quick modals across the app shell.
 * ✅ Global hotkeys (`⌘/Ctrl+K`, `T`, `N`, `E`) are live; provider emits `assistant.opened|submitted|error` and `assistant.command_selected` events.
-* 🔄 Floating launcher FAB and selection-aware tools grid/result pane are not yet rendered; the provider currently opens only the capture dialog.
-* 🔄 Natural-language routing and `assistant.intent_resolved` telemetry are still TODO; only simple slash + note parsing is in place.
+* ✅ Selection-aware dialog + writing tools now execute via providers and apply Replace/Insert inline.
+* ✅ Floating launcher FAB (sidebar) ships with tooltip + selection badge handoff.
+* 🔄 Ask AI fallback + history still in backlog; track in `docs/assistant/Advanced-Assistant-Roadmap.md`.
 
 ---
 

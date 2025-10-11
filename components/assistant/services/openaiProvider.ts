@@ -3,6 +3,7 @@ import { LLMProvider, Intent, TaskIntent, NoteIntent, EventIntent, WritingToolRe
 import { useProviderSettings } from '../../modules/settings/state/providerSettings';
 import type { ProviderId } from '../../modules/settings/state/providerSettings';
 import { parseJSONSafely, sanitizeLLMText } from './llmSanitizer';
+import { OllamaProvider } from './ollamaProvider';
 
 /**
  * Generic OpenAI-compatible provider
@@ -266,7 +267,8 @@ export function createProviderFromSettings(): LLMProvider {
 
   const config = state.providers[providerId];
   
-  if (!config.apiKey || config.apiKey.trim() === '') {
+  const requiresApiKey = providerId !== 'local';
+  if (requiresApiKey && (!config.apiKey || config.apiKey.trim() === '')) {
     throw new Error(`${providerId.toUpperCase()} API key not configured. Please add it in Settings.`);
   }
 
@@ -276,12 +278,14 @@ export function createProviderFromSettings(): LLMProvider {
     model = modelOverride;
   } else if (config.defaultModel) {
     model = config.defaultModel;
+  } else if (config.enabledModels.length > 0) {
+    model = config.enabledModels[0];
   } else {
     throw new Error(`No model configured for ${providerId}`);
   }
 
   // Determine base URL
-  const baseUrl = config.baseUrl || getDefaultBaseUrl(providerId);
+  const baseUrl = (config.baseUrl && config.baseUrl.trim()) || getDefaultBaseUrl(providerId);
 
   console.log(`[ProviderFactory] Creating ${providerId} provider:`, {
     model,
@@ -293,6 +297,8 @@ export function createProviderFromSettings(): LLMProvider {
     // Use Mistral-specific provider if available
     const { MistralProvider } = require('./mistralProvider');
     return new MistralProvider(config.apiKey, baseUrl, model);
+  } else if (providerId === 'local') {
+    return new OllamaProvider(baseUrl, model);
   } else {
     // Use generic OpenAI-compatible provider
     return new OpenAIProvider(config.apiKey, baseUrl, model, providerId);
@@ -309,6 +315,7 @@ function getDefaultBaseUrl(providerId: ProviderId): string {
     gemini: 'https://generativelanguage.googleapis.com/v1',
     deepl: 'https://api-free.deepl.com',
     glm: 'https://open.bigmodel.cn/api/paas/v4',
+    local: 'http://127.0.0.1:11434',
   };
   
   return defaults[providerId] || 'https://api.openai.com/v1';

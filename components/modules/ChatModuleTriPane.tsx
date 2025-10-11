@@ -68,6 +68,17 @@ export function ChatModuleTriPane() {
   const MODEL_OPTIONS = React.useMemo(() => {
     const options: Array<{ value: string; label: string; provider: string }> = [];
     
+    // Add local Ollama models
+    if (providers.local.enabledModels.length > 0) {
+      providers.local.enabledModels.forEach((modelId) => {
+        options.push({
+          value: modelId,
+          label: `Ollama · ${modelId}`,
+          provider: 'local',
+        });
+      });
+    }
+
     // Add enabled Mistral models
     providers.mistral.enabledModels.forEach(modelId => {
       options.push({
@@ -267,7 +278,41 @@ export function ChatModuleTriPane() {
         const isMistralModel = selectedModel.startsWith('mistral-') || 
                               selectedModel.startsWith('codestral-') || 
                               selectedModel.startsWith('ministral-');
-        
+        const providerType = MODEL_OPTIONS.find(opt => opt.value === selectedModel)?.provider;
+
+        if (providerType === 'local') {
+          const baseUrl = providers.local.baseUrl.trim() || 'http://127.0.0.1:11434';
+          try {
+            const title = await invoke<string>('ollama_complete', {
+              baseUrl,
+              model: selectedModel,
+              messages: [
+                {
+                  role: 'system',
+                  content:
+                    'Generate ONLY a concise 3-5 word title for this conversation. Do not include punctuation or quotes.',
+                },
+                ...titleMessages,
+              ],
+              temperature: 0.1,
+              maxTokens: 32,
+            });
+
+            const sanitized = sanitizeTitle(title);
+            setConversations(prev =>
+              prev.map(conv =>
+                conv.id === conversationId
+                  ? { ...conv, title: sanitized }
+                  : conv,
+              ),
+            );
+            return;
+          } catch (err) {
+            console.error('[Title Generation] Ollama title failed:', err);
+            // fall through to fallback below
+          }
+        }
+
         let apiKey: string;
         let baseUrl: string | null;
         let titleModel: string;
@@ -278,7 +323,6 @@ export function ChatModuleTriPane() {
           titleModel = 'mistral-small-latest'; // Fast model for titles
         } else {
           // For OpenRouter and other providers
-          const providerType = MODEL_OPTIONS.find(opt => opt.value === selectedModel)?.provider;
           if (providerType === 'openrouter') {
             apiKey = providers.openrouter.apiKey.trim();
             baseUrl = 'https://openrouter.ai/api/v1';
@@ -496,6 +540,72 @@ export function ChatModuleTriPane() {
         setIsStreaming(false);
         
         // Remove the empty assistant message on error
+        setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+      }
+    } else if (providerType === 'local') {
+      const baseUrl = providers.local.baseUrl.trim() || 'http://127.0.0.1:11434';
+      const assistantMessageId = `m-${Date.now() + 1}`;
+      const assistantMessage: ChatMessage = {
+        id: assistantMessageId,
+        conversationId: activeConversationId,
+        author: 'assistant',
+        text: '',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      setIsStreaming(true);
+
+      try {
+        const { invoke, listen } = await Promise.all([
+          import('@tauri-apps/api/core').then(m => ({ invoke: m.invoke })),
+          import('@tauri-apps/api/event').then(m => ({ listen: m.listen })),
+        ]).then(([core, event]) => ({ ...core, ...event }));
+
+        const eventName = `ollama-stream-${assistantMessageId}`;
+        let accumulatedText = '';
+
+        const unlisten = await listen<StreamEvent>(eventName, (event) => {
+          const payload = event.payload;
+
+          if (payload.event === 'delta' && payload.content) {
+            accumulatedText += payload.content;
+            const sanitizedText = stripMarkdown(sanitizeLLMText(accumulatedText));
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.id === assistantMessageId
+                  ? { ...msg, text: sanitizedText }
+                  : msg
+              )
+            );
+          } else if (payload.event === 'done') {
+            setIsStreaming(false);
+            unlisten();
+          } else if (payload.event === 'error') {
+            console.error('[OLLAMA] Stream error:', payload.error);
+            toast.error(payload.error ?? 'Streaming failed');
+            setIsStreaming(false);
+            unlisten();
+            setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+          }
+        });
+
+        const conversationMessages = messages.filter(m => m.conversationId === activeConversationId);
+        const apiMessages = [...conversationMessages, userMessage].map(m => ({
+          role: m.author === 'user' ? 'user' : 'assistant',
+          content: m.text,
+        }));
+
+        await invoke('ollama_chat_stream', {
+          windowLabel: 'main',
+          eventName,
+          baseUrl,
+          model: selectedModel,
+          messages: apiMessages,
+        });
+      } catch (error) {
+        console.error('[OLLAMA] Failed to start stream:', error);
+        toast.error(`Failed to connect to Ollama: ${error instanceof Error ? error.message : String(error)}`);
+        setIsStreaming(false);
         setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
       }
     } else if (['glm', 'openai', 'deepseek', 'openrouter'].includes(providerType)) {

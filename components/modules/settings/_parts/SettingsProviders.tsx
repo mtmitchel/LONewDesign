@@ -137,7 +137,10 @@ function isTauriContext(): boolean {
   return Boolean(candidate.__TAURI_INTERNALS__ ?? candidate.isTauri ?? candidate.__TAURI__);
 }
 
-function deriveStatus(providerId: ProviderId, apiKey: string): ProviderStatus {
+function deriveStatus(providerId: ProviderId, apiKey: string, baseUrl: string): ProviderStatus {
+  if (providerId === 'local') {
+    return baseUrl.trim() ? 'ok' : 'warn';
+  }
   if (!apiKey.trim()) {
     return providerId === 'mistral' ? 'warn' : 'empty';
   }
@@ -163,7 +166,7 @@ function buildViewState(configs: Record<ProviderId, ProviderConfig>): Record<Pro
     acc[provider.id] = {
       apiKey,
       baseUrl,
-      status: deriveStatus(provider.id, apiKey),
+      status: deriveStatus(provider.id, apiKey, baseUrl),
       lastTested: null,
       testing: false,
     };
@@ -241,7 +244,9 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           mapped[provider.id] = {
             apiKey: mapped[provider.id].apiKey,
             baseUrl: mapped[provider.id].baseUrl,
-            status: shouldPreserveStatus ? prev[provider.id].status : deriveStatus(provider.id, mapped[provider.id].apiKey),
+            status: shouldPreserveStatus
+              ? prev[provider.id].status
+              : deriveStatus(provider.id, mapped[provider.id].apiKey, mapped[provider.id].baseUrl),
             lastTested: prev[provider.id].lastTested,
             testing: false,
           };
@@ -311,7 +316,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       },
     }));
 
-    if (!current?.apiKey.trim()) {
+    if (providerId !== 'local' && !current?.apiKey.trim()) {
       setProviderState((prev) => ({
         ...prev,
         [providerId]: {
@@ -342,9 +347,16 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
         success = Boolean(result?.ok);
         message = result?.message ?? null;
         console.log('[TEST] Success:', success, 'Message:', message);
+      } else if (providerId === 'local' && isTauriContext()) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const result = (await invoke('test_ollama_connection', {
+          baseUrl: baseUrl,
+        })) as { ok: boolean; message?: string | null };
+        success = Boolean(result?.ok);
+        message = result?.message ?? null;
       } else {
         console.log('[TEST] Fallback test (not Tauri or not Mistral)');
-        success = current.apiKey.trim().length > 4;
+        success = providerId === 'local' ? Boolean(baseUrl) : current.apiKey.trim().length > 4;
       }
     } catch (error) {
       console.error('[TEST] Error during test:', error);
@@ -380,7 +392,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           console.warn('Not in Tauri context - cannot fetch models');
           toast.error('Model fetching requires Tauri app');
         } else {
-        try {
+          try {
           const { invoke } = await import('@tauri-apps/api/core');
           const models = (await invoke('fetch_mistral_models', {
             apiKey: current.apiKey.trim(),
@@ -433,6 +445,44 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
         }
         }
       }
+
+      // Fetch available models for local Ollama after successful auth
+      if (providerId === 'local') {
+        if (!isTauriContext()) {
+          console.warn('Not in Tauri context - cannot fetch local models');
+          toast.error('Model discovery requires the desktop app');
+        } else {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const models = (await invoke('ollama_list_models', {
+            baseUrl,
+          })) as Array<{ name: string }>;
+
+          const modelIds = models.map((m) => m.name);
+          const currentEnabled = providers.local.enabledModels;
+          const nextEnabled =
+            currentEnabled.length > 0
+              ? currentEnabled.filter((id) => modelIds.includes(id))
+              : modelIds;
+
+          updateProvider('local', {
+            availableModels: modelIds,
+            enabledModels: nextEnabled,
+            defaultModel: nextEnabled[0] ?? modelIds[0] ?? '',
+          });
+
+          console.debug('Fetched Ollama models:', modelIds);
+            if (modelIds.length === 0) {
+              toast.warning('Ollama responded but no models were found');
+            } else {
+              toast.success(`Found ${modelIds.length} local models`);
+            }
+          } catch (error) {
+            console.error('Failed to fetch Ollama models:', error);
+            toast.error(`Failed to fetch local models: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+      }
     } else {
       toast.error(message ?? 'Couldn’t connect — check your key');
     }
@@ -448,7 +498,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           ...prev[editingMeta.id],
           apiKey: snapshot.apiKey,
           baseUrl: snapshot.baseUrl,
-          status: deriveStatus(editingMeta.id, snapshot.apiKey),
+          status: deriveStatus(editingMeta.id, snapshot.apiKey, snapshot.baseUrl),
           testing: false,
         },
       }));
@@ -479,7 +529,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       ...prev,
       [editingMeta.id]: {
         ...prev[editingMeta.id],
-        status: deriveStatus(editingMeta.id, snapshot.apiKey),
+        status: deriveStatus(editingMeta.id, snapshot.apiKey, snapshot.baseUrl),
         testing: false,
       },
     }));
