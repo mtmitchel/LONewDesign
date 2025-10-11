@@ -33,6 +33,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '../../ui/accordion';
+import {
+  Collapsible,
+  CollapsibleContent,
+} from '../../ui/collapsible';
 import { Badge } from '../../ui/badge';
 import {
   Dialog,
@@ -60,6 +64,10 @@ import {
   EyeOff,
   Link2,
   Loader2,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Circle,
   Plus,
   Save,
   TestTube,
@@ -170,38 +178,38 @@ const PROVIDERS: ProviderConfig[] = [
     id: 'openai',
     label: 'OpenAI',
     baseUrlPlaceholder: 'https://api.openai.com/v1',
-    hint: 'GPT-4o, o-series, and TTS models. Base URL is optional for proxies.',
+    hint: 'Run GPT-4o and o-series models with your OpenAI key.',
   },
   {
     id: 'anthropic',
     label: 'Anthropic',
     baseUrlPlaceholder: 'https://api.anthropic.com/v1',
-    hint: 'Claude 3 models with long context windows for reasoning and writing.',
+    hint: 'Use Claude 3 models for thoughtful reasoning and writing.',
   },
   {
     id: 'openrouter',
     label: 'OpenRouter',
     baseUrlPlaceholder: 'https://openrouter.ai/api/v1',
-    hint: 'Unified marketplace routing across 80+ providers with fallback logic.',
+    hint: 'Route to many hosted models through a single OpenRouter key.',
   },
   {
     id: 'deepseek',
     label: 'DeepSeek',
     baseUrlPlaceholder: 'https://api.deepseek.com/v1',
-    hint: 'High-context reasoning models built for code and analysis workloads.',
+    hint: 'Low-latency DeepSeek models built for code and analysis.',
   },
   {
     id: 'mistral',
     label: 'Mistral AI',
     baseUrlPlaceholder: 'https://api.mistral.ai/v1',
-    hint: 'Fast, lightweight instruction-tuned models ideal for realtime UX.',
+    hint: 'Fast Mistral instruction-tuned models with optional model sync.',
     supportsModelLoad: true,
   },
   {
     id: 'gemini',
     label: 'Google Gemini',
     baseUrlPlaceholder: 'https://generativelanguage.googleapis.com/v1beta',
-    hint: 'Google’s Gemini models via the Generative Language API.',
+    hint: "Access Google's Gemini 1.5 models via the Generative Language API.",
   },
 ];
 
@@ -348,11 +356,46 @@ const PROVIDER_STATUS_LABEL: Record<ProviderStatus, string> = {
   empty: 'Not connected',
 };
 
-const PROVIDER_STATUS_BADGE_CLASS: Record<ProviderStatus, string> = {
-  ok: 'bg-[color-mix(in_oklab,var(--status-ok)_18%,transparent)] text-[var(--status-ok)]',
-  warn: 'bg-[color-mix(in_oklab,var(--status-warn)_18%,transparent)] text-[var(--status-warn)]',
-  empty: 'border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[color:var(--text-secondary)]',
+const PROVIDER_STATUS_ICON: Record<
+  ProviderStatus,
+  React.ComponentType<{ className?: string }>
+> = {
+  ok: CheckCircle2,
+  warn: AlertTriangle,
+  empty: Circle,
 };
+
+const PROVIDER_STATUS_TEXT_CLASS: Record<ProviderStatus, string> = {
+  ok: 'text-[color:var(--success)]',
+  warn: 'text-[color:var(--danger)]',
+  empty: 'text-[color:var(--text-secondary)]',
+};
+
+const PROVIDER_STATUS_BG_CLASS: Record<ProviderStatus, string> = {
+  ok: 'bg-[color-mix(in_oklab,var(--success) 18%,transparent)]',
+  warn: 'bg-[color-mix(in_oklab,var(--danger) 18%,transparent)]',
+  empty: 'bg-[color:var(--bg-surface)] border border-[color:var(--border-subtle)]',
+};
+
+function ProviderStatusBadge({ status }: { status: ProviderStatus }) {
+  const Icon = PROVIDER_STATUS_ICON[status];
+  const toneClass = PROVIDER_STATUS_TEXT_CLASS[status];
+  const backgroundClass = PROVIDER_STATUS_BG_CLASS[status];
+
+  return (
+    <span
+      className={[
+        'inline-flex items-center gap-[var(--space-1)] rounded-[var(--radius-pill)] px-[var(--space-2)] py-[var(--space-1)] text-xs font-medium',
+        toneClass,
+        backgroundClass,
+        'whitespace-nowrap',
+      ].join(' ')}
+    >
+      <Icon className="size-3" aria-hidden="true" />
+      {PROVIDER_STATUS_LABEL[status]}
+    </span>
+  );
+}
 
 export default function SettingsPage(): JSX.Element {
   const isDesktop = useViewportMatch(VIEWPORT_QUERY);
@@ -693,6 +736,23 @@ export default function SettingsPage(): JSX.Element {
     assistantDraft.fallbackProvider !== assistantSaved.fallbackProvider ||
     assistantDraft.fallbackModel !== assistantSaved.fallbackModel;
 
+  const [activeProviderId, setActiveProviderId] = useState<ProviderId>(() => {
+    const initial = assistantDraft.provider;
+    if (PROVIDERS.some((provider) => provider.id === initial)) {
+      return initial;
+    }
+    return PROVIDERS[0].id;
+  });
+  const [expandedProviderId, setExpandedProviderId] = useState<ProviderId | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (PROVIDERS.some((provider) => provider.id === assistantDraft.provider)) {
+      setActiveProviderId(assistantDraft.provider);
+    }
+  }, [assistantDraft.provider]);
+
   const [providers, setProviders] = useState<Record<ProviderId, ProviderState>>(
     () => createInitialProviderState(),
   );
@@ -842,14 +902,14 @@ export default function SettingsPage(): JSX.Element {
         subtitle="Connect your Ollama server and manage downloaded models."
       >
         <div className="space-y-[var(--space-6)]">
-        <div className="space-y-[var(--space-2)]">
-          <Label htmlFor="ollama-endpoint">Endpoint URL</Label>
+          <div className="space-y-[var(--space-2)]">
+            <Label htmlFor="ollama-endpoint">Endpoint URL</Label>
             <div className="flex flex-wrap items-center gap-[var(--space-2)]">
               <Input
                 id="ollama-endpoint"
                 value={ollamaEndpoint}
                 onChange={(event) => setOllamaEndpoint(event.target.value)}
-                className="max-w-[var(--field-max-w)]"
+                className="max-w-[var(--field-max-w)] shadow-[var(--elevation-sm)] bg-[color:var(--bg-surface)]"
                 placeholder="http://localhost:11434"
                 spellCheck={false}
                 autoComplete="off"
@@ -870,33 +930,49 @@ export default function SettingsPage(): JSX.Element {
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="default"
                 size="sm"
                 onClick={testOllama}
                 disabled={ollamaStatus === 'busy'}
               >
-                <TestTube className="mr-2 size-4" />
+                {ollamaStatus === 'busy' ? (
+                  <Loader2 className="mr-2 size-4 motion-safe:animate-spin" />
+                ) : ollamaStatus === 'ok' ? (
+                  <CheckCircle2 className="mr-2 size-4" />
+                ) : ollamaStatus === 'error' ? (
+                  <AlertCircle className="mr-2 size-4" />
+                ) : (
+                  <TestTube className="mr-2 size-4" />
+                )}
                 {ollamaStatus === 'busy'
                   ? 'Testing…'
                   : ollamaStatus === 'ok'
-                    ? 'Success'
+                    ? 'Connected'
                     : ollamaStatus === 'error'
                       ? 'Retry'
                       : 'Test connection'}
               </Button>
             </div>
             {ollamaMessage ? (
-              <p
-                className={`text-sm ${statusToneClass[
+              <span
+                className={`flex items-center gap-[var(--space-1)] text-sm ${statusToneClass[
                   ollamaStatus === 'error'
                     ? 'error'
                     : ollamaStatus === 'ok'
                       ? 'success'
                       : 'neutral'
                 ]}`}
+                aria-live="polite"
               >
+                {ollamaStatus === 'ok' ? (
+                  <CheckCircle2 className="size-[14px]" aria-hidden="true" />
+                ) : ollamaStatus === 'error' ? (
+                  <AlertCircle className="size-[14px]" aria-hidden="true" />
+                ) : (
+                  <Circle className="size-[14px]" aria-hidden="true" />
+                )}
                 {ollamaMessage}
-              </p>
+              </span>
             ) : null}
           </div>
 
@@ -906,8 +982,24 @@ export default function SettingsPage(): JSX.Element {
             <div className="space-y-[var(--space-1)]">
               <p className="text-sm font-medium text-[color:var(--text-primary)]">Models</p>
               {modelsStatus ? (
-                <span className={`text-xs ${statusToneClass[modelsTone]}`}>{modelsStatus}</span>
-              ) : null}
+                <span
+                  className={`flex items-center gap-[var(--space-1)] text-xs ${statusToneClass[modelsTone]}`}
+                  aria-live="polite"
+                >
+                  {modelsTone === 'success' ? (
+                    <CheckCircle2 className="size-[14px]" aria-hidden="true" />
+                  ) : modelsTone === 'error' ? (
+                    <AlertCircle className="size-[14px]" aria-hidden="true" />
+                  ) : (
+                    <Circle className="size-[14px]" aria-hidden="true" />
+                  )}
+                  {modelsStatus}
+                </span>
+              ) : (
+                <span className="text-xs text-[color:var(--text-secondary)]">
+                  Set a default model to surface it in Assistant.
+                </span>
+              )}
             </div>
             <Button onClick={pullModel} variant="outline" size="sm">
               <Plus className="mr-2 size-4" />
@@ -915,37 +1007,47 @@ export default function SettingsPage(): JSX.Element {
             </Button>
           </div>
 
-          <div className="overflow-hidden rounded-[var(--radius-md)] border border-[color:var(--border-subtle)]">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-[var(--space-2)] bg-[color:var(--bg-surface-elevated)] px-[var(--space-3)] py-[var(--space-2)] text-[color:var(--text-secondary)] text-sm">
-              <span>Model</span>
-              <span>Size</span>
-              <span>Modified</span>
-              <span className="justify-self-end">Actions</span>
+          {localModels.length === 0 ? (
+            <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] p-[var(--space-4)] text-center text-sm text-[color:var(--text-secondary)] shadow-[var(--elevation-sm)]">
+              Connect to Ollama, then run{' '}
+              <code className="rounded-[var(--radius-sm)] bg-[color:var(--bg-surface)] px-[var(--space-1)] py-[2px]">
+                ollama pull
+              </code>{' '}
+              to add your first model.
             </div>
-            {localModels.length === 0 ? (
-              <div className="px-[var(--space-3)] py-[var(--space-4)] text-center text-sm text-[color:var(--text-secondary)]">
-                No local models yet.
-              </div>
-            ) : (
-              localModels.map((model) => (
+          ) : (
+            <div className="grid gap-[var(--space-3)]">
+              {localModels.map((model) => (
                 <div
                   key={model.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-[var(--space-2)] border-t border-[color:var(--border-subtle)] px-[var(--space-3)] py-[var(--space-3)] text-sm"
+                  className="space-y-[var(--space-3)] rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface)] p-[var(--space-4)] shadow-[var(--elevation-sm)]"
                 >
-                  <div className="flex items-center gap-[var(--space-2)]">
-                    <input
-                      type="radio"
-                      name="default-local-model"
-                      checked={model.isDefault}
-                      onChange={() => setDefaultModel(model.id)}
-                      aria-label={`Set ${model.name} as default`}
-                      className="size-4 accent-[color:var(--primary)]"
-                    />
-                    <span className="font-medium text-[color:var(--text-primary)]">{model.name}</span>
+                  <div className="flex flex-wrap items-start justify-between gap-[var(--space-2)]">
+                    <div className="space-y-[var(--space-1)]">
+                      <span className="text-sm font-medium text-[color:var(--text-primary)]">
+                        {model.name}
+                      </span>
+                      <span className="text-xs text-[color:var(--text-secondary)]">
+                        Updated {model.modified}
+                      </span>
+                    </div>
+                    {model.isDefault ? (
+                      <Badge className="border-transparent bg-[color-mix(in_oklab,var(--primary) 18%,transparent)] text-[color:var(--primary)]">
+                        Default
+                      </Badge>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDefaultModel(model.id)}
+                      >
+                        Set default
+                      </Button>
+                    )}
                   </div>
-                  <span className="text-[color:var(--text-secondary)]">{model.size}</span>
-                  <span className="text-[color:var(--text-secondary)]">{model.modified}</span>
-                  <div className="flex justify-end">
+                  <div className="flex flex-wrap items-center justify-between gap-[var(--space-2)] text-sm text-[color:var(--text-secondary)]">
+                    <span>{model.size}</span>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -961,7 +1063,7 @@ export default function SettingsPage(): JSX.Element {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete model?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will remove <strong>{model.name}</strong> from disk. You can redownload it later.
+                            This removes <strong>{model.name}</strong> from disk. Pull it again anytime.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -977,9 +1079,9 @@ export default function SettingsPage(): JSX.Element {
                     </AlertDialog>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </SectionCard>
     ),
@@ -1029,36 +1131,181 @@ export default function SettingsPage(): JSX.Element {
     ],
   );
 
-  const renderProvidersSection = useCallback(
-    () => (
+  const renderProvidersSection = useCallback(() => {
+    const activeProvider =
+      PROVIDERS.find((provider) => provider.id === activeProviderId) ??
+      PROVIDERS[0];
+    const activeState = providers[activeProvider.id];
+    const isExpanded = expandedProviderId === activeProvider.id;
+    const otherProviders = PROVIDERS.filter(
+      (provider) => provider.id !== activeProvider.id,
+    );
+
+    const handleToggleAdvanced = () => {
+      setExpandedProviderId((prev) =>
+        prev === activeProvider.id ? null : activeProvider.id,
+      );
+      reportEvent('settings.provider_configure_toggle', {
+        provider: activeProvider.id,
+        open: expandedProviderId !== activeProvider.id,
+      });
+    };
+
+    const handleSwitchProvider = (nextId: ProviderId, surface: string) => {
+      setActiveProviderId(nextId);
+      setExpandedProviderId(null);
+      reportEvent('settings.provider_focus', { provider: nextId, surface });
+    };
+
+    return (
       <SectionCard
         title="Cloud providers"
-        subtitle="Manage API keys, base URLs, and model syncing for hosted services."
+        subtitle="Start with your primary provider, then expand configuration when you need it."
       >
-        <Accordion type="multiple" className="divide-y divide-[color:var(--border-subtle)]">
-          {PROVIDERS.map((provider) => {
-            const state = providers[provider.id];
-            const dirty =
-              state.apiKey !== state.savedApiKey ||
-              state.baseUrl !== state.savedBaseUrl;
-            return (
-              <ProviderAccordionItem
-                key={provider.id}
-                provider={provider}
-                state={state}
-                isDirty={dirty}
+        <div className="flex flex-col gap-[var(--space-6)]">
+          <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] p-[var(--space-4)] shadow-[var(--elevation-sm)]">
+            <div className="flex flex-col gap-[var(--space-4)]">
+              <div className="flex flex-wrap items-start justify-between gap-[var(--space-3)]">
+                <div className="space-y-[var(--space-1)]">
+                  <h4 className="text-[color:var(--text-primary)] text-base font-medium">
+                    Primary provider
+                  </h4>
+                  <p className="text-sm text-[color:var(--text-secondary)]">
+                    Pick the service you rely on most. You can still manage other
+                    providers below.
+                  </p>
+                </div>
+                <ProviderStatusBadge status={activeState.status} />
+              </div>
+
+              <div className="flex flex-col gap-[var(--space-3)] sm:flex-row sm:items-end sm:gap-[var(--space-4)]">
+                <div className="flex flex-col gap-[var(--space-2)] sm:flex-1">
+                  <Label htmlFor="primary-provider">Provider</Label>
+                  <Select
+                    value={activeProvider.id}
+                    onValueChange={(value) =>
+                      handleSwitchProvider(value as ProviderId, 'primary-select')
+                    }
+                  >
+                    <SelectTrigger
+                      id="primary-provider"
+                      className="max-w-[var(--field-max-w)]"
+                    >
+                      <SelectValue placeholder="Choose provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROVIDERS.map((provider) => (
+                        <SelectItem key={provider.id} value={provider.id}>
+                          {provider.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="button" variant="default" onClick={handleToggleAdvanced}>
+                  {isExpanded ? 'Hide configuration' : 'Configure access'}
+                </Button>
+              </div>
+
+              {activeProvider.hint ? (
+                <div className="rounded-[var(--radius-md)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface)] p-[var(--space-3)] text-sm text-[color:var(--text-secondary)]">
+                  {activeProvider.hint}
+                </div>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-[var(--space-2)] text-xs text-[color:var(--text-secondary)]">
+                <span>Current status:</span>
+                <ProviderStatusBadge status={activeState.status} />
+                <span aria-live="polite">
+                  {activeState.lastTested
+                    ? `Last tested ${activeState.lastTested}`
+                    : 'Not tested yet'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <Collapsible open={isExpanded}>
+            <CollapsibleContent>
+              <ProviderAdvancedPanel
+                key={activeProvider.id}
+                provider={activeProvider}
+                state={activeState}
+                isDirty={
+                  activeState.apiKey !== activeState.savedApiKey ||
+                  activeState.baseUrl !== activeState.savedBaseUrl
+                }
                 onChange={updateProviderField}
                 onSave={saveProvider}
                 onTest={testProvider}
                 onLoadModels={loadProviderModels}
               />
-            );
-          })}
-        </Accordion>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {otherProviders.length ? (
+            <div className="flex flex-col gap-[var(--space-3)]">
+              <span className="text-sm font-medium text-[color:var(--text-primary)]">
+                Other providers
+              </span>
+              <div className="grid gap-[var(--space-3)] lg:grid-cols-2">
+                {otherProviders.map((provider) => {
+                  const state = providers[provider.id];
+                  const isCurrent = provider.id === activeProviderId;
+                  return (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      onClick={() => {
+                        handleSwitchProvider(provider.id, 'provider-grid');
+                        setExpandedProviderId((prev) =>
+                          prev === provider.id ? null : provider.id,
+                        );
+                      }}
+                      onFocus={() =>
+                        handleSwitchProvider(provider.id, 'provider-grid')
+                      }
+                      className={[
+                        'rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface)] p-[var(--space-4)] text-left shadow-[var(--elevation-sm)] transition-all',
+                        'hover:border-[color:var(--primary)] hover:shadow-[var(--elevation-lg)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[color:var(--focus-ring)]',
+                        isCurrent ? 'border-[color:var(--primary)]' : '',
+                      ].join(' ')}
+                    >
+                      <div className="flex flex-col gap-[var(--space-2)]">
+                        <div className="flex items-start justify-between gap-[var(--space-2)]">
+                          <span className="text-[color:var(--text-primary)] font-medium">
+                            {provider.label}
+                          </span>
+                          <ProviderStatusBadge status={state.status} />
+                        </div>
+                        {provider.hint ? (
+                          <p className="text-sm text-[color:var(--text-secondary)]">
+                            {provider.hint}
+                          </p>
+                        ) : null}
+                        <span className="text-xs text-[color:var(--text-secondary)]">
+                          {state.lastTested
+                            ? `Last tested ${state.lastTested}`
+                            : 'Not tested yet'}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
       </SectionCard>
-    ),
-    [loadProviderModels, providers, saveProvider, testProvider, updateProviderField],
-  );
+    );
+  }, [
+    activeProviderId,
+    expandedProviderId,
+    loadProviderModels,
+    providers,
+    saveProvider,
+    testProvider,
+    updateProviderField,
+  ]);
 
   const renderAccountSection = useCallback(
     () => (
@@ -1358,6 +1605,10 @@ function ModelDefaultsCard({
     }
   };
 
+  const fallbackProviderMeta = FALLBACK_PROVIDERS.find(
+    (provider) => provider.id === assistant.fallbackProvider,
+  );
+
   return (
     <SectionCard
       title="Model defaults"
@@ -1458,13 +1709,18 @@ function ModelDefaultsCard({
               </Select>
             </div>
           </div>
+          <p className="text-xs text-[color:var(--text-secondary)]">
+            {assistant.fallbackProvider === 'none'
+              ? 'Add a fallback to automatically retry when your primary provider is rate limited.'
+              : `If ${fallbackProviderMeta?.label ?? 'the selected provider'} is available, LibreOllama retries there when the primary fails.`}
+          </p>
         </div>
       </div>
     </SectionCard>
   );
 }
 
-interface ProviderCardProps {
+interface ProviderAdvancedPanelProps {
   provider: ProviderConfig;
   state: ProviderState;
   isDirty: boolean;
@@ -1474,7 +1730,7 @@ interface ProviderCardProps {
   onLoadModels: (id: ProviderId) => void;
 }
 
-function ProviderAccordionItem({
+function ProviderAdvancedPanel({
   provider,
   state,
   isDirty,
@@ -1482,7 +1738,7 @@ function ProviderAccordionItem({
   onSave,
   onTest,
   onLoadModels,
-}: ProviderCardProps) {
+}: ProviderAdvancedPanelProps) {
   const [testStatus, setTestStatus] = useState<'idle' | 'busy' | 'ok' | 'error'>(
     'idle',
   );
@@ -1528,19 +1784,27 @@ function ProviderAccordionItem({
       ? `Last tested ${state.lastTested}`
       : undefined;
 
+  const StatusToneIcon =
+    statusTone === 'success'
+      ? CheckCircle2
+      : statusTone === 'error'
+        ? AlertCircle
+        : Circle;
+
   return (
-    <AccordionItem value={provider.id} className="border-none">
-      <AccordionTrigger className="flex items-start justify-between gap-[var(--space-3)] py-[var(--space-3)] text-left">
+    <div className="rounded-[var(--radius-lg)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface)] p-[var(--space-5)] shadow-[var(--elevation-sm)] space-y-[var(--space-5)]">
+      <div className="flex flex-col gap-[var(--space-4)]">
         <div className="space-y-[var(--space-1)]">
-          <span className="text-sm font-medium text-[color:var(--text-primary)]">{provider.label}</span>
+          <h5 className="text-[color:var(--text-primary)] text-base font-medium">
+            Configure {provider.label}
+          </h5>
           {provider.hint ? (
-            <span className="text-xs text-[color:var(--text-secondary)]">{provider.hint}</span>
+            <p className="text-sm text-[color:var(--text-secondary)]">
+              {provider.hint}
+            </p>
           ) : null}
         </div>
-        <Badge className={PROVIDER_STATUS_BADGE_CLASS[state.status]}>{PROVIDER_STATUS_LABEL[state.status]}</Badge>
-      </AccordionTrigger>
-      <AccordionContent className="space-y-[var(--space-4)] pb-[var(--space-4)]">
-        <div className="flex flex-col gap-[var(--space-4)]">
+        <div className="grid gap-[var(--space-4)] md:grid-cols-2">
           <div className="flex flex-col gap-[var(--space-2)]">
             <Label htmlFor={`${provider.id}-key`}>API key</Label>
             <SecretInput
@@ -1561,46 +1825,46 @@ function ProviderAccordionItem({
               value={state.baseUrl}
               onChange={(event) => onChange(provider.id, 'baseUrl', event.target.value)}
               placeholder={provider.baseUrlPlaceholder}
-              className="max-w-[var(--field-max-w)]"
+              className="max-w-[var(--field-max-w)] shadow-[var(--elevation-sm)] bg-[color:var(--bg-surface)]"
               autoComplete="off"
               spellCheck={false}
             />
-            <p className="text-[color:var(--text-secondary)] text-sm">
-              Only change if you proxy requests.
+            <p className="text-xs text-[color:var(--text-secondary)]">
+              Update only when routing through a proxy.
             </p>
           </div>
         </div>
-        <div className="flex flex-col gap-[var(--space-2)] sm:flex-row sm:items-center sm:justify-between">
-          {footerStatus ? (
-            <span className={`${statusToneClass[statusTone]} text-sm`}>{footerStatus}</span>
-          ) : (
-            <span className="text-sm text-[color:var(--text-secondary)]">&nbsp;</span>
-          )}
-          <div className="flex items-center gap-[var(--space-2)]">
-            {provider.supportsModelLoad ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onLoadModels(provider.id)}
-              >
-                Load models
-              </Button>
-            ) : null}
+      </div>
+      <div className="flex flex-col gap-[var(--space-3)] border-t border-[color:var(--border-subtle)] pt-[var(--space-4)] sm:flex-row sm:items-center sm:justify-between">
+        <span className={`flex items-center gap-[var(--space-1)] text-sm ${statusToneClass[statusTone]}`}>
+          <StatusToneIcon className="size-4" aria-hidden="true" />
+          {footerStatus ?? 'Save a key to enable requests.'}
+        </span>
+        <div className="flex items-center gap-[var(--space-2)]">
+          {provider.supportsModelLoad ? (
             <Button
-              onClick={() => onSave(provider.id)}
-              disabled={!isDirty || state.saving}
+              variant="ghost"
+              size="sm"
+              onClick={() => onLoadModels(provider.id)}
             >
-              {state.saving ? (
-                <Loader2 className="mr-2 size-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 size-4" />
-              )}
-              {state.saving ? 'Saving…' : 'Save'}
+              Load models
             </Button>
-          </div>
+          ) : null}
+          <Button
+            onClick={() => onSave(provider.id)}
+            variant="outline"
+            disabled={!isDirty || state.saving}
+          >
+            {state.saving ? (
+              <Loader2 className="mr-2 size-4 motion-safe:animate-spin" />
+            ) : (
+              <Save className="mr-2 size-4" />
+            )}
+            {state.saving ? 'Saving…' : 'Save changes'}
+          </Button>
         </div>
-      </AccordionContent>
-    </AccordionItem>
+      </div>
+    </div>
   );
 }
 
@@ -1636,7 +1900,7 @@ function SecretInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="max-w-[var(--field-max-w)] font-mono"
+          className="max-w-[var(--field-max-w)] font-mono shadow-[var(--elevation-sm)] bg-[color:var(--bg-surface)]"
           autoComplete="off"
         />
         <Tooltip>
@@ -1670,16 +1934,24 @@ function SecretInput({
         {onTest ? (
           <Button
             type="button"
-            variant="outline"
+            variant="default"
             size="sm"
             onClick={onTest}
             disabled={testStatus === 'busy'}
           >
-            <TestTube className="mr-2 size-4" />
+            {testStatus === 'busy' ? (
+              <Loader2 className="mr-2 size-4 motion-safe:animate-spin" />
+            ) : testStatus === 'ok' ? (
+              <CheckCircle2 className="mr-2 size-4" />
+            ) : testStatus === 'error' ? (
+              <AlertCircle className="mr-2 size-4" />
+            ) : (
+              <TestTube className="mr-2 size-4" />
+            )}
             {testStatus === 'busy'
               ? 'Testing…'
               : testStatus === 'ok'
-                ? 'Success'
+                ? 'Verified'
                 : testStatus === 'error'
                   ? 'Retry'
                   : 'Test'}
@@ -1688,9 +1960,16 @@ function SecretInput({
       </div>
       {status ? (
         <span
-          className={`${statusToneClass[status.tone]} text-sm`}
+          className={`flex items-center gap-[var(--space-1)] text-sm ${statusToneClass[status.tone]}`}
           aria-live="polite"
         >
+          {status.tone === 'success' ? (
+            <CheckCircle2 className="size-[14px]" aria-hidden="true" />
+          ) : status.tone === 'error' ? (
+            <AlertCircle className="size-[14px]" aria-hidden="true" />
+          ) : (
+            <Circle className="size-[14px]" aria-hidden="true" />
+          )}
           {status.message}
         </span>
       ) : null}
