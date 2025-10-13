@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Chat module now reads all enabled cloud/local models from Settings, keeps conversation model metadata in sync, and gracefully handles empty configurations with clear messaging.
 - Sanitized streaming pipeline retained while ensuring conversation switches and new chats preserve the chosen LLM provider.
 - Settings → Models “Manage” action now opens the provider detail sheet directly for quicker edits without exposing the old dropdown.
+- Local Ollama streaming restored by accepting the current `message.content` payload shape and forwarding deltas to the UI.
 
 ### Improve initial module states for Chat and Notes (2025-10-13)
 - Chat module now auto-creates unsaved blank conversation on load, only saves after first message sent

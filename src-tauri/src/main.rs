@@ -1087,9 +1087,18 @@ struct OllamaStreamChunk {
     #[serde(default)]
     response: Option<String>,
     #[serde(default)]
+    message: Option<OllamaMessage>,
+    #[serde(default)]
     done: Option<bool>,
     #[serde(default)]
     error: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OllamaMessage {
+    #[serde(default)]
+    role: Option<String>,
+    content: String,
 }
 
 #[tauri::command]
@@ -1182,7 +1191,11 @@ async fn ollama_chat_stream(
                         return Err(error);
                     }
 
-                    if let Some(content) = chunk.response {
+                    let content = chunk
+                        .response
+                        .or_else(|| chunk.message.as_ref().map(|m| m.content.clone()));
+
+                    if let Some(content) = content {
                         if !content.is_empty() {
                             let _ = emit(
                                 &window,
