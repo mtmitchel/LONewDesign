@@ -16,6 +16,8 @@ tauri-plugin-fs = "2.0"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 futures-util = "0.3"
+tauri-plugin-deep-link = "^2.4"
+tauri-plugin-http = "^2.4"
 
 [profile.release]
 opt-level = 3

@@ -1,4 +1,6 @@
-# Implementation plan for unified UI redesign (v2)
+# Unified workspace roadmap (v2)
+
+> Formerly `Unified-UI-Redesign.md`; this living roadmap now covers the unified UI redesign and the Google Workspace (Mail · Calendar · Tasks) integration workstreams.
 
 ## Scope overview
 
@@ -6,6 +8,47 @@
 * **One assistant** entry: capture, writing tools, and open-ended AI, with natural-language intent routing.
 * Reuse modal, pane, and tokenized UI primitives to avoid duplicating patterns.
 * Prioritize incremental delivery with clear gates so new experiences can ship progressively.
+
+---
+
+## Google Workspace integration (Mail · Calendar · Tasks)
+
+### Objectives
+
+* Provide a single Google OAuth connection that powers mail triage, calendar sync, and bidirectional task management.
+* Keep the Tasks module, project boards, and calendar rail in lockstep with Google Task lists while supporting drag/drop ergonomics.
+* Ensure shared providers, telemetry, and docs stay aligned with the broader unified UI milestones.
+
+### Key deliverables
+
+* `settings` integration card for Google Workspace (OAuth, secure storage, per-module toggles).
+* Multi-surface Google Tasks sync service with incremental polling, conflict handling, and drag/drop support.
+* Shared task list metadata and filters across Tasks module, calendar rail, and project boards.
+* Updated roadmap/docs (`Guidelines.md`, Assistant roadmap) and instrumentation for Google sync health.
+
+### Execution sequence
+
+1. **Unify Google OAuth & provider settings** – add Google Workspace provider card, secure token storage, module toggles, and refresh handling.
+2. **Google Tasks sync foundation** – create `googleTasksSyncService`, extend `taskStore` schema (`externalId`, `listId`, `pendingSync`, `clientMutationId`), replace localStorage persistence, add background poller.
+3. **Task list management & rail filtering** – hydrate Google task lists, expose selectors, update calendar rail dropdown (All vs per-list), route new tasks to the active list, show sync states.
+4. **Kanban drag/drop & ordering** – integrate drag/drop library, use `tasks.move` for intra-list ordering, insert/delete for cross-list moves, encode board metadata in task notes, guard with optimistic updates & rollback.
+5. **Project kanban alignment** – map project columns to Google Task lists, filter shared store by `projectId`, wire quick actions, surface conflict notices.
+6. **Main Tasks module alignment** – remove mock data, rely on shared store selectors, ensure search/bulk actions respect pending sync, hook Quick Assistant task flow to shared service.
+7. **Mail & calendar sync adjustments** – refactor services to reuse Google credential, keep calendar rail reactive, suppress `pendingSync` tasks in agendas.
+8. **Quick Assistant enhancements** – ship Ask-AI fallback, confidence UI, provider persistence, and regression tests.
+9. **Context Panel rollout** – finish migrating Notes/Tasks panes to shared `ContextPanel`, wire Project Insights data, drop duplicate upcoming events.
+10. **Command palette & global search** – hook `CommandPalette` into App shell, add adapters for navigation/creation.
+11. **Dashboard data wiring** – swap mock data for live stores with skeletons, keep card caps and scoped links.
+12. **Documentation & tokens** – update this roadmap, `docs/guidelines/Guidelines.md`, and token reference for Insights usage.
+13. **Testing & instrumentation** – add integration/e2e coverage for sync scenarios, instrument `tasks.sync.*` events, verify lint/type/e2e suites.
+14. **Cleanup & follow-ups** – remove mock/localStorage remnants, resolve TODO markers, record changes in `CHANGELOG.md`.
+
+#### Status – 2025-10-15
+
+* ✅ Google Workspace provider card & shared settings store scaffolded (Settings → Accounts) with per-module toggles; secure storage hooks in place.
+* 🔄 OAuth browser handoff now generates PKCE pairs and exchanges auth codes for tokens via deep link (desktop); finalize non-desktop callback handling and token hydration.
+* 🔄 Tasks sync service + store schema refactor scoped — coding not started.
+* 🔄 Drag/drop + cross-list move design approved; awaiting sync foundation before UI wiring.
 
 ---
 

@@ -14,7 +14,7 @@
     "esModuleInterop": true,
     "allowJs": false,
     "strict": true,
-    "types": ["dompurify"],
+    "types": ["dompurify", "vite/client"],
     "baseUrl": ".",
     "paths": {
       "@canvas": ["components/modules/Canvas/runtime/index.ts"],

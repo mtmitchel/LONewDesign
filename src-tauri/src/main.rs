@@ -7,6 +7,7 @@ use futures_util::StreamExt;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};
+use tauri_plugin_deep_link::DeepLinkExt;
 
 const DEFAULT_MISTRAL_BASE_URL: &str = "https://api.mistral.ai/v1";
 const DEFAULT_OLLAMA_BASE_URL: &str = "http://127.0.0.1:11434";
@@ -41,10 +42,40 @@ struct StreamEvent {
     error: Option<String>,
 }
 
+#[derive(Debug, Serialize, Clone)]
+struct GoogleOAuthCallbackPayload {
+    code: String,
+    state: String,
+    redirect_uri: String,
+}
+
 #[derive(Debug, Serialize)]
 struct TestResult {
     ok: bool,
     message: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GoogleTokenRequestInput {
+    code: String,
+    code_verifier: String,
+    redirect_uri: String,
+    client_id: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+struct GoogleTokenResponse {
+    access_token: String,
+    #[serde(default)]
+    expires_in: Option<u64>,
+    #[serde(default)]
+    refresh_token: Option<String>,
+    #[serde(default)]
+    scope: Option<String>,
+    #[serde(default)]
+    token_type: Option<String>,
+    #[serde(default)]
+    id_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -1301,11 +1332,88 @@ async fn openai_complete(
     Ok(content)
 }
 
+#[tauri::command]
+async fn google_oauth_exchange(
+    state: State<'_, ApiState>,
+    payload: GoogleTokenRequestInput,
+) -> Result<GoogleTokenResponse, String> {
+    let form = [
+        ("grant_type", "authorization_code"),
+        ("code", payload.code.as_str()),
+        ("code_verifier", payload.code_verifier.as_str()),
+        ("redirect_uri", payload.redirect_uri.as_str()),
+        ("client_id", payload.client_id.as_str()),
+    ];
+
+    let response = state
+        .client
+        .post("https://oauth2.googleapis.com/token")
+        .form(&form)
+        .send()
+        .await
+        .map_err(|error| format!("Failed to call Google token endpoint: {error}"))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("Google token endpoint returned {}: {}", status, body));
+    }
+
+    response
+        .json::<GoogleTokenResponse>()
+        .await
+        .map_err(|error| format!("Failed to parse Google token response: {error}"))
+}
+
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_http::init())
+        .setup(|app| {
+            let app_handle = app.handle();
+
+            #[cfg(any(windows, target_os = "linux"))]
+            if let Err(error) = app_handle.deep_link().register("libreollama") {
+                eprintln!("[deep-link] Failed to register scheme: {error}");
+            }
+
+            let handle_for_listener = app_handle.clone();
+            app_handle.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    if url.scheme() != "libreollama" {
+                        continue;
+                    }
+
+                    let mut code: Option<String> = None;
+                    let mut state: Option<String> = None;
+
+                    for (key, value) in url.query_pairs() {
+                        match key.as_ref() {
+                            "code" => code = Some(value.to_string()),
+                            "state" => state = Some(value.to_string()),
+                            _ => {}
+                        }
+                    }
+
+                    if let Some(code) = code {
+                        let payload = GoogleOAuthCallbackPayload {
+                            code,
+                            state: state.unwrap_or_default(),
+                            redirect_uri: url.to_string(),
+                        };
+
+                        if let Err(error) = handle_for_listener.emit("google:oauth:callback", payload) {
+                            eprintln!("[deep-link] Failed to emit OAuth callback: {error}");
+                        }
+                    }
+                }
+            });
+
+            Ok(())
+        })
         .manage(ApiState::new())
         .invoke_handler(tauri::generate_handler![
             test_mistral_credentials,
@@ -1322,7 +1430,8 @@ fn main() {
             generate_conversation_title,
             deepl_translate,
             openai_chat_stream,
-            openai_complete
+            openai_complete,
+            google_oauth_exchange
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

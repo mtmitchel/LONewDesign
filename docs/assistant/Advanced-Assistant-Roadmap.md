@@ -1,6 +1,6 @@
 # Advanced Assistant Roadmap
 
-> Last updated: 2025-10-10 &mdash; aligns with `Unified-UI-Redesign.md` section 1.
+> Last updated: 2025-10-10 &mdash; aligns with `docs/roadmap/Unified-Workspace-Roadmap.md` section 1.
 
 ## Current Scope
 - Single entry point for capture, writing transforms, and free-form AI requests.
@@ -55,4 +55,4 @@
 ## References & Archive
 - Legacy capture prototype docs now live under `docs/archive/assistant-prototype/`.
 - Previous assistant planning artifacts (`ASSISTANT_IMPLEMENTATION_PLAN.md`, `WRITING_TOOLS_STATUS.md`, `TEST_ASSISTANT_EVENT.md`) are archived in `docs/archive/assistant/` after this consolidation.
-- UI wiring and advanced UI goals continue to live in `Unified-UI-Redesign.md` — keep statuses in sync when progress changes.
+- UI wiring and advanced UI goals continue to live in `docs/roadmap/Unified-Workspace-Roadmap.md` — keep statuses in sync when progress changes.
