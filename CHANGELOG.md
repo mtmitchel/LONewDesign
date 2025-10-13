@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Settings navigation redesign (2025-10-13)
+- Redesigned settings sidebar to match Canvas module with TriPane layout, PaneHeader, and PaneFooter components
+- Added collapsible navigation pane (260px width) with hide/show caret button matching Canvas behavior
+- Implemented smooth scroll-to-section navigation with proper highlight states and scroll spy tracking
+- Removed Advanced/Diagnostics/Danger zone sections, streamlined to Models and Accounts only
+- Simplified section headers to title-only format (no gray backgrounds or descriptions)
+- Fixed scroll viewport detection for proper section navigation in ScrollArea component
+
 ### Settings modal cloud/local rework (2025-10-12)
 - Split the Providers card into dedicated `Cloud providers` and `Local models` panels with sentence-case copy, scoped CTAs, and assistant defaults following the sources list.
 - Simplified the provider sheet: one `Connection` block with `Verify` actions, compact API key tools (show/hide, paste, copy), and an advanced base URL accordion instead of nested cards.

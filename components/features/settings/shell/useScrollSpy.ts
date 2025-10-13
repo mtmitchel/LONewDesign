@@ -9,6 +9,7 @@ interface UseScrollSpyOptions {
   activeSection: SectionId;
   setActiveSection: (id: SectionId) => void;
   offset?: number;
+  disabled?: RefObject<boolean>;
 }
 
 export function useScrollSpy({
@@ -17,12 +18,14 @@ export function useScrollSpy({
   activeSection,
   setActiveSection,
   offset = 72,
+  disabled,
 }: UseScrollSpyOptions): void {
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
     const handleScroll = () => {
+      if (disabled?.current) return;
       const viewportRect = viewport.getBoundingClientRect();
       let candidate: SectionId | null = null;
       let candidateDistance = Number.POSITIVE_INFINITY;

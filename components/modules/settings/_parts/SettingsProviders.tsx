@@ -649,16 +649,13 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       role="region"
       className="scroll-mt-28 space-y-[var(--settings-card-gap)]"
     >
-      <header className="sticky top-14 z-[1] rounded-[var(--radius-lg)] border border-transparent bg-[var(--bg-surface-elevated)] px-4 py-4 shadow-[var(--elevation-sm)]">
-        <h2 id={`${id}-title`} className="text-xl font-semibold text-[var(--text-primary)]">
-          Model sources
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-[var(--text-primary)]">
+          Models
         </h2>
-        <p className="text-sm text-[var(--text-secondary)]">
-          Connect cloud providers and manage local runtimes in one place.
-        </p>
-      </header>
+      </div>
 
-      <SectionCard title="Model sources" help="Review cloud APIs alongside your on-device models.">
+      <SectionCard title="Models" help="Connect cloud providers and manage local models.">
         <ProvidersSummaryPanel
           providers={PROVIDERS}
           providerState={providerState}
@@ -694,7 +691,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
 
       <SectionCard
         title="Assistant defaults"
-        help="Choose the provider and fallback model the assistant uses before overrides."
+        help="Choose a primary provider and an optional fallback."
       >
         <AssistantDefaultsPanel
           providersConfig={providers}
