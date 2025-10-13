@@ -47,9 +47,11 @@ const saveToStorage = <T,>(key: string, value: T): void => {
 
 export function NotesModule() {
   // State management for folders, notes, selections, search, and settings
-  const [folders, setFolders] = React.useState<NoteFolder[]>(() => loadFromStorage(STORAGE_KEYS.folders, []));
+  const [folders, setFolders] = React.useState<NoteFolder[]>(() =>
+    loadFromStorage<NoteFolder[]>(STORAGE_KEYS.folders, []),
+  );
   const [notes, setNotes] = React.useState<Note[]>(() => {
-    const loadedNotes = loadFromStorage(STORAGE_KEYS.notes, []);
+    const loadedNotes = loadFromStorage<Note[]>(STORAGE_KEYS.notes, []);
     // Create initial blank note if none exist
     if (loadedNotes.length === 0) {
       const now = new Date().toISOString();
@@ -72,7 +74,7 @@ export function NotesModule() {
     return loadedNotes;
   });
   const [selectedItem, setSelectedItem] = React.useState<{id: string, type: 'folder' | 'note'} | null>(() => {
-    const loadedNotes = loadFromStorage(STORAGE_KEYS.notes, []);
+    const loadedNotes = loadFromStorage<Note[]>(STORAGE_KEYS.notes, []);
     // Auto-select the first note if it exists
     if (loadedNotes.length === 0) {
       const initialNoteId = `note-${Date.now()}`;

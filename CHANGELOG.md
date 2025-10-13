@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Chat model synchronization & settings polish (2025-10-14)
+- Chat module now reads all enabled cloud/local models from Settings, keeps conversation model metadata in sync, and gracefully handles empty configurations with clear messaging.
+- Sanitized streaming pipeline retained while ensuring conversation switches and new chats preserve the chosen LLM provider.
+- Settings → Models “Manage” action now opens the provider detail sheet directly for quicker edits without exposing the old dropdown.
+
 ### Improve initial module states for Chat and Notes (2025-10-13)
 - Chat module now auto-creates unsaved blank conversation on load, only saves after first message sent
 - Notes module auto-creates blank note on first load and auto-selects it

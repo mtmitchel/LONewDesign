@@ -663,7 +663,6 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           localProvider={providers.local}
           isLocalBusy={isLocalBusy}
           onConfigure={(providerId) => providerId !== 'local' && setEditing(providerId)}
-          onRunTest={(providerId) => handleTest(providerId)}
           onPullLocalModel={handleLocalPullModel}
           onRequestDeleteLocalModel={(model) => setPendingLocalDelete(model)}
           onRefreshLocalModels={handleLocalRefresh}

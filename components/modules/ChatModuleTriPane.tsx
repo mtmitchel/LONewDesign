@@ -18,6 +18,7 @@ import {
 import { Button } from "../ui/button";
 import { openQuickAssistant } from "../assistant";
 import { useProviderSettings } from "./settings/state/providerSettings";
+import type { ProviderConfig, ProviderId } from "./settings/state/providerSettings";
 import { toast } from "sonner";
 import { sanitizeLLMText, sanitizeTitle, stripMarkdown } from "../assistant/services/llmSanitizer";
 import { invoke } from '@tauri-apps/api/core';
@@ -38,6 +39,85 @@ function isMistralModel(model: string): boolean {
          model.startsWith('voxtral-') ||
          model.startsWith('magistral-') ||
          model.startsWith('ministral-');
+}
+
+type ModelOption = {
+  value: string;
+  label: string;
+  provider: ProviderId;
+};
+
+const SUPPORTED_CHAT_PROVIDERS: ProviderId[] = ['local', 'mistral', 'openai', 'deepseek', 'glm', 'openrouter'];
+
+const PROVIDER_DISPLAY_NAMES: Partial<Record<ProviderId, string>> = {
+  local: 'Ollama',
+  mistral: 'Mistral',
+  openai: 'OpenAI',
+  deepseek: 'DeepSeek',
+  glm: 'GLM',
+  openrouter: 'OpenRouter',
+};
+
+function formatModelLabel(provider: ProviderId, modelId: string): string {
+  if (!modelId) return '';
+
+  switch (provider) {
+    case 'local':
+      return `Ollama · ${modelId}`;
+    case 'mistral':
+      return modelId
+        .replace(/^open-mistral-/, 'Mistral ')
+        .replace(/^mistral-/, 'Mistral ')
+        .replace(/^mixtral-/, 'Mixtral ')
+        .replace(/^open-mixtral-/, 'Mixtral ')
+        .replace(/^codestral-/, 'Codestral ')
+        .replace(/^devstral-/, 'Devstral ')
+        .replace(/^pixtral-/, 'Pixtral ')
+        .replace(/^voxtral-/, 'Voxtral ')
+        .replace(/^magistral-/, 'Magistral ')
+        .replace(/^ministral-/, 'Ministral ')
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, letter => letter.toUpperCase());
+    case 'openrouter':
+      if (modelId === 'openrouter/auto') {
+        return 'OpenRouter Auto';
+      }
+      return `OpenRouter · ${modelId.replace('openrouter/', '').replace(/\//g, ' / ')}`;
+    case 'openai':
+      return `OpenAI · ${modelId}`;
+    case 'deepseek':
+      return `DeepSeek · ${modelId}`;
+    case 'glm':
+      return `GLM · ${modelId}`;
+    default:
+      return `${(PROVIDER_DISPLAY_NAMES[provider] ?? provider.toUpperCase())} · ${modelId}`;
+  }
+}
+
+function collectModelIds(provider: ProviderId, config: ProviderConfig): string[] {
+  const ordered: string[] = [];
+  
+  const addModel = (modelId?: string | null) => {
+    const trimmed = modelId?.trim();
+    if (!trimmed) return;
+    if (!ordered.includes(trimmed)) {
+      ordered.push(trimmed);
+    }
+  };
+
+  if (provider === 'openrouter') {
+    addModel('openrouter/auto');
+  }
+
+  config.enabledModels?.forEach(addModel);
+
+  if (provider === 'local' && ordered.length === 0) {
+    config.availableModels?.forEach(addModel);
+  }
+
+  addModel(config.defaultModel);
+
+  return ordered;
 }
 
 interface StreamEvent {
@@ -65,81 +145,32 @@ export function ChatModuleTriPane() {
   const { providers } = useProviderSettings();
   
   // Build model options dynamically from enabled models across all providers
-  const MODEL_OPTIONS = React.useMemo(() => {
-    const options: Array<{ value: string; label: string; provider: string }> = [];
-    
-    // Add local Ollama models
-    if (providers.local.enabledModels.length > 0) {
-      providers.local.enabledModels.forEach((modelId) => {
+  const MODEL_OPTIONS = React.useMemo<ModelOption[]>(() => {
+    const options: ModelOption[] = [];
+
+    SUPPORTED_CHAT_PROVIDERS.forEach(providerId => {
+      const providerConfig = providers[providerId];
+      if (!providerConfig) return;
+
+      const requiresApiKey = providerId !== 'local';
+      if (requiresApiKey && !providerConfig.apiKey?.trim()) {
+        return;
+      }
+
+      const models = collectModelIds(providerId, providerConfig);
+      if (models.length === 0) {
+        return;
+      }
+
+      models.forEach(modelId => {
         options.push({
           value: modelId,
-          label: `Ollama · ${modelId}`,
-          provider: 'local',
+          label: formatModelLabel(providerId, modelId),
+          provider: providerId,
         });
-      });
-    }
-
-    // Add enabled Mistral models
-    providers.mistral.enabledModels.forEach(modelId => {
-      options.push({
-        value: modelId,
-        label: modelId.replace('mistral-', 'Mistral ').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        provider: "mistral",
       });
     });
-    
-    // Add GLM models if configured
-    if (providers.glm.apiKey.trim() && providers.glm.defaultModel) {
-      options.push({
-        value: providers.glm.defaultModel,
-        label: 'GLM-4.6',
-        provider: 'glm',
-      });
-    }
-    
-    // Add OpenAI models if configured
-    if (providers.openai.apiKey.trim()) {
-      providers.openai.enabledModels.forEach(modelId => {
-        options.push({
-          value: modelId,
-          label: modelId,
-          provider: 'openai',
-        });
-      });
-    }
-    
-    // Add DeepSeek models if configured
-    if (providers.deepseek.apiKey.trim()) {
-      providers.deepseek.enabledModels.forEach(modelId => {
-        options.push({
-          value: modelId,
-          label: modelId,
-          provider: 'deepseek',
-        });
-      });
-    }
-    
-    // Add OpenRouter models if configured
-    if (providers.openrouter.apiKey.trim()) {
-      // Always add OpenRouter Auto (smart routing)
-      options.push({
-        value: 'openrouter/auto',
-        label: 'OpenRouter Auto',
-        provider: 'openrouter',
-      });
-      
-      // Add any additional enabled models
-      providers.openrouter.enabledModels
-        .filter(modelId => modelId !== 'openrouter/auto')
-        .forEach(modelId => {
-          options.push({
-            value: modelId,
-            label: modelId.replace('openrouter/', '').replace(/-/g, ' ').replace(/\//g, ' / '),
-            provider: 'openrouter',
-          });
-        });
-    }
-    
+
     return options;
   }, [providers]);
   
@@ -200,19 +231,15 @@ export function ChatModuleTriPane() {
 
 // Sample handlers passed to panes
   const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = React.useState<string>(() => {
-    // Try to find the first available model from any provider
-    if (providers.mistral.enabledModels[0]) return providers.mistral.enabledModels[0];
-    if (providers.glm.apiKey.trim() && providers.glm.defaultModel) return providers.glm.defaultModel;
-    if (providers.openrouter.apiKey.trim()) return 'openrouter/auto';
-    if (providers.openai.enabledModels[0]) return providers.openai.enabledModels[0];
-    if (providers.deepseek.enabledModels[0]) return providers.deepseek.enabledModels[0];
-    return '';
-  });
+  const [selectedModel, setSelectedModel] = React.useState<string>(() => MODEL_OPTIONS[0]?.value ?? '');
+  const selectedOption = React.useMemo(
+    () => MODEL_OPTIONS.find(option => option.value === selectedModel) ?? null,
+    [MODEL_OPTIONS, selectedModel]
+  );
   const selectedModelLabel = React.useMemo(() => {
-    const match = MODEL_OPTIONS.find(option => option.value === selectedModel);
-    return match ? match.label : selectedModel;
-  }, [selectedModel]);
+    if (selectedOption?.label) return selectedOption.label;
+    return selectedModel || 'Select a model';
+  }, [selectedModel, selectedOption]);
   const modelAnnouncement = React.useMemo(
     () => `Model set to ${selectedModelLabel}`,
     [selectedModelLabel]
@@ -243,6 +270,29 @@ export function ChatModuleTriPane() {
   const [isStreaming, setIsStreaming] = React.useState(false);
   const [unsavedConversationId, setUnsavedConversationId] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (MODEL_OPTIONS.length === 0) {
+      if (selectedModel !== '') {
+        setSelectedModel('');
+      }
+      return;
+    }
+
+    const hasSelection = MODEL_OPTIONS.some(option => option.value === selectedModel);
+    if (!hasSelection) {
+      const activeConversation = activeConversationId
+        ? conversations.find(c => c.id === activeConversationId)
+        : null;
+      const fallback =
+        (activeConversation && MODEL_OPTIONS.find(option => option.value === activeConversation.model)?.value) ??
+        MODEL_OPTIONS[0]?.value ??
+        '';
+      if (fallback !== selectedModel) {
+        setSelectedModel(fallback);
+      }
+    }
+  }, [MODEL_OPTIONS, selectedModel, conversations, activeConversationId]);
+
   // Always create a new blank conversation on mount (but don't save it yet)
   React.useEffect(() => {
     const newConversationId = `conv-${Date.now()}`;
@@ -254,12 +304,41 @@ export function ChatModuleTriPane() {
   React.useEffect(() => {
     if (activeConversationId) {
       const conversation = conversations.find(c => c.id === activeConversationId);
-      if (conversation?.model && conversation.model !== selectedModel) {
+      if (
+        conversation?.model &&
+        conversation.model !== selectedModel &&
+        MODEL_OPTIONS.some(option => option.value === conversation.model)
+      ) {
         setSelectedModel(conversation.model);
         console.debug('chat:model:auto-selected', { model: conversation.model });
       }
     }
-  }, [activeConversationId, conversations]);
+  }, [activeConversationId, conversations, MODEL_OPTIONS, selectedModel]);
+
+  React.useEffect(() => {
+    if (!activeConversationId || !selectedOption) {
+      return;
+    }
+
+    setConversations(prev => {
+      let didChange = false;
+      const next = prev.map(conversation => {
+        if (conversation.id !== activeConversationId) {
+          return conversation;
+        }
+        if (conversation.model === selectedOption.value && conversation.provider === selectedOption.provider) {
+          return conversation;
+        }
+        didChange = true;
+        return {
+          ...conversation,
+          model: selectedOption.value,
+          provider: selectedOption.provider,
+        };
+      });
+      return didChange ? next : prev;
+    });
+  }, [activeConversationId, selectedOption, setConversations]);
   
   // Title generation with proper state management
   React.useEffect(() => {
@@ -283,10 +362,8 @@ export function ChatModuleTriPane() {
         console.log('[Title Generation] Starting for conversation:', conversationId);
         
         // Use appropriate provider configuration
-        const isMistralModel = selectedModel.startsWith('mistral-') || 
-                              selectedModel.startsWith('codestral-') || 
-                              selectedModel.startsWith('ministral-');
-        const providerType = MODEL_OPTIONS.find(opt => opt.value === selectedModel)?.provider;
+        const isMistralModelSelected = isMistralModel(selectedModel);
+        const providerType = selectedOption?.provider;
 
         if (providerType === 'local') {
           const baseUrl = providers.local.baseUrl.trim() || 'http://127.0.0.1:11434';
@@ -325,7 +402,7 @@ export function ChatModuleTriPane() {
         let baseUrl: string | null;
         let titleModel: string;
         
-        if (isMistralModel) {
+        if (isMistralModelSelected) {
           apiKey = providers.mistral.apiKey.trim();
           baseUrl = providers.mistral.baseUrl?.trim() || null;
           titleModel = 'mistral-small-latest'; // Fast model for titles
@@ -405,7 +482,7 @@ export function ChatModuleTriPane() {
         }
       }
     }
-  }, [messages, conversations, activeConversationId, isStreaming, selectedModel, providers]);
+  }, [messages, conversations, activeConversationId, isStreaming, selectedModel, selectedOption, providers]);
 
   // Auto-save to localStorage
   React.useEffect(() => {
@@ -429,18 +506,20 @@ export function ChatModuleTriPane() {
     if (found) return found;
     
     // If this is an unsaved conversation, create a virtual conversation object
-    if (unsavedConversationId === activeConversationId) {
+    if (unsavedConversationId && unsavedConversationId === activeConversationId) {
       return {
-        id: activeConversationId,
+        id: unsavedConversationId,
         title: 'Untitled conversation',
+        lastMessageSnippet: '',
+        updatedAt: new Date().toISOString(),
+        unread: false,
         model: selectedModel,
-        timestamp: new Date().toISOString(),
-        lastMessagePreview: '',
-      };
+        provider: selectedOption?.provider,
+      } satisfies Conversation;
     }
     
     return null;
-  }, [conversations, activeConversationId, unsavedConversationId, selectedModel]);
+  }, [conversations, activeConversationId, unsavedConversationId, selectedModel, selectedOption]);
 
   const onOpenConversation = (id: string) => {
     setActiveConversationId(id);
@@ -449,21 +528,23 @@ export function ChatModuleTriPane() {
 
   const onSend = async (text: string) => {
     if (!activeConversationId) return;
+    const now = new Date().toISOString();
     
     // If this is an unsaved conversation, save it now
     if (unsavedConversationId === activeConversationId) {
       const newConversation: Conversation = {
         id: activeConversationId,
         title: 'Untitled conversation',
+        lastMessageSnippet: text,
+        updatedAt: now,
+        unread: false,
         model: selectedModel,
-        timestamp: new Date().toISOString(),
-        lastMessagePreview: text,
+        provider: selectedOption?.provider,
       };
       setConversations(prev => [newConversation, ...prev]);
       setUnsavedConversationId(null);
     }
-    
-    const now = new Date().toISOString();
+
     const userMessageId = `m-${Date.now()}`;
     const userMessage: ChatMessage = {
       id: userMessageId,
@@ -483,7 +564,7 @@ export function ChatModuleTriPane() {
               updatedAt: now,
               unread: false,
               model: selectedModel, // Update model used
-              provider: MODEL_OPTIONS.find(opt => opt.value === selectedModel)?.provider,
+              provider: selectedOption?.provider,
             }
           : conversation
       )
@@ -492,8 +573,12 @@ export function ChatModuleTriPane() {
     console.debug('chat:message:send', { conversation: activeConversationId, length: text.length, model: selectedModel });
     
     // Detect which provider this model belongs to
-    const selectedOption = MODEL_OPTIONS.find(opt => opt.value === selectedModel);
-    const providerType = selectedOption?.provider || 'mistral';
+    if (!selectedOption) {
+      toast.error('No model configured. Please select a model in Settings.');
+      return;
+    }
+
+    const providerType = selectedOption.provider || 'mistral';
     
     // Handle streaming based on provider type
     if (providerType === 'mistral' && isMistralModel(selectedModel)) {
@@ -756,18 +841,47 @@ export function ChatModuleTriPane() {
         participants: ['You'],
         unread: false,
         model: selectedModel, // Store current model
-        provider: MODEL_OPTIONS.find(opt => opt.value === selectedModel)?.provider,
+        provider: selectedOption?.provider,
       },
       ...prev,
     ]);
     setActiveConversationId(id);
     console.debug('chat:conversation:new', { id });
-  }, [setActiveConversationId, setConversations, selectedModel]);
+  }, [selectedModel, selectedOption, setActiveConversationId, setConversations]);
 
-  const onModelChange = React.useCallback((model: string) => {
-    setSelectedModel(model);
-    console.debug('chat:model:change', { model });
-  }, [setSelectedModel]);
+  const onModelChange = React.useCallback(
+    (model: string) => {
+      setSelectedModel(model);
+
+      const nextOption = MODEL_OPTIONS.find(option => option.value === model) ?? null;
+
+      if (activeConversationId) {
+        setConversations(prev => {
+          let didChange = false;
+          const next = prev.map(conversation => {
+            if (conversation.id !== activeConversationId) {
+              return conversation;
+            }
+
+            if (conversation.model === model && conversation.provider === nextOption?.provider) {
+              return conversation;
+            }
+
+            didChange = true;
+            return {
+              ...conversation,
+              model,
+              provider: nextOption?.provider,
+            };
+          });
+          return didChange ? next : prev;
+        });
+      }
+
+      console.debug('chat:model:change', { model });
+    },
+    [MODEL_OPTIONS, activeConversationId, setConversations]
+  );
 
   const onConversationAction = React.useCallback(
     (id: string, action: ConversationAction) => {
@@ -968,18 +1082,27 @@ export function ChatModuleTriPane() {
               <div className="flex items-center gap-[var(--space-2)]">
                 <div className="flex items-center gap-[var(--space-2)] text-xs font-medium text-[color:var(--text-tertiary)]">
                   <span>Model</span>
-                  <Select value={selectedModel} onValueChange={onModelChange}>
+                  <Select
+                    value={selectedModel || undefined}
+                    onValueChange={onModelChange}
+                    disabled={MODEL_OPTIONS.length === 0}
+                  >
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <SelectTrigger
                           size="sm"
                           aria-label="Select model for this conversation"
                           className="max-w-[220px] text-[length:var(--text-sm)]"
+                          disabled={MODEL_OPTIONS.length === 0}
                         >
-                          <SelectValue placeholder="Select a model" />
+                          <SelectValue
+                            placeholder={MODEL_OPTIONS.length === 0 ? 'No models configured' : 'Select a model'}
+                          />
                         </SelectTrigger>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom">{selectedModelLabel}</TooltipContent>
+                      <TooltipContent side="bottom">
+                        {MODEL_OPTIONS.length === 0 ? 'Configure models in Settings → Models' : selectedModelLabel}
+                      </TooltipContent>
                     </Tooltip>
                     <SelectContent>
                       {MODEL_OPTIONS.map(option => (

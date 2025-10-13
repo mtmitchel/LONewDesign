@@ -73,7 +73,6 @@ interface ProvidersSummaryPanelProps {
   localProvider: ProviderConfig;
   isLocalBusy: boolean;
   onConfigure: (providerId: ProviderId) => void;
-  onRunTest: (providerId: ProviderId) => void;
   onPullLocalModel: (modelName: string) => void;
   onRequestDeleteLocalModel: (modelName: string) => void;
   onRefreshLocalModels: () => void;
@@ -88,7 +87,6 @@ export function ProvidersSummaryPanel({
   localProvider,
   isLocalBusy,
   onConfigure,
-  onRunTest,
   onPullLocalModel,
   onRequestDeleteLocalModel,
   onRefreshLocalModels,
@@ -159,7 +157,6 @@ export function ProvidersSummaryPanel({
               displayState={displayState}
               isOffline={isOffline}
               onConfigure={() => onConfigure(provider.id)}
-              onRunTest={() => onRunTest(provider.id)}
             />
           ))}
         </div>

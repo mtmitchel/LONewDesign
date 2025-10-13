@@ -2,7 +2,6 @@ import React from 'react';
 import { Button } from '../../../../ui/button';
 import { cn } from '../../../../ui/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../../../ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../../../../ui/dropdown-menu';
 import { CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
 import { CONNECTION_HELPER, type DisplayConnectionState } from '../connectionStatus';
 import type { ProviderMeta } from '../config';
@@ -15,10 +14,9 @@ interface ProviderStatusRowProps {
   displayState: DisplayConnectionState;
   isOffline: boolean;
   onConfigure: () => void;
-  onRunTest: () => void;
 }
 
-export function ProviderStatusRow({ provider, state, displayState, isOffline, onConfigure, onRunTest }: ProviderStatusRowProps): JSX.Element {
+export function ProviderStatusRow({ provider, state, displayState, isOffline, onConfigure }: ProviderStatusRowProps): JSX.Element {
   const lastChecked = formatRelativeTime(state.lastCheckedAt);
 
   const statusIcon = (() => {
@@ -49,35 +47,17 @@ export function ProviderStatusRow({ provider, state, displayState, isOffline, on
     return 'Status unknown';
   })();
 
-  const rightActions = (() => {
-    if (displayState === 'connected') {
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              Manage
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onRunTest}>
-              Verify again
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onConfigure}>
-              Rotate key
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onConfigure} variant="destructive">
-              Remove
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    }
-    return (
+  const rightActions = displayState === 'connected'
+    ? (
+      <Button variant="outline" size="sm" onClick={onConfigure}>
+        Manage
+      </Button>
+    )
+    : (
       <Button variant="outline" size="sm" onClick={onConfigure} disabled={isOffline && displayState === 'offline'}>
         Connect
       </Button>
     );
-  })();
 
   return (
     <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-white px-3 py-3 h-14 transition-all hover:border-[var(--border-default)] hover:shadow-[var(--elevation-sm)]">
