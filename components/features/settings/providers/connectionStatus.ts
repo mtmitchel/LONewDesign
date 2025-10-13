@@ -57,3 +57,11 @@ export const CONNECTION_HELPER: Record<ConnectionState, string> = {
   connected: 'Ready to use.',
   failed: 'Check your key or base URL, then try again.',
 };
+
+export function getDisplayConnectionState(
+  state: { connectionState: ConnectionState } | null | undefined,
+  isOffline: boolean
+): DisplayConnectionState {
+  if (isOffline) return 'offline';
+  return state?.connectionState ?? 'not_configured';
+}

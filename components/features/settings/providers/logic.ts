@@ -58,12 +58,18 @@ export function buildViewState(configs: Record<ProviderId, ProviderConfig>): Rec
     const config = configs[providerId];
     const apiKey = config?.apiKey ?? '';
     const baseUrl = config?.baseUrl ?? '';
+    
+    // Use persisted connection state if available, otherwise compute initial state
+    const connectionState = config?.connectionState ?? getInitialConnectionState(providerId, apiKey, baseUrl);
+    const lastCheckedAt = config?.lastCheckedAt ?? null;
+    const lastError = config?.lastError ?? null;
+    
     acc[providerId] = {
       apiKey,
       baseUrl,
-      connectionState: getInitialConnectionState(providerId, apiKey, baseUrl),
-      lastCheckedAt: null,
-      lastError: null,
+      connectionState,
+      lastCheckedAt,
+      lastError,
     };
     return acc;
   }, {} as Record<ProviderId, ProviderStateView>);

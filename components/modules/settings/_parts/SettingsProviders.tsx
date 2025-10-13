@@ -56,15 +56,19 @@ function isTauriContext(): boolean {
 
 export function SettingsProviders({ id, filter, registerSection }: SettingsProvidersProps) {
   const { setFieldDirty } = useSettingsState();
-  const { providers, updateProvider, resetProvider, assistantProvider, assistantModel, setAssistantProvider, setAssistantModel } = useProviderSettings(
+  const { providers, updateProvider, resetProvider, assistantProvider, assistantModel, fallbackProvider, fallbackModel, setAssistantProvider, setAssistantModel, setFallbackProvider, setFallbackModel } = useProviderSettings(
     useShallow((state) => ({
       providers: state.providers,
       updateProvider: state.updateProvider,
       resetProvider: state.resetProvider,
       assistantProvider: state.assistantProvider,
       assistantModel: state.assistantModel,
+      fallbackProvider: state.fallbackProvider,
+      fallbackModel: state.fallbackModel,
       setAssistantProvider: state.setAssistantProvider,
       setAssistantModel: state.setAssistantModel,
+      setFallbackProvider: state.setFallbackProvider,
+      setFallbackModel: state.setFallbackModel,
     }))
   );
   
@@ -381,8 +385,8 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       };
     });
 
-    const baseValue = baseline[providerId]?.[field] ?? '';
-    setFieldDirty(`providers.${providerId}.${field}`, value.trim() !== baseValue.trim());
+    // Auto-save: immediately persist to store
+    updateProvider(providerId, { [field]: value });
   };
 
   const handleTest = async (providerId: ProviderId, trigger: 'manual' | 'auto' = 'manual') => {
@@ -462,6 +466,13 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
         lastError: success ? null : message,
       },
     }));
+
+    // Persist connection state to provider settings
+    updateProvider(providerId, {
+      connectionState: success ? 'connected' : 'failed',
+      lastCheckedAt: testedAt,
+      lastError: success ? null : message,
+    });
 
     reportSettingsEvent('settings.provider_test', {
       id: providerId,
@@ -568,8 +579,6 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           lastError: null,
         },
       }));
-      setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
-      setFieldDirty(`providers.${editingMeta.id}.baseUrl`, false);
     }
     handleClose();
   };
@@ -591,8 +600,6 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
         baseUrl: snapshot.baseUrl,
       },
     }));
-    setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
-    setFieldDirty(`providers.${editingMeta.id}.baseUrl`, false);
     reportSettingsEvent('settings.provider_sheet_save', { id: editingMeta.id });
     toast.success(`${editingMeta.label} updated.`);
     void handleTest(editingMeta.id, 'auto');
@@ -628,8 +635,6 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
         baseUrl: defaultBase,
       },
     }));
-    setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
-    setFieldDirty(`providers.${editingMeta.id}.baseUrl`, false);
     
     reportSettingsEvent('settings.provider_clear', { id: editingMeta.id });
     toast.success(`${editingMeta.label} settings cleared.`);
@@ -660,10 +665,30 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           isOffline={isOffline}
           localProvider={providers.local}
           isLocalBusy={isLocalBusy}
-          onConfigure={(providerId) => setEditing(providerId)}
+          onConfigure={(providerId) => providerId !== 'local' && setEditing(providerId)}
+          onRunTest={(providerId) => handleTest(providerId)}
           onPullLocalModel={handleLocalPullModel}
           onRequestDeleteLocalModel={(model) => setPendingLocalDelete(model)}
           onRefreshLocalModels={handleLocalRefresh}
+          onUpdateLocalBaseUrl={async (baseUrl) => {
+            updateProvider('local', { baseUrl });
+            setProviderState((prev) => ({
+              ...prev,
+              local: {
+                ...prev.local,
+                baseUrl,
+                connectionState: getInitialConnectionState('local', '', baseUrl),
+                lastCheckedAt: null,
+                lastError: null,
+              },
+            }));
+            toast.success('Base URL saved.');
+            await handleTest('local', 'auto');
+          }}
+          onUpdateLocalDefaultModel={(modelId) => {
+            updateProvider('local', { defaultModel: modelId });
+            toast.success('Default model updated.');
+          }}
         />
       </SectionCard>
 
@@ -675,9 +700,14 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           providersConfig={providers}
           assistantProvider={assistantProvider}
           assistantModel={assistantModel}
+          fallbackProvider={fallbackProvider}
+          fallbackModel={fallbackModel}
           onProviderChange={setAssistantProvider}
           onModelChange={setAssistantModel}
+          onFallbackProviderChange={setFallbackProvider}
+          onFallbackModelChange={setFallbackModel}
           onConfigureProvider={(providerId) => setEditing(providerId)}
+          providerStates={providerState}
         />
       </SectionCard>
 
@@ -718,7 +748,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
                     <AuthenticationPanel
                       apiKey={editingState.apiKey}
                       revealKey={revealKey}
-                      helperText="Stored on this device."
+                      helperText="Saved locally. Never shared."
                       onApiKeyChange={(value) => handleChange('apiKey', value, editing)}
                       onApiKeyBlur={handleCredentialBlur}
                       onToggleReveal={() => setRevealKey((prev) => !prev)}
@@ -726,19 +756,12 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
                       onCopy={() => handleCopy(editing, editingState.apiKey)}
                     />
 
-                    <details className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3 text-sm text-[var(--text-primary)] [&[open]]:shadow-[var(--elevation-sm)]">
-                      <summary className="cursor-pointer list-none font-medium text-[var(--text-primary)]">
-                        Advanced
-                      </summary>
-                      <div className="mt-3 border-t border-[var(--border-subtle)] pt-3">
-                        <RoutingPanel
-                          baseUrl={editingState.baseUrl}
-                          defaultBase={editingMeta.base}
-                          onBaseUrlChange={(value) => handleChange('baseUrl', value, editing)}
-                          onBaseUrlBlur={handleCredentialBlur}
-                        />
-                      </div>
-                    </details>
+                    <RoutingPanel
+                      baseUrl={editingState.baseUrl}
+                      defaultBase={editingMeta.base}
+                      onBaseUrlChange={(value) => handleChange('baseUrl', value, editing)}
+                      onBaseUrlBlur={handleCredentialBlur}
+                    />
                   </>
                 ) : (
                   <section className="space-y-4 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
@@ -847,12 +870,6 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
                   />
                 )}
 
-                <RoutingPanel
-                  baseUrl={editingState.baseUrl}
-                  defaultBase={editingMeta.base}
-                  onBaseUrlChange={(value) => handleChange('baseUrl', value, editing)}
-                  onBaseUrlBlur={handleCredentialBlur}
-                />
               </div>
 
               <SheetFooter className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-4">

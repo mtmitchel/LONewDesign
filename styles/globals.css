@@ -215,6 +215,8 @@
   --settings-content-w: 72ch;
   --settings-sheet-w: 520px;
   --settings-card-gap: 24px;
+  --settings-provider-grid-gap: var(--space-3);
+  --settings-provider-tile-pad: var(--space-3);
   --form-row-gap: 12px;
   --settings-surface-bg: var(--bg-surface);
   --settings-surface-border: var(--border-subtle);

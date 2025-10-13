@@ -25,8 +25,8 @@ export function RoutingPanel({ baseUrl, defaultBase, onBaseUrlChange, onBaseUrlB
         autoCapitalize="none"
         autoCorrect="off"
       />
-      <p className="text-xs text-[var(--text-tertiary)]">
-        Leave blank to use the default endpoint: <span className="font-mono">{defaultBase}</span>
+      <p className="text-sm text-[var(--text-secondary)]">
+        Leave empty to use the default: <span className="font-mono">{defaultBase}</span>
       </p>
     </div>
   );

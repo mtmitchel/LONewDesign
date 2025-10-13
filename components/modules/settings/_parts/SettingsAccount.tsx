@@ -64,10 +64,13 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
       role="region"
       className="scroll-mt-28 space-y-[var(--settings-card-gap)]"
     >
-      <header>
+      <header className="sticky top-14 z-[1] rounded-[var(--radius-lg)] border border-transparent bg-[var(--bg-surface-elevated)] px-4 py-4 shadow-[var(--elevation-sm)]">
         <h2 id={`${id}-title`} className="text-xl font-semibold text-[var(--text-primary)]">
-          Account
+          Accounts
         </h2>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Manage Google connections for calendar, mail, and task integrations.
+        </p>
       </header>
 
       <SectionCard title="Google accounts" help="Manage Gmail, Calendar, and Tasks connections." defaultOpen>

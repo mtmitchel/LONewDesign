@@ -18,28 +18,36 @@ export interface ProviderConfig {
   defaultModel: string;
   availableModels: string[];
   enabledModels: string[];
+  // Connection state persistence
+  connectionState?: 'not_configured' | 'not_verified' | 'connected' | 'failed' | 'testing';
+  lastCheckedAt?: number | null;
+  lastError?: string | null;
 }
 
 const DEFAULT_PROVIDERS: Record<ProviderId, ProviderConfig> = {
-  openai: { apiKey: '', baseUrl: '', defaultModel: 'gpt-4o-mini', availableModels: [], enabledModels: [] },
-  anthropic: { apiKey: '', baseUrl: '', defaultModel: 'claude-3-5-sonnet-latest', availableModels: [], enabledModels: [] },
-  openrouter: { apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', defaultModel: 'openrouter/auto', availableModels: [], enabledModels: [] },
-  deepseek: { apiKey: '', baseUrl: '', defaultModel: 'deepseek-chat', availableModels: [], enabledModels: [] },
-  mistral: { apiKey: '', baseUrl: '', defaultModel: 'mistral-small-latest', availableModels: [], enabledModels: [] },
-  gemini: { apiKey: '', baseUrl: '', defaultModel: 'gemini-1.5-flash', availableModels: [], enabledModels: [] },
-  deepl: { apiKey: '', baseUrl: 'https://api-free.deepl.com', defaultModel: '', availableModels: [], enabledModels: [] },
-  glm: { apiKey: '', baseUrl: 'https://api.z.ai/api/paas/v4', defaultModel: 'glm-4.6', availableModels: [], enabledModels: [] },
-  local: { apiKey: '', baseUrl: 'http://127.0.0.1:11434', defaultModel: '', availableModels: [], enabledModels: [] },
+  openai: { apiKey: '', baseUrl: '', defaultModel: 'gpt-4o-mini', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
+  anthropic: { apiKey: '', baseUrl: '', defaultModel: 'claude-3-5-sonnet-latest', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
+  openrouter: { apiKey: '', baseUrl: 'https://openrouter.ai/api/v1', defaultModel: 'openrouter/auto', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
+  deepseek: { apiKey: '', baseUrl: '', defaultModel: 'deepseek-chat', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
+  mistral: { apiKey: '', baseUrl: '', defaultModel: 'mistral-small-latest', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
+  gemini: { apiKey: '', baseUrl: '', defaultModel: 'gemini-1.5-flash', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
+  deepl: { apiKey: '', baseUrl: 'https://api-free.deepl.com', defaultModel: '', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
+  glm: { apiKey: '', baseUrl: 'https://api.z.ai/api/paas/v4', defaultModel: 'glm-4.6', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
+  local: { apiKey: '', baseUrl: 'http://127.0.0.1:11434', defaultModel: '', availableModels: [], enabledModels: [], connectionState: 'not_configured', lastCheckedAt: null, lastError: null },
 };
 
 type ProviderSettingsState = {
   providers: Record<ProviderId, ProviderConfig>;
   assistantProvider: ProviderId | null;
   assistantModel: string | null;
+  fallbackProvider: ProviderId | null;
+  fallbackModel: string | null;
   updateProvider: (id: ProviderId, config: Partial<ProviderConfig>) => void;
   resetProvider: (id: ProviderId) => void;
   setAssistantProvider: (id: ProviderId | null) => void;
   setAssistantModel: (model: string | null) => void;
+  setFallbackProvider: (id: ProviderId | null) => void;
+  setFallbackModel: (model: string | null) => void;
 };
 
 const fallbackStorage: Storage = {
@@ -70,6 +78,8 @@ export const useProviderSettings = create(
       providers: DEFAULT_PROVIDERS,
       assistantProvider: null,
       assistantModel: null,
+      fallbackProvider: null,
+      fallbackModel: null,
       updateProvider: (id, config) => {
         set((state) => {
           const updated = {
@@ -102,11 +112,28 @@ export const useProviderSettings = create(
       setAssistantModel: (model) => {
         set({ assistantModel: model });
       },
+      setFallbackProvider: (id) => {
+        set({ fallbackProvider: id });
+      },
+      setFallbackModel: (model) => {
+        set({ fallbackModel: model });
+      },
     }),
     {
       name: 'provider-settings-v1',
       version: 1,
       storage,
+      migrate: (persistedState: any, version: number) => {
+        // Migration from v1 to v2: add fallback fields
+        if (version < 2) {
+          return {
+            ...persistedState,
+            fallbackProvider: null,
+            fallbackModel: null,
+          };
+        }
+        return persistedState;
+      },
       merge: (persistedState, currentState) => {
         const persisted = persistedState as Partial<ProviderSettingsState>;
         const persistedProviders = (persisted.providers ?? {}) as Partial<Record<ProviderId, Partial<ProviderConfig>>>;
@@ -128,6 +155,8 @@ export const useProviderSettings = create(
           providers: mergedProviders,
           assistantProvider: persisted.assistantProvider ?? null,
           assistantModel: persisted.assistantModel ?? null,
+          fallbackProvider: persisted.fallbackProvider ?? null,
+          fallbackModel: persisted.fallbackModel ?? null,
         };
       },
     },

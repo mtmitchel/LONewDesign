@@ -35,15 +35,18 @@ export function ConnectionPanel({
   onViewDetails,
 }: ConnectionPanelProps): JSX.Element {
   const lastChecked = formatRelativeTime(state.lastCheckedAt);
-  const helperText =
-    displayState === 'offline'
-      ? 'Offline right now. Verify once you’re back online.'
-      : CONNECTION_HELPER[state.connectionState];
+  let helperText: string;
+  if (displayState === "offline") {
+    helperText = "Offline right now. Verify once you're back online.";
+  } else if (state.connectionState === "not_verified" || state.connectionState === "not_configured") {
+    helperText = "Click Verify to test the connection.";
+  } else {
+    helperText = CONNECTION_HELPER[state.connectionState];
+  }
 
   const metaLine = (() => {
     if (displayState === 'connected' && lastChecked) return `Last checked ${lastChecked}`;
     if (displayState === 'failed' && lastChecked) return `Last tried ${lastChecked}`;
-    if (displayState === 'not_verified') return 'Not verified yet.';
     return null;
   })();
 
@@ -56,56 +59,55 @@ export function ConnectionPanel({
       : 'Couldn’t connect. Check your key or base URL.';
 
   return (
-    <section className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-[var(--text-primary)]">Connection</p>
+    <section className="space-y-3">
+      <p className="text-sm font-medium text-[var(--text-primary)]">Connection</p>
+      <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4 space-y-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             <ConnectionBadge state={displayState} />
             {metaLine && <span className="text-xs text-[var(--text-tertiary)]">{metaLine}</span>}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full shrink-0 md:w-auto"
+            onClick={onRunTest}
+            disabled={disableButton}
+          >
+            {isTesting ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Testing…
+              </>
+            ) : (
+              buttonLabel
+            )}
+          </Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full shrink-0 md:w-auto"
-          onClick={onRunTest}
-          disabled={disableButton}
-        >
-          {isTesting ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Testing…
-            </>
-          ) : (
-            buttonLabel
-          )}
-        </Button>
+
+        {displayState === 'failed' && (
+          <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[color-mix(in_oklab,var(--status-danger)_45%,transparent)] bg-[color-mix(in_oklab,var(--status-danger)_12%,transparent)] px-3 py-2 text-sm text-[var(--status-danger)]">
+            <span className="flex-1">{errorCopy}</span>
+            {onViewDetails && (
+              <button
+                type="button"
+                onClick={onViewDetails}
+                className="text-xs font-medium underline"
+              >
+                Details
+              </button>
+            )}
+          </div>
+        )}
+
+        {displayState === 'offline' && (
+          <div className="rounded-[var(--radius-md)] border border-dashed border-[color-mix(in_oklab,var(--status-warn)_45%,transparent)] bg-[color-mix(in_oklab,var(--status-warn)_12%,transparent)] px-3 py-2 text-sm text-[var(--status-warn)]">
+            Verify will be available once the connection returns.
+          </div>
+        )}
       </div>
-
       <p className="text-sm text-[var(--text-secondary)]">{helperText}</p>
-
-      {displayState === 'failed' && (
-        <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-[color-mix(in_oklab,var(--status-danger)_45%,transparent)] bg-[color-mix(in_oklab,var(--status-danger)_12%,transparent)] px-3 py-2 text-sm text-[var(--status-danger)]">
-          <span className="flex-1">{errorCopy}</span>
-          {onViewDetails && (
-            <button
-              type="button"
-              onClick={onViewDetails}
-              className="text-xs font-medium underline"
-            >
-              Details
-            </button>
-          )}
-        </div>
-      )}
-
-      {displayState === 'offline' && (
-        <div className="rounded-[var(--radius-md)] border border-dashed border-[color-mix(in_oklab,var(--status-warn)_45%,transparent)] bg-[color-mix(in_oklab,var(--status-warn)_12%,transparent)] px-3 py-2 text-sm text-[var(--status-warn)]">
-          Verify will be available once the connection returns.
-        </div>
-      )}
     </section>
   );
 }

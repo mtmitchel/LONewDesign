@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '../../../../ui/button';
 import { Input } from '../../../../ui/input';
 import { Label } from '../../../../ui/label';
-import { Eye, EyeOff, Copy } from 'lucide-react';
+import { Eye, EyeOff, Copy, Clipboard } from 'lucide-react';
 
 interface AuthenticationPanelProps {
   apiKey: string;
@@ -56,10 +56,11 @@ export function AuthenticationPanel({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="icon"
             onClick={onPaste}
+            aria-label="Paste"
           >
-            Paste
+            <Clipboard className="size-4" />
           </Button>
           <Button
             type="button"
