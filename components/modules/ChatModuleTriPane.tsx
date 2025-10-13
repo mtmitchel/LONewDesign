@@ -966,7 +966,7 @@ export function ChatModuleTriPane() {
                 {activeConversation?.title ?? 'Chat'}
               </div>
               <div className="flex items-center gap-[var(--space-2)]">
-                <div className="flex items-center gap-[var(--space-2)] text-xs font-medium uppercase tracking-wide text-[color:var(--text-tertiary)]">
+                <div className="flex items-center gap-[var(--space-2)] text-xs font-medium text-[color:var(--text-tertiary)]">
                   <span>Model</span>
                   <Select value={selectedModel} onValueChange={onModelChange}>
                     <Tooltip>
