@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Improve initial module states for Chat and Notes (2025-10-13)
+- Chat module now auto-creates unsaved blank conversation on load, only saves after first message sent
+- Notes module auto-creates blank note on first load and auto-selects it
+- Both modules auto-focus input fields for immediate typing without manual interaction
+- Prevents cluttering sidebar with empty untitled conversations
+
 ### Settings navigation redesign (2025-10-13)
 - Redesigned settings sidebar to match Canvas module with TriPane layout, PaneHeader, and PaneFooter components
 - Added collapsible navigation pane (260px width) with hide/show caret button matching Canvas behavior

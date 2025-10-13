@@ -241,6 +241,14 @@ export function ChatModuleTriPane() {
   const [conversations, setConversations] = React.useState<Conversation[]>(() => loadConversationsFromStorage());
   const [messages, setMessages] = React.useState<ChatMessage[]>(() => loadMessagesFromStorage());
   const [isStreaming, setIsStreaming] = React.useState(false);
+  const [unsavedConversationId, setUnsavedConversationId] = React.useState<string | null>(null);
+
+  // Always create a new blank conversation on mount (but don't save it yet)
+  React.useEffect(() => {
+    const newConversationId = `conv-${Date.now()}`;
+    setUnsavedConversationId(newConversationId);
+    setActiveConversationId(newConversationId);
+  }, []);
 
   // Auto-select model when switching conversations
   React.useEffect(() => {
@@ -416,10 +424,23 @@ export function ChatModuleTriPane() {
     }
   }, [messages]);
 
-  const activeConversation = React.useMemo(
-    () => conversations.find(conversation => conversation.id === activeConversationId) ?? null,
-    [conversations, activeConversationId]
-  );
+  const activeConversation = React.useMemo(() => {
+    const found = conversations.find(conversation => conversation.id === activeConversationId);
+    if (found) return found;
+    
+    // If this is an unsaved conversation, create a virtual conversation object
+    if (unsavedConversationId === activeConversationId) {
+      return {
+        id: activeConversationId,
+        title: 'Untitled conversation',
+        model: selectedModel,
+        timestamp: new Date().toISOString(),
+        lastMessagePreview: '',
+      };
+    }
+    
+    return null;
+  }, [conversations, activeConversationId, unsavedConversationId, selectedModel]);
 
   const onOpenConversation = (id: string) => {
     setActiveConversationId(id);
@@ -428,6 +449,20 @@ export function ChatModuleTriPane() {
 
   const onSend = async (text: string) => {
     if (!activeConversationId) return;
+    
+    // If this is an unsaved conversation, save it now
+    if (unsavedConversationId === activeConversationId) {
+      const newConversation: Conversation = {
+        id: activeConversationId,
+        title: 'Untitled conversation',
+        model: selectedModel,
+        timestamp: new Date().toISOString(),
+        lastMessagePreview: text,
+      };
+      setConversations(prev => [newConversation, ...prev]);
+      setUnsavedConversationId(null);
+    }
+    
     const now = new Date().toISOString();
     const userMessageId = `m-${Date.now()}`;
     const userMessage: ChatMessage = {

@@ -53,6 +53,13 @@ export function NotesEditor({
   const [slashPosition, setSlashPosition] = React.useState({ x: 0, y: 0 });
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
+  // Auto-focus the textarea when component mounts
+  React.useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
+
   const handleContentChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = event.target.value;
     onContentChange(value);

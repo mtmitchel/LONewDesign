@@ -48,8 +48,38 @@ const saveToStorage = <T,>(key: string, value: T): void => {
 export function NotesModule() {
   // State management for folders, notes, selections, search, and settings
   const [folders, setFolders] = React.useState<NoteFolder[]>(() => loadFromStorage(STORAGE_KEYS.folders, []));
-  const [notes, setNotes] = React.useState<Note[]>(() => loadFromStorage(STORAGE_KEYS.notes, []));
-  const [selectedItem, setSelectedItem] = React.useState<{id: string, type: 'folder' | 'note'} | null>(null);
+  const [notes, setNotes] = React.useState<Note[]>(() => {
+    const loadedNotes = loadFromStorage(STORAGE_KEYS.notes, []);
+    // Create initial blank note if none exist
+    if (loadedNotes.length === 0) {
+      const now = new Date().toISOString();
+      const initialNote: Note = {
+        id: `note-${Date.now()}`,
+        title: 'Untitled Note',
+        content: '',
+        folderId: null,
+        order: 0,
+        tags: [],
+        isStarred: false,
+        isPinned: false,
+        lastModified: 'just now',
+        wordCount: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+      return [initialNote];
+    }
+    return loadedNotes;
+  });
+  const [selectedItem, setSelectedItem] = React.useState<{id: string, type: 'folder' | 'note'} | null>(() => {
+    const loadedNotes = loadFromStorage(STORAGE_KEYS.notes, []);
+    // Auto-select the first note if it exists
+    if (loadedNotes.length === 0) {
+      const initialNoteId = `note-${Date.now()}`;
+      return { id: initialNoteId, type: 'note' };
+    }
+    return loadedNotes.length > 0 ? { id: loadedNotes[0].id, type: 'note' } : null;
+  });
   const [searchQuery, setSearchQuery] = React.useState('');
   const [settings, setSettings] = React.useState<NotesSettings>(DEFAULT_NOTES_SETTINGS);
   const [isSaving, setIsSaving] = React.useState(false);

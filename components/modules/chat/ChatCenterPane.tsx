@@ -68,6 +68,13 @@ export function ChatCenterPane({
     resetTextareaHeight();
   }, [text, resetTextareaHeight]);
 
+  // Auto-focus textarea when conversation changes or on mount
+  React.useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [conversationId]);
+
   React.useEffect(() => {
     if (!conversationId) return;
     scrollToLatest('auto');
