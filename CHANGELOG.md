@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Settings modal cloud/local rework (2025-10-12)
+- Split the Providers card into dedicated `Cloud providers` and `Local models` panels with sentence-case copy, scoped CTAs, and assistant defaults following the sources list.
+- Simplified the provider sheet: one `Connection` block with `Verify` actions, compact API key tools (show/hide, paste, copy), and an advanced base URL accordion instead of nested cards.
+- Local Ollama configuration now surfaces endpoint editing, model lists, and pull/refresh controls; delete requests route through a design-system confirmation dialog and only remove models after explicit approval.
+- Added clipboard paste handling for API keys and reused connection-state helpers so header/status chips and toasts share the same `Not set/Not verified/Testing…/Connected/Failed` vocabulary.
+- Introduced Tauri commands (`ollama_pull_model`, `ollama_delete_model`) backing the new local model actions and refreshed the implementation plan/guidelines to record the sentence-case rule and modal requirement.
+
 ### Settings IA refinement & Ollama sync (2025-10-11)
 - Replaced the card pile with four focused sections (Cloud, Local, Assistant, Accounts) that ride a sticky desktop nav and mobile tabs/accordion for faster scanning.
 - Wired the Local models section to Tauri commands so `Test connection` now fetches Ollama models, updates enabled/default selections, and mirrors pull/delete actions in the UI while gracefully falling back when Tauri APIs are unavailable.

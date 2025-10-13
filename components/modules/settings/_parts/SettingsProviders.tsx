@@ -1,127 +1,44 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '../../../ui/sheet';
-import { Badge } from '../../../ui/badge';
 import { Button } from '../../../ui/button';
-import { Input } from '../../../ui/input';
-import { Label } from '../../../ui/label';
-import { Separator } from '../../../ui/separator';
 import {
-  Loader2,
-  CheckCircle2,
-  AlertTriangle,
-  Circle,
-  Eye,
-  EyeOff,
-  Copy,
-  TestTube2,
-} from 'lucide-react';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../../ui/alert-dialog';
 import { SectionCard } from './SectionCard';
 import { useSettingsState } from './SettingsState';
 import { reportSettingsEvent } from './analytics';
 import { toast } from 'sonner';
+import { ProviderId, useProviderSettings } from '../state/providerSettings';
 import {
-  ProviderConfig,
-  ProviderId,
-  useProviderSettings,
-} from '../state/providerSettings';
-import { getModelMetadata, getTierLabel, getTierBadgeClass, sortModelsByTier } from '../state/mistralModelMetadata';
+  AuthenticationPanel,
+  AssistantDefaultsPanel,
+  ConnectionPanel,
+  ModelsPanel,
+  ProvidersSummaryPanel,
+  RoutingPanel,
+  PROVIDERS,
+  buildBaseline,
+  buildViewState,
+  getInitialConnectionState,
+  hasConfiguredCredentials,
+  type ProviderBaseline,
+  type ProviderStateView,
+  type DisplayConnectionState,
+} from '../../../features/settings/providers';
 
 interface SettingsProvidersProps {
   id: string;
   filter: (text: string) => boolean;
   registerSection: (node: HTMLElement | null) => void;
 }
-
-type ProviderStatus = 'ok' | 'warn' | 'empty';
-
-interface ProviderMeta {
-  id: ProviderId;
-  label: string;
-  hint: string;
-  base: string;
-}
-
-interface ProviderState {
-  apiKey: string;
-  baseUrl: string;
-  status: ProviderStatus;
-  lastTested?: string | null;
-  testing: boolean;
-}
-
-type ProviderBaseline = Record<ProviderId, { apiKey: string; baseUrl: string }>;
-
-const PROVIDERS: ProviderMeta[] = [
-  {
-    id: 'openai',
-    label: 'OpenAI',
-    hint: 'GPT-4o, o-series, and TTS models. Base URL is optional for proxies.',
-    base: 'https://api.openai.com/v1',
-  },
-  {
-    id: 'anthropic',
-    label: 'Anthropic',
-    hint: 'Claude 3 models with long context windows for reasoning and writing.',
-    base: 'https://api.anthropic.com/v1',
-  },
-  {
-    id: 'openrouter',
-    label: 'OpenRouter',
-    hint: 'Unified marketplace routing across 80+ providers with fallback logic.',
-    base: 'https://openrouter.ai/api/v1',
-  },
-  {
-    id: 'deepseek',
-    label: 'DeepSeek',
-    hint: 'High-context reasoning models built for code and analysis workloads.',
-    base: 'https://api.deepseek.com/v1',
-  },
-  {
-    id: 'mistral',
-    label: 'Mistral AI',
-    hint: 'Fast, lightweight instruction-tuned models ideal for realtime UX.',
-    base: 'https://api.mistral.ai/v1',
-  },
-  {
-    id: 'gemini',
-    label: 'Google Gemini',
-    hint: 'Google’s Gemini models via the Generative Language API.',
-    base: 'https://generativelanguage.googleapis.com/v1beta',
-  },
-  {
-    id: 'deepl',
-    label: 'DeepL',
-    hint: 'Professional translation API with native formality support. Use https://api-free.deepl.com for Free plan.',
-    base: 'https://api-free.deepl.com',
-  },
-  {
-    id: 'glm',
-    label: 'GLM (ZhipuAI)',
-    hint: 'GLM-4.6 model with 200K context window. OpenAI-compatible API for chat, coding, and reasoning tasks.',
-    base: 'https://api.z.ai/api/paas/v4',
-  },
-];
-
-
-const STATUS_LABEL: Record<ProviderStatus, string> = {
-  ok: 'Connected',
-  warn: 'Needs attention',
-  empty: 'Not connected',
-};
-
-const STATUS_BADGE_CLASS: Record<ProviderStatus, string> = {
-  ok: 'bg-[color-mix(in_oklab,var(--status-ok)_18%,transparent)] text-[var(--status-ok)]',
-  warn: 'bg-[color-mix(in_oklab,var(--status-warn)_18%,transparent)] text-[var(--status-warn)]',
-  empty: 'border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-[var(--text-secondary)]',
-};
-
-const STATUS_HELPER: Record<ProviderStatus, string> = {
-  ok: 'This provider is ready to serve requests.',
-  warn: 'Verify your credentials before routing traffic.',
-  empty: 'Add an API key to enable this provider.',
-};
-
 type MistralTestResult = {
   ok: boolean;
   message?: string | null;
@@ -135,43 +52,6 @@ function isTauriContext(): boolean {
     __TAURI__?: unknown;
   };
   return Boolean(candidate.__TAURI_INTERNALS__ ?? candidate.isTauri ?? candidate.__TAURI__);
-}
-
-function deriveStatus(providerId: ProviderId, apiKey: string, baseUrl: string): ProviderStatus {
-  if (providerId === 'local') {
-    return baseUrl.trim() ? 'ok' : 'warn';
-  }
-  if (!apiKey.trim()) {
-    return providerId === 'mistral' ? 'warn' : 'empty';
-  }
-  return 'ok';
-}
-
-function buildBaseline(configs: Record<ProviderId, ProviderConfig>): ProviderBaseline {
-  return PROVIDERS.reduce((acc, provider) => {
-    const config = configs[provider.id];
-    acc[provider.id] = {
-      apiKey: config?.apiKey ?? '',
-      baseUrl: config?.baseUrl ?? '',
-    };
-    return acc;
-  }, {} as ProviderBaseline);
-}
-
-function buildViewState(configs: Record<ProviderId, ProviderConfig>): Record<ProviderId, ProviderState> {
-  return PROVIDERS.reduce((acc, provider) => {
-    const config = configs[provider.id];
-    const apiKey = config?.apiKey ?? '';
-    const baseUrl = config?.baseUrl ?? '';
-    acc[provider.id] = {
-      apiKey,
-      baseUrl,
-      status: deriveStatus(provider.id, apiKey, baseUrl),
-      lastTested: null,
-      testing: false,
-    };
-    return acc;
-  }, {} as Record<ProviderId, ProviderState>);
 }
 
 export function SettingsProviders({ id, filter, registerSection }: SettingsProvidersProps) {
@@ -188,33 +68,48 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     }))
   );
   
-  const [providerState, setProviderState] = useState<Record<ProviderId, ProviderState>>(() =>
+  const [providerState, setProviderState] = useState<Record<ProviderId, ProviderStateView>>(() =>
     buildViewState(providers),
   );
-  
-  // Debug: Log which providers have API keys
-  React.useEffect(() => {
+  const [baseline, setBaseline] = useState<ProviderBaseline>(() => buildBaseline(providers));
+  const [editing, setEditing] = useState<ProviderId | null>(null);
+  const [revealKey, setRevealKey] = useState(false);
+  const [openrouterSearch, setOpenrouterSearch] = useState('');
+  const [isLocalBusy, setIsLocalBusy] = useState(false);
+  const [pendingLocalDelete, setPendingLocalDelete] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(() =>
+    typeof navigator !== 'undefined' ? !navigator.onLine : false,
+  );
+
+  useEffect(() => {
     console.log('[SettingsProviders] Provider API keys:', Object.entries(providers).reduce((acc, [id, config]) => {
       acc[id] = config.apiKey ? `${config.apiKey.substring(0, 10)}... (${config.apiKey.length} chars)` : '(empty)';
       return acc;
     }, {} as Record<string, string>));
   }, [providers]);
-  
-  // Debug: Log providerState status
-  React.useEffect(() => {
+
+  useEffect(() => {
     console.log('[SettingsProviders] Provider states:', Object.entries(providerState).reduce((acc, [id, state]) => {
       acc[id] = {
-        status: state.status,
-        lastTested: state.lastTested || '(never)',
-        hasApiKey: !!state.apiKey
+        connectionState: state.connectionState,
+        lastCheckedAt: state.lastCheckedAt,
+        hasApiKey: !!state.apiKey,
       };
       return acc;
-    }, {} as Record<string, any>));
+    }, {} as Record<string, unknown>));
   }, [providerState]);
-  const [baseline, setBaseline] = useState<ProviderBaseline>(() => buildBaseline(providers));
-  const [editing, setEditing] = useState<ProviderId | null>(null);
-  const [revealKey, setRevealKey] = useState(false);
-  const [openrouterSearch, setOpenrouterSearch] = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const sectionMatches = useMemo(
     () => filter('providers cloud api keys base url vault status sheet edit'),
@@ -224,33 +119,25 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
   useEffect(() => {
     setProviderState((prev) => {
       const mapped = buildViewState(providers);
-      PROVIDERS.forEach((provider) => {
-        if (prev[provider.id]) {
-          // Don't rebuild the provider that's currently being edited
-          // (preserves unsaved API key/baseUrl from local state)
-          if (editing === provider.id) {
-            mapped[provider.id] = {
-              ...prev[provider.id],
-              // But do update the testing flag (in case it was stuck)
-              testing: false,
-            };
-            return;
-          }
-          
-          // Preserve status from previous state if a test was performed
-          // Otherwise, derive it based on API key presence
-          const shouldPreserveStatus = prev[provider.id].lastTested !== null;
-          
-          mapped[provider.id] = {
-            apiKey: mapped[provider.id].apiKey,
-            baseUrl: mapped[provider.id].baseUrl,
-            status: shouldPreserveStatus
-              ? prev[provider.id].status
-              : deriveStatus(provider.id, mapped[provider.id].apiKey, mapped[provider.id].baseUrl),
-            lastTested: prev[provider.id].lastTested,
-            testing: false,
-          };
+      const providerIds: ProviderId[] = [...PROVIDERS.map((provider) => provider.id), 'local'];
+
+      providerIds.forEach((providerId) => {
+        const previous = prev[providerId];
+        if (!previous) return;
+
+        if (editing === providerId) {
+          mapped[providerId] = { ...previous };
+          return;
         }
+
+        const connectionState = previous.connectionState === 'testing' ? 'not_verified' : previous.connectionState;
+
+        mapped[providerId] = {
+          ...mapped[providerId],
+          connectionState,
+          lastCheckedAt: previous.lastCheckedAt,
+          lastError: previous.lastError,
+        };
       });
       return mapped;
     });
@@ -261,9 +148,22 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     if (!editing) return;
     reportSettingsEvent('settings.provider_edit_opened', { id: editing });
     setRevealKey(false);
+    if (editing === 'local') {
+      void handleLocalRefresh();
+    }
   }, [editing]);
 
-  const editingMeta = editing ? PROVIDERS.find((prov) => prov.id === editing) ?? null : null;
+  const editingMeta =
+    editing === 'local'
+      ? {
+          id: 'local' as const,
+          label: 'Local models',
+          hint: 'Manage your local runtime and available models.',
+          base: providers.local.baseUrl || 'http://127.0.0.1:11434',
+        }
+      : editing
+        ? PROVIDERS.find((prov) => prov.id === editing) ?? null
+        : null;
   const editingState = editing ? providerState[editing] : null;
 
   if (!sectionMatches) return null;
@@ -291,44 +191,236 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     }
   };
 
+  const handlePaste = async (providerId: ProviderId) => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.readText) {
+      toast.error('Clipboard not available');
+      reportSettingsEvent('settings.provider_clipboard_unavailable', { id: providerId });
+      return;
+    }
+
+    try {
+      const value = await navigator.clipboard.readText();
+      handleChange('apiKey', value, providerId);
+      toast.success('Pasted from clipboard');
+    } catch (error) {
+      toast.error('Could not paste');
+    }
+  };
+
+  const syncLocalModels = async (
+    baseUrl: string,
+    options: { silent?: boolean; manageBusy?: boolean } = {},
+  ) => {
+    if (!isTauriContext()) {
+      if (!options.silent) {
+        toast.error('Model management requires the desktop app');
+      }
+      return;
+    }
+
+    const shouldManageBusy = options.manageBusy ?? true;
+    if (shouldManageBusy) {
+      setIsLocalBusy(true);
+    }
+
+    try {
+      const resolvedBase = baseUrl.trim() || providers.local.baseUrl || 'http://127.0.0.1:11434';
+      const { invoke } = await import('@tauri-apps/api/core');
+      const models = (await invoke('ollama_list_models', {
+        baseUrl: resolvedBase,
+      })) as Array<{ name: string }>;
+
+      const modelIds = models.map((model) => model.name);
+      const { providers: providerSnapshot } = useProviderSettings.getState();
+      const currentEnabled = providerSnapshot.local.enabledModels;
+      const nextEnabled =
+        currentEnabled.length > 0
+          ? currentEnabled.filter((id) => modelIds.includes(id))
+          : modelIds;
+
+      updateProvider('local', {
+        availableModels: modelIds,
+        enabledModels: nextEnabled,
+        defaultModel: nextEnabled[0] ?? modelIds[0] ?? '',
+      });
+
+      setProviderState((prev) => {
+        const previousLocal =
+          prev.local ??
+          {
+            apiKey: '',
+            baseUrl: resolvedBase,
+            connectionState: getInitialConnectionState('local', '', resolvedBase),
+            lastCheckedAt: null,
+            lastError: null,
+          };
+
+        const nextConnectionState =
+          previousLocal.connectionState === 'testing'
+            ? (modelIds.length > 0 ? 'connected' : 'failed')
+            : previousLocal.connectionState;
+
+        return {
+          ...prev,
+          local: {
+            ...previousLocal,
+            baseUrl: resolvedBase,
+            connectionState: nextConnectionState,
+            lastCheckedAt: Date.now(),
+            lastError: null,
+          },
+        };
+      });
+
+      if (!options.silent) {
+        if (modelIds.length === 0) {
+          toast.warning('Ollama responded but no models were found');
+        } else {
+          toast.success(`Found ${modelIds.length} local model${modelIds.length === 1 ? '' : 's'}`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to sync local models:', error);
+      if (!options.silent) {
+        toast.error(`Failed to fetch local models: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    } finally {
+      if (shouldManageBusy) {
+        setIsLocalBusy(false);
+      }
+    }
+  };
+
+  const resolveLocalBaseUrl = () => {
+    const snapshot = useProviderSettings.getState();
+    const candidate = snapshot.providers.local.baseUrl || providers.local.baseUrl || 'http://127.0.0.1:11434';
+    return candidate.trim() || 'http://127.0.0.1:11434';
+  };
+
+  const handleLocalRefresh = async () => {
+    const baseUrl = resolveLocalBaseUrl();
+    await syncLocalModels(baseUrl);
+  };
+
+  const handleLocalPullModel = async (modelName: string) => {
+    if (!modelName) return;
+    if (!isTauriContext()) {
+      toast.error('Model management requires the desktop app');
+      return;
+    }
+
+    setIsLocalBusy(true);
+    const baseUrl = resolveLocalBaseUrl();
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('ollama_pull_model', {
+        baseUrl,
+        model: modelName,
+      });
+      toast.success(`Pulled ${modelName}`);
+      await syncLocalModels(baseUrl, { silent: true, manageBusy: false });
+    } catch (error) {
+      console.error('Failed to pull Ollama model:', error);
+      toast.error(`Failed to pull ${modelName}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsLocalBusy(false);
+    }
+  };
+
+  const handleLocalDeleteModel = async (modelName: string): Promise<boolean> => {
+    if (!modelName) return false;
+    if (!isTauriContext()) {
+      toast.error('Model management requires the desktop app');
+      return false;
+    }
+
+    setIsLocalBusy(true);
+    const baseUrl = resolveLocalBaseUrl();
+    let success = false;
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('ollama_delete_model', {
+        baseUrl,
+        model: modelName,
+      });
+      toast.success(`Removed ${modelName}`);
+      await syncLocalModels(baseUrl, { silent: true, manageBusy: false });
+      success = true;
+    } catch (error) {
+      console.error('Failed to delete Ollama model:', error);
+      toast.error(`Failed to delete ${modelName}: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsLocalBusy(false);
+    }
+
+    return success;
+  };
+
   const handleChange = (field: 'apiKey' | 'baseUrl', value: string, providerId: ProviderId) => {
-    setProviderState((prev) => ({
-      ...prev,
-      [providerId]: {
-        ...prev[providerId],
-        [field]: value,
-      },
-    }));
+    setProviderState((prev) => {
+      const current = prev[providerId];
+      if (!current) return prev;
+
+      const nextApiKey = field === 'apiKey' ? value : current.apiKey;
+      const nextBaseUrl = field === 'baseUrl' ? value : current.baseUrl;
+      const hasCredentials = hasConfiguredCredentials(providerId, nextApiKey, nextBaseUrl);
+      const nextConnectionState = hasCredentials ? 'not_verified' : 'not_configured';
+
+      return {
+        ...prev,
+        [providerId]: {
+          ...current,
+          apiKey: nextApiKey,
+          baseUrl: nextBaseUrl,
+          connectionState: nextConnectionState,
+          lastCheckedAt: null,
+          lastError: null,
+        },
+      };
+    });
 
     const baseValue = baseline[providerId]?.[field] ?? '';
     setFieldDirty(`providers.${providerId}.${field}`, value.trim() !== baseValue.trim());
   };
 
-  const handleTest = async (providerId: ProviderId) => {
+  const handleTest = async (providerId: ProviderId, trigger: 'manual' | 'auto' = 'manual') => {
     const provider = PROVIDERS.find((item) => item.id === providerId);
     const current = providerState[providerId];
+    if (!current) return;
+
+    if (isOffline) {
+      if (trigger === 'manual') {
+        toast.error('Offline — reconnect to run the test.');
+      }
+      return;
+    }
+
+    if (!hasConfiguredCredentials(providerId, current.apiKey, current.baseUrl)) {
+      setProviderState((prev) => ({
+        ...prev,
+        [providerId]: {
+          ...prev[providerId],
+          connectionState: 'not_configured',
+          lastCheckedAt: null,
+          lastError: null,
+        },
+      }));
+
+      if (trigger === 'manual') {
+        toast.error('Add a valid API key before running a test.');
+      }
+      return;
+    }
 
     setProviderState((prev) => ({
       ...prev,
       [providerId]: {
         ...prev[providerId],
-        testing: true,
+        connectionState: 'testing',
       },
     }));
-
-    if (providerId !== 'local' && !current?.apiKey.trim()) {
-      setProviderState((prev) => ({
-        ...prev,
-        [providerId]: {
-          ...prev[providerId],
-          status: 'warn',
-          lastTested: new Date().toLocaleString(),
-          testing: false,
-        },
-      }));
-      toast.error('Add an API key before testing');
-      return;
-    }
 
     const baseUrl = current.baseUrl.trim() || provider?.base || '';
     let success = false;
@@ -336,26 +428,21 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
 
     try {
       if (providerId === 'mistral' && isTauriContext()) {
-        console.log('[TEST] Testing Mistral credentials...');
         const { invoke } = await import('@tauri-apps/api/core');
-        console.log('[TEST] Calling test_mistral_credentials');
         const result = (await invoke('test_mistral_credentials', {
           apiKey: current.apiKey.trim(),
-          baseUrl: baseUrl,
+          baseUrl,
         })) as MistralTestResult;
-        console.log('[TEST] Result:', result);
         success = Boolean(result?.ok);
         message = result?.message ?? null;
-        console.log('[TEST] Success:', success, 'Message:', message);
       } else if (providerId === 'local' && isTauriContext()) {
         const { invoke } = await import('@tauri-apps/api/core');
         const result = (await invoke('test_ollama_connection', {
-          baseUrl: baseUrl,
+          baseUrl,
         })) as { ok: boolean; message?: string | null };
         success = Boolean(result?.ok);
         message = result?.message ?? null;
       } else {
-        console.log('[TEST] Fallback test (not Tauri or not Mistral)');
         success = providerId === 'local' ? Boolean(baseUrl) : current.apiKey.trim().length > 4;
       }
     } catch (error) {
@@ -364,15 +451,15 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       message = error instanceof Error ? error.message : String(error);
     }
 
-    const testedAt = new Date().toLocaleString();
+    const testedAt = Date.now();
 
     setProviderState((prev) => ({
       ...prev,
       [providerId]: {
         ...prev[providerId],
-        status: success ? 'ok' : 'warn',
-        lastTested: testedAt,
-        testing: false,
+        connectionState: success ? 'connected' : 'failed',
+        lastCheckedAt: testedAt,
+        lastError: success ? null : message,
       },
     }));
 
@@ -381,111 +468,89 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       result: success ? 'success' : 'error',
     });
 
-    console.log('[TEST] Final result - Success:', success, 'Message:', message);
-    
     if (success) {
-      toast.success('Connection successful');
-      
-      // Fetch available models for Mistral after successful auth
+      toast.success('Connection verified');
+
       if (providerId === 'mistral') {
         if (!isTauriContext()) {
           console.warn('Not in Tauri context - cannot fetch models');
-          toast.error('Model fetching requires Tauri app');
+          toast.error('Model fetching requires the desktop app');
         } else {
           try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          const models = (await invoke('fetch_mistral_models', {
-            apiKey: current.apiKey.trim(),
-            baseUrl: baseUrl,
-          })) as Array<{ id: string }>;
-          
-          const modelIds = models.map(m => m.id);
-          const currentEnabled = providers[providerId].enabledModels;
-          
-          updateProvider(providerId, {
-            availableModels: modelIds,
-            // If no models are enabled yet, enable all by default
-            enabledModels: currentEnabled.length === 0 ? modelIds : currentEnabled,
-          });
-          
-          console.debug('Fetched Mistral models:', modelIds);
-          toast.success(`Found ${modelIds.length} Mistral models`);
-        } catch (error) {
-          console.error('Failed to fetch Mistral models:', error);
-          toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
-        }
-        }
-      }
-      
-      // Fetch available models for OpenRouter after successful auth
-      if (providerId === 'openrouter') {
-        if (!isTauriContext()) {
-          console.warn('Not in Tauri context - cannot fetch models');
-          toast.error('Model fetching requires Tauri app');
-        } else {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          const models = (await invoke('fetch_openrouter_models', {
-            apiKey: current.apiKey.trim(),
-          })) as Array<{ id: string }>;
-          
-          const modelIds = models.map(m => m.id);
-          const currentEnabled = providers[providerId].enabledModels;
-          
-          updateProvider(providerId, {
-            availableModels: modelIds,
-            enabledModels: currentEnabled.length > 0 ? currentEnabled : ['openrouter/auto'],
-          });
-          
-          console.debug('Fetched OpenRouter models:', modelIds.length);
-          toast.success(`Found ${modelIds.length} OpenRouter models`);
-        } catch (error) {
-          console.error('Failed to fetch OpenRouter models:', error);
-          toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
-        }
-        }
-      }
+            const { invoke } = await import('@tauri-apps/api/core');
+            const models = (await invoke('fetch_mistral_models', {
+              apiKey: current.apiKey.trim(),
+              baseUrl,
+            })) as Array<{ id: string }>;
 
-      // Fetch available models for local Ollama after successful auth
-      if (providerId === 'local') {
-        if (!isTauriContext()) {
-          console.warn('Not in Tauri context - cannot fetch local models');
-          toast.error('Model discovery requires the desktop app');
-        } else {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          const models = (await invoke('ollama_list_models', {
-            baseUrl,
-          })) as Array<{ name: string }>;
+            const modelIds = models.map((m) => m.id);
+            const currentEnabled = providers[providerId].enabledModels;
 
-          const modelIds = models.map((m) => m.name);
-          const currentEnabled = providers.local.enabledModels;
-          const nextEnabled =
-            currentEnabled.length > 0
-              ? currentEnabled.filter((id) => modelIds.includes(id))
-              : modelIds;
+            updateProvider(providerId, {
+              availableModels: modelIds,
+              enabledModels: currentEnabled.length === 0 ? modelIds : currentEnabled,
+            });
 
-          updateProvider('local', {
-            availableModels: modelIds,
-            enabledModels: nextEnabled,
-            defaultModel: nextEnabled[0] ?? modelIds[0] ?? '',
-          });
-
-          console.debug('Fetched Ollama models:', modelIds);
-            if (modelIds.length === 0) {
-              toast.warning('Ollama responded but no models were found');
+            console.debug('Fetched Mistral models:', modelIds);
+            if (modelIds.length > 0) {
+              toast.success(`Found ${modelIds.length} Mistral models`);
             } else {
-              toast.success(`Found ${modelIds.length} local models`);
+              toast.warning('No Mistral models were returned');
             }
           } catch (error) {
-            console.error('Failed to fetch Ollama models:', error);
-            toast.error(`Failed to fetch local models: ${error instanceof Error ? error.message : String(error)}`);
+            console.error('Failed to fetch Mistral models:', error);
+            toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
       }
-    } else {
+
+      if (providerId === 'openrouter') {
+        if (!isTauriContext()) {
+          console.warn('Not in Tauri context - cannot fetch models');
+          toast.error('Model fetching requires the desktop app');
+        } else {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const models = (await invoke('fetch_openrouter_models', {
+              apiKey: current.apiKey.trim(),
+            })) as Array<{ id: string }>;
+
+            const modelIds = models.map((m) => m.id);
+            const currentEnabled = providers[providerId].enabledModels;
+
+            updateProvider(providerId, {
+              availableModels: modelIds,
+              enabledModels: currentEnabled.length > 0 ? currentEnabled : ['openrouter/auto'],
+            });
+
+            console.debug('Fetched OpenRouter models:', modelIds.length);
+            if (modelIds.length > 0) {
+              toast.success(`Found ${modelIds.length} OpenRouter models`);
+            } else {
+              toast.warning('No OpenRouter models were returned');
+            }
+          } catch (error) {
+            console.error('Failed to fetch OpenRouter models:', error);
+            toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+      }
+
+      if (providerId === 'local') {
+        await syncLocalModels(baseUrl, { silent: trigger === 'auto', manageBusy: false });
+      }
+    } else if (trigger === 'manual') {
       toast.error(message ?? 'Couldn’t connect — check your key');
     }
+  };
+
+  const handleCredentialBlur = () => {
+    if (!editing) return;
+    const state = providerState[editing];
+    if (!state) return;
+    if (!hasConfiguredCredentials(editing, state.apiKey, state.baseUrl)) return;
+    if (state.connectionState !== 'not_verified') return;
+    void handleTest(editing, 'auto');
   };
 
   const handleCancel = () => {
@@ -498,8 +563,9 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           ...prev[editingMeta.id],
           apiKey: snapshot.apiKey,
           baseUrl: snapshot.baseUrl,
-          status: deriveStatus(editingMeta.id, snapshot.apiKey, snapshot.baseUrl),
-          testing: false,
+          connectionState: getInitialConnectionState(editingMeta.id, snapshot.apiKey, snapshot.baseUrl),
+          lastCheckedAt: null,
+          lastError: null,
         },
       }));
       setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
@@ -525,18 +591,11 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
         baseUrl: snapshot.baseUrl,
       },
     }));
-    setProviderState((prev) => ({
-      ...prev,
-      [editingMeta.id]: {
-        ...prev[editingMeta.id],
-        status: deriveStatus(editingMeta.id, snapshot.apiKey, snapshot.baseUrl),
-        testing: false,
-      },
-    }));
     setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
     setFieldDirty(`providers.${editingMeta.id}.baseUrl`, false);
     reportSettingsEvent('settings.provider_sheet_save', { id: editingMeta.id });
     toast.success(`${editingMeta.label} updated.`);
+    void handleTest(editingMeta.id, 'auto');
     handleClose();
   };
 
@@ -551,22 +610,22 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
 
     resetProvider(editingMeta.id);
     
-    const providerMeta = PROVIDERS.find((p) => p.id === editingMeta.id);
+    const defaultBase = editingMeta.base ?? '';
     setProviderState((prev) => ({
       ...prev,
       [editingMeta.id]: {
         apiKey: '',
-        baseUrl: providerMeta?.base ?? '',
-        status: 'empty',
-        lastTested: null,
-        testing: false,
+        baseUrl: defaultBase,
+        connectionState: getInitialConnectionState(editingMeta.id, '', defaultBase),
+        lastCheckedAt: null,
+        lastError: null,
       },
     }));
     setBaseline((prev) => ({
       ...prev,
       [editingMeta.id]: {
         apiKey: '',
-        baseUrl: providerMeta?.base ?? '',
+        baseUrl: defaultBase,
       },
     }));
     setFieldDirty(`providers.${editingMeta.id}.apiKey`, false);
@@ -585,214 +644,41 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
       role="region"
       className="scroll-mt-28 space-y-[var(--settings-card-gap)]"
     >
-      <header>
+      <header className="sticky top-14 z-[1] rounded-[var(--radius-lg)] border border-transparent bg-[var(--bg-surface-elevated)] px-4 py-4 shadow-[var(--elevation-sm)]">
         <h2 id={`${id}-title`} className="text-xl font-semibold text-[var(--text-primary)]">
-          Cloud providers
+          Model sources
         </h2>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Connect cloud providers and manage local runtimes in one place.
+        </p>
       </header>
 
-      <SectionCard 
-        title="Assistant" 
-        help="Select the AI provider that powers assistant features like chat and writing tools."
-      >
-        <div className="space-y-4">
-          {/* Primary Provider Selection */}
-          <div className="rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <Label htmlFor="assistant-provider-select" className="text-sm font-medium text-[var(--text-primary)]">
-                  Primary provider
-                </Label>
-                <p className="text-xs text-[var(--text-secondary)] mt-1">
-                  Used for chat, intent classification, and writing assistance
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <select
-                  id="assistant-provider-select"
-                  value={assistantProvider ?? ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const newProvider = value === '' ? null : value as ProviderId;
-                    setAssistantProvider(newProvider);
-                    setAssistantModel(null);
-                    if (value !== '') {
-                      toast.success(`Assistant provider set to ${PROVIDERS.find(p => p.id === value)?.label ?? value}`);
-                    }
-                  }}
-                  className="w-48 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:border-[var(--border-default)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-                >
-                  <option value="">Choose provider...</option>
-                  <optgroup label="Cloud Providers">
-                    {PROVIDERS.filter((p) => p.id !== 'local' && providers[p.id]?.apiKey?.trim()).map((p) => (
-                      <option key={p.id} value={p.id}>{p.label}</option>
-                    ))}
-                  </optgroup>
-                  {providers.local?.baseUrl?.trim() && (
-                    <optgroup label="Local">
-                      <option value="local">Local (Ollama)</option>
-                    </optgroup>
-                  )}
-                </select>
-                {assistantProvider && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEditing(assistantProvider)}
-                  >
-                    Configure
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Model Selection - Only show when provider is selected */}
-          {assistantProvider && (() => {
-            const providerConfig = providers[assistantProvider];
-            const availableModels: string[] = [];
-            
-            if (assistantProvider === 'mistral') {
-              availableModels.push(...providerConfig.enabledModels);
-            } else if (assistantProvider === 'glm' && providerConfig.defaultModel) {
-              availableModels.push(providerConfig.defaultModel);
-            } else if (assistantProvider === 'openrouter') {
-              if (!providerConfig.enabledModels.includes('openrouter/auto')) {
-                availableModels.push('openrouter/auto');
-              }
-              availableModels.push(...providerConfig.enabledModels);
-            } else if (assistantProvider === 'local') {
-              availableModels.push(...providerConfig.availableModels);
-            } else {
-              availableModels.push(...providerConfig.enabledModels);
-            }
-
-            const currentAssistantModel = assistantModel;
-
-            return availableModels.length > 0 ? (
-              <div className="space-y-2">
-                <Label htmlFor="assistant-model-select" className="text-sm font-medium text-[var(--text-primary)]">
-                  Model
-                </Label>
-                <select
-                  id="assistant-model-select"
-                  value={currentAssistantModel ?? ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setAssistantModel(value === '' ? null : value);
-                    if (value !== '') {
-                      const shortName = value.length > 30 ? value.substring(0, 30) + '...' : value;
-                      toast.success(`Model set to ${shortName}`);
-                    }
-                  }}
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] transition-colors hover:border-[var(--border-default)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
-                >
-                  <option value="">Use provider default</option>
-                  {availableModels.map((modelId) => {
-                    const displayName = assistantProvider === 'mistral' 
-                      ? getModelMetadata(modelId).displayName 
-                      : modelId;
-                    return (
-                      <option key={modelId} value={modelId}>
-                        {displayName}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-            ) : null;
-          })()}
-        </div>
+      <SectionCard title="Model sources" help="Review cloud APIs alongside your on-device models.">
+        <ProvidersSummaryPanel
+          providers={PROVIDERS}
+          providerState={providerState}
+          isOffline={isOffline}
+          localProvider={providers.local}
+          isLocalBusy={isLocalBusy}
+          onConfigure={(providerId) => setEditing(providerId)}
+          onPullLocalModel={handleLocalPullModel}
+          onRequestDeleteLocalModel={(model) => setPendingLocalDelete(model)}
+          onRefreshLocalModels={handleLocalRefresh}
+        />
       </SectionCard>
 
-      <SectionCard title="Providers" help="Manage API credentials for AI services.">
-        <div className="space-y-2">
-          {/* Only show configured providers */}
-          {(() => {
-            const configuredProviders = PROVIDERS.filter(p => 
-              providerState[p.id].status === 'ok' || p.id === assistantProvider
-            );
-            const hasLocal = providers.local?.baseUrl?.trim();
-            
-            if (configuredProviders.length === 0 && !hasLocal) {
-              return (
-                <div className="text-center py-8">
-                  <p className="text-sm text-[var(--text-secondary)] mb-4">
-                    No providers configured yet
-                  </p>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setEditing(PROVIDERS[0].id)}
-                  >
-                    Add your first provider
-                  </Button>
-                </div>
-              );
-            }
-            
-            return (
-              <div className="space-y-1">
-                {configuredProviders.map(provider => {
-                  const state = providerState[provider.id];
-                  return (
-                    <div
-                      key={provider.id}
-                      className="flex items-center justify-between px-3 py-2 rounded-[var(--radius-md)] hover:bg-[var(--bg-surface)]" 
-                    >
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="size-4 text-[var(--success)]" />
-                        <span className="text-sm">{provider.label}</span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditing(provider.id)}
-                      >
-                        Configure
-                      </Button>
-                    </div>
-                  );
-                })}
-                
-                {hasLocal && (
-                  <div className="flex items-center justify-between px-3 py-2 rounded-[var(--radius-md)] hover:bg-[var(--bg-surface)]">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="size-4 text-[var(--success)]" />
-                      <span className="text-sm">Local (Ollama)</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setEditing('local')}
-                    >
-                      Configure
-                    </Button>
-                  </div>
-                )}
-                
-                {/* Single add provider button at the bottom */}
-                <div className="pt-2 border-t border-[var(--border-subtle)]">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start text-[var(--text-secondary)]"
-                    onClick={() => {
-                      // Find first unconfigured provider
-                      const unconfigured = PROVIDERS.find(p => 
-                        providerState[p.id].status !== 'ok'
-                      );
-                      if (unconfigured) setEditing(unconfigured.id);
-                      else if (!hasLocal) setEditing('local');
-                    }}
-                  >
-                    <Circle className="size-4 mr-2" />
-                    Add provider
-                  </Button>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
+      <SectionCard
+        title="Assistant defaults"
+        help="Choose the provider and fallback model the assistant uses before overrides."
+      >
+        <AssistantDefaultsPanel
+          providersConfig={providers}
+          assistantProvider={assistantProvider}
+          assistantModel={assistantModel}
+          onProviderChange={setAssistantProvider}
+          onModelChange={setAssistantModel}
+          onConfigureProvider={(providerId) => setEditing(providerId)}
+        />
       </SectionCard>
 
       <Sheet open={Boolean(editing)} onOpenChange={(open) => !open && handleClose()}>
@@ -803,289 +689,178 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           {editing && editingMeta && editingState && (
             <div className="flex h-full flex-col">
               <SheetHeader className="border-b border-[var(--border-subtle)] px-6 pb-5 pt-6">
-                <div className="flex items-start justify-between gap-4">
-                  <SheetTitle className="text-xl font-semibold text-[var(--text-primary)]">
-                    {editingMeta.label}
-                  </SheetTitle>
-                  <Badge variant="soft" size="sm" className={STATUS_BADGE_CLASS[editingState.status]}>
-                    {editingState.status === 'ok' ? (
-                      <CheckCircle2 className="size-3" />
-                    ) : editingState.status === 'warn' ? (
-                      <AlertTriangle className="size-3" />
-                    ) : (
-                      <Circle className="size-3" />
-                    )}
-                    {STATUS_LABEL[editingState.status]}
-                  </Badge>
-                </div>
+                <SheetTitle className="text-xl font-semibold text-[var(--text-primary)]">
+                  {editingMeta.label}
+                </SheetTitle>
               </SheetHeader>
 
-              <div className="flex-1 space-y-8 overflow-y-auto px-6 py-8">
-                <section className="space-y-4">
-                  <div className="space-y-1.5">
-                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Authentication</h3>
-                    <p className="text-sm text-[var(--text-secondary)]">{editingMeta.hint}</p>
-                  </div>
+              <div className="flex-1 space-y-6 overflow-y-auto px-6 py-8">
+                {(() => {
+                  const displayState: DisplayConnectionState = isOffline ? 'offline' : editingState.connectionState;
+                  const isTesting = editingState.connectionState === 'testing';
+                  const canRunTest = hasConfiguredCredentials(editing, editingState.apiKey, editingState.baseUrl) && !isOffline;
 
-                  <div className="space-y-3">
-                    <Label htmlFor="provider-api-key" className="text-sm font-medium">
-                      API key
-                    </Label>
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <Input
-                          id="provider-api-key"
-                          type={revealKey ? 'text' : 'password'}
-                          placeholder="sk-..."
-                          className="flex-1 font-mono text-sm"
-                          value={editingState.apiKey}
-                          onChange={(event) => handleChange('apiKey', event.target.value, editing)}
-                          autoComplete="off"
-                          autoCorrect="off"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          aria-pressed={revealKey}
-                          onClick={() => setRevealKey((prev) => !prev)}
-                          aria-label={revealKey ? 'Hide key' : 'Show key'}
-                        >
-                          {revealKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => handleCopy(editing, editingState.apiKey)}
-                          disabled={!editingState.apiKey.trim()}
-                          aria-label="Copy key"
-                        >
-                          <Copy className="size-4" />
-                        </Button>
-                      </div>
-                      <p className="text-sm text-[var(--text-secondary)]">
-                        Keys are stored locally using OS-level encryption.
-                      </p>
-                    </div>
-                  </div>
+                  return (
+                    <ConnectionPanel
+                      state={editingState}
+                      displayState={displayState}
+                      isOffline={isOffline}
+                      isTesting={isTesting}
+                      canRunTest={canRunTest}
+                      onRunTest={() => handleTest(editing)}
+                      onViewDetails={() => toast.info('Open the developer console to review full error details.')}
+                    />
+                  );
+                })()}
 
-                  <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3">
-                    <p className="text-sm text-[var(--text-secondary)]" role="status" aria-live="polite">
-                      {editingState.testing
-                        ? 'Testing connection…'
-                        : editingState.lastTested
-                        ? `Last tested ${editingState.lastTested}`
-                        : 'Not tested yet'}
-                    </p>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleTest(editing)}
-                      disabled={editingState.testing || !editingState.apiKey.trim()}
-                    >
-                      {editingState.testing ? (
-                        <>
-                          <Loader2 className="size-4 animate-spin" />
-                          Testing
-                        </>
-                      ) : (
-                        <>
-                          <TestTube2 className="size-4" />
-                          Test
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </section>
-
-                {editing === 'mistral' && (() => {
-                  console.log('[DEBUG] Mistral models check:', {
-                    editing,
-                    availableModels: providers.mistral.availableModels,
-                    enabledModels: providers.mistral.enabledModels,
-                    shouldShow: providers.mistral.availableModels.length > 0
-                  });
-                  return providers.mistral.availableModels.length > 0;
-                })() && (
+                {editing !== 'local' ? (
                   <>
-                    <Separator />
-                    <section className="space-y-4">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-sm font-semibold text-[var(--text-primary)]">Available Models</h3>
-                            <p className="text-sm text-[var(--text-secondary)]">
-                              Select which models appear in your chat dropdown
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              const allModels = providers.mistral.availableModels;
-                              const allSelected = allModels.length === providers.mistral.enabledModels.length;
-                              updateProvider('mistral', {
-                                enabledModels: allSelected ? [] : [...allModels],
-                              });
-                            }}
-                            className="text-sm text-[var(--primary)] hover:text-[var(--primary-hover)] font-medium shrink-0"
-                          >
-                            {providers.mistral.availableModels.length === providers.mistral.enabledModels.length
-                              ? 'Deselect All'
-                              : 'Select All'}
-                          </button>
+                    <AuthenticationPanel
+                      apiKey={editingState.apiKey}
+                      revealKey={revealKey}
+                      helperText="Stored on this device."
+                      onApiKeyChange={(value) => handleChange('apiKey', value, editing)}
+                      onApiKeyBlur={handleCredentialBlur}
+                      onToggleReveal={() => setRevealKey((prev) => !prev)}
+                      onPaste={() => handlePaste(editing)}
+                      onCopy={() => handleCopy(editing, editingState.apiKey)}
+                    />
+
+                    <details className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3 text-sm text-[var(--text-primary)] [&[open]]:shadow-[var(--elevation-sm)]">
+                      <summary className="cursor-pointer list-none font-medium text-[var(--text-primary)]">
+                        Advanced
+                      </summary>
+                      <div className="mt-3 border-t border-[var(--border-subtle)] pt-3">
+                        <RoutingPanel
+                          baseUrl={editingState.baseUrl}
+                          defaultBase={editingMeta.base}
+                          onBaseUrlChange={(value) => handleChange('baseUrl', value, editing)}
+                          onBaseUrlBlur={handleCredentialBlur}
+                        />
+                      </div>
+                    </details>
+                  </>
+                ) : (
+                  <section className="space-y-4 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-4">
+                    <div className="space-y-2">
+                      <label htmlFor="local-base-url" className="text-sm font-medium text-[var(--text-primary)]">
+                        Base URL
+                      </label>
+                      <input
+                        id="local-base-url"
+                        type="url"
+                        className="w-full rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                        placeholder={editingMeta.base}
+                        value={editingState.baseUrl}
+                        onChange={(event) => handleChange('baseUrl', event.target.value, editing)}
+                        onBlur={handleCredentialBlur}
+                      />
+                      <p className="text-xs text-[var(--text-secondary)]">Leave blank to use the default Ollama endpoint.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-[var(--text-primary)]">Models</h3>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" onClick={() => handleLocalPullModel(window.prompt('Enter an Ollama model to pull (e.g., llama3:8b)', '')?.trim() ?? '')} disabled={isLocalBusy}>
+                            Pull
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={handleLocalRefresh} disabled={isLocalBusy}>
+                            Refresh
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="space-y-2">
-                        {sortModelsByTier(providers.mistral.availableModels).map((modelId) => {
-                          const isEnabled = providers.mistral.enabledModels.includes(modelId);
-                          const metadata = getModelMetadata(modelId);
-                          const tierLabel = getTierLabel(metadata.tier);
-                          const tierBadgeClass = getTierBadgeClass(metadata.tier);
-                          
-                          return (
-                            <label
-                              key={modelId}
-                              className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-3 cursor-pointer hover:bg-[var(--hover-bg)]"
+                      {providers.local.availableModels.length > 0 ? (
+                        <ul className="space-y-2" role="list">
+                          {providers.local.availableModels.map((model) => (
+                            <li
+                              key={model}
+                              className="flex items-center justify-between rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-3 py-2 text-sm text-[var(--text-primary)]"
                             >
-                              <input
-                                type="checkbox"
-                                checked={isEnabled}
-                                onChange={(e) => {
-                                  const currentEnabled = providers.mistral.enabledModels;
-                                  updateProvider('mistral', {
-                                    enabledModels: e.target.checked
-                                      ? [...currentEnabled, modelId]
-                                      : currentEnabled.filter(id => id !== modelId),
-                                  });
-                                }}
-                                className="h-4 w-4 rounded border-[var(--border-default)] text-[var(--primary)]"
-                              />
-                              <div className="flex-1 flex items-center gap-2">
-                                <span className="text-sm font-mono text-[var(--text-primary)]">{metadata.displayName}</span>
-                                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${tierBadgeClass}`}>
-                                  {tierLabel}
-                                </span>
-                              </div>
-                              {metadata.description && (
-                                <span className="text-xs text-[var(--text-tertiary)] hidden lg:inline">
-                                  {metadata.description}
-                                </span>
-                              )}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  </>
+                              <span>{model}</span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setPendingLocalDelete(model)}
+                                disabled={isLocalBusy}
+                              >
+                                Delete
+                              </Button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] px-3 py-6 text-sm text-[var(--text-secondary)]">
+                          No local models detected yet. Pull a model to get started.
+                        </p>
+                      )}
+                    </div>
+                  </section>
+                )}
+
+                {editing === 'mistral' && providers.mistral.availableModels.length > 0 && (
+                  <ModelsPanel
+                    providerId="mistral"
+                    availableModels={providers.mistral.availableModels}
+                    enabledModels={providers.mistral.enabledModels}
+                    openRouterSearch={openrouterSearch}
+                    onOpenRouterSearch={setOpenrouterSearch}
+                    onToggleModel={(modelId, enabled) => {
+                      const currentEnabled = providers.mistral.enabledModels;
+                      updateProvider('mistral', {
+                        enabledModels: enabled
+                          ? [...currentEnabled, modelId]
+                          : currentEnabled.filter((id) => id !== modelId),
+                      });
+                    }}
+                    onToggleAll={() => {
+                      const allModels = providers.mistral.availableModels;
+                      const allSelected = allModels.length === providers.mistral.enabledModels.length;
+                      updateProvider('mistral', {
+                        enabledModels: allSelected ? [] : [...allModels],
+                      });
+                    }}
+                    onUpdateEnabled={(ids) => {
+                      updateProvider('mistral', { enabledModels: ids });
+                    }}
+                  />
                 )}
 
                 {editing === 'openrouter' && providers.openrouter.availableModels.length > 0 && (
-                  <>
-                    <Separator />
-                    <section className="space-y-4">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-sm font-semibold text-[color:var(--text-primary)]">Available Models</h3>
-                            <p className="text-sm text-[color:var(--text-secondary)]">
-                              Search and select from 200+ models across 80+ providers
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <Input
-                          placeholder="Search models (e.g., claude, gpt, llama)..."
-                          value={openrouterSearch}
-                          onChange={(e) => setOpenrouterSearch(e.target.value)}
-                          className="text-sm"
-                        />
-                        
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {providers.openrouter.availableModels
-                            .filter(modelId => 
-                              openrouterSearch === '' || 
-                              modelId.toLowerCase().includes(openrouterSearch.toLowerCase())
-                            )
-                            .slice(0, 100)
-                            .map((modelId) => {
-                              const isEnabled = providers.openrouter.enabledModels.includes(modelId);
-                              
-                              return (
-                                <label
-                                  key={modelId}
-                                  className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] px-4 py-2 cursor-pointer hover:bg-[var(--hover-bg)]"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={isEnabled}
-                                    onChange={(e) => {
-                                      const currentEnabled = providers.openrouter.enabledModels;
-                                      updateProvider('openrouter', {
-                                        enabledModels: e.target.checked
-                                          ? [...currentEnabled, modelId]
-                                          : currentEnabled.filter(id => id !== modelId),
-                                      });
-                                    }}
-                                    className="h-4 w-4 rounded border-[var(--border-default)] text-[var(--primary)]"
-                                  />
-                                  <span className="text-sm font-mono text-[color:var(--text-primary)]">{modelId}</span>
-                                </label>
-                              );
-                            })}
-                          {providers.openrouter.availableModels.filter(modelId => 
-                            openrouterSearch === '' || 
-                            modelId.toLowerCase().includes(openrouterSearch.toLowerCase())
-                          ).length > 100 && (
-                            <p className="text-xs text-[color:var(--text-tertiary)] text-center py-2">
-                              Showing first 100 results. Refine your search to see more.
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </section>
-                  </>
+                  <ModelsPanel
+                    providerId="openrouter"
+                    availableModels={providers.openrouter.availableModels}
+                    enabledModels={providers.openrouter.enabledModels}
+                    openRouterSearch={openrouterSearch}
+                    onOpenRouterSearch={setOpenrouterSearch}
+                    onToggleModel={(modelId, enabled) => {
+                      const currentEnabled = providers.openrouter.enabledModels;
+                      updateProvider('openrouter', {
+                        enabledModels: enabled
+                          ? [...currentEnabled, modelId]
+                          : currentEnabled.filter((id) => id !== modelId),
+                      });
+                    }}
+                    onUpdateEnabled={(ids) => {
+                      updateProvider('openrouter', { enabledModels: ids });
+                    }}
+                  />
                 )}
 
-                <Separator />
-
-                <section className="space-y-4">
-                  <div className="space-y-1.5">
-                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">Routing</h3>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Override the default endpoint for proxy or on-premise deployments
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label htmlFor="provider-base-url" className="text-sm font-medium">
-                      Base URL <span className="font-normal text-[var(--text-tertiary)]">(optional)</span>
-                    </Label>
-                    <Input
-                      id="provider-base-url"
-                      type="url"
-                      placeholder={editingMeta.base}
-                      value={editingState.baseUrl}
-                      onChange={(event) => handleChange('baseUrl', event.target.value, editing)}
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                    />
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Leave blank to use the default: <span className="font-mono">{editingMeta.base}</span>
-                    </p>
-                  </div>
-                </section>
+                <RoutingPanel
+                  baseUrl={editingState.baseUrl}
+                  defaultBase={editingMeta.base}
+                  onBaseUrlChange={(value) => handleChange('baseUrl', value, editing)}
+                  onBaseUrlBlur={handleCredentialBlur}
+                />
               </div>
 
               <SheetFooter className="border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] px-6 py-4">
                 <div className="flex w-full justify-between gap-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="ghost"
                     onClick={handleClear}
-                    className="text-[var(--status-error)] hover:bg-[color-mix(in_oklab,var(--status-error)_10%,transparent)] hover:text-[var(--status-error)]"
+                    className="text-[var(--status-error)] hover:bg-[color-mix(in_oklab,var(--status-error)_12%,transparent)] hover:text-[var(--status-error)]"
                   >
                     Clear
                   </Button>
@@ -1101,6 +876,33 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
           )}
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={pendingLocalDelete !== null} onOpenChange={(open) => !open && setPendingLocalDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove local model?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes <code>{pendingLocalDelete ?? ''}</code> from your device. You can pull it again later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingLocalDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const target = pendingLocalDelete;
+                if (!target) return;
+                const success = await handleLocalDeleteModel(target);
+                if (!success) {
+                  setPendingLocalDelete(target);
+                }
+              }}
+              disabled={isLocalBusy}
+            >
+              Remove model
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

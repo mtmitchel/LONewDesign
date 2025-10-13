@@ -14,6 +14,8 @@ LibreOllama Desktop blends a Vite/React front end with a Tauri shell. Web entry 
 ## Coding Style & Naming Conventions
 Use TypeScript functional components and colocate files with their nearest module. Favor PascalCase component files (`SidebarPanel.tsx`), camelCase utilities, and kebab-case assets. Follow the prevailing two-space indentation, single quotes, and trailing commas. Apply Tailwind utilities in JSX and centralize shared tokens via `tailwind.config.ts` or `styles/globals.css`. Prefer named exports unless a file exposes a single screen.
 
+- Write UI copy in sentence case. Avoid ALL CAPS or Title Case for headings, section titles, and button labels unless required for acronyms.
+
 ## Testing Guidelines
 There is no dedicated test runner yet; rely on `npm run type-check` plus manual validation in both the browser and the Tauri window. When adding stateful or data-heavy modules, scaffold Vitest + React Testing Library specs alongside the component (e.g., `Component.test.tsx`) and document the exercise in your PR. Guard any Rust commands surfaced from `src-tauri` with integration checks or a detailed manual test script.
 

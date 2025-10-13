@@ -312,6 +312,66 @@ async fn ollama_list_models(
 }
 
 #[tauri::command]
+async fn ollama_pull_model(
+    state: State<'_, ApiState>,
+    base_url: Option<String>,
+    model: String,
+) -> Result<(), String> {
+    let resolved = resolve_ollama_base_url(base_url);
+    let url = format!("{}/api/pull", resolved);
+
+    let response = state
+        .client
+        .post(&url)
+        .json(&serde_json::json!({ "name": model }))
+        .send()
+        .await
+        .map_err(|err| err.to_string())?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(if body.is_empty() {
+            format!("Failed to pull model {} (status {})", model, status)
+        } else {
+            format!("{}: {}", status, body)
+        });
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn ollama_delete_model(
+    state: State<'_, ApiState>,
+    base_url: Option<String>,
+    model: String,
+) -> Result<(), String> {
+    let resolved = resolve_ollama_base_url(base_url);
+    let url = format!("{}/api/delete", resolved);
+
+    let response = state
+        .client
+        .delete(&url)
+        .json(&serde_json::json!({ "name": model }))
+        .send()
+        .await
+        .map_err(|err| err.to_string())?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(if body.is_empty() {
+            format!("Failed to delete model {} (status {})", model, status)
+        } else {
+            format!("{}: {}", status, body)
+        });
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 async fn mistral_chat_stream(
     app: AppHandle,
     state: State<'_, ApiState>,
@@ -1240,6 +1300,8 @@ fn main() {
             fetch_mistral_models,
             fetch_openrouter_models,
             ollama_list_models,
+            ollama_pull_model,
+            ollama_delete_model,
             mistral_chat_stream,
             mistral_complete,
             ollama_chat_stream,
