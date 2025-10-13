@@ -20,7 +20,7 @@ import { openQuickAssistant } from "../assistant";
 import { useProviderSettings } from "./settings/state/providerSettings";
 import type { ProviderConfig, ProviderId } from "./settings/state/providerSettings";
 import { toast } from "sonner";
-import { sanitizeLLMText, sanitizeTitle, stripMarkdown } from "../assistant/services/llmSanitizer";
+import { sanitizeLLMText, sanitizeTitle, stripMarkdown, truncateText } from "../assistant/services/llmSanitizer";
 import { invoke } from '@tauri-apps/api/core';
 
 const CENTER_MIN_VAR = '--tripane-center-min';
@@ -244,6 +244,11 @@ export function ChatModuleTriPane() {
     () => `Model set to ${selectedModelLabel}`,
     [selectedModelLabel]
   );
+  const selectedModelRef = React.useRef(selectedModel);
+
+  React.useEffect(() => {
+    selectedModelRef.current = selectedModel;
+  }, [selectedModel]);
   // LocalStorage helpers
   const loadConversationsFromStorage = (): Conversation[] => {
     try {
@@ -270,6 +275,16 @@ export function ChatModuleTriPane() {
   const [isStreaming, setIsStreaming] = React.useState(false);
   const [unsavedConversationId, setUnsavedConversationId] = React.useState<string | null>(null);
 
+  const computeFallbackTitle = React.useCallback((convMessages: ChatMessage[]) => {
+    const firstUserMsg = convMessages.find(msg => msg.author === 'user' && msg.text.trim().length > 0);
+    if (!firstUserMsg) return null;
+    const cleaned = sanitizeLLMText(firstUserMsg.text)
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (cleaned.length < 4) return null;
+    return truncateText(cleaned, 40, '...');
+  }, []);
   React.useEffect(() => {
     if (MODEL_OPTIONS.length === 0) {
       if (selectedModel !== '') {
@@ -299,21 +314,6 @@ export function ChatModuleTriPane() {
     setUnsavedConversationId(newConversationId);
     setActiveConversationId(newConversationId);
   }, []);
-
-  // Auto-select model when switching conversations
-  React.useEffect(() => {
-    if (activeConversationId) {
-      const conversation = conversations.find(c => c.id === activeConversationId);
-      if (
-        conversation?.model &&
-        conversation.model !== selectedModel &&
-        MODEL_OPTIONS.some(option => option.value === conversation.model)
-      ) {
-        setSelectedModel(conversation.model);
-        console.debug('chat:model:auto-selected', { model: conversation.model });
-      }
-    }
-  }, [activeConversationId, conversations, MODEL_OPTIONS, selectedModel]);
 
   React.useEffect(() => {
     if (!activeConversationId || !selectedOption) {
@@ -358,6 +358,16 @@ export function ChatModuleTriPane() {
         content: msg.text.substring(0, 400) // Increased for better context
       }));
 
+      const applyTitle = (nextTitle: string) => {
+        setConversations(prev =>
+          prev.map(conv =>
+            conv.id === conversationId
+              ? { ...conv, title: nextTitle }
+              : conv,
+          ),
+        );
+      };
+
       try {
         console.log('[Title Generation] Starting for conversation:', conversationId);
         
@@ -384,13 +394,17 @@ export function ChatModuleTriPane() {
             });
 
             const sanitized = sanitizeTitle(title);
-            setConversations(prev =>
-              prev.map(conv =>
-                conv.id === conversationId
-                  ? { ...conv, title: sanitized }
-                  : conv,
-              ),
-            );
+            const genericTitle = sanitized.toLowerCase() === 'new conversation' || sanitized.toLowerCase() === 'untitled conversation';
+
+            if (genericTitle) {
+              const fallbackTitle = computeFallbackTitle(convMessages);
+              if (fallbackTitle) {
+                applyTitle(fallbackTitle);
+                return;
+              }
+            }
+
+            applyTitle(sanitized);
             return;
           } catch (err) {
             console.error('[Title Generation] Ollama title failed:', err);
@@ -439,32 +453,23 @@ export function ChatModuleTriPane() {
         
         if (title && typeof title === 'string') {
           const sanitized = sanitizeTitle(title);
-          setConversations(prev =>
-            prev.map(conv =>
-              conv.id === conversationId
-                ? { ...conv, title: sanitized }
-                : conv
-            )
-          );
+          const genericTitle = sanitized.toLowerCase() === 'new conversation' || sanitized.toLowerCase() === 'untitled conversation';
+
+          if (genericTitle) {
+            const fallbackTitle = computeFallbackTitle(convMessages);
+            if (fallbackTitle) {
+              applyTitle(fallbackTitle);
+              return;
+            }
+          }
+
+          applyTitle(sanitized);
         }
       } catch (error) {
         console.error('[Title Generation] Failed:', error);
-        // Fallback: Use first user message as title
-        const firstUserMsg = convMessages.find(m => m.author === 'user');
-        if (firstUserMsg) {
-          const fallbackTitle = firstUserMsg.text
-            .substring(0, 50)
-            .replace(/[^\w\s]/g, '')
-            .trim();
-          if (fallbackTitle.length > 3) {
-            setConversations(prev =>
-              prev.map(conv =>
-                conv.id === conversationId
-                  ? { ...conv, title: fallbackTitle.substring(0, 30) + (fallbackTitle.length > 30 ? '...' : '') }
-                  : conv
-              )
-            );
-          }
+        const fallbackTitle = computeFallbackTitle(convMessages);
+        if (fallbackTitle) {
+          applyTitle(fallbackTitle);
         }
       }
     };
@@ -521,6 +526,57 @@ export function ChatModuleTriPane() {
     return null;
   }, [conversations, activeConversationId, unsavedConversationId, selectedModel, selectedOption]);
 
+  React.useEffect(() => {
+    if (!activeConversationId || MODEL_OPTIONS.length === 0) {
+      return;
+    }
+
+    const conversation = conversations.find(c => c.id === activeConversationId) ?? null;
+    const conversationModel = conversation?.model ?? null;
+    const isConversationModelValid =
+      typeof conversationModel === 'string' &&
+      MODEL_OPTIONS.some(option => option.value === conversationModel);
+
+    const isSelectedModelValid =
+      typeof selectedModelRef.current === 'string' &&
+      MODEL_OPTIONS.some(option => option.value === selectedModelRef.current);
+
+    let targetModel: string | null = null;
+
+    if (isConversationModelValid) {
+      targetModel = conversationModel as string;
+    } else if (isSelectedModelValid) {
+      targetModel = selectedModelRef.current;
+    } else {
+      targetModel = MODEL_OPTIONS[0]?.value ?? null;
+    }
+
+    if (!targetModel) {
+      return;
+    }
+
+    if (selectedModelRef.current !== targetModel) {
+      selectedModelRef.current = targetModel;
+      setSelectedModel(targetModel);
+      console.debug('chat:model:auto-selected', { model: targetModel, source: 'conversation-sync' });
+    }
+
+    if (conversation && conversation.model !== targetModel) {
+      const provider = MODEL_OPTIONS.find(option => option.value === targetModel)?.provider;
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === activeConversationId
+            ? {
+                ...conv,
+                model: targetModel,
+                provider: provider ?? conv.provider,
+              }
+            : conv
+        )
+      );
+    }
+  }, [activeConversationId, conversations, MODEL_OPTIONS, setConversations]);
+
   const onOpenConversation = (id: string) => {
     setActiveConversationId(id);
     console.debug('chat:conversation:open', { id, via: 'pointer' });
@@ -545,6 +601,11 @@ export function ChatModuleTriPane() {
       setUnsavedConversationId(null);
     }
 
+    if (!selectedOption) {
+      toast.error('No model configured. Please select a model in Settings.');
+      return;
+    }
+
     const userMessageId = `m-${Date.now()}`;
     const userMessage: ChatMessage = {
       id: userMessageId,
@@ -555,17 +616,30 @@ export function ChatModuleTriPane() {
     };
     setMessages(prev => [...prev, userMessage]);
 
+    const existingMessages = messages.filter(message => message.conversationId === activeConversationId);
+    const updatedMessages = [...existingMessages, userMessage];
+    const preliminaryTitle = computeFallbackTitle(updatedMessages);
+    const titleFallbacks = new Set(['untitled conversation', 'new conversation']);
+
     setConversations(prev =>
       prev.map(conversation =>
         conversation.id === activeConversationId
-          ? {
-              ...conversation,
-              lastMessageSnippet: text,
-              updatedAt: now,
-              unread: false,
-              model: selectedModel, // Update model used
-              provider: selectedOption?.provider,
-            }
+          ? (() => {
+              const normalizedTitle = (conversation.title ?? '').trim().toLowerCase();
+              const shouldUseFallback =
+                Boolean(preliminaryTitle) &&
+                (!conversation.title || titleFallbacks.has(normalizedTitle));
+
+              return {
+                ...conversation,
+                lastMessageSnippet: text,
+                updatedAt: now,
+                unread: false,
+                model: selectedModel, // Update model used
+                provider: selectedOption.provider,
+                title: shouldUseFallback ? (preliminaryTitle as string) : conversation.title,
+              };
+            })()
           : conversation
       )
     );
