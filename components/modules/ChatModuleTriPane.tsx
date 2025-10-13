@@ -577,10 +577,52 @@ export function ChatModuleTriPane() {
     }
   }, [activeConversationId, conversations, MODEL_OPTIONS, setConversations]);
 
-  const onOpenConversation = (id: string) => {
-    setActiveConversationId(id);
-    console.debug('chat:conversation:open', { id, via: 'pointer' });
-  };
+  const onOpenConversation = React.useCallback(
+    (id: string) => {
+      setActiveConversationId(id);
+      console.debug('chat:conversation:open', { id, via: 'pointer' });
+
+      const conversation = conversations.find(conv => conv.id === id) ?? null;
+      if (!conversation) {
+        return;
+      }
+
+      const isValidModel =
+        typeof conversation.model === 'string' &&
+        MODEL_OPTIONS.some(option => option.value === conversation.model);
+
+      let targetModel: string | null = null;
+      if (isValidModel) {
+        targetModel = conversation.model as string;
+      } else if (MODEL_OPTIONS.length > 0) {
+        targetModel = MODEL_OPTIONS[0].value;
+      }
+
+      if (targetModel) {
+        if (selectedModelRef.current !== targetModel) {
+          selectedModelRef.current = targetModel;
+          setSelectedModel(targetModel);
+          console.debug('chat:model:auto-selected', { model: targetModel, source: 'conversation-open' });
+        }
+
+        if (conversation.model !== targetModel) {
+          const provider = MODEL_OPTIONS.find(option => option.value === targetModel)?.provider;
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.id === id
+                ? {
+                    ...conv,
+                    model: targetModel as string,
+                    provider: provider ?? conv.provider,
+                  }
+                : conv
+            )
+          );
+        }
+      }
+    },
+    [conversations, MODEL_OPTIONS, setConversations]
+  );
 
   const onSend = async (text: string) => {
     if (!activeConversationId) return;
