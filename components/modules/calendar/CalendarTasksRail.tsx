@@ -51,7 +51,7 @@ import { Calendar as DatePicker } from '../../ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { cn } from '../../ui/utils';
 import { useTaskStore, TaskInput } from '../tasks/taskStore';
-import { TASK_LISTS } from '../tasks/constants';
+import { DEFAULT_TASK_LISTS } from '../tasks/constants';
 import type { Task } from '../tasks/types';
 import { TaskCard } from '../tasks/TaskCard';
 
@@ -180,6 +180,7 @@ export function CalendarTasksRail({
 }: CalendarTasksRailProps) {
   const {
     tasks: storeTasks,
+    lists,
     addTask,
     updateTask,
     deleteTask,
@@ -189,6 +190,7 @@ export function CalendarTasksRail({
   } = useTaskStore();
 
   const tasks = tasksProp ?? storeTasks;
+  const availableLists = lists.length ? lists : DEFAULT_TASK_LISTS;
   const [filter, setFilter] = useState<TaskFilterKey>(externalFilter);
   const [sortBy, setSortBy] = useState<'date-created' | 'due-date' | 'title' | 'priority'>('date-created');
   const [composerActive, setComposerActive] = useState(false);
@@ -251,14 +253,13 @@ export function CalendarTasksRail({
 
   // Generate dynamic filter options including lists from tasks
   const filterOptions = useMemo(() => {
-    // Create list filter options from TASK_LISTS constant
-    const listOptions = TASK_LISTS.map(list => ({
+    const listOptions = availableLists.map(list => ({
       value: `list:${list.id}`,
-      label: list.title
+      label: list.name
     }));
-    
+
     return [...BASE_FILTER_OPTIONS, ...listOptions];
-  }, []);
+  }, [availableLists]);
 
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter((task) => {

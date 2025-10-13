@@ -6,6 +6,7 @@ LibreOllama Desktop blends a Vite/React front end with a Tauri shell. Web entry 
 ## Roadmap & Planning
 - The active roadmap now lives at `docs/roadmap/Unified-Workspace-Roadmap.md` (formerly `Unified-UI-Redesign.md`). Update statuses there when work moves forward and cross-reference in PRs touching roadmap items.
 - Assistant-specific planning continues in `docs/assistant/Advanced-Assistant-Roadmap.md`; keep both documents in sync when scope overlaps.
+- For store/sync architecture patterns, refer to `state-and-sync-guide.md` alongside the roadmap to keep new services aligned with the shared baseline.
 
 ## Build, Test, and Development Commands
 - `npm install` boots both web and Tauri dependencies.

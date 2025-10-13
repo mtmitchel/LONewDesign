@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Google Tasks sync foundation scaffolding (2025-10-15)
+- Migrated task store to Zustand with normalized state, client mutation queue, and Google metadata (`externalId`, `pendingSync`, `clientMutationId`).
+- Added background sync scaffold (`googleTasksSyncService`) to manage queued mutations and schedule Google Tasks polling once OAuth wiring is complete.
+- Calendar tasks rail now sources filter options from the shared task lists, ensuring Google lists propagate everywhere when hydration lands.
+
 ### Chat model synchronization & settings polish (2025-10-14)
 - Chat module now reads all enabled cloud/local models from Settings, keeps conversation model metadata in sync, and gracefully handles empty configurations with clear messaging.
 - Sanitized streaming pipeline retained while ensuring conversation switches and new chats preserve the chosen LLM provider.

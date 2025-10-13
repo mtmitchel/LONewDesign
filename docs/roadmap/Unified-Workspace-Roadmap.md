@@ -47,7 +47,8 @@
 
 * ✅ Google Workspace provider card & shared settings store scaffolded (Settings → Accounts) with per-module toggles; secure storage hooks in place.
 * 🔄 OAuth browser handoff now generates PKCE pairs and exchanges auth codes for tokens via deep link (desktop); finalize non-desktop callback handling and token hydration.
-* 🔄 Tasks sync service + store schema refactor scoped — coding not started.
+* 🔄 Tasks sync foundation in progress — Zustand-backed store now tracks Google IDs, mutation queue, and background poller scaffolding; wire actual Google Tasks fetch/mutation flow next.
+* ✅ Calendar tasks rail consumes shared task list metadata so filters stay aligned once Google lists hydrate; falls back to default lanes until remote data arrives.
 * 🔄 Drag/drop + cross-list move design approved; awaiting sync foundation before UI wiring.
 
 ---
