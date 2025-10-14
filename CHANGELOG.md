@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Task metadata property tests (2025-10-14)
+- Added proptest-based property tests that cover metadata normalization round-trips and hash stability in the Rust backend, ensuring no fields are lost between serialize/deserialize cycles.
+- Introduced the `proptest` dev dependency so future Rust modules can adopt property-driven validation where appropriate.
+- Tolerated legacy SQLite databases that were missing new metadata columns by patching the schema when migrations complain (so migrations no longer block startup on older dev installs).
+- Hardened database initialization to backfill missing metadata columns/indexes on older dev databases so migrations no longer fail when `deleted_at` (and related fields) are absent.
+
+### Google Tasks sync backend list lifecycle (2025-01-14)
+- Tightened the Rust `SyncService` loop to poll every 60 seconds, exposed a `sync_tasks_now` command, and added create/delete task list endpoints that persist through SQLite reconciliation.
+- Local reconciliation now prunes lists removed upstream and reassigns or deletes orphaned tasks to keep the desktop state aligned.
+- Frontend wiring began: `taskStore` now exposes `createTaskList`, `deleteTaskList`, and `syncNow` with optimistic updates; UI components still need to call these methods and handle errors.
+
 ### Google Tasks sync - operational (2025-10-16)
 - **Mutation execution wired**: sync service now calls real Google Tasks REST API for create/update/delete/move operations with automatic token refresh on 401.
 - **List hydration**: poll cycle fetches all Google task lists and tasks, reconciles with local store, and preserves `externalId` + `googleListId` for bidirectional sync.
