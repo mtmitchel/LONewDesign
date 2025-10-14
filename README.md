@@ -1,4 +1,4 @@
-# LibreOllama Desktop (Tauri + React)
+# therefore Desktop (Tauri + React)
 
 ## Prereqs
 - Node.js 18+
@@ -26,6 +26,6 @@ This prevents "port already in use" errors when running multiple instances.
 
 ## Notes
 - Design tokens live in styles/globals.css and design-tokens.md
-- See LibreOllama-UI-Kit-Plan.md for component coverage
+- See therefore-UI-Kit-Plan.md for component coverage
 - Keyboard: [ hides left pane, ] shows left pane, \ toggles right context
 - Use `:smart` variants for automatic port management
