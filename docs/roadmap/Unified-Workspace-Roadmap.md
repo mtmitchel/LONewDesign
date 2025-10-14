@@ -13,71 +13,120 @@
 
 ## Google Workspace integration (Mail · Calendar · Tasks)
 
+### Architecture (Backend-Heavy Approach)
+
+**Decision (2025-01-13):** After encountering Immer proxy revocation issues with frontend mutation queues, we've adopted a **backend-heavy architecture** inspired by proven Tauri app patterns:
+
+* **Rust backend owns ALL sync logic** - Google API polling, mutation execution, retry logic, token refresh
+* **SQLite database for persistence** - Task metadata (priority/labels), projects, notes, chats stored locally
+* **Frontend simplified** - React/Zustand manages only UI state, calls Tauri commands via `invoke()`
+* **No mutation queue in frontend** - Backend handles queueing, execution, and state transitions
+* **localStorage for cache only** - Fast startup with Google API responses, not authoritative data
+
+This architecture provides better reliability, offline support, state persistence across app restarts, and eliminates complex frontend state management issues.
+
 ### Objectives
 
 * Provide a single Google OAuth connection that powers mail triage, calendar sync, and bidirectional task management.
 * Keep the Tasks module, project boards, and calendar rail in lockstep with Google Task lists while supporting drag/drop ergonomics.
+* Store all local-first data (Projects, Notes, Chats) in SQLite for proper desktop app persistence.
 * Ensure shared providers, telemetry, and docs stay aligned with the broader unified UI milestones.
 
 ### Key deliverables
 
 * `settings` integration card for Google Workspace (OAuth, secure storage, per-module toggles).
-* Multi-surface Google Tasks sync service with incremental polling, conflict handling, and drag/drop support.
+* **SQLite database foundation** with migrations for tasks_metadata, projects, notes, chats tables.
+* **Rust sync service** managing Google Tasks API polling, mutation execution, token refresh, and conflict resolution.
+* Simplified frontend taskStore calling Tauri commands only (`create_task`, `update_task`, `delete_task`, `sync_tasks`).
 * Shared task list metadata and filters across Tasks module, calendar rail, and project boards.
+* Local-first Projects/Notes/Chats persistence via Rust CRUD commands and SQLite.
 * Updated roadmap/docs (`Guidelines.md`, Assistant roadmap) and instrumentation for Google sync health.
 
-### Execution sequence
+### Execution sequence (Revised 2025-01-13)
 
-1. **Unify Google OAuth & provider settings** – add Google Workspace provider card, secure token storage, module toggles, and refresh handling.
-2. **Google Tasks sync foundation** – create `googleTasksSyncService`, extend `taskStore` schema (`externalId`, `listId`, `pendingSync`, `clientMutationId`), replace localStorage persistence, add background poller.
-3. **Task list management & rail filtering** – hydrate Google task lists, expose selectors, update calendar rail dropdown (All vs per-list), route new tasks to the active list, show sync states.
-4. **Kanban drag/drop & ordering** – integrate drag/drop library, use `tasks.move` for intra-list ordering, insert/delete for cross-list moves, encode board metadata in task notes, guard with optimistic updates & rollback.
-5. **Project kanban alignment** – map project columns to Google Task lists, filter shared store by `projectId`, wire quick actions, surface conflict notices.
-6. **Main Tasks module alignment** – remove mock data, rely on shared store selectors, ensure search/bulk actions respect pending sync, hook Quick Assistant task flow to shared service.
-7. **Mail & calendar sync adjustments** – refactor services to reuse Google credential, keep calendar rail reactive, suppress `pendingSync` tasks in agendas.
-8. **Quick Assistant enhancements** – ship Ask-AI fallback, confidence UI, provider persistence, and regression tests.
-9. **Context Panel rollout** – finish migrating Notes/Tasks panes to shared `ContextPanel`, wire Project Insights data, drop duplicate upcoming events.
-10. **Command palette & global search** – hook `CommandPalette` into App shell, add adapters for navigation/creation.
-11. **Dashboard data wiring** – swap mock data for live stores with skeletons, keep card caps and scoped links.
-12. **Documentation & tokens** – update this roadmap, `docs/guidelines/Guidelines.md`, and token reference for Insights usage.
-13. **Testing & instrumentation** – add integration/e2e coverage for sync scenarios, instrument `tasks.sync.*` events, verify lint/type/e2e suites.
-14. **Cleanup & follow-ups** – remove mock/localStorage remnants, resolve TODO markers, record changes in `CHANGELOG.md`.
+**PHASE 1: SQLite Foundation** (1-2 days)
+1. Add `sqlx` dependency to `Cargo.toml` with SQLite + migrations features
+2. Create database initialization system using Tauri's `app_data_dir()`
+3. Create initial migration `001_create_core_tables.sql` (tasks_metadata, projects, phases, milestones)
+4. Add Tauri command `init_database()` for first-time setup
+5. Test cross-platform database paths (Windows/Mac/Linux)
 
-#### Status – 2025-10-16
+**PHASE 2: Tasks Backend Refactor** (3-5 days, **CRITICAL PATH**)
+6. Create `src-tauri/src/sync_service.rs` with `SyncService` struct
+7. Implement Google Tasks sync loop (5-min polling, mutation execution, token refresh)
+8. Add Rust commands: `create_task`, `update_task`, `delete_task`, `move_task`, `sync_tasks`, `get_tasks`
+9. Remove `googleTasksSyncService.ts` from frontend
+10. Simplify `taskStore.tsx` - remove mutation queue, keep only UI state, add invoke() wrappers
+11. Update TasksModule, CalendarTasksRail, QuickAssistant to use new API
+12. Add localStorage caching for fast startup (Google API responses only)
+13. Test bidirectional sync: app→Google and Google→app
 
-**Shipped**
-- ✅ Google Workspace provider card & shared settings store scaffolded (Settings → Accounts) with per-module toggles; secure storage hooks in place.
-- ✅ Calendar tasks rail now consumes the shared task list selector so dropdowns auto-populate once Google lists hydrate, with graceful fallback to default lanes.
-- ✅ Task store migrated to Zustand with normalized entities, mutation queue, background poller scaffold, and stable selectors used across Quick Assistant, Calendar rail, and Tasks module.
+**PHASE 3: Projects Persistence** (2-3 days)
+14. Create migration `002_create_projects_tables.sql`
+15. Add Rust CRUD commands for projects/phases/milestones
+16. Replace mock data in `ProjectsModule.tsx` with Tauri calls
+17. Create `projectStore.tsx` for UI state management
+18. Wire Dashboard and Context Panel to real project data
 
-**In progress**
-- 🔄 OAuth browser handoff generates PKCE pairs + exchanges codes on desktop. **Remaining:** non-desktop callback handling, token hydration through settings store, refresh-token rotation strategy, and secure persistence.
-- 🔄 Google Tasks sync foundation: queue plumbing is in place but still requeues mutations. **Next up:** wire Tauri-side Google Tasks service (list + task CRUD/move), execute mutations, and mark tasks as synced/failed.
-- 🔄 Drag/drop + cross-list move design approved; awaiting functional Google sync to connect DnD events to mutation queue.
+**PHASE 4: Notes & Chats Persistence** (2-3 days)
+19. Create migration `003_create_notes_chats_tables.sql`
+20. Add Rust commands for notes and chat history
+21. Update NotesModule and ChatModule to persist data
+22. Implement search functionality using SQLite FTS5
 
-**Blocked / upcoming**
-- ⏳ Project kanban + project-specific task boards depend on real list hydration and cross-list move handling.
-- ⏳ Calendar + dashboard integrations require shared Google credential refresh + selective task filtering once sync is live.
+**PHASE 5: Mail & Calendar (Future)**
+23. Implement backend polling for Gmail API (similar to tasks, localStorage cache only)
+24. Implement backend polling for Google Calendar API
+25. Reuse OAuth token manager from tasks sync service
 
-#### Immediate Focus (next developer)
+**LEGACY TASKS** (lower priority, decoupled from backend refactor)
+- Kanban drag/drop & ordering
+- Context Panel rollout and Project Insights
+- Command palette & global search
+- Dashboard data wiring
+- Documentation & tokens updates
+- Testing & instrumentation
+- Cleanup & follow-ups
 
-1. **Finish OAuth loop**
-   - Implement the non-desktop deep link/web callback in `SettingsAccount` so browser builds can exchange codes.
-   - Persist Google tokens securely (desktop via plugin secure storage, web via encrypted IndexedDB) and hydrate Zustand `googleWorkspace` settings store on launch.
-   - Add token refresh/expiry handling + UI feedback (pending → connected → error) in the settings module.
-2. **Implement Google Tasks service**
-   - Add Tauri commands (and web fetch fallback) for `tasklists.list`, `tasks.list`, `tasks.insert`, `tasks.patch`, `tasks.delete`, and `tasks.move` using the stored tokens.
-   - Create `lib/services/googleTasks.ts` (TS) to call those commands with zod validation and pipe responses into the task store selectors.
-3. **Hook mutation queue to service**
-   - Replace the placeholder requeue in `googleTasksSyncService` with real execution + retry/backoff logic.
-   - Update store mutations to mark tasks as `syncState: 'idle'` or `'error'` and persist `externalId`/`googleListId` when Google returns IDs.
-   - Emit telemetry events (`tasks.sync.success|failure`) to aid debugging.
-4. **Hydrate lists + clean up legacy persistence**
-   - Sync Google task lists on login, merge with defaults, and remove `libreollama_task_lists` localStorage usage from Tasks module once data arrives.
-   - Ensure calendar rail/Tasks board filter state survives across reloads using the shared selector.
-5. **Document + test**
-   - Add unit tests around the mutation processor and OAuth state transitions.
-   - Record configuration steps and manual test plan in `docs/testing/` (token exchange, task create/update/delete/move).
+#### Status – 2025-01-13 (ARCHITECTURE PIVOT)
+
+> **See also:**  
+> - Executable tasks: `docs/implementation/backend-sync-refactor-tasks.json`  
+> - Memory graph: Search "Backend-Heavy Architecture Pattern" in Factory AI  
+> - Breaking changes: Update `CHANGELOG.md` when shipping
+
+**Completed (Pre-Pivot)**
+- ✅ Google Workspace provider card & shared settings store scaffolded (Settings → Accounts)
+- ✅ OAuth PKCE flow working on desktop (loopback listener + token exchange)
+- ✅ Calendar tasks rail consuming shared task list selector
+- ✅ Task store with Zustand + normalized entities
+
+**Deprecated (Frontend-Heavy Approach)**
+- ❌ Frontend mutation queue with Immer → **ABANDONED** due to proxy revocation issues
+- ❌ `googleTasksSyncService.ts` → **WILL BE REMOVED** in Phase 2
+- ❌ Complex frontend sync state management → **MOVING TO RUST BACKEND**
+
+**Current Focus (Backend-Heavy Pivot)**
+- 🔄 **Phase 1: SQLite Foundation** - Adding sqlx, creating database initialization, migrations
+- ⏳ **Phase 2: Tasks Backend Refactor** - Moving ALL sync logic to Rust, removing frontend queue
+- ⏳ **Phase 3: Projects Persistence** - SQLite storage for projects/phases/milestones
+- ⏳ **Phase 4: Notes & Chats** - Local-first persistence
+
+**Immediate Next Steps**
+
+1. **Phase 1 Tasks (SQLite Foundation)**
+   - Add sqlx dependency to Cargo.toml
+   - Create database init system with app_data_dir
+   - Write 001_create_core_tables.sql migration
+   - Test cross-platform paths
+
+2. **Phase 2 Tasks (Backend Refactor)**
+   - Create sync_service.rs with SyncService struct
+   - Implement polling loop + mutation execution in Rust
+   - Remove googleTasksSyncService.ts
+   - Simplify taskStore.tsx to UI-only state
+   
+See detailed executable tasks document for complete implementation plan.
 
 ---
 

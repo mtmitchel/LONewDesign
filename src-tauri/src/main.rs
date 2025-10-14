@@ -1,6 +1,9 @@
 //! Tauri main entry
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod db;
+mod sync_service;
+
 use std::time::Duration;
 
 use futures_util::StreamExt;
@@ -35,6 +38,8 @@ impl ApiState {
         Self { client }
     }
 }
+
+
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct ChatMessageInput {
@@ -243,6 +248,149 @@ fn resolve_ollama_base_url(base_url: Option<String>) -> String {
         .map(|value| value.trim().trim_end_matches('/').to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| DEFAULT_OLLAMA_BASE_URL.to_string())
+}
+
+#[tauri::command]
+async fn init_database_command(app: AppHandle) -> Result<String, String> {
+    db::init_database(&app).await?;
+    Ok("Database initialized successfully".to_string())
+}
+
+// Task CRUD Commands
+
+#[derive(Debug, Serialize, Deserialize)]
+struct TaskInput {
+    id: String,
+    list_id: String,
+    title: String,
+    priority: Option<String>,
+    labels: Option<Vec<String>>,
+    time_block: Option<String>,
+    notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+struct TaskMetadata {
+    id: String,
+    google_id: Option<String>,
+    list_id: String,
+    priority: String,
+    labels: String,
+    time_block: Option<String>,
+    notes: Option<String>,
+    created_at: i64,
+    updated_at: i64,
+    sync_state: String,
+    last_synced_at: Option<i64>,
+    sync_error: Option<String>,
+}
+
+#[tauri::command]
+async fn create_task(app: AppHandle, task: TaskInput) -> Result<String, String> {
+    let pool = db::init_database(&app).await?;
+    let now = chrono::Utc::now().timestamp();
+    let labels_json = serde_json::to_string(&task.labels.unwrap_or_default())
+        .unwrap_or_else(|_| "[]".to_string());
+    
+    sqlx::query(
+        "INSERT INTO tasks_metadata (id, list_id, priority, labels, time_block, notes, created_at, updated_at, sync_state) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
+    )
+    .bind(&task.id)
+    .bind(&task.list_id)
+    .bind(task.priority.unwrap_or_else(|| "none".to_string()))
+    .bind(&labels_json)
+    .bind(&task.time_block)
+    .bind(&task.notes)
+    .bind(now)
+    .bind(now)
+    .execute(&pool)
+    .await
+    .map_err(|e| format!("Failed to create task: {}", e))?;
+    
+    Ok(task.id)
+}
+
+#[tauri::command]
+async fn update_task(app: AppHandle, task_id: String, updates: serde_json::Value) -> Result<String, String> {
+    let pool = db::init_database(&app).await?;
+    let now = chrono::Utc::now().timestamp();
+    
+    let mut query_parts = Vec::new();
+    let mut bind_values: Vec<String> = Vec::new();
+    
+    if let Some(priority) = updates.get("priority").and_then(|v| v.as_str()) {
+        query_parts.push("priority = ?");
+        bind_values.push(priority.to_string());
+    }
+    
+    if let Some(labels) = updates.get("labels") {
+        query_parts.push("labels = ?");
+        bind_values.push(labels.to_string());
+    }
+    
+    if let Some(notes) = updates.get("notes").and_then(|v| v.as_str()) {
+        query_parts.push("notes = ?");
+        bind_values.push(notes.to_string());
+    }
+    
+    if query_parts.is_empty() {
+        return Ok(task_id);
+    }
+    
+    query_parts.push("updated_at = ?");
+    query_parts.push("sync_state = 'pending'");
+    
+    let query_str = format!(
+        "UPDATE tasks_metadata SET {} WHERE id = ?",
+        query_parts.join(", ")
+    );
+    
+    let mut query = sqlx::query(&query_str);
+    for value in bind_values {
+        query = query.bind(value);
+    }
+    query = query.bind(now).bind(&task_id);
+    
+    query.execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to update task: {}", e))?;
+    
+    Ok(task_id)
+}
+
+#[tauri::command]
+async fn delete_task(app: AppHandle, task_id: String) -> Result<String, String> {
+    let pool = db::init_database(&app).await?;
+    
+    sqlx::query("DELETE FROM tasks_metadata WHERE id = ?")
+        .bind(&task_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| format!("Failed to delete task: {}", e))?;
+    
+    Ok(task_id)
+}
+
+#[tauri::command]
+async fn get_tasks(app: AppHandle) -> Result<Vec<TaskMetadata>, String> {
+    let pool = db::init_database(&app).await?;
+    
+    let tasks: Vec<TaskMetadata> = sqlx::query_as(
+        "SELECT id, google_id, list_id, priority, labels, time_block, notes, created_at, updated_at, sync_state, last_synced_at, sync_error FROM tasks_metadata"
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| format!("Failed to fetch tasks: {}", e))?;
+    
+    Ok(tasks)
+}
+
+#[tauri::command]
+async fn sync_tasks_now(_app: AppHandle) -> Result<String, String> {
+    // Trigger immediate sync by emitting event or calling sync service
+    // TODO: Wire this to actually trigger sync
+    Ok("Sync triggered".to_string())
 }
 
 #[tauri::command]
@@ -2110,10 +2258,39 @@ fn main() {
                 }
             });
 
+            // Initialize database and start sync service
+            let app_handle_for_db = app_handle.clone();
+            let app_handle_for_sync = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                match db::init_database(&app_handle_for_db).await {
+                    Ok(pool) => {
+                        println!("[main] Database initialized, starting sync service");
+                        let http_client = reqwest::Client::builder()
+                            .connect_timeout(std::time::Duration::from_secs(15))
+                            .timeout(std::time::Duration::from_secs(120))
+                            .build()
+                            .expect("Failed to build HTTP client for sync service");
+                        let sync_service = std::sync::Arc::new(
+                            sync_service::SyncService::new(pool, http_client, app_handle_for_sync)
+                        );
+                        sync_service.start();
+                    }
+                    Err(e) => {
+                        eprintln!("[main] Failed to initialize database: {}", e);
+                    }
+                }
+            });
+
             Ok(())
         })
         .manage(ApiState::new())
         .invoke_handler(tauri::generate_handler![
+            init_database_command,
+            create_task,
+            update_task,
+            delete_task,
+            get_tasks,
+            sync_tasks_now,
             test_mistral_credentials,
             test_ollama_connection,
             fetch_mistral_models,

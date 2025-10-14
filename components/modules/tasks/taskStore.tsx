@@ -147,7 +147,7 @@ function hydrateDefaultLists(): { listsById: Record<string, TaskList>; listOrder
   return { listsById, listOrder };
 }
 
-const STORAGE_KEY = 'libreollama_task_store_v1';
+const STORAGE_KEY = 'libreollama_task_store_v2'; // v2: removed hardcoded lists, using Google Tasks sync
 const DEFAULT_LIST_ID = DEFAULT_TASK_LISTS[0]?.id ?? 'todo';
 
 const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
@@ -474,8 +474,32 @@ export function useTaskLists() {
 
 export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
-    const stop = startGoogleTasksBackgroundSync();
-    return () => stop();
+    let cleanup: (() => void) | undefined;
+
+    async function initialize() {
+      // Hydrate Google Workspace tokens before starting sync
+      const { useGoogleWorkspaceSettings } = await import('../settings/state/googleWorkspace');
+      const hydrate = useGoogleWorkspaceSettings.getState().hydrate;
+      await hydrate();
+      
+      const account = useGoogleWorkspaceSettings.getState().account;
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[TaskStoreProvider] Google Workspace hydrated', {
+          hasAccount: !!account,
+          hasAccessToken: !!account?.token?.accessToken,
+          email: account?.email,
+        });
+      }
+      
+      // Start background sync after tokens are loaded
+      cleanup = startGoogleTasksBackgroundSync();
+    }
+
+    void initialize();
+
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, []);
 
   return <>{children}</>;

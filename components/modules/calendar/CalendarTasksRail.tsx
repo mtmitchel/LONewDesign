@@ -51,7 +51,6 @@ import { Calendar as DatePicker } from '../../ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { cn } from '../../ui/utils';
 import { useTaskStore, useTasks, useTaskLists, TaskInput } from '../tasks/taskStore';
-import { DEFAULT_TASK_LISTS } from '../tasks/constants';
 import type { Task } from '../tasks/types';
 import { TaskCard } from '../tasks/TaskCard';
 
@@ -188,7 +187,7 @@ export function CalendarTasksRail({
   const setTaskDueDate = useTaskStore((state) => state.setTaskDueDate);
 
   const tasks = tasksProp ?? storeTasks;
-  const availableLists = lists.length ? lists : DEFAULT_TASK_LISTS;
+  const availableLists = lists;
   const [filter, setFilter] = useState<TaskFilterKey>(externalFilter);
   const [sortBy, setSortBy] = useState<'date-created' | 'due-date' | 'title' | 'priority'>('date-created');
   const [composerActive, setComposerActive] = useState(false);

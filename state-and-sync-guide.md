@@ -1,10 +1,22 @@
+> **⚠️ ARCHITECTURE CHANGE (2025-01-13):**  
+> This guide describes the **legacy frontend-heavy pattern**. For Google Tasks sync and future features, we're adopting a **backend-heavy architecture** where Rust owns sync logic and SQLite provides persistence.  
+> 
+> **See:**  
+> - `docs/roadmap/Unified-Workspace-Roadmap.md` - Google Workspace integration section  
+> - `docs/implementation/backend-sync-refactor-tasks.json` - Executable tasks  
+> - Memory graph: Search "Backend-Heavy Architecture Pattern"  
+>
+> **Current patterns still apply to:** UI-only state, non-synced features, general Zustand usage
+
+---
+
 0) Tech/Runtime Baseline
 
 Runtime/UI: React 18, Vite 5, TypeScript 5, Tailwind 3.4, Radix UI, lucide-react, react-resizable-panels, react-day-picker, recharts, Konva (canvas).
 
 Desktop shell: Tauri v2 (@tauri-apps/api, plugins: dialog, fs, deep-link/http if used).
 
-State: Zustand v5 + immer, persist (whitelist + partialize).
+State: Zustand v5 + immer (⚠️ mutation queues deprecated, see above), persist (whitelist + partialize).
 
 Tests: Vitest (+ @testing-library/react, jsdom).
 

@@ -87,6 +87,15 @@ function handleTokenUpdate(updatedToken?: {
 
 async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
   const store = taskStoreApi.getState();
+  
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[google-tasks-sync] drainMutationQueue called', {
+      reason,
+      queueLength: store.mutationQueue.length,
+      syncStatus: store.syncStatus,
+    });
+  }
+  
   if (store.mutationQueue.length === 0) {
     if (store.syncStatus === 'syncing') {
       store.setSyncStatus('idle');
@@ -97,27 +106,53 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
   const auth = buildAuthContext();
   if (!auth) {
     if (process.env.NODE_ENV !== 'production') {
-      console.debug('[google-tasks-sync] no auth context, skipping mutation drain');
+      console.warn('[google-tasks-sync] no auth context, skipping mutation drain');
     }
     store.setSyncStatus('pending');
     return;
   }
 
+  // Peek at the next mutation to get data we need BEFORE shifting
+  const nextMutation = store.mutationQueue[0];
+  if (!nextMutation) {
+    return;
+  }
+
+  // Capture data from store BEFORE shifting mutation (to avoid proxy revocation)
+  const listsById = { ...store.listsById };
+  const tasksById = { ...store.tasksById };
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[google-tasks-sync] captured store data', {
+      listsCount: Object.keys(listsById).length,
+      tasksCount: Object.keys(tasksById).length,
+    });
+  }
+
+  // Now shift the mutation
   const mutation = store.shiftNextMutation();
   if (!mutation) {
     return;
   }
 
+  // Get fresh state reference for mutations
+  const freshStore = taskStoreApi.getState();
+
   try {
-    store.setSyncStatus('syncing');
+    freshStore.setSyncStatus('syncing');
     if (process.env.NODE_ENV !== 'production') {
-      console.debug('[google-tasks-sync] executing mutation', { reason, mutation });
+      console.log('[google-tasks-sync] executing mutation', { 
+        reason, 
+        kind: mutation.op.kind,
+        mutationId: mutation.id,
+        attempts: mutation.attempts,
+      });
     }
 
     switch (mutation.op.kind) {
       case 'task.create': {
         const { task } = mutation.op;
-        const listId = task.googleListId ?? store.listsById[task.listId]?.externalId ?? '@default';
+        const listId = task.googleListId ?? listsById[task.listId]?.externalId ?? '@default';
         
         const googleTask = {
           title: task.title,
@@ -133,7 +168,7 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
         });
 
         handleTokenUpdate(result.updatedToken);
-        store.resolveMutation(mutation.id, {
+        freshStore.resolveMutation(mutation.id, {
           externalId: result.data.id,
           googleListId: listId,
           lastSyncedAt: Date.now(),
@@ -149,7 +184,7 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
 
       case 'task.update': {
         const { id, changes } = mutation.op;
-        const localTask = store.tasksById[id];
+        const localTask = tasksById[id];
         
         if (!localTask?.externalId || !localTask?.googleListId) {
           throw new Error('Task missing externalId or googleListId');
@@ -173,7 +208,7 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
         });
 
         handleTokenUpdate(result.updatedToken);
-        store.resolveMutation(mutation.id, {
+        freshStore.resolveMutation(mutation.id, {
           lastSyncedAt: Date.now(),
         });
 
@@ -187,7 +222,7 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
 
       case 'task.delete': {
         const { id, externalId } = mutation.op;
-        const localTask = store.tasksById[id];
+        const localTask = tasksById[id];
         const extId = externalId ?? localTask?.externalId;
         const listId = localTask?.googleListId;
 
@@ -200,7 +235,7 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
           handleTokenUpdate(result.updatedToken);
         }
 
-        store.resolveMutation(mutation.id);
+        freshStore.resolveMutation(mutation.id);
 
         emitTaskEvent('tasks.sync.success', {
           operation: 'delete',
@@ -212,14 +247,14 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
 
       case 'task.move': {
         const { id, toListId, previousId } = mutation.op;
-        const localTask = store.tasksById[id];
+        const localTask = tasksById[id];
         
         if (!localTask?.externalId || !localTask?.googleListId) {
           throw new Error('Task missing externalId or googleListId');
         }
 
-        const newListId = store.listsById[toListId]?.externalId ?? toListId;
-        const previous = previousId ? store.tasksById[previousId]?.externalId : undefined;
+        const newListId = listsById[toListId]?.externalId ?? toListId;
+        const previous = previousId ? tasksById[previousId]?.externalId : undefined;
 
         const result = await googleTasksService.moveTask({
           auth,
@@ -229,7 +264,7 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
         });
 
         handleTokenUpdate(result.updatedToken);
-        store.resolveMutation(mutation.id, {
+        freshStore.resolveMutation(mutation.id, {
           googleListId: newListId,
           listId: toListId,
           lastSyncedAt: Date.now(),
@@ -248,12 +283,12 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
         throw new Error(`Unknown mutation kind: ${(mutation.op as { kind: string }).kind}`);
     }
 
-    store.setSyncStatus('idle');
+    freshStore.setSyncStatus('idle');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     
     if (mutation.attempts >= MUTATION_MAX_ATTEMPTS) {
-      store.failMutation(mutation.id, message);
+      freshStore.failMutation(mutation.id, message);
       emitTaskEvent('tasks.sync.failure', {
         operation: mutation.op.kind,
         mutationId: mutation.id,
@@ -261,10 +296,10 @@ async function drainMutationQueue(reason: 'initial' | 'interval' | 'manual') {
         attempts: mutation.attempts,
       });
     } else {
-      store.requeueMutation(mutation);
+      freshStore.requeueMutation(mutation);
     }
     
-    store.setSyncStatus('error', message);
+    freshStore.setSyncStatus('error', message);
     
     if (process.env.NODE_ENV !== 'production') {
       console.error('[google-tasks-sync] mutation failed', { mutation, error: message });
@@ -414,12 +449,24 @@ export function startGoogleTasksBackgroundSync() {
   const store = taskStoreApi.getState();
   store.registerPollerActive(true);
 
+  // Listen for OAuth connection events to trigger immediate sync
+  const handleOAuthConnected = () => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[google-tasks-sync] OAuth connected, triggering immediate sync');
+    }
+    void runPollCycle();
+    void drainMutationQueue('initial');
+  };
+
+  window.addEventListener('google:oauth:connected', handleOAuthConnected);
+
   // Kick everything once on start so queued mutations are surfaced promptly.
   drainMutationQueue('initial');
   scheduleMutationSweep(0);
   schedulePoll();
 
   return () => {
+    window.removeEventListener('google:oauth:connected', handleOAuthConnected);
     clearTimers();
     store.registerPollerActive(false);
     store.setSyncStatus('idle');

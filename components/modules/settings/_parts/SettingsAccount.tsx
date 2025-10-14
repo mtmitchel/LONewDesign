@@ -166,6 +166,11 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
         setPending(null);
         setIsAuthenticating(false);
         toast.success('Connected to Google account.');
+        
+        // Trigger immediate sync after OAuth completes
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('google:oauth:connected'));
+        }
       } catch (error) {
         console.error('[Google OAuth] Token exchange failed', error);
         clearPkceSession(payload.state);

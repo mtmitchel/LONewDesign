@@ -42,123 +42,6 @@ import { useTaskStore, useTasks } from './tasks/taskStore';
 const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
 const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
 
-const mockTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Dump',
-    status: 'todo',
-    priority: 'none',
-    labels: [],
-    isCompleted: false,
-    dateCreated: '2025-10-01',
-    createdAt: '2025-10-01',
-    listId: 'todo',
-    projectId: 'proj-unified-ui',
-  },
-  {
-    id: '2',
-    title: 'Hump',
-    status: 'todo',
-    priority: 'none',
-    labels: [],
-    isCompleted: false,
-    dateCreated: '2025-10-02',
-    createdAt: '2025-10-02',
-    listId: 'todo',
-    projectId: 'proj-unified-ui',
-  },
-  {
-    id: '3',
-    title: 'Buy milk',
-    dueDate: 'Aug 17',
-    status: 'todo',
-    priority: 'medium',
-    labels: [{ name: 'errands', color: 'var(--label-orange)' }],
-    isCompleted: false,
-    dateCreated: '2025-10-03',
-    createdAt: '2025-10-03',
-    listId: 'todo',
-    projectId: 'proj-ops-enablement',
-  },
-  {
-    id: '4',
-    title: 'Return library books',
-    dueDate: 'Aug 13',
-    status: 'todo',
-    priority: 'high',
-    labels: [{ name: 'personal', color: 'var(--label-purple)' }],
-    isCompleted: false,
-    dateCreated: '2025-10-04',
-    createdAt: '2025-10-04',
-    listId: 'todo',
-  },
-  {
-    id: '5',
-    title: 'asdfasdfasdfsa',
-    dueDate: 'Aug 28',
-    status: 'todo',
-    priority: 'low',
-    labels: [],
-    isCompleted: true,
-    dateCreated: '2025-10-05',
-    createdAt: '2025-10-05',
-    completedAt: '2025-10-06T09:00:00Z',
-    listId: 'todo',
-    projectId: 'proj-canvas-ai',
-  },
-  {
-    id: '6',
-    title: 'Blah',
-    status: 'in-progress',
-    priority: 'none',
-    labels: [],
-    isCompleted: false,
-    dateCreated: '2025-10-06',
-    createdAt: '2025-10-06',
-    listId: 'in-progress',
-    projectId: 'proj-unified-ui',
-  },
-  {
-    id: '7',
-    title: 'Buy bread',
-    dueDate: 'Oct 1',
-    status: 'in-progress',
-    priority: 'medium',
-    labels: [{ name: 'errands', color: 'var(--label-orange)' }],
-    isCompleted: false,
-    dateCreated: '2025-10-07',
-    createdAt: '2025-10-07',
-    listId: 'in-progress',
-    projectId: 'proj-ops-enablement',
-  },
-  {
-    id: '8',
-    title: 'Task 1',
-    dueDate: 'Oct 2 – 3',
-    status: 'todo',
-    priority: 'low',
-    labels: [],
-    isCompleted: false,
-    dateCreated: '2025-10-08',
-    createdAt: '2025-10-08',
-    listId: 'todo',
-    projectId: 'proj-canvas-ai',
-  },
-  {
-    id: '9',
-    title: 'tretre',
-    dueDate: 'Oct 29',
-    status: 'todo',
-    priority: 'none',
-    labels: [],
-    isCompleted: false,
-    dateCreated: '2025-10-09',
-    createdAt: '2025-10-09',
-    listId: 'todo',
-    projectId: 'proj-unified-ui',
-  },
-];
-
 // Sort comparator: completed tasks at bottom, manual order for active tasks
 function compareTasks(a: Task, b: Task): number {
   // 1) Incomplete tasks above completed tasks
@@ -214,32 +97,16 @@ export function TasksModule() {
   const [labelsColorMap, setLabelsColorMap] = useState<Map<string, string>>(new Map());
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
   
-  // Load columns from localStorage or use defaults
-  const [columns, setColumns] = useState<Array<{ id: string; title: string }>>(() => {
-    if (typeof window === 'undefined') return [...TASK_LISTS];
-    try {
-      const stored = localStorage.getItem('libreollama_task_lists');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return Array.isArray(parsed) ? parsed : [...TASK_LISTS];
-      }
-    } catch (error) {
-      console.warn('Failed to load task lists from localStorage:', error);
-    }
-    return [...TASK_LISTS];
-  });
+  // Use task lists from store (Google Tasks sync)
+  const taskLists = useTaskStore((state) => 
+    state.listOrder.map((id) => state.listsById[id]).filter(Boolean)
+  );
+  const columns = React.useMemo(() => 
+    taskLists.map(list => ({ id: list.id, title: list.name })),
+    [taskLists]
+  );
   
   const [deleteListDialog, setDeleteListDialog] = useState<{ isOpen: boolean; listId: string; listTitle: string; taskCount: number } | null>(null);
-
-  // Save columns to localStorage whenever they change
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem('libreollama_task_lists', JSON.stringify(columns));
-    } catch (error) {
-      console.warn('Failed to save task lists to localStorage:', error);
-    }
-  }, [columns]);
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -257,10 +124,23 @@ export function TasksModule() {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLabels = selectedLabels.length === 0 || 
       task.labels.some(label => selectedLabels.includes(getLabelName(label)));
-    const matchesList = selectedList === null || task.status === selectedList;
+    const matchesList = selectedList === null || task.listId === selectedList || task.status === selectedList;
     const matchesProject = projectFilter === null || task.projectId === projectFilter;
     return matchesSearch && matchesLabels && matchesList && matchesProject;
   });
+
+  // Debug logging
+  React.useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[TasksModule]', {
+        totalTasks: tasks.length,
+        filteredTasks: filteredTasks.length,
+        columns: columns.length,
+        selectedList,
+        projectFilter,
+      });
+    }
+  }, [tasks.length, filteredTasks.length, columns.length, selectedList, projectFilter]);
 
   // Get all unique labels from tasks with their colors
   React.useEffect(() => {

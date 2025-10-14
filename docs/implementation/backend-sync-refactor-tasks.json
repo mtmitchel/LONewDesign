@@ -1,0 +1,239 @@
+{
+  "meta": {
+    "title": "Backend-Heavy Sync Refactor - Executable Tasks",
+    "created": "2025-01-13",
+    "author": "Architecture Planning",
+    "total_phases": 5,
+    "critical_path": ["phase_1", "phase_2"],
+    "estimated_duration": "8-13 days for phases 1-4",
+    "see_also": {
+      "roadmap": "docs/roadmap/Unified-Workspace-Roadmap.md - Google Workspace integration section",
+      "memory_graph": "Search 'Backend-Heavy Architecture Pattern' in Factory AI",
+      "guidelines": "docs/guidelines/Guidelines.md",
+      "changelog": "CHANGELOG.md - add breaking changes when shipping Phase 2"
+    }
+  },
+  "executable_tasks": [
+    {
+      "task_id": "p1_t1_add_sqlx_dependency",
+      "phase": 1,
+      "description": "Add sqlx crate with SQLite and migrations support to Cargo.toml",
+      "target_files": [
+        {
+          "path": "src-tauri/Cargo.toml",
+          "line_range": "dependencies section",
+          "function_name": null
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "insert",
+          "find_pattern": "\\[dependencies\\]",
+          "replace_with": "[dependencies]\nsqlx = { version = \"0.7\", features = [\"runtime-tokio-rustls\", \"sqlite\", \"macros\", \"migrate\"] }\ntokio = { version = \"1.36\", features = [\"full\"] }",
+          "line_number": null
+        }
+      ],
+      "validation_steps": [
+        "cargo build --manifest-path=src-tauri/Cargo.toml",
+        "cargo check --manifest-path=src-tauri/Cargo.toml",
+        "Verify no compilation errors"
+      ],
+      "success_criteria": "Cargo build succeeds with sqlx and tokio dependencies",
+      "dependencies": [],
+      "rollback_procedure": "Remove sqlx and tokio lines from Cargo.toml, run cargo clean"
+    },
+    {
+      "task_id": "p1_t2_create_db_module",
+      "phase": 1,
+      "description": "Create database module with initialization logic using app_data_dir",
+      "target_files": [
+        {
+          "path": "src-tauri/src/db.rs",
+          "line_range": "new file",
+          "function_name": "init_database, get_db_path"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "find_pattern": null,
+          "replace_with": "use sqlx::{sqlite::SqlitePool, migrate::MigrateDatabase, Sqlite};\nuse std::path::PathBuf;\nuse tauri::Manager;\n\npub async fn get_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {\n    let app_dir = app.path_resolver()\n        .app_data_dir()\n        .ok_or(\"Failed to resolve app data directory\")?;\n    std::fs::create_dir_all(&app_dir)\n        .map_err(|e| format!(\"Failed to create app data directory: {}\", e))?;\n    Ok(app_dir.join(\"therefore.db\"))\n}\n\npub async fn init_database(app: &tauri::AppHandle) -> Result<SqlitePool, String> {\n    let db_path = get_db_path(app).await?;\n    let db_url = format!(\"sqlite://{}?mode=rwc\", db_path.display());\n    \n    if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {\n        Sqlite::create_database(&db_url).await\n            .map_err(|e| format!(\"Error creating database: {}\", e))?;\n    }\n    \n    let pool = SqlitePool::connect(&db_url).await\n        .map_err(|e| format!(\"Error connecting to database: {}\", e))?;\n    \n    sqlx::migrate!(\"./migrations\")\n        .run(&pool)\n        .await\n        .map_err(|e| format!(\"Error running migrations: {}\", e))?;\n    \n    Ok(pool)\n}",
+          "line_number": null
+        }
+      ],
+      "validation_steps": [
+        "cargo build --manifest-path=src-tauri/Cargo.toml",
+        "Verify db.rs compiles without errors"
+      ],
+      "success_criteria": "Database module compiles and exports init_database function",
+      "dependencies": ["p1_t1_add_sqlx_dependency"],
+      "rollback_procedure": "Delete src-tauri/src/db.rs file"
+    },
+    {
+      "task_id": "p1_t3_create_migrations_dir",
+      "phase": 1,
+      "description": "Create migrations directory and initial migration for core tables",
+      "target_files": [
+        {
+          "path": "src-tauri/migrations/001_create_core_tables.sql",
+          "line_range": "new file",
+          "function_name": null
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "find_pattern": null,
+          "replace_with": "-- Tasks Metadata Table\nCREATE TABLE IF NOT EXISTS tasks_metadata (\n    id TEXT PRIMARY KEY NOT NULL,\n    google_id TEXT UNIQUE,\n    list_id TEXT NOT NULL,\n    priority TEXT DEFAULT 'none',\n    labels TEXT DEFAULT '[]',\n    time_block TEXT,\n    notes TEXT,\n    created_at INTEGER NOT NULL,\n    updated_at INTEGER NOT NULL,\n    sync_state TEXT DEFAULT 'pending',\n    last_synced_at INTEGER,\n    sync_error TEXT\n);\n\nCREATE INDEX idx_tasks_google_id ON tasks_metadata(google_id);\nCREATE INDEX idx_tasks_sync_state ON tasks_metadata(sync_state);\n\n-- Projects Table\nCREATE TABLE IF NOT EXISTS projects (\n    id TEXT PRIMARY KEY NOT NULL,\n    name TEXT NOT NULL,\n    code TEXT,\n    summary TEXT,\n    due_date TEXT,\n    progress INTEGER DEFAULT 0,\n    status TEXT DEFAULT 'on-track',\n    focus_area TEXT,\n    last_updated TEXT,\n    next_step TEXT,\n    pinned INTEGER DEFAULT 0,\n    created_at INTEGER NOT NULL,\n    updated_at INTEGER NOT NULL\n);\n\n-- Project Phases Table\nCREATE TABLE IF NOT EXISTS project_phases (\n    id TEXT PRIMARY KEY NOT NULL,\n    project_id TEXT NOT NULL,\n    name TEXT NOT NULL,\n    start_date TEXT,\n    end_date TEXT,\n    status TEXT DEFAULT 'upcoming',\n    completion_percentage INTEGER DEFAULT 0,\n    created_at INTEGER NOT NULL,\n    updated_at INTEGER NOT NULL,\n    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE\n);\n\n-- Project Milestones Table\nCREATE TABLE IF NOT EXISTS project_milestones (\n    id TEXT PRIMARY KEY NOT NULL,\n    project_id TEXT NOT NULL,\n    title TEXT NOT NULL,\n    date TEXT NOT NULL,\n    status TEXT DEFAULT 'upcoming',\n    description TEXT,\n    created_at INTEGER NOT NULL,\n    updated_at INTEGER NOT NULL,\n    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE\n);",
+          "line_number": null
+        }
+      ],
+      "validation_steps": [
+        "Verify migrations directory exists at src-tauri/migrations/",
+        "Verify SQL syntax is valid",
+        "Run test migration with sqlx-cli if available"
+      ],
+      "success_criteria": "Migration file created with valid SQL for all core tables",
+      "dependencies": ["p1_t2_create_db_module"],
+      "rollback_procedure": "Delete src-tauri/migrations/ directory"
+    },
+    {
+      "task_id": "p1_t4_wire_db_to_main",
+      "phase": 1,
+      "description": "Wire database initialization into main.rs and add Tauri command",
+      "target_files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "line_range": "top of file and main function",
+          "function_name": "main, init_database_command"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "insert",
+          "find_pattern": "mod main_commands;",
+          "replace_with": "mod main_commands;\nmod db;",
+          "line_number": null
+        },
+        {
+          "operation": "insert",
+          "find_pattern": "#\\[tauri::command\\]",
+          "replace_with": "#[tauri::command]\nasync fn init_database_command(app: tauri::AppHandle) -> Result<String, String> {\n    let pool = db::init_database(&app).await?;\n    Ok(\"Database initialized successfully\".to_string())\n}",
+          "line_number": null
+        },
+        {
+          "operation": "replace",
+          "find_pattern": "\\.invoke_handler\\(tauri::generate_handler!\\[([^\\]]*)\\]\\)",
+          "replace_with": ".invoke_handler(tauri::generate_handler![$1, init_database_command])",
+          "line_number": null
+        }
+      ],
+      "validation_steps": [
+        "cargo build --manifest-path=src-tauri/Cargo.toml",
+        "npm run tauri dev",
+        "In browser console: await __TAURI__.invoke('init_database_command')",
+        "Verify database file created at app_data_dir"
+      ],
+      "success_criteria": "Database initializes on app startup, file exists at correct platform-specific path",
+      "dependencies": ["p1_t3_create_migrations_dir"],
+      "rollback_procedure": "Remove db module import and init_database_command from main.rs"
+    },
+    {
+      "task_id": "p1_t5_test_cross_platform",
+      "phase": 1,
+      "description": "Test database initialization on all platforms (Win/Mac/Linux)",
+      "target_files": [
+        {
+          "path": "src-tauri/src/db.rs",
+          "line_range": "get_db_path function",
+          "function_name": "get_db_path"
+        }
+      ],
+      "code_changes": [],
+      "validation_steps": [
+        "On Windows: Check %APPDATA%/com.therefore.desktop/therefore.db exists",
+        "On Mac: Check ~/Library/Application Support/com.therefore.desktop/therefore.db exists",
+        "On Linux: Check ~/.local/share/com.therefore.desktop/therefore.db or $XDG_DATA_HOME",
+        "Run: SELECT * FROM sqlite_master WHERE type='table'",
+        "Verify all tables exist"
+      ],
+      "success_criteria": "Database creates at correct path on all three platforms with all tables",
+      "dependencies": ["p1_t4_wire_db_to_main"],
+      "rollback_procedure": "Delete database files from all platform-specific locations"
+    },
+    {
+      "task_id": "p2_t1_create_sync_service_module",
+      "phase": 2,
+      "description": "Create sync_service.rs with SyncService struct and skeleton",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync_service.rs",
+          "line_range": "new file",
+          "function_name": "SyncService::new, SyncService::start"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "find_pattern": null,
+          "replace_with": "use sqlx::SqlitePool;\nuse std::sync::Arc;\nuse tokio::sync::Mutex;\nuse tokio::time::{interval, Duration};\n\npub struct SyncService {\n    db_pool: Arc<SqlitePool>,\n    poll_interval: Duration,\n}\n\nimpl SyncService {\n    pub fn new(db_pool: SqlitePool) -> Self {\n        Self {\n            db_pool: Arc::new(db_pool),\n            poll_interval: Duration::from_secs(300), // 5 minutes\n        }\n    }\n    \n    pub fn start(self: Arc<Self>) {\n        tokio::spawn(async move {\n            let mut ticker = interval(self.poll_interval);\n            loop {\n                ticker.tick().await;\n                if let Err(e) = self.sync_cycle().await {\n                    eprintln!(\"[sync_service] Sync cycle failed: {}\", e);\n                }\n            }\n        });\n    }\n    \n    async fn sync_cycle(&self) -> Result<(), String> {\n        println!(\"[sync_service] Starting sync cycle\");\n        // TODO: Implement sync logic\n        Ok(())\n    }\n}",
+          "line_number": null
+        }
+      ],
+      "validation_steps": [
+        "cargo build --manifest-path=src-tauri/Cargo.toml",
+        "Verify sync_service.rs compiles"
+      ],
+      "success_criteria": "SyncService module compiles with start() method that spawns background task",
+      "dependencies": ["p1_t5_test_cross_platform"],
+      "rollback_procedure": "Delete src-tauri/src/sync_service.rs"
+    },
+    {
+      "task_id": "p2_t2_implement_sync_loop",
+      "phase": 2,
+      "description": "Implement full sync cycle logic with polling, mutation execution, token refresh",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync_service.rs",
+          "line_range": "sync_cycle method",
+          "function_name": "sync_cycle, execute_pending_mutations, poll_google_tasks"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "replace",
+          "find_pattern": "async fn sync_cycle\\(&self\\) -> Result<\\(\\), String> {[\\s\\S]*?Ok\\(\\(\\)\\)\\s*}",
+          "replace_with": "async fn sync_cycle(&self) -> Result<(), String> {\n        println!(\"[sync_service] Starting sync cycle\");\n        \n        // Step 1: Execute pending mutations\n        self.execute_pending_mutations().await?;\n        \n        // Step 2: Poll Google Tasks API\n        self.poll_google_tasks().await?;\n        \n        println!(\"[sync_service] Sync cycle complete\");\n        Ok(())\n    }\n    \n    async fn execute_pending_mutations(&self) -> Result<(), String> {\n        let pending = sqlx::query!(\n            \"SELECT * FROM tasks_metadata WHERE sync_state = 'pending' ORDER BY created_at LIMIT 10\"\n        )\n        .fetch_all(self.db_pool.as_ref())\n        .await\n        .map_err(|e| format!(\"Failed to fetch pending mutations: {}\", e))?;\n        \n        for task in pending {\n            // TODO: Execute mutation against Google API\n            println!(\"[sync_service] Executing mutation for task {}\", task.id);\n        }\n        \n        Ok(())\n    }\n    \n    async fn poll_google_tasks(&self) -> Result<(), String> {\n        // TODO: Fetch from Google Tasks API\n        // TODO: Reconcile with local database\n        println!(\"[sync_service] Polling Google Tasks API\");\n        Ok(())\n    }",
+          "line_number": null
+        }
+      ],
+      "validation_steps": [
+        "cargo build --manifest-path=src-tauri/Cargo.toml",
+        "npm run tauri dev",
+        "Check console for \"[sync_service] Starting sync cycle\" logs every 5 minutes"
+      ],
+      "success_criteria": "Sync loop runs every 5 minutes, queries pending mutations, logs execution",
+      "dependencies": ["p2_t1_create_sync_service_module"],
+      "rollback_procedure": "Revert sync_cycle method to skeleton implementation"
+    }
+  ],
+  "execution_order": [
+    "p1_t1_add_sqlx_dependency",
+    "p1_t2_create_db_module",
+    "p1_t3_create_migrations_dir",
+    "p1_t4_wire_db_to_main",
+    "p1_t5_test_cross_platform",
+    "p2_t1_create_sync_service_module",
+    "p2_t2_implement_sync_loop"
+  ],
+  "critical_warnings": [
+    "Phase 2 removes entire frontend sync system - BREAKING CHANGE requiring data migration",
+    "Existing tasks in localStorage will be lost unless migration runs first",
+    "Removing googleTasksSyncService.ts will break imports in TasksModule.tsx, CalendarTasksRail.tsx, QuickAssistant",
+    "taskStore.tsx API changes will require updates in all consumer components",
+    "SQLite file location must remain consistent - changing path later requires manual migration",
+    "Feature flag ENABLE_BACKEND_SYNC should control old vs new code paths during transition",
+    "Keep old code for at least one release cycle before final removal"
+  ],
+  "note": "This is Phase 1 and partial Phase 2. Complete task list continues in implementation phase."
+}

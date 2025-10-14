@@ -328,17 +328,8 @@ export const threads: ProjectThread[] = [
   },
 ];
 
-export const projectTaskLists: ProjectTaskList[] = [
-  { id: "japan-planning", projectId: "proj-japan-trip", name: "Planning", order: 0 },
-  { id: "japan-booking", projectId: "proj-japan-trip", name: "Booking", order: 1 },
-  { id: "japan-done", projectId: "proj-japan-trip", name: "Done", order: 2 },
-  { id: "piano-practice", projectId: "proj-learn-piano", name: "Practice", order: 0 },
-  { id: "piano-learning", projectId: "proj-learn-piano", name: "Learning", order: 1 },
-  { id: "piano-mastered", projectId: "proj-learn-piano", name: "Mastered", order: 2 },
-  { id: "python-todo", projectId: "proj-python-course", name: "To Do", order: 0 },
-  { id: "python-progress", projectId: "proj-python-course", name: "In Progress", order: 1 },
-  { id: "python-complete", projectId: "proj-python-course", name: "Complete", order: 2 },
-];
+// Mock project task lists removed - now using Google Tasks sync
+export const projectTaskLists: ProjectTaskList[] = [];
 
 export const projectTasks: ProjectTask[] = [
   {
