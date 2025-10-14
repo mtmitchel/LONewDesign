@@ -1,15 +1,23 @@
 # Changelog
 
-All notable changes to LibreOllama Desktop will be documented in this file.
+All notable changes to ∴ will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Google Tasks sync - operational (2025-10-16)
+- **Mutation execution wired**: sync service now calls real Google Tasks REST API for create/update/delete/move operations with automatic token refresh on 401.
+- **List hydration**: poll cycle fetches all Google task lists and tasks, reconciles with local store, and preserves `externalId` + `googleListId` for bidirectional sync.
+- **Token management**: service automatically updates access/refresh tokens in googleWorkspace store when Google returns refreshed credentials.
+- **Retry logic**: mutations retry up to 3 attempts before marking as failed; sync status exposed via store selectors.
+- **Telemetry**: emits `tasks.sync.success`, `tasks.sync.failure`, `tasks.sync.poll_complete`, `tasks.sync.poll_failure` events for instrumentation.
+- **Status tracking**: workspace store tracks per-module sync success/failure timestamps and last error messages.
+
 ### Google Tasks sync foundation scaffolding (2025-10-15)
 - Migrated task store to Zustand with normalized state, client mutation queue, and Google metadata (`externalId`, `pendingSync`, `clientMutationId`).
-- Added background sync scaffold (`googleTasksSyncService`) to manage queued mutations and schedule Google Tasks polling once OAuth wiring is complete.
+- Added background sync scaffold (`googleTasksSyncService`) to manage queued mutations and schedule Google Tasks polling.
 - Calendar tasks rail now sources filter options from the shared task lists, ensuring Google lists propagate everywhere when hydration lands.
 
 ### Chat model synchronization & settings polish (2025-10-14)

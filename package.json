@@ -1,5 +1,5 @@
 {
-  "name": "libreollama-desktop",
+  "name": "therefore",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -50,6 +50,7 @@
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-dialog": "^2.4.0",
     "@tauri-apps/plugin-fs": "^2.4.0",
+    "@tauri-apps/plugin-shell": "^2.3.1",
     "@types/dompurify": "^3.0.5",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",

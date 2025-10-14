@@ -1,4 +1,4 @@
-# LibreOllama Design Tokens Reference
+# ∴ Design Tokens Reference
 
 > This is the canonical markdown reference for `styles/globals.css`, replacing the legacy `design-tokens.md` file at the repo root.
 > **Last Updated:** October 9, 2025 - Consolidated calendar usage guidance and deprecated the root `design-tokens.md` snapshot.

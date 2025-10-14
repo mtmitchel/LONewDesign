@@ -1,9 +1,9 @@
-# LibreOllama UI Kit Usage Plan
+# ∴ UI Kit Usage Plan
 *Asana + Sunsama Design System Implementation Guide*
 
 ## 🎯 **Overview**
 
-This plan outlines how to effectively use the LibreOllama UI Kit. The system leans on warm canvas neutrals, blue-gray primary accents, and coral highlights while borrowing structure from Asana + Sunsama. Treat this as the day-to-day reference for composing new surfaces with the tokenized primitives.
+This plan outlines how to effectively use the ∴ UI Kit. The system leans on warm canvas neutrals, blue-gray primary accents, and coral highlights while borrowing structure from Asana + Sunsama. Treat this as the day-to-day reference for composing new surfaces with the tokenized primitives.
 
 ---
 

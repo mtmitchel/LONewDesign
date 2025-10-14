@@ -44,9 +44,11 @@ type GoogleWorkspaceState = {
   isHydrated: boolean;
   hydrate: () => Promise<void>;
   setConnecting: (context?: PendingOperation['context']) => void;
+  setStatus: (status: GoogleWorkspaceState['status']) => void;
   setPending: (pending: PendingOperation | null) => void;
   setAccount: (account: GoogleWorkspaceAccount) => void;
   setModules: (modules: Partial<Record<GoogleWorkspaceModule, boolean>>) => void;
+  updateToken: (token: Partial<GoogleWorkspaceAccount['token']>) => void;
   markSyncSuccess: (module: GoogleWorkspaceModule, timestamp?: number) => void;
   markSyncFailure: (module: GoogleWorkspaceModule, message: string, timestamp?: number) => void;
   setError: (message: string | null) => void;
@@ -94,6 +96,13 @@ export const useGoogleWorkspaceSettings = create<GoogleWorkspaceState>((set, get
         lastError: null,
       });
     },
+    setStatus: (status) => {
+      set((state) => ({
+        status,
+        pending: status === 'connected' ? null : state.pending,
+      }));
+      void persist();
+    },
     setPending: (pending) => {
       set({ pending });
     },
@@ -117,6 +126,22 @@ export const useGoogleWorkspaceSettings = create<GoogleWorkspaceState>((set, get
       });
       void persist();
     },
+    updateToken: (token) => {
+      set((state) => {
+        if (!state.account) return state;
+        const nextToken = {
+          ...state.account.token,
+          ...token,
+        };
+        return {
+          account: {
+            ...state.account,
+            token: nextToken,
+          },
+        } as Partial<GoogleWorkspaceState>;
+      });
+      void persist();
+    },
     markSyncSuccess: (module, timestamp = Date.now()) => {
       set((state) => {
         if (!state.account) return state;
@@ -135,6 +160,7 @@ export const useGoogleWorkspaceSettings = create<GoogleWorkspaceState>((set, get
           },
         } as Partial<GoogleWorkspaceState>;
       });
+      void persist();
     },
     markSyncFailure: (module, message, timestamp = Date.now()) => {
       set((state) => {
@@ -171,7 +197,6 @@ export const useGoogleWorkspaceSettings = create<GoogleWorkspaceState>((set, get
         pending: null,
         lastError: null,
       });
-      void persist();
       void clearGoogleWorkspaceState();
     },
   };

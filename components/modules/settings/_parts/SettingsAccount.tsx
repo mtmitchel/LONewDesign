@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { SectionCard } from './SectionCard';
 import { Button } from '../../../ui/button';
 import {
@@ -26,20 +27,14 @@ import { useGoogleWorkspaceSettings, GoogleWorkspaceModule } from '../state/goog
 import { toast } from 'sonner';
 import { generatePkcePair, savePkceSession, loadPkceSession, clearPkceSession } from '../../../../lib/oauth/pkce';
 import { isTauriRuntime } from '../../../../lib/isTauri';
+import { open as openShellUrl } from '@tauri-apps/plugin-shell';
+import { formatDistanceToNow } from 'date-fns';
+import { exchangeGoogleAuthorizationCode, refreshGoogleAccessToken } from '../../../../lib/oauth/google';
 
 type OAuthCallbackPayload = {
   code: string;
   state: string;
   redirectUri: string;
-};
-
-type GoogleTokenExchangeResponse = {
-  access_token: string;
-  expires_in?: number;
-  refresh_token?: string;
-  scope?: string;
-  token_type?: string;
-  id_token?: string;
 };
 
 const GOOGLE_SCOPES = [
@@ -78,6 +73,10 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[SettingsAccount] isTauriRuntime?', isTauriRuntime());
+  }
+
   const account = useGoogleWorkspaceSettings((state) => state.account);
   const status = useGoogleWorkspaceSettings((state) => state.status);
   const lastError = useGoogleWorkspaceSettings((state) => state.lastError);
@@ -89,12 +88,19 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
   const setModules = useGoogleWorkspaceSettings((state) => state.setModules);
   const setPending = useGoogleWorkspaceSettings((state) => state.setPending);
   const setError = useGoogleWorkspaceSettings((state) => state.setError);
+  const setStatus = useGoogleWorkspaceSettings((state) => state.setStatus);
+  const updateToken = useGoogleWorkspaceSettings((state) => state.updateToken);
+  const pendingOperation = useGoogleWorkspaceSettings((state) => state.pending);
 
   useEffect(() => {
     if (!isHydrated) {
       void hydrate();
     }
   }, [hydrate, isHydrated]);
+
+  const refreshTimerRef = useRef<number | null>(null);
+  const refreshInFlightRef = useRef(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   if (!sectionMatches) return null;
 
@@ -104,27 +110,11 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
 
   const clientId = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID ?? 'YOUR_GOOGLE_CLIENT_ID';
   const redirectUri = import.meta.env.VITE_GOOGLE_OAUTH_REDIRECT_URI ?? 'http://127.0.0.1:52315/oauth2callback';
-
-  const exchangeTokens = useCallback(
-    async (payload: OAuthCallbackPayload, verifier: string) => {
-      if (!isTauriRuntime()) {
-        throw new Error('Google OAuth token exchange requires the desktop app runtime.');
-      }
-      const { invoke } = await import('@tauri-apps/api/core');
-      return invoke<GoogleTokenExchangeResponse>('google_oauth_exchange', {
-        payload: {
-          code: payload.code,
-          code_verifier: verifier,
-          redirect_uri: payload.redirectUri,
-          client_id: clientId,
-        },
-      });
-    },
-    [clientId],
-  );
+  const clientSecret = import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_SECRET ?? null;
 
   const handleOAuthCallback = useCallback(
     async (payload: OAuthCallbackPayload) => {
+      console.log('[SettingsAccount] Received OAuth callback payload', payload);
       const session = loadPkceSession(payload.state);
       if (!session) {
         toast.error('Google sign-in session expired or is invalid. Please try again.');
@@ -135,7 +125,15 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
       }
 
       try {
-        const tokens = await exchangeTokens(payload, session.verifier);
+        console.log('[SettingsAccount] Loaded PKCE session', session);
+        const tokens = await exchangeGoogleAuthorizationCode({
+          code: payload.code,
+          codeVerifier: session.verifier,
+          redirectUri: session.redirectUri ?? payload.redirectUri,
+          clientId,
+          clientSecret: clientSecret ?? undefined,
+        });
+        console.log('[SettingsAccount] Received token response', tokens);
         clearPkceSession(payload.state);
 
         const now = Date.now();
@@ -164,6 +162,7 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
           },
           syncStatus,
         });
+        setStatus('connected');
         setPending(null);
         setIsAuthenticating(false);
         toast.success('Connected to Google account.');
@@ -176,7 +175,7 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
         toast.error('Failed to complete Google sign-in.');
       }
     },
-    [account, exchangeTokens, setAccount, setError, setPending],
+    [account, clientId, setAccount, setError, setPending, setStatus],
   );
 
   const buildGoogleOAuthRequest = async () => {
@@ -188,6 +187,22 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
       state: stateToken,
       redirectUri,
     });
+
+    if (isTauriRuntime()) {
+      try {
+        let port: number | null = null;
+        try {
+          const parsed = new URL(redirectUri);
+          port = parsed.port ? Number(parsed.port) : null;
+        } catch (error) {
+          console.warn('[SettingsAccount] Failed to parse redirect URI for loopback listener', error);
+        }
+        const actualPort = await invoke<number>('google_oauth_loopback_listen', { stateToken, port });
+        console.log('[SettingsAccount] Loopback listener ready', { requestedPort: port, actualPort });
+      } catch (error) {
+        console.warn('[SettingsAccount] Failed to start OAuth loopback listener', error);
+      }
+    }
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -209,6 +224,13 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
   };
 
   const openSystemBrowser = (url: string) => {
+    if (isTauriRuntime()) {
+      void openShellUrl(url).catch((error) => {
+        console.error('[SettingsAccount] Failed to open system browser via Tauri shell plugin', error);
+        window.open(url, '_blank', 'noopener');
+      });
+      return;
+    }
     window.open(url, '_blank', 'noopener');
   };
 
@@ -227,30 +249,33 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
       return;
     }
 
-    // TODO: listen for OAuth redirect to capture authorization code and exchange for tokens.
-    // The loading state will be cleared once the redirect handler runs.
+    // Redirect handler will finalize the flow (deep link listener on desktop, postMessage on web).
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !isTauriRuntime()) {
+      return undefined;
+    }
+
     let unsubscribe: (() => void) | undefined;
 
     const subscribe = async () => {
-      if ((window as unknown as { __TAURI__?: unknown }).__TAURI__) {
-        try {
-          const { listen } = await import('@tauri-apps/api/event');
-          unsubscribe = await listen<OAuthCallbackPayload>('google:oauth:callback', (event) => {
-            if (event.payload) {
-              void handleOAuthCallback({
-                code: event.payload.code,
-                state: event.payload.state,
-                redirectUri: event.payload.redirectUri,
-              });
-            }
-          });
-        } catch (error) {
-          console.warn('[SettingsAccount] Failed to subscribe to OAuth callback events', error);
-        }
+      try {
+        console.log('[SettingsAccount] Subscribing to google:oauth:callback');
+        const { listen } = await import('@tauri-apps/api/event');
+        unsubscribe = await listen<OAuthCallbackPayload>('google:oauth:callback', (event) => {
+          console.log('[SettingsAccount] Received google:oauth:callback event', event);
+          if (event.payload) {
+            void handleOAuthCallback({
+              code: event.payload.code,
+              state: event.payload.state,
+              redirectUri: event.payload.redirectUri,
+            });
+          }
+        });
+        console.log('[SettingsAccount] Subscription established');
+      } catch (error) {
+        console.warn('[SettingsAccount] Failed to subscribe to OAuth callback events', error);
       }
     };
 
@@ -264,12 +289,155 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('google_oauth_code');
+    const code = params.get('code');
     const state = params.get('state');
     if (code && state) {
-      void handleOAuthCallback({ code, state, redirectUri: window.location.href });
+      const payload = { code, state, redirectUri: window.location.href };
+      if (window.opener && window.opener !== window) {
+        try {
+          window.opener.postMessage({ kind: 'google-oauth-callback', ...payload }, window.location.origin);
+        } catch (error) {
+          console.warn('[SettingsAccount] Failed to postMessage OAuth payload to opener', error);
+        }
+        window.close();
+        return;
+      }
+      void handleOAuthCallback(payload);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('code');
+      url.searchParams.delete('state');
+      window.history.replaceState(null, document.title, url.toString());
     }
   }, [handleOAuthCallback]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.kind !== 'google-oauth-callback') return;
+      const { code, state, redirectUri: messageRedirectUri } = event.data as {
+        code?: string;
+        state?: string;
+        redirectUri?: string;
+      };
+      if (!code || !state) return;
+      void handleOAuthCallback({
+        code,
+        state,
+        redirectUri: messageRedirectUri ?? window.location.href,
+      });
+    };
+    window.addEventListener('message', handler);
+    return () => {
+      window.removeEventListener('message', handler);
+    };
+  }, [handleOAuthCallback]);
+
+  const performTokenRefresh = useCallback(
+    async (reason: 'manual' | 'scheduled') => {
+      if (!account?.token.refreshToken || refreshInFlightRef.current) {
+        return;
+      }
+      refreshInFlightRef.current = true;
+      setIsRefreshing(true);
+      setPending({ kind: 'refresh-token', startedAt: Date.now(), context: { reason } });
+      try {
+        const tokens = await refreshGoogleAccessToken({
+          refreshToken: account.token.refreshToken,
+          clientId,
+          clientSecret: clientSecret ?? undefined,
+        });
+        const now = Date.now();
+        updateToken({
+          accessToken: tokens.access_token,
+          accessTokenExpiresAt: tokens.expires_in ? now + tokens.expires_in * 1000 : null,
+          lastRefreshAt: now,
+          refreshToken: tokens.refresh_token ?? account.token.refreshToken,
+        });
+        setPending(null);
+        setError(null);
+        if (reason === 'manual') {
+          toast.success('Google access token refreshed.');
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to refresh Google access token.';
+        console.error('[Google OAuth] Token refresh failed', error);
+        setError(message);
+        if (reason === 'manual') {
+          toast.error('Failed to refresh Google access token.');
+        }
+        if (typeof window !== 'undefined') {
+          if (refreshTimerRef.current) {
+            window.clearTimeout(refreshTimerRef.current);
+          }
+          refreshTimerRef.current = window.setTimeout(() => {
+            refreshTimerRef.current = null;
+            void performTokenRefresh('scheduled');
+          }, 120_000);
+        }
+      } finally {
+        setIsRefreshing(false);
+        refreshInFlightRef.current = false;
+      }
+    },
+    [account, clientId, setError, setPending, updateToken],
+  );
+
+  const scheduleTokenRefresh = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (refreshTimerRef.current) {
+      window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    if (!account?.token.refreshToken || !account.token.accessTokenExpiresAt) {
+      return;
+    }
+    const now = Date.now();
+    const refreshLeadMs = 60_000; // refresh one minute before expiry
+    const refreshAt = account.token.accessTokenExpiresAt - refreshLeadMs;
+    const delay = refreshAt - now;
+    if (delay <= 0) {
+      void performTokenRefresh('scheduled');
+      return;
+    }
+    refreshTimerRef.current = window.setTimeout(() => {
+      void performTokenRefresh('scheduled');
+    }, Math.max(delay, 5_000));
+  }, [account?.token.accessTokenExpiresAt, account?.token.refreshToken, performTokenRefresh]);
+
+  useEffect(() => {
+    scheduleTokenRefresh();
+    return () => {
+      if (typeof window === 'undefined') return;
+      if (refreshTimerRef.current) {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, [scheduleTokenRefresh]);
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimerRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const tokenExpiryLabel = useMemo(() => {
+    if (!account?.token.accessToken || !account.token.accessTokenExpiresAt) return null;
+    const label = formatDistanceToNow(account.token.accessTokenExpiresAt, { addSuffix: true });
+    if (account.token.accessTokenExpiresAt <= Date.now()) {
+      return `Access token expired ${label}`;
+    }
+    return `Access token refreshes ${label}`;
+  }, [account?.token.accessToken, account?.token.accessTokenExpiresAt]);
+
+  const lastRefreshLabel = useMemo(() => {
+    if (!account?.token.lastRefreshAt) return null;
+    return `Last refreshed ${formatDistanceToNow(account.token.lastRefreshAt, { addSuffix: true })}`;
+  }, [account?.token.lastRefreshAt]);
 
   const handleRemoveAccount = () => {
     setShowRemoveDialog(true);
@@ -288,6 +456,9 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
   const connectionLabel = (() => {
     if (!isHydrated) {
       return 'Loading…';
+    }
+    if (pendingOperation?.kind === 'refresh-token') {
+      return 'Refreshing token…';
     }
     switch (status) {
       case 'connecting':
@@ -332,8 +503,29 @@ export function SettingsAccount({ id, filter, registerSection }: SettingsAccount
               {lastError ? (
                 <p className="mt-1 text-xs text-[color:var(--danger)]">{lastError}</p>
               ) : null}
+              {tokenExpiryLabel ? (
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">{tokenExpiryLabel}</p>
+              ) : null}
+              {lastRefreshLabel ? (
+                <p className="text-xs text-[var(--text-secondary)]">{lastRefreshLabel}</p>
+              ) : null}
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void performTokenRefresh('manual')}
+                disabled={!account?.token.refreshToken || isRefreshing || isAuthenticating}
+              >
+                {isRefreshing ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    Refreshing
+                  </>
+                ) : (
+                  'Refresh token'
+                )}
+              </Button>
               <Button variant="outline" size="sm" onClick={handleAddAccount}>
                 {account ? 'Change account' : 'Connect account'}
               </Button>

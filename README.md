@@ -1,4 +1,4 @@
-# LibreOllama Desktop (Tauri + React)
+# ∴ (Tauri + React)
 
 ## Prereqs
 - Node.js 18+
@@ -27,7 +27,7 @@ This prevents "port already in use" errors when running multiple instances.
 ## Notes
 - Design tokens live in `styles/globals.css` and `docs/technical/design-tokens-reference.md`.
 - Assistant roadmap + testing lives in `docs/assistant/Advanced-Assistant-Roadmap.md`.
-- Component coverage + usage patterns sit in `docs/technical/LibreOllama-UI-Kit-Plan.md`.
+- Component coverage + usage patterns sit in `docs/technical/therefore-UI-Kit-Plan.md`.
 - Local Ollama providers are supported for Assistant + Chat (configure under Settings → Local models and Assistant → Model defaults).
 - Keyboard: `[` hides left pane, `]` shows left pane, `\` toggles right context.
 - Use `:smart` variants for automatic port management.

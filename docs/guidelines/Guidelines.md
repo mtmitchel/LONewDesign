@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-LibreOllama Desktop blends a Vite/React front end with a Tauri shell. Web entry points live in `main.tsx` and `App.tsx`; feature flows sit in `components/modules`, reusable primitives in `components/ui`, and reference demos/specs under `components/extended` and `components/figma`. Global styling and tokens stay in `styles/globals.css` and `tailwind.config.ts`. Tauri-native code resides in `src-tauri/src/main.rs` with configuration in `src-tauri/tauri.conf.json`. Archived experiments remain in `archive/` for inspiration only.
+∴ blends a Vite/React front end with a Tauri shell. Web entry points live in `main.tsx` and `App.tsx`; feature flows sit in `components/modules`, reusable primitives in `components/ui`, and reference demos/specs under `components/extended` and `components/figma`. Global styling and tokens stay in `styles/globals.css` and `tailwind.config.ts`. Tauri-native code resides in `src-tauri/src/main.rs` with configuration in `src-tauri/tauri.conf.json`. Archived experiments remain in `archive/` for inspiration only.
 
 ## Roadmap & Planning
 - The active roadmap now lives at `docs/roadmap/Unified-Workspace-Roadmap.md` (formerly `Unified-UI-Redesign.md`). Update statuses there when work moves forward and cross-reference in PRs touching roadmap items.
