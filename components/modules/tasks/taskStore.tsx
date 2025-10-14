@@ -1,9 +1,10 @@
 "use client";
 
 import React from 'react';
-import { create } from 'zustand';
+import { createWithEqualityFn } from 'zustand/traditional';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import { shallow } from 'zustand/shallow';
 
 import {
   Task,
@@ -81,7 +82,6 @@ type TaskStoreState = {
   setTaskDueDate: (id: string, dueDate: string | undefined) => void;
   upsertTasksFromGoogle: (tasks: Task[], meta: { fetchedAt: number }) => void;
   reconcileLists: (lists: TaskList[], opts?: { replace?: boolean }) => void;
-  enqueueMutation: (op: TaskMutationOperation, taskId?: string) => TaskMutation;
   markMutationInFlight: (mutationId: string) => void;
   resolveMutation: (mutationId: string, payload?: Partial<Task>) => void;
   failMutation: (mutationId: string, error: string) => void;
@@ -117,6 +117,26 @@ function getTaskIdFromMutation(mutation: TaskMutation): string | undefined {
   }
 }
 
+function enqueueMutationDraft(
+  state: TaskStoreState,
+  op: TaskMutationOperation,
+  taskId?: string,
+) {
+  const mutationId = createClientMutationId(op.kind);
+  const mutation: TaskMutation = {
+    id: mutationId,
+    op,
+    attempts: 0,
+    enqueuedAt: Date.now(),
+    state: 'queued',
+  };
+  state.mutationQueue.push(mutation);
+  if (taskId) {
+    state.pendingByTaskId[taskId] = mutationId;
+  }
+  return mutation;
+}
+
 function hydrateDefaultLists(): { listsById: Record<string, TaskList>; listOrder: string[] } {
   const listsById: Record<string, TaskList> = {};
   const listOrder: string[] = [];
@@ -130,7 +150,7 @@ function hydrateDefaultLists(): { listsById: Record<string, TaskList>; listOrder
 const STORAGE_KEY = 'libreollama_task_store_v1';
 const DEFAULT_LIST_ID = DEFAULT_TASK_LISTS[0]?.id ?? 'todo';
 
-const useTaskStoreBase = create<TaskStoreState>()(
+const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
   persist(
     immer<TaskStoreState>((set, get) => ({
       tasksById: {},
@@ -184,8 +204,7 @@ const useTaskStoreBase = create<TaskStoreState>()(
         set((state) => {
           state.tasksById[id] = task;
           state.taskOrder.unshift(id);
-          const mutation = state.enqueueMutation({ kind: 'task.create', task }, id);
-          state.pendingByTaskId[id] = mutation.id;
+          enqueueMutationDraft(state, { kind: 'task.create', task }, id);
         });
 
         emitTaskEvent('task_created', { source: input.source ?? 'task_store', id });
@@ -206,27 +225,25 @@ const useTaskStoreBase = create<TaskStoreState>()(
             syncError: null,
           };
           state.tasksById[id] = nextTask;
-          const mutation = state.enqueueMutation({
+          enqueueMutationDraft(state, {
             kind: 'task.update',
             id,
             changes: updates,
-          });
-          state.pendingByTaskId[id] = mutation.id;
+          }, id);
         });
       },
       deleteTask: (id) => {
         set((state) => {
           const target = state.tasksById[id];
           if (!target) return;
-          const mutation = state.enqueueMutation({
+          enqueueMutationDraft(state, {
             kind: 'task.delete',
             id,
             externalId: target.externalId,
-          });
+          }, id);
           delete state.tasksById[id];
           state.taskOrder = state.taskOrder.filter((taskId) => taskId !== id);
           delete state.pendingByTaskId[id];
-          state.pendingByTaskId[id] = mutation.id;
         });
         emitTaskEvent('task_deleted', { id });
       },
@@ -298,23 +315,6 @@ const useTaskStoreBase = create<TaskStoreState>()(
             }
           });
         });
-      },
-      enqueueMutation: (op, taskId) => {
-        const mutationId = createClientMutationId(op.kind);
-        const mutation: TaskMutation = {
-          id: mutationId,
-          op,
-          attempts: 0,
-          enqueuedAt: Date.now(),
-          state: 'queued',
-        };
-        set((state) => {
-          state.mutationQueue.push(mutation);
-          if (taskId) {
-            state.pendingByTaskId[taskId] = mutationId;
-          }
-        });
-        return mutation;
       },
       markMutationInFlight: (mutationId) => {
         set((state) => {
@@ -449,62 +449,27 @@ function emitTaskEvent(event: string, payload?: Record<string, unknown>) {
 
 export const taskStoreApi = useTaskStoreBase;
 
-type DerivedTaskStore = {
-  tasks: Task[];
-  lists: TaskList[];
-  mutationQueue: TaskMutation[];
-  syncStatus: TaskSyncState;
-  syncError?: string | null;
-  addTask: TaskStoreState['addTask'];
-  updateTask: TaskStoreState['updateTask'];
-  deleteTask: TaskStoreState['deleteTask'];
-  toggleTaskCompletion: TaskStoreState['toggleTaskCompletion'];
-  duplicateTask: TaskStoreState['duplicateTask'];
-  setTaskDueDate: TaskStoreState['setTaskDueDate'];
-  enqueueMutation: TaskStoreState['enqueueMutation'];
-  shiftNextMutation: TaskStoreState['shiftNextMutation'];
-  requeueMutation: TaskStoreState['requeueMutation'];
-  resolveMutation: TaskStoreState['resolveMutation'];
-  failMutation: TaskStoreState['failMutation'];
-  registerPollerActive: TaskStoreState['registerPollerActive'];
-  scheduleNextPoll: TaskStoreState['scheduleNextPoll'];
-  setSyncStatus: TaskStoreState['setSyncStatus'];
-  reconcileLists: TaskStoreState['reconcileLists'];
-  upsertTasksFromGoogle: TaskStoreState['upsertTasksFromGoogle'];
-};
+export const useTaskStore = useTaskStoreBase;
 
-function selectDerivedState(state: TaskStoreState): DerivedTaskStore {
-  return {
-    tasks: state.taskOrder.map((id) => state.tasksById[id]).filter(Boolean),
-    lists: state.listOrder.map((id) => state.listsById[id]).filter(Boolean),
-    mutationQueue: state.mutationQueue,
-    syncStatus: state.syncStatus,
-    syncError: state.syncError,
-    addTask: state.addTask,
-    updateTask: state.updateTask,
-    deleteTask: state.deleteTask,
-    toggleTaskCompletion: state.toggleTaskCompletion,
-    duplicateTask: state.duplicateTask,
-    setTaskDueDate: state.setTaskDueDate,
-    enqueueMutation: state.enqueueMutation,
-    shiftNextMutation: state.shiftNextMutation,
-    requeueMutation: state.requeueMutation,
-    resolveMutation: state.resolveMutation,
-    failMutation: state.failMutation,
-    registerPollerActive: state.registerPollerActive,
-    scheduleNextPoll: state.scheduleNextPoll,
-    setSyncStatus: state.setSyncStatus,
-    reconcileLists: state.reconcileLists,
-    upsertTasksFromGoogle: state.upsertTasksFromGoogle,
-  };
+export const selectTasks = (state: TaskStoreState): Task[] =>
+  state.taskOrder.map((id) => state.tasksById[id]).filter(Boolean);
+
+export const selectTaskLists = (state: TaskStoreState): TaskList[] =>
+  state.listOrder.map((id) => state.listsById[id]).filter(Boolean);
+
+export const selectMutationQueue = (state: TaskStoreState) => state.mutationQueue;
+
+export const selectSyncStatus = (state: TaskStoreState) => ({
+  status: state.syncStatus,
+  error: state.syncError,
+});
+
+export function useTasks() {
+  return useTaskStore(selectTasks, shallow);
 }
 
-export function useTaskStore() {
-  return useTaskStoreBase(selectDerivedState);
-}
-
-export function useTaskList() {
-  return useTaskStore().tasks;
+export function useTaskLists() {
+  return useTaskStore(selectTaskLists, shallow);
 }
 
 export function TaskStoreProvider({ children }: { children: React.ReactNode }) {

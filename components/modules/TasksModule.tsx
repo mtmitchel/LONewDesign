@@ -37,7 +37,7 @@ import { TASK_LISTS } from './tasks/constants';
 import type { Task, TaskLabel } from './tasks/types';
 import { projects } from './projects/data';
 import { openQuickAssistant } from '../assistant';
-import { useTaskStore } from './tasks/taskStore';
+import { useTaskStore, useTasks } from './tasks/taskStore';
 
 const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
 const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
@@ -196,7 +196,12 @@ function compareTasks(a: Task, b: Task): number {
 }
 
 export function TasksModule() {
-  const { tasks, addTask, updateTask, deleteTask, toggleTaskCompletion, duplicateTask } = useTaskStore();
+  const tasks = useTasks();
+  const addTask = useTaskStore((state) => state.addTask);
+  const updateTask = useTaskStore((state) => state.updateTask);
+  const deleteTask = useTaskStore((state) => state.deleteTask);
+  const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
+  const duplicateTask = useTaskStore((state) => state.duplicateTask);
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);

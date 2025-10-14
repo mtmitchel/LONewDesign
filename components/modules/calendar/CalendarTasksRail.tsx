@@ -50,7 +50,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Calendar as DatePicker } from '../../ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { cn } from '../../ui/utils';
-import { useTaskStore, TaskInput } from '../tasks/taskStore';
+import { useTaskStore, useTasks, useTaskLists, TaskInput } from '../tasks/taskStore';
 import { DEFAULT_TASK_LISTS } from '../tasks/constants';
 import type { Task } from '../tasks/types';
 import { TaskCard } from '../tasks/TaskCard';
@@ -178,16 +178,14 @@ export function CalendarTasksRail({
   onDelete,
   onRefresh
 }: CalendarTasksRailProps) {
-  const {
-    tasks: storeTasks,
-    lists,
-    addTask,
-    updateTask,
-    deleteTask,
-    duplicateTask,
-    toggleTaskCompletion,
-    setTaskDueDate
-  } = useTaskStore();
+  const storeTasks = useTasks();
+  const lists = useTaskLists();
+  const addTask = useTaskStore((state) => state.addTask);
+  const updateTask = useTaskStore((state) => state.updateTask);
+  const deleteTask = useTaskStore((state) => state.deleteTask);
+  const duplicateTask = useTaskStore((state) => state.duplicateTask);
+  const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
+  const setTaskDueDate = useTaskStore((state) => state.setTaskDueDate);
 
   const tasks = tasksProp ?? storeTasks;
   const availableLists = lists.length ? lists : DEFAULT_TASK_LISTS;

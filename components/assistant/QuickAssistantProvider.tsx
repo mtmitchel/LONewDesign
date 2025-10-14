@@ -282,7 +282,7 @@ export function QuickAssistantProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { addTask } = useTaskStore();
+  const addTask = useTaskStore((state) => state.addTask);
 
   const [assistant, setAssistant] = useState<AssistantModalState>({
     open: false,
