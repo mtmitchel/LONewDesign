@@ -43,13 +43,41 @@
 13. **Testing & instrumentation** – add integration/e2e coverage for sync scenarios, instrument `tasks.sync.*` events, verify lint/type/e2e suites.
 14. **Cleanup & follow-ups** – remove mock/localStorage remnants, resolve TODO markers, record changes in `CHANGELOG.md`.
 
-#### Status – 2025-10-15
+#### Status – 2025-10-16
 
-* ✅ Google Workspace provider card & shared settings store scaffolded (Settings → Accounts) with per-module toggles; secure storage hooks in place.
-* 🔄 OAuth browser handoff now generates PKCE pairs and exchanges auth codes for tokens via deep link (desktop); finalize non-desktop callback handling and token hydration.
-* 🔄 Tasks sync foundation in progress — Zustand-backed store now tracks Google IDs, mutation queue, and background poller scaffolding; wire actual Google Tasks fetch/mutation flow next.
-* ✅ Calendar tasks rail consumes shared task list metadata so filters stay aligned once Google lists hydrate; falls back to default lanes until remote data arrives.
-* 🔄 Drag/drop + cross-list move design approved; awaiting sync foundation before UI wiring.
+**Shipped**
+- ✅ Google Workspace provider card & shared settings store scaffolded (Settings → Accounts) with per-module toggles; secure storage hooks in place.
+- ✅ Calendar tasks rail now consumes the shared task list selector so dropdowns auto-populate once Google lists hydrate, with graceful fallback to default lanes.
+- ✅ Task store migrated to Zustand with normalized entities, mutation queue, background poller scaffold, and stable selectors used across Quick Assistant, Calendar rail, and Tasks module.
+
+**In progress**
+- 🔄 OAuth browser handoff generates PKCE pairs + exchanges codes on desktop. **Remaining:** non-desktop callback handling, token hydration through settings store, refresh-token rotation strategy, and secure persistence.
+- 🔄 Google Tasks sync foundation: queue plumbing is in place but still requeues mutations. **Next up:** wire Tauri-side Google Tasks service (list + task CRUD/move), execute mutations, and mark tasks as synced/failed.
+- 🔄 Drag/drop + cross-list move design approved; awaiting functional Google sync to connect DnD events to mutation queue.
+
+**Blocked / upcoming**
+- ⏳ Project kanban + project-specific task boards depend on real list hydration and cross-list move handling.
+- ⏳ Calendar + dashboard integrations require shared Google credential refresh + selective task filtering once sync is live.
+
+#### Immediate Focus (next developer)
+
+1. **Finish OAuth loop**
+   - Implement the non-desktop deep link/web callback in `SettingsAccount` so browser builds can exchange codes.
+   - Persist Google tokens securely (desktop via plugin secure storage, web via encrypted IndexedDB) and hydrate Zustand `googleWorkspace` settings store on launch.
+   - Add token refresh/expiry handling + UI feedback (pending → connected → error) in the settings module.
+2. **Implement Google Tasks service**
+   - Add Tauri commands (and web fetch fallback) for `tasklists.list`, `tasks.list`, `tasks.insert`, `tasks.patch`, `tasks.delete`, and `tasks.move` using the stored tokens.
+   - Create `lib/services/googleTasks.ts` (TS) to call those commands with zod validation and pipe responses into the task store selectors.
+3. **Hook mutation queue to service**
+   - Replace the placeholder requeue in `googleTasksSyncService` with real execution + retry/backoff logic.
+   - Update store mutations to mark tasks as `syncState: 'idle'` or `'error'` and persist `externalId`/`googleListId` when Google returns IDs.
+   - Emit telemetry events (`tasks.sync.success|failure`) to aid debugging.
+4. **Hydrate lists + clean up legacy persistence**
+   - Sync Google task lists on login, merge with defaults, and remove `libreollama_task_lists` localStorage usage from Tasks module once data arrives.
+   - Ensure calendar rail/Tasks board filter state survives across reloads using the shared selector.
+5. **Document + test**
+   - Add unit tests around the mutation processor and OAuth state transitions.
+   - Record configuration steps and manual test plan in `docs/testing/` (token exchange, task create/update/delete/move).
 
 ---
 
