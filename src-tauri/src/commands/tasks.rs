@@ -1,7 +1,7 @@
 use crate::commands::google::google_workspace_store_get;
 use crate::db;
 use crate::sync::types::GOOGLE_TASKS_BASE_URL;
-use crate::task_metadata;
+use crate::task_metadata::{self, TaskLabel, DEFAULT_LABEL_COLOR};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, Sqlite, SqlitePool, Transaction};
@@ -17,6 +17,54 @@ pub struct SubtaskInput {
     pub is_completed: bool,
     pub due_date: Option<String>,
     pub position: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum TaskLabelInput {
+    Name(String),
+    Detailed {
+        name: String,
+        #[serde(default)]
+        color: Option<String>,
+    },
+}
+
+fn convert_label_inputs(labels: Option<Vec<TaskLabelInput>>) -> Vec<TaskLabel> {
+    labels
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|label| match label {
+            TaskLabelInput::Name(raw) => {
+                let trimmed = raw.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(TaskLabel {
+                        name: trimmed.to_string(),
+                        color: DEFAULT_LABEL_COLOR.to_string(),
+                    })
+                }
+            }
+            TaskLabelInput::Detailed { name, color } => {
+                let trimmed = name.trim();
+                if trimmed.is_empty() {
+                    return None;
+                }
+
+                let resolved_color = color
+                    .as_deref()
+                    .map(|c| c.trim())
+                    .filter(|c| !c.is_empty())
+                    .unwrap_or(DEFAULT_LABEL_COLOR);
+
+                Some(TaskLabel {
+                    name: trimmed.to_string(),
+                    color: resolved_color.to_string(),
+                })
+            }
+        })
+        .collect()
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -51,7 +99,7 @@ pub struct TaskInput {
     pub list_id: String,
     pub title: String,
     pub priority: Option<String>,
-    pub labels: Option<Vec<String>>,
+    pub labels: Option<Vec<TaskLabelInput>>,
     pub time_block: Option<String>,
     pub notes: Option<String>,
     pub due_date: Option<String>,
@@ -126,7 +174,8 @@ pub async fn create_task(app: AppHandle, task: TaskInput) -> Result<TaskResponse
 
     let task_id = task.id.unwrap_or_else(|| Uuid::new_v4().to_string());
 
-    let labels_json = serde_json::to_string(&task.labels.unwrap_or_default()).unwrap();
+    let label_entries = convert_label_inputs(task.labels.clone());
+    let labels_json = serde_json::to_string(&label_entries).unwrap();
 
     let metadata = task_metadata::TaskMetadata {
         title: task.title,
@@ -231,7 +280,7 @@ pub async fn create_task(app: AppHandle, task: TaskInput) -> Result<TaskResponse
 pub struct TaskUpdates {
     pub title: Option<String>,
     pub priority: Option<String>,
-    pub labels: Option<Vec<String>>,
+    pub labels: Option<Vec<TaskLabelInput>>,
     pub time_block: Option<String>,
     pub notes: Option<String>,
     pub due_date: Option<String>,
@@ -260,6 +309,7 @@ pub async fn update_task_command(
 
     let labels_json = updates
         .labels
+        .map(|labels| convert_label_inputs(Some(labels)))
         .map(|labels| serde_json::to_string(&labels).unwrap());
 
     let updated_metadata = task_metadata::TaskMetadata {

@@ -149,6 +149,36 @@ function deserializeLabels(raw: unknown): Task['labels'] {
     .filter((entry): entry is { name: string; color: string } => entry !== null);
 }
 
+function buildLabelColorMapFromLabels(labels: Task['labels'] | undefined) {
+  const map = new Map<string, string>();
+  if (!labels) {
+    return map;
+  }
+
+  labels.forEach((label) => {
+    if (typeof label === 'string') {
+      const name = label.trim();
+      if (name) {
+        map.set(name.toLowerCase(), DEFAULT_LABEL_COLOR);
+      }
+      return;
+    }
+
+    if (label && typeof label.name === 'string') {
+      const normalizedName = label.name.trim().toLowerCase();
+      if (!normalizedName) {
+        return;
+      }
+      const color = typeof label.color === 'string' && label.color.trim().length > 0
+        ? label.color
+        : DEFAULT_LABEL_COLOR;
+      map.set(normalizedName, color);
+    }
+  });
+
+  return map;
+}
+
 function deserializeSubtasks(raw: unknown): Task['subtasks'] {
   if (!Array.isArray(raw)) return [];
 
@@ -286,30 +316,80 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
       syncError: null,
       lastSyncAt: undefined,
       addTask: async (input) => {
-        const title = input.title.trim();
+        const title = (input.title ?? '').trim();
         const listId = input.listId ?? input.boardListId ?? input.status ?? DEFAULT_LIST_ID;
         const metadata = buildMetadataPayload(input, title);
+        const id = createId();
 
-        const id = createId(); // Still need a client-side id for the backend to use
-        const rustTask = await invoke<any>('create_task', {
-            task: {
-                id,
-                list_id: listId,
-                title,
-                priority: metadata.priority,
-                labels: metadata.labels.map((label) => label.name),
-                due_date: metadata.due_date,
-                status: metadata.status,
-                time_block: metadata.time_block ?? undefined,
-                notes: metadata.notes ?? null,
-                subtasks: serializeSubtasksForBackend(input.subtasks ?? []),
-            },
+        const createdAtIso = new Date().toISOString();
+        const optimisticLabels = metadata.labels.length
+          ? metadata.labels
+          : (input.labels ?? []).map((label) =>
+              typeof label === 'string'
+                ? { name: label.trim(), color: DEFAULT_LABEL_COLOR }
+                : {
+                    name: typeof label?.name === 'string' ? label.name.trim() : '',
+                    color:
+                      typeof label?.color === 'string' && label.color
+                        ? label.color
+                        : DEFAULT_LABEL_COLOR,
+                  },
+            ).filter((label) => label.name);
+
+        const optimisticTask: Task = {
+          id,
+          title: title || 'Untitled',
+          description: undefined,
+          status: listId as Task['status'],
+          priority: metadata.priority as Task['priority'],
+          dueDate: metadata.due_date ?? undefined,
+          createdAt: createdAtIso,
+          dateCreated: createdAtIso,
+          updatedAt: createdAtIso,
+          assignee: undefined,
+          labels: optimisticLabels,
+          listId,
+          boardListId: listId,
+          notes: metadata.notes?.length ? metadata.notes : undefined,
+          isCompleted: metadata.status === 'completed',
+          completedAt: metadata.status === 'completed' ? createdAtIso : null,
+          subtasks: Array.isArray(input.subtasks) ? input.subtasks : [],
+          externalId: undefined,
+          pendingSync: true,
+          syncState: 'pending',
+          lastSyncedAt: undefined,
+          syncError: undefined,
+          hasConflict: false,
+        };
+
+        set((state) => {
+          state.tasksById[id] = optimisticTask;
+          state.taskOrder.unshift(id);
         });
 
-        const isCompleted = rustTask.status === 'completed';
-        const subtasks = deserializeSubtasks(rustTask.subtasks);
+        try {
+          const rustTask = await invoke<any>('create_task', {
+            task: {
+              id,
+              list_id: listId,
+              title,
+              priority: metadata.priority,
+              labels: metadata.labels.map((label) => ({
+                name: label.name,
+                color: label.color,
+              })),
+              due_date: metadata.due_date,
+              status: metadata.status,
+              time_block: metadata.time_block ?? undefined,
+              notes: metadata.notes ?? null,
+              subtasks: serializeSubtasksForBackend(input.subtasks ?? []),
+            },
+          });
 
-        const task: Task = {
+          const isCompleted = rustTask.status === 'completed';
+          const subtasks = deserializeSubtasks(rustTask.subtasks);
+
+          const task: Task = {
             id: rustTask.id,
             title: rustTask.title || 'Untitled',
             description: undefined,
@@ -333,23 +413,35 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
             pendingSync: ['pending', 'pending_move'].includes(rustTask.sync_state),
             syncState: rustTask.sync_state,
             lastSyncedAt: rustTask.last_synced_at
-            ? rustTask.last_synced_at * 1000
-            : undefined,
+              ? rustTask.last_synced_at * 1000
+              : undefined,
             syncError: rustTask.sync_error,
             hasConflict: rustTask.has_conflict,
-        };
+          };
 
-        set((state) => {
-          state.tasksById[task.id] = task;
-          state.taskOrder.unshift(task.id);
-        });
+          set((state) => {
+            state.tasksById[id] = task;
+          });
 
-        emitTaskEvent('task_created', { source: input.source ?? 'task_store', id: task.id });
+          emitTaskEvent('task_created', { source: input.source ?? 'task_store', id: task.id });
 
-        // Fire a sync to push upstream ASAP when we have a persisted record
-        try { await get().syncNow(); } catch {}
-        
-        return task;
+          try {
+            await get().syncNow();
+          } catch {}
+
+          return task;
+        } catch (error) {
+          console.error('[taskStore] Failed to create task in Rust:', error);
+          set((state) => {
+            const draft = state.tasksById[id];
+            if (draft) {
+              draft.pendingSync = true;
+              draft.syncState = 'error';
+              draft.syncError = error instanceof Error ? error.message : String(error);
+            }
+          });
+          return get().tasksById[id];
+        }
       },
       moveTask: async (id: string, toListId: string) => {
         const task = get().tasksById[id];
@@ -404,9 +496,12 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
       },
 
       updateTask: async (id, updates) => {
+        const existingTask = get().tasksById[id];
         // Persist to Rust backend
         try {
             const payload: Record<string, unknown> = {};
+            let normalizedLabelsForStore: Array<{ name: string; color: string }> | undefined;
+            let existingLabelColorMap: Map<string, string> | undefined;
 
             if (typeof updates.priority !== 'undefined') {
               payload.priority = normalizeMetadataPriority(updates.priority ?? 'none');
@@ -427,7 +522,11 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
                   return { name, color };
                 }),
               );
-              payload.labels = normalized.map((label) => label.name);
+              normalizedLabelsForStore = normalized;
+              payload.labels = normalized.map((label) => ({
+                name: label.name,
+                color: label.color,
+              }));
             }
 
             if (typeof updates.title !== 'undefined') {
@@ -458,13 +557,37 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
             }
 
             if (Object.keys(payload).length > 0) {
-                const rustTask = await invoke<any>('update_task_command', {
+  const rustTask = await invoke<any>('update_task_command', {
                     taskId: id,
                     updates: payload,
                 });
 
                 const isCompleted = rustTask.status === 'completed';
                 const subtasks = deserializeSubtasks(rustTask.subtasks);
+
+                let labels = deserializeLabels(rustTask.labels);
+
+                if (!normalizedLabelsForStore && existingTask && !existingLabelColorMap) {
+                  existingLabelColorMap = buildLabelColorMapFromLabels(existingTask.labels);
+                }
+
+                const labelColorSource = normalizedLabelsForStore
+                  ? new Map(normalizedLabelsForStore.map((label) => [label.name.toLowerCase(), label.color]))
+                  : existingLabelColorMap;
+
+                if (labelColorSource && labelColorSource.size > 0) {
+                  labels = labels.map((label) => {
+                    if (typeof label === 'string') {
+                      const normalizedName = label.trim().toLowerCase();
+                      const color = labelColorSource?.get(normalizedName) ?? DEFAULT_LABEL_COLOR;
+                      return { name: label, color };
+                    }
+
+                    const normalizedName = label.name.trim().toLowerCase();
+                    const color = labelColorSource?.get(normalizedName) ?? label.color ?? DEFAULT_LABEL_COLOR;
+                    return { ...label, color };
+                  });
+                }
 
                 const task: Task = {
                     id: rustTask.id,
@@ -477,7 +600,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
                     dateCreated: new Date(rustTask.created_at * 1000).toISOString(),
                     updatedAt: new Date(rustTask.updated_at * 1000).toISOString(),
                     assignee: undefined,
-                    labels: deserializeLabels(rustTask.labels),
+                    labels,
                     listId: rustTask.list_id,
                     boardListId: rustTask.list_id,
                     notes: rustTask.notes ?? undefined,
@@ -523,11 +646,26 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
       },
       toggleTaskCompletion: (id) => {
         const task = get().tasksById[id];
-        const nextCompleted = !task?.isCompleted;
-        get().updateTask(id, {
-          isCompleted: nextCompleted,
-          completedAt: nextCompleted ? new Date().toISOString() : null,
+        if (!task) return;
+
+        const nextCompleted = !task.isCompleted;
+        const completedAt = nextCompleted ? new Date().toISOString() : null;
+
+        set((state) => {
+          const draft = state.tasksById[id];
+          if (!draft) return;
+          draft.isCompleted = nextCompleted;
+          draft.completedAt = completedAt;
+          draft.pendingSync = true;
+          draft.syncState = 'pending';
+          draft.syncError = null;
         });
+
+        void get().updateTask(id, {
+          isCompleted: nextCompleted,
+          completedAt,
+        });
+
         emitTaskEvent(nextCompleted ? 'task_completed' : 'task_reopened', { id });
       },
       duplicateTask: async (id) => {

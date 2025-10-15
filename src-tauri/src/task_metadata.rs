@@ -1,11 +1,88 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::{btree_map::Entry, BTreeMap};
 
 const META_SENTINEL_PREFIX: &str = "\u{2063}\u{2063}\u{2063}";
 const META_SENTINEL_SUFFIX: &str = "\u{2063}\u{2060}\u{2063}";
 const ZERO_WIDTH_ZERO: char = '\u{200B}';
 const ZERO_WIDTH_ONE: char = '\u{200C}';
 const LEGACY_META_MARKER: &str = "__META__";
+pub const DEFAULT_LABEL_COLOR: &str = "var(--label-blue)";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TaskLabel {
+    pub name: String,
+    pub color: String,
+}
+
+fn normalize_label_entries(labels: Vec<TaskLabel>) -> Vec<TaskLabel> {
+    let mut map: BTreeMap<String, TaskLabel> = BTreeMap::new();
+
+    for label in labels {
+        let trimmed_name = label.name.trim();
+        if trimmed_name.is_empty() {
+            continue;
+        }
+
+        let normalized_key = trimmed_name.to_lowercase();
+        let trimmed_color = label.color.trim();
+        let resolved_color = if trimmed_color.is_empty() {
+            DEFAULT_LABEL_COLOR.to_string()
+        } else {
+            trimmed_color.to_string()
+        };
+
+        let entry = TaskLabel {
+            name: trimmed_name.to_string(),
+            color: resolved_color,
+        };
+
+        match map.entry(normalized_key) {
+            Entry::Vacant(slot) => {
+                slot.insert(entry);
+            }
+            Entry::Occupied(mut existing) => {
+                let stored = existing.get_mut();
+                stored.name = entry.name;
+                if entry.color != DEFAULT_LABEL_COLOR
+                    || stored.color == DEFAULT_LABEL_COLOR
+                    || stored.color.trim().is_empty()
+                {
+                    stored.color = entry.color;
+                }
+            }
+        }
+    }
+
+    map.into_iter().map(|(_, label)| label).collect()
+}
+
+fn parse_labels_raw(labels_json: &str) -> Vec<TaskLabel> {
+    if labels_json.trim().is_empty() {
+        return Vec::new();
+    }
+
+    if let Ok(labels) = serde_json::from_str::<Vec<TaskLabel>>(labels_json) {
+        return labels;
+    }
+
+    if let Ok(names) = serde_json::from_str::<Vec<String>>(labels_json) {
+        return names
+            .into_iter()
+            .map(|name| TaskLabel {
+                name,
+                color: DEFAULT_LABEL_COLOR.to_string(),
+            })
+            .collect();
+    }
+
+    Vec::new()
+}
+
+fn normalized_labels(labels_json: &str) -> Vec<TaskLabel> {
+    let labels = parse_labels_raw(labels_json);
+    normalize_label_entries(labels)
+}
 
 fn encode_zero_width_metadata(meta_json: &str) -> String {
     let mut encoded = String::with_capacity(
@@ -106,9 +183,7 @@ pub struct TaskMetadata {
 impl TaskMetadata {
     /// Normalize metadata for consistent hashing
     pub fn normalize(&self) -> Self {
-        let mut labels: Vec<String> = serde_json::from_str(&self.labels).unwrap_or_default();
-        labels.sort();
-        labels.dedup();
+        let labels = normalized_labels(&self.labels);
 
         Self {
             title: self.title.trim().to_string(),
@@ -133,7 +208,7 @@ impl TaskMetadata {
     /// Serialize for Google Tasks API (encode metadata in notes JSON)
     /// CRUD Plan §6.3: Encode priority/labels/time_block into Google notes field
     pub fn serialize_for_google(&self) -> GoogleTaskPayload {
-        let labels: Vec<String> = serde_json::from_str(&self.labels).unwrap_or_default();
+        let labels = normalized_labels(&self.labels);
         let meta_json = serde_json::json!({
             "priority": self.priority,
             "labels": labels,
@@ -182,13 +257,31 @@ impl TaskMetadata {
             (None, serde_json::json!({}))
         };
 
-        let labels: Vec<String> = meta
+        let raw_labels: Vec<TaskLabel> = meta
             .get("labels")
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .map(String::from)
+                    .filter_map(|value| match value {
+                        serde_json::Value::String(name) => Some(TaskLabel {
+                            name: name.to_string(),
+                            color: DEFAULT_LABEL_COLOR.to_string(),
+                        }),
+                        serde_json::Value::Object(obj) => {
+                            let name = obj.get("name").and_then(|v| v.as_str())?;
+                            let color = obj
+                                .get("color")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.trim().to_string())
+                                .filter(|s| !s.is_empty())
+                                .unwrap_or_else(|| DEFAULT_LABEL_COLOR.to_string());
+                            Some(TaskLabel {
+                                name: name.to_string(),
+                                color,
+                            })
+                        }
+                        _ => None,
+                    })
                     .collect()
             })
             .unwrap_or_default();
@@ -208,6 +301,8 @@ impl TaskMetadata {
         } else {
             payload.status.clone()
         };
+
+        let labels = normalize_label_entries(raw_labels);
 
         Self {
             title: payload.title.clone(),
@@ -244,8 +339,8 @@ impl TaskMetadata {
             dirty.push("priority".to_string());
         }
 
-        let self_labels: Vec<String> = serde_json::from_str(&self.labels).unwrap_or_default();
-        let other_labels: Vec<String> = serde_json::from_str(&other.labels).unwrap_or_default();
+        let self_labels = normalized_labels(&self.labels);
+        let other_labels = normalized_labels(&other.labels);
         if self_labels != other_labels {
             dirty.push("labels".to_string());
         }

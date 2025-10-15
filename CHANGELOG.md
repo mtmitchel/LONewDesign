@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 - Hardened duplicate-task cleanup so freshly created tasks waiting to sync are no longer mistaken for orphan records and removed during a manual sync cycle.
+- **Label color persistence (2025-10-15)**: Label color changes now persist across app refreshes. Extended Rust backend (`task_metadata.rs`, `commands/tasks.rs`) to store labels as `{name,color}` JSON objects instead of name-only strings, updated frontend (`taskStore.tsx`) to send structured payloads, and modified Google Tasks serialization to preserve color metadata through sync round-trips. Test suite and mocks updated to validate color preservation end-to-end.
 
 ### Known Issues
 - None currently reported.

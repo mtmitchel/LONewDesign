@@ -10,6 +10,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 const mockInvoke = vi.mocked(invoke);
+const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
 
 describe('taskStore - Backend-Heavy Architecture', () => {
   let backendTasks: any[];
@@ -46,25 +47,39 @@ describe('taskStore - Backend-Heavy Architecture', () => {
       switch (command) {
         case 'create_task': {
           const { task } = payload;
-          const metadata = task.metadata ?? {
-            title: task.title,
-            priority: task.priority ?? 'none',
-            labels: [],
-            due_date: null,
-            status: 'needsAction',
-            notes: null,
-            time_block: null,
-          };
+          const labelEntries = Array.isArray(task.labels) ? task.labels : [];
+          const normalizedLabels = labelEntries
+            .map((label: any) => {
+              if (typeof label === 'string') {
+                const name = label.trim();
+                return name ? { name, color: DEFAULT_LABEL_COLOR } : null;
+              }
+              if (label && typeof label === 'object') {
+                const name = typeof label.name === 'string' ? label.name.trim() : '';
+                if (!name) {
+                  return null;
+                }
+                const color =
+                  typeof label.color === 'string' && label.color.trim().length > 0
+                    ? label.color
+                    : DEFAULT_LABEL_COLOR;
+                return { name, color };
+              }
+              return null;
+            })
+            .filter((entry: any) => entry !== null);
           const now = Math.floor(Date.now() / 1000);
           const record = {
             id: task.id,
             google_id: null,
             list_id: task.list_id,
-            priority: metadata.priority ?? 'none',
-            labels: JSON.stringify(metadata.labels ?? []),
-            due_date: metadata.due_date ?? null,
-            time_block: metadata.time_block ?? null,
-            notes: task.notes ?? metadata.title ?? task.title,
+            title: task.title || 'Untitled',
+            priority: task.priority ?? 'none',
+            labels: JSON.stringify(normalizedLabels),
+            due_date: task.due_date ?? null,
+            status: task.status ?? 'needsAction',
+            time_block: task.time_block ?? null,
+            notes: task.notes ?? null,
             created_at: now,
             updated_at: now,
             sync_state: 'pending',
@@ -74,29 +89,59 @@ describe('taskStore - Backend-Heavy Architecture', () => {
             pending_delete_google_id: null,
             metadata_hash: 'hash',
             dirty_fields: '[]',
-            status: metadata.status ?? 'needsAction',
             sync_attempts: 0,
             last_remote_hash: null,
             deleted_at: null,
+            has_conflict: false,
+            subtasks: Array.isArray(task.subtasks) ? task.subtasks : [],
           };
           backendTasks = backendTasks.filter((t) => t.id !== record.id).concat(record);
           return record;
         }
-        case 'update_task': {
+  case 'update_task_command': {
           const { taskId, updates } = payload;
           const record = backendTasks.find((t) => t.id === taskId);
           if (!record) return undefined;
+          if (typeof updates.title !== 'undefined') {
+            record.title = updates.title ?? record.title;
+          }
           if (typeof updates.priority !== 'undefined') {
             record.priority = updates.priority;
           }
           if (typeof updates.labels !== 'undefined') {
-            record.labels = JSON.stringify(updates.labels ?? []);
+            const updatedLabels = Array.isArray(updates.labels)
+              ? updates.labels.map((label: any) => {
+                  if (typeof label === 'string') {
+                    const name = label.trim();
+                    return name ? { name, color: DEFAULT_LABEL_COLOR } : null;
+                  }
+                  if (label && typeof label === 'object') {
+                    const name = typeof label.name === 'string' ? label.name.trim() : '';
+                    if (!name) {
+                      return null;
+                    }
+                    const color =
+                      typeof label.color === 'string' && label.color.trim().length > 0
+                        ? label.color
+                        : DEFAULT_LABEL_COLOR;
+                    return { name, color };
+                  }
+                  return null;
+                }).filter((entry: any) => entry !== null)
+              : [];
+            record.labels = JSON.stringify(updatedLabels);
           }
           if (updates.due_date !== undefined) {
             record.due_date = updates.due_date;
           }
           if (typeof updates.notes !== 'undefined') {
             record.notes = updates.notes;
+          }
+          if (typeof updates.status !== 'undefined') {
+            record.status = updates.status;
+          }
+          if (typeof updates.subtasks !== 'undefined') {
+            record.subtasks = updates.subtasks ?? [];
           }
           record.sync_state = 'pending';
           record.updated_at = Math.floor(Date.now() / 1000);
@@ -207,17 +252,12 @@ describe('taskStore - Backend-Heavy Architecture', () => {
           id: task.id,
           list_id: 'default',
           title: 'Backend Task',
-          notes: 'Backend Task',
-          labels: expect.arrayContaining(['urgent', 'bug']),
-          metadata: expect.objectContaining({
-            title: 'Backend Task',
-            priority: 'none',
-            status: 'needsAction',
-            labels: expect.arrayContaining([
-              expect.objectContaining({ name: 'urgent' }),
-              expect.objectContaining({ name: 'bug' }),
-            ]),
-          }),
+          priority: 'none',
+          status: 'needsAction',
+          labels: expect.arrayContaining([
+            expect.objectContaining({ name: 'urgent', color: DEFAULT_LABEL_COLOR }),
+            expect.objectContaining({ name: 'bug', color: DEFAULT_LABEL_COLOR }),
+          ]),
         }),
       });
     });
@@ -287,13 +327,39 @@ describe('taskStore - Backend-Heavy Architecture', () => {
         });
       });
 
-      expect(mockInvoke).toHaveBeenCalledWith('update_task', {
+  expect(mockInvoke).toHaveBeenCalledWith('update_task_command', {
         taskId: task.id,
         updates: expect.objectContaining({
           priority: 'low',
-          labels: expect.arrayContaining(['review']),
+          labels: expect.arrayContaining([
+            expect.objectContaining({ name: 'review', color: DEFAULT_LABEL_COLOR }),
+          ]),
         }),
       });
+    });
+
+    it('should preserve label colors after updates', async () => {
+      const task = await act(async () => {
+        return taskStoreApi.getState().addTask({
+          title: 'Color Task',
+          listId: 'default',
+        });
+      });
+
+      await act(async () => {
+        await taskStoreApi.getState().updateTask(task.id, {
+          labels: [
+            { name: 'Design', color: 'var(--label-green)' },
+            { name: 'Review', color: 'var(--label-purple)' },
+          ],
+        });
+      });
+
+      const updatedTask = taskStoreApi.getState().tasksById[task.id];
+      expect(updatedTask.labels).toEqual([
+        { name: 'Design', color: 'var(--label-green)' },
+        { name: 'Review', color: 'var(--label-purple)' },
+      ]);
     });
   });
 
@@ -343,6 +409,7 @@ describe('taskStore - Backend-Heavy Architecture', () => {
           id: 'rust-task-1',
           google_id: 'google-123',
           list_id: 'default',
+          title: 'Backend Task 1',
           priority: 'high',
           labels: JSON.stringify([{ name: 'bug', color: '#ff0000' }]),
           due_date: '2024-05-01',
@@ -361,11 +428,13 @@ describe('taskStore - Backend-Heavy Architecture', () => {
           sync_attempts: 0,
           last_remote_hash: null,
           deleted_at: null,
+          has_conflict: false,
         },
         {
           id: 'rust-task-2',
           google_id: null,
           list_id: 'default',
+          title: 'Backend Task 2',
           priority: 'none',
           labels: '[]',
           due_date: null,
@@ -384,6 +453,7 @@ describe('taskStore - Backend-Heavy Architecture', () => {
           sync_attempts: 0,
           last_remote_hash: null,
           deleted_at: null,
+          has_conflict: false,
         },
       ];
       backendTasks = rustTasks.map((task) => ({ ...task }));
