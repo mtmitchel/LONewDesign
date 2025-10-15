@@ -1,5 +1,5 @@
-use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePool, Row, Sqlite};
-use std::{collections::HashSet, path::PathBuf};
+use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePool, Sqlite};
+use std::path::PathBuf;
 use tauri::Manager;
 
 pub async fn get_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {

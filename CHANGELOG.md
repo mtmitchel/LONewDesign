@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Google Tasks Sync Backend (2025-10-16)
+- Implemented a robust background sync service for Google Tasks.
+- The service processes a sync queue, polls for remote changes, and handles conflicts.
+- Implemented retry logic with exponential backoff for failed sync attempts.
+- The service now gracefully handles the case where the user is not logged in.
+
+
 ### Sync Service Modularization Complete (2025-01-20)
 - **Module Extraction Complete**: Refactored sync_service.rs from 1,266-line monolith into 6 focused modules:
   - `sync/types.rs` (82 lines) - Shared type definitions

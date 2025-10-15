@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.therefore.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:smart",
     "beforeBuildCommand": "npm run build",
     "devUrl": "http://localhost:5174",
     "frontendDist": "../dist"
