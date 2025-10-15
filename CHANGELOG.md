@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Enhancements
 - Unified inline task composer popovers (date, priority, labels) with consistent widths while allowing the calendar to size naturally, refreshed the priority menu with low-ink rounded chips and an em dash “none” option, and introduced persistent label selection using the design-system palette across TasksBoard, TasksModule, and ProjectsModule.
+- Standardized task label chips across the composer, preview pill stack, and rendered cards by reusing the shared `Badge` component and adopting the same default color token end-to-end, eliminating the blue-to-gray jump after saving.
 
 ### Google Tasks Sync Backend Refinements (2025-10-15)
 - Implemented "Resume on Startup" for the sync service to ensure immediate data synchronization on application launch.

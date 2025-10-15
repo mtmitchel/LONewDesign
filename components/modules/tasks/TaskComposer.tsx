@@ -3,6 +3,7 @@ import React from 'react';
 import { Calendar, Flag, Tag, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Calendar as CalendarComponent } from '../../ui/calendar';
+import { Badge } from '../../ui/badge';
 import { format } from 'date-fns';
 
 export type ComposerLabel = {
@@ -21,17 +22,7 @@ interface TaskComposerProps {
   availableLabels: ComposerLabel[];
 }
 
-const LABEL_PALETTE: ComposerLabel[] = [
-  { name: 'Blue', color: 'var(--label-blue)' },
-  { name: 'Purple', color: 'var(--label-purple)' },
-  { name: 'Pink', color: 'var(--label-pink)' },
-  { name: 'Red', color: 'var(--label-red)' },
-  { name: 'Orange', color: 'var(--label-orange)' },
-  { name: 'Yellow', color: 'var(--label-yellow)' },
-  { name: 'Green', color: 'var(--label-green)' },
-  { name: 'Teal', color: 'var(--label-teal)' },
-  { name: 'Gray', color: 'var(--label-gray)' },
-];
+const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
 
 const PRIORITY_COLORS: Record<'high' | 'medium' | 'low', string> = {
   high: 'var(--label-red)',
@@ -53,10 +44,18 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
   const [showPriorityPicker, setShowPriorityPicker] = React.useState(false);
   const [showLabelsPopover, setShowLabelsPopover] = React.useState(false);
   const [labelInput, setLabelInput] = React.useState('');
-  const [labelColor, setLabelColor] = React.useState<string>(LABEL_PALETTE[0].color);
   const [selectedLabels, setSelectedLabels] = React.useState<ComposerLabel[]>([]);
   const composerRef = React.useRef<HTMLDivElement | null>(null);
   const interactionGuardRef = React.useRef(false);
+  const labelInputRef = React.useRef<HTMLInputElement | null>(null);
+  const focusLabelInput = React.useCallback(() => {
+    const input = labelInputRef.current;
+    if (!input) return;
+
+    input.focus({ preventScroll: true });
+    const caretPosition = input.value.length;
+    input.setSelectionRange?.(caretPosition, caretPosition);
+  }, []);
 
   const normalizedAvailableLabels = React.useMemo(() => {
     const map = new Map<string, ComposerLabel>();
@@ -92,7 +91,6 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
     setPriority('none');
     setSelectedLabels([]);
     setLabelInput('');
-    setLabelColor(LABEL_PALETTE[0].color);
     setShowDatePicker(false);
     setShowPriorityPicker(false);
     setShowLabelsPopover(false);
@@ -195,9 +193,16 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
     const value = labelInput.trim();
     if (!value) return;
 
-    toggleLabel({ name: value, color: labelColor });
+    toggleLabel({ name: value, color: DEFAULT_LABEL_COLOR });
     setLabelInput('');
-  }, [labelInput, labelColor, toggleLabel]);
+  }, [labelInput, toggleLabel]);
+
+  React.useLayoutEffect(() => {
+    if (!showLabelsPopover) return;
+
+    const frame = requestAnimationFrame(focusLabelInput);
+    return () => cancelAnimationFrame(frame);
+  }, [showLabelsPopover, focusLabelInput]);
 
   return (
     <div
@@ -218,7 +223,7 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
           />
         </div>
         <div className="flex flex-col gap-[var(--space-2)]">
-          <div className="flex flex-col gap-[var(--space-2)] text-[color:var(--text-secondary)]">
+          <div className="flex flex-wrap items-center gap-[var(--space-2)] text-[color:var(--text-secondary)]">
             <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
               <PopoverTrigger asChild>
                 <button
@@ -232,7 +237,13 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                   <Calendar className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="p-0" align="start">
+              <PopoverContent 
+                className="w-fit min-w-0 p-0" 
+                side="bottom"
+                sideOffset={8}
+                align="start"
+                alignOffset={110}
+              >
                 <CalendarComponent
                   mode="single"
                   selected={dueDate}
@@ -258,8 +269,14 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                   <Flag className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-2" align="start">
-                <div className="flex flex-col gap-[var(--space-1)]">
+              <PopoverContent 
+                className="w-[240px] p-3" 
+                side="bottom"
+                sideOffset={8}
+                align="start"
+                alignOffset={140}
+              >
+                <div className="flex flex-col gap-[var(--space-1_5)]">
                   {(['high', 'medium', 'low'] as const).map((p) => (
                     <button
                       key={p}
@@ -267,7 +284,7 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                         setPriority(p);
                         setShowPriorityPicker(false);
                       }}
-                      className={`flex items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] font-[var(--font-weight-medium)] capitalize hover:bg-[var(--bg-surface-elevated)] ${
+                      className={`flex h-9 items-center gap-[var(--space-1_5)] rounded-[var(--radius-sm)] px-[var(--space-2)] text-left text-[length:var(--text-sm)] font-[var(--font-weight-medium)] capitalize hover:bg-[var(--bg-surface-elevated)] ${
                         priority === p ? 'bg-[var(--bg-surface-elevated)]' : ''
                       }`}
                     >
@@ -284,7 +301,7 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                       setPriority('none');
                       setShowPriorityPicker(false);
                     }}
-                    className={`flex items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] font-[var(--font-weight-medium)] hover:bg-[var(--bg-surface-elevated)] ${
+                    className={`flex h-9 items-center gap-[var(--space-1_5)] rounded-[var(--radius-sm)] px-[var(--space-2)] text-left text-[length:var(--text-sm)] font-[var(--font-weight-medium)] hover:bg-[var(--bg-surface-elevated)] ${
                       priority === 'none' ? 'bg-[var(--bg-surface-elevated)]' : ''
                     }`}
                   >
@@ -296,7 +313,15 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
               </PopoverContent>
             </Popover>
 
-            <Popover open={showLabelsPopover} onOpenChange={setShowLabelsPopover}>
+            <Popover
+              open={showLabelsPopover}
+              onOpenChange={(open) => {
+                setShowLabelsPopover(open);
+                if (open) {
+                  requestAnimationFrame(focusLabelInput);
+                }
+              }}
+            >
               <PopoverTrigger asChild>
                 <button
                   className={`flex size-8 items-center justify-center rounded-[var(--radius-sm)] motion-safe:transition-colors duration-[var(--duration-fast)] ${
@@ -309,40 +334,49 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                   <Tag className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-3" align="start">
-                <div className="flex flex-col gap-[var(--space-3)]">
-                  {normalizedAvailableLabels.length > 0 && (
-                    <div className="flex flex-col gap-[var(--space-1_5)]">
-                      <span className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-tertiary)]">
-                        Recent labels
-                      </span>
-                      <div className="flex flex-wrap gap-[var(--space-2)]">
-                        {normalizedAvailableLabels.map((label) => {
-                          const isSelected = selectedLabels.some((item) => item.name === label.name);
-                          return (
-                            <button
-                              key={label.name}
-                              type="button"
-                              onClick={() => toggleLabel(label)}
-                              className={`inline-flex items-center gap-[var(--space-1)] rounded-[var(--radius-pill)] px-[var(--space-2)] py-[var(--space-1_5)] text-[length:var(--task-meta-size)] font-[var(--font-weight-medium)] transition-colors ${
-                                isSelected ? 'ring-2 ring-[var(--primary)] ring-offset-1' : ''
-                              }`}
-                              style={chipStyle(label.color)}
-                            >
-                              <span>{label.name}</span>
-                              {isSelected ? <Check className="w-3 h-3" aria-hidden /> : null}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+              <PopoverContent 
+                className="w-[240px] p-3" 
+                side="bottom"
+                sideOffset={8}
+                align="start"
+                alignOffset={140}
+                onOpenAutoFocus={(event) => {
+                  event.preventDefault();
+                  requestAnimationFrame(focusLabelInput);
+                }}
+                onCloseAutoFocus={(event) => {
+                  event.preventDefault();
+                }}
+              >
+                <div className="flex flex-col gap-[var(--space-2)]">
+                  <div className="flex flex-wrap gap-[var(--space-2)]">
+                    {normalizedAvailableLabels.map((label) => {
+                      const isSelected = selectedLabels.some((item) => item.name === label.name);
+                      return (
+                        <button
+                          key={label.name}
+                          type="button"
+                          onClick={() => toggleLabel(label)}
+                          className={`rounded-[var(--chip-radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--bg-surface)] transition-shadow ${
+                            isSelected ? 'ring-2 ring-[var(--primary)] ring-offset-1 ring-offset-[var(--bg-surface)]' : ''
+                          }`}
+                        >
+                          <Badge
+                            variant="soft"
+                            size="sm"
+                            className="flex items-center gap-[var(--space-1)]"
+                            style={chipStyle(label.color)}
+                          >
+                            <span>{label.name}</span>
+                            {isSelected ? <Check className="w-3 h-3" aria-hidden /> : null}
+                          </Badge>
+                        </button>
+                      );
+                    })}
+                  </div>
 
                   <div className="flex flex-col gap-[var(--space-2)]">
-                    <span className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-tertiary)]">
-                      Create label
-                    </span>
-                    <div className="flex items-center gap-[var(--space-2)]">
+                    <div className="relative">
                       <input
                         type="text"
                         value={labelInput}
@@ -353,57 +387,37 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                             addFreeformLabel();
                           }
                         }}
-                        placeholder="Label name"
-                        className="flex-1 h-8 rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-2)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none"
+                        ref={labelInputRef}
                         aria-label="Label name"
+                        autoFocus
+                        autoComplete="off"
+                        spellCheck={false}
+                        inputMode="text"
+                        className="flex-1 h-8 w-full rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-2)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] caret-[var(--primary)] focus:border-[var(--primary)] focus:outline-none"
                       />
-                      <button
-                        type="button"
-                        onClick={addFreeformLabel}
-                        className="inline-flex h-8 items-center rounded-[var(--radius-sm)] bg-[var(--btn-primary-bg)] px-[var(--space-3)] text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--btn-primary-text)] transition-colors hover:bg-[var(--btn-primary-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={!labelInput.trim()}
-                      >
-                        Add
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-[var(--space-2)]">
-                      {LABEL_PALETTE.map((option) => (
-                        <button
-                          key={option.color}
-                          type="button"
-                          onClick={() => setLabelColor(option.color)}
-                          className={`size-6 rounded-full border transition-transform hover:scale-110 ${
-                            labelColor === option.color ? 'ring-2 ring-[var(--primary)] ring-offset-1' : ''
-                          }`}
-                          style={{
-                            backgroundColor: `color-mix(in oklab, ${option.color} 18%, transparent)`,
-                            borderColor: `color-mix(in oklab, ${option.color} 35%, transparent)`,
-                          }}
-                          aria-label={`Choose ${option.name} label color`}
-                        />
-                      ))}
                     </div>
                   </div>
 
                   {selectedLabels.length > 0 ? (
-                    <div className="flex flex-col gap-[var(--space-1_5)]">
-                      <span className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-tertiary)]">
-                        Selected labels
-                      </span>
-                      <div className="flex flex-wrap gap-[var(--space-2)]">
-                        {selectedLabels.map((label) => (
-                          <button
-                            key={label.name}
-                            type="button"
-                            onClick={() => toggleLabel(label)}
-                            className="inline-flex items-center gap-[var(--space-1)] rounded-[var(--radius-pill)] px-[var(--space-2)] py-[var(--space-1_5)] text-[length:var(--task-meta-size)] font-[var(--font-weight-medium)]"
+                    <div className="flex flex-wrap gap-[var(--space-2)]">
+                      {selectedLabels.map((label) => (
+                        <button
+                          key={label.name}
+                          type="button"
+                          onClick={() => toggleLabel(label)}
+                          className="rounded-[var(--chip-radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--bg-surface)]"
+                        >
+                          <Badge
+                            variant="soft"
+                            size="sm"
+                            className="flex items-center gap-[var(--space-1)]"
                             style={chipStyle(label.color)}
                           >
                             <span>{label.name}</span>
                             <span aria-hidden>×</span>
-                          </button>
-                        ))}
-                      </div>
+                          </Badge>
+                        </button>
+                      ))}
                     </div>
                   ) : null}
                 </div>
@@ -414,13 +428,15 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
           {selectedLabels.length > 0 ? (
             <div className="flex flex-wrap gap-[var(--space-2)]">
               {selectedLabels.map((label) => (
-                <span
+                <Badge
                   key={`summary-${label.name}`}
-                  className="inline-flex items-center gap-[var(--space-1)] rounded-[var(--radius-pill)] px-[var(--space-2)] py-[var(--space-1_5)] text-[length:var(--task-meta-size)] font-[var(--font-weight-medium)]"
+                  variant="soft"
+                  size="sm"
+                  className="flex items-center"
                   style={chipStyle(label.color)}
                 >
                   {label.name}
-                </span>
+                </Badge>
               ))}
             </div>
           ) : null}

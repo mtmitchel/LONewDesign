@@ -239,7 +239,7 @@ function serializeSubtasksForBackend(subtasks: Task['subtasks'] | undefined) {
     .filter((entry): entry is Record<string, unknown> => entry !== null);
 }
 
-const DEFAULT_LABEL_COLOR = '#808080';
+const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
 
 // Normalize metadata before pushing through the Tauri create command.
 function buildMetadataPayload(input: TaskInput, title: string): SharedTaskMetadata {
