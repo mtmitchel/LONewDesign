@@ -1,8 +1,6 @@
 //! OAuth token management for Google Workspace integration
 
 use keyring::Entry;
-use serde::{Deserialize, Serialize};
-
 use crate::sync::types::{
     GoogleOAuthTokens, GoogleWorkspaceState, GOOGLE_WORKSPACE_SERVICE, GOOGLE_WORKSPACE_ACCOUNT,
 };
