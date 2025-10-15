@@ -1,10 +1,21 @@
 //! Polling and reconciliation logic for syncing with Google Tasks
 
+use crate::task_metadata;
 use reqwest::Client;
+use serde::Deserialize;
 use sqlx::SqlitePool;
 use std::collections::HashSet;
 
 use crate::sync::types::GOOGLE_TASKS_BASE_URL;
+
+#[derive(Debug, Deserialize)]
+struct GoogleTask {
+    id: String,
+    title: String,
+    due: Option<String>,
+    notes: Option<String>,
+}
+
 
 /// Polls Google Tasks API and reconciles with local database
 ///
@@ -167,8 +178,6 @@ async fn reconcile_task_list(db_pool: &SqlitePool, list: &serde_json::Value) -> 
         .and_then(|v| v.as_str())
         .unwrap_or("Untitled List");
 
-    let updated = list.get("updated").and_then(|v| v.as_str());
-
     let now = chrono::Utc::now().timestamp();
 
     // Check if list exists
@@ -181,10 +190,9 @@ async fn reconcile_task_list(db_pool: &SqlitePool, list: &serde_json::Value) -> 
     if exists.is_some() {
         // Update existing list
         sqlx::query(
-            "UPDATE task_lists SET title = ?, updated = ?, updated_at = ? WHERE id = ?",
+            "UPDATE task_lists SET title = ?, updated_at = ? WHERE id = ?",
         )
         .bind(title)
-        .bind(updated)
         .bind(now)
         .bind(list_id)
         .execute(db_pool)
@@ -195,11 +203,11 @@ async fn reconcile_task_list(db_pool: &SqlitePool, list: &serde_json::Value) -> 
     } else {
         // Insert new list
         sqlx::query(
-            "INSERT INTO task_lists (id, title, updated, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO task_lists (id, google_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
         )
         .bind(list_id)
+        .bind(list_id)
         .bind(title)
-        .bind(updated)
         .bind(now)
         .bind(now)
         .execute(db_pool)
@@ -212,21 +220,16 @@ async fn reconcile_task_list(db_pool: &SqlitePool, list: &serde_json::Value) -> 
     Ok(())
 }
 
-async fn reconcile_task(db_pool: &SqlitePool, list_id: &str, task: &serde_json::Value) -> Result<(), String> {
-    let google_id = task
-        .get("id")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| "Task missing id".to_string())?;
+async fn reconcile_task(db_pool: &SqlitePool, list_id: &str, task_json: &serde_json::Value) -> Result<(), String> {
+    let task: GoogleTask = serde_json::from_value(task_json.clone()).map_err(|e| e.to_string())?;
 
-    let title = task
-        .get("title")
-        .and_then(|v| v.as_str())
-        .unwrap_or("Untitled");
+    let google_id = &task.id;
+    let title = &task.title;
 
     // Store the title in the notes field (this is what the frontend displays)
     let notes_to_store = Some(title.to_string());
     // Parse Google due date if present
-    let due_to_store = task.get("due").and_then(|v| v.as_str()).map(|s| {
+    let due_to_store = task.due.as_ref().map(|s| {
         if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
             dt.date_naive().to_string()
         } else if s.len() >= 10 && s.as_bytes()[4] == b'-' && s.as_bytes()[7] == b'-' {
@@ -362,24 +365,38 @@ async fn reconcile_task(db_pool: &SqlitePool, list_id: &str, task: &serde_json::
                 local_id
             );
 
+            let metadata = task_metadata::TaskMetadata {
+                title: title.to_string(),
+                notes: task.notes.clone(),
+                due_date: task.due.clone(),
+                priority: "none".to_string(),
+                labels: "[]".to_string(),
+                status: "needsAction".to_string(),
+                time_block: None,
+            };
+            let metadata_hash = metadata.compute_hash();
+
             let result = sqlx::query(
-                "INSERT INTO tasks_metadata (id, google_id, list_id, priority, labels, due_date, notes, created_at, updated_at, sync_state, last_synced_at) 
-                 VALUES (?, ?, ?, 'none', '[]', ?, ?, ?, ?, 'synced', ?)"
+                "INSERT INTO tasks_metadata (id, google_id, list_id, title, priority, labels, due_date, notes, created_at, updated_at, sync_state, last_synced_at, metadata_hash, dirty_fields)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             )
-            .bind(&local_id)
+            .bind(local_id.clone())
             .bind(google_id)
             .bind(list_id)
-            .bind(due_to_store.as_deref())
-            .bind(notes_to_store.as_deref())
+            .bind(title)
+            .bind("none")
+            .bind("[]")
+            .bind(task.due.as_deref())
+            .bind(task.notes.as_deref())
             .bind(now)
             .bind(now)
+            .bind("synced")
             .bind(now)
+            .bind(metadata_hash)
+            .bind("[]")
             .execute(db_pool)
             .await
-            .map_err(|e| {
-                eprintln!("[sync_service] INSERT failed: {}", e);
-                format!("Failed to insert task: {}", e)
-            })?;
+            .map_err(|e| format!("Failed to insert task: {}", e))?;
 
             eprintln!(
                 "[sync_service] INSERT affected {} rows",

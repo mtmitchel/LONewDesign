@@ -28,7 +28,7 @@ export default defineConfig(() => ({
   },
   server: {
     port: 5173,
-    strictPort: false, // Allow fallback to other ports
+    strictPort: true, // Enforce exact port; smart script will pick a free port and update Tauri
     host: 'localhost',
     // Tauri recommends these for dev
     hmr: { overlay: true }

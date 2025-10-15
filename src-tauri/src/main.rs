@@ -5,6 +5,7 @@ mod db;
 mod commands;
 mod sync;
 mod sync_service;
+mod task_metadata;
 
 use std::time::Duration;
 
@@ -132,9 +133,10 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             init_database_command,
             commands::tasks::create_task,
-            commands::tasks::update_task,
+            commands::tasks::update_task_command,
             commands::tasks::delete_task,
             commands::tasks::get_tasks,
+            commands::tasks::get_task_lists,
             sync_tasks_now,
             commands::mistral::test_mistral_credentials,
             commands::mistral::fetch_mistral_models,

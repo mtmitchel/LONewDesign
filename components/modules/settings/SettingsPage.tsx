@@ -189,13 +189,15 @@ export default function SettingsPage(): JSX.Element {
             </div>
           </div>
         ) : (
-          visibleSections.map((section) =>
-            section.render({
-              id: section.id,
-              filter,
-              registerSection: registerSection[section.id],
-            }),
-          )
+          visibleSections.map((section) => (
+            <React.Fragment key={section.id}>
+              {section.render({
+                id: section.id,
+                filter,
+                registerSection: registerSection[section.id],
+              })}
+            </React.Fragment>
+          ))
         )}
       </div>
     </ScrollArea>

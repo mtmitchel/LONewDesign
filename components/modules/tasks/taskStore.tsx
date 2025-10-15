@@ -9,12 +9,16 @@ import { shallow } from 'zustand/shallow';
 import {
   Task,
   TaskList,
-  TaskMutation,
-  TaskMutationOperation,
   TaskSyncState,
 } from './types';
 import { DEFAULT_TASK_LISTS } from './constants';
-import { startGoogleTasksBackgroundSync } from './sync/googleTasksSyncService';
+import { invoke } from '@tauri-apps/api/core';
+import {
+  normalizePriority as normalizeMetadataPriority,
+  normalizeLabels as normalizeMetadataLabels,
+  normalizeDueDate as normalizeMetadataDueDate,
+  type TaskMetadata as SharedTaskMetadata,
+} from '../../../lib/metadata';
 
 type TaskSourceMeta = {
   source?: string;
@@ -59,37 +63,30 @@ export type TaskUpdates = Partial<
   >
 >;
 
-type PendingSyncIndex = Record<string, string>; // taskId -> mutationId
-
 type TaskStoreState = {
+  // Entities + status
+  // Entities + status
+
   tasksById: Record<string, Task>;
   taskOrder: string[];
   listsById: Record<string, TaskList>;
   listOrder: string[];
-  mutationQueue: TaskMutation[];
-  pendingByTaskId: PendingSyncIndex;
   syncStatus: TaskSyncState;
   syncError?: string | null;
   lastSyncAt?: number;
-  nextPollAt?: number;
-  pollIntervalMs: number;
-  isPollerActive: boolean;
-  addTask: (input: TaskInput) => Task;
-  updateTask: (id: string, updates: TaskUpdates) => void;
-  deleteTask: (id: string) => void;
+  addTask: (input: TaskInput) => Promise<Task>;
+  updateTask: (id: string, updates: TaskUpdates) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+  fetchTasks: () => Promise<void>;
   toggleTaskCompletion: (id: string) => void;
-  duplicateTask: (id: string) => Task | null;
+  duplicateTask: (id: string) => Promise<Task | null>;
+  moveTask: (id: string, toListId: string) => Promise<void>;
   setTaskDueDate: (id: string, dueDate: string | undefined) => void;
-  upsertTasksFromGoogle: (tasks: Task[], meta: { fetchedAt: number }) => void;
   reconcileLists: (lists: TaskList[], opts?: { replace?: boolean }) => void;
-  markMutationInFlight: (mutationId: string) => void;
-  resolveMutation: (mutationId: string, payload?: Partial<Task>) => void;
-  failMutation: (mutationId: string, error: string) => void;
-  shiftNextMutation: () => TaskMutation | undefined;
-  requeueMutation: (mutation: TaskMutation) => void;
-  clearFailedMutations: () => void;
-  registerPollerActive: (active: boolean) => void;
-  scheduleNextPoll: (delayMs: number) => void;
+  // List lifecycle + manual sync
+  createTaskList: (title: string) => Promise<TaskList>;
+  deleteTaskList: (id: string, reassignTo?: string) => Promise<void>;
+  syncNow: () => Promise<void>;
   setSyncStatus: (status: TaskSyncState, error?: string | null) => void;
 };
 
@@ -98,43 +95,6 @@ function createId(prefix = 'task') {
     return crypto.randomUUID();
   }
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
-function createClientMutationId(op: TaskMutationOperation['kind']) {
-  return `${op}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function getTaskIdFromMutation(mutation: TaskMutation): string | undefined {
-  switch (mutation.op.kind) {
-    case 'task.create':
-      return mutation.op.task.id;
-    case 'task.update':
-    case 'task.delete':
-    case 'task.move':
-      return mutation.op.id;
-    default:
-      return undefined;
-  }
-}
-
-function enqueueMutationDraft(
-  state: TaskStoreState,
-  op: TaskMutationOperation,
-  taskId?: string,
-) {
-  const mutationId = createClientMutationId(op.kind);
-  const mutation: TaskMutation = {
-    id: mutationId,
-    op,
-    attempts: 0,
-    enqueuedAt: Date.now(),
-    state: 'queued',
-  };
-  state.mutationQueue.push(mutation);
-  if (taskId) {
-    state.pendingByTaskId[taskId] = mutationId;
-  }
-  return mutation;
 }
 
 function hydrateDefaultLists(): { listsById: Record<string, TaskList>; listOrder: string[] } {
@@ -147,6 +107,56 @@ function hydrateDefaultLists(): { listsById: Record<string, TaskList>; listOrder
   return { listsById, listOrder };
 }
 
+function deserializeLabels(raw: unknown): Task['labels'] {
+  if (raw == null) return [];
+  let current: unknown = raw;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (typeof current === 'string') {
+      try {
+        current = JSON.parse(current);
+        continue;
+      } catch {
+        break;
+      }
+    }
+    break;
+  }
+  return Array.isArray(current) ? (current as Task['labels']) : [];
+}
+
+const DEFAULT_LABEL_COLOR = '#808080';
+
+// Normalize metadata before pushing through the Tauri create command.
+function buildMetadataPayload(input: TaskInput, title: string): SharedTaskMetadata {
+  const normalizedLabels = normalizeMetadataLabels(
+    (input.labels ?? []).map((label) => {
+      if (typeof label === 'string') {
+        return { name: label.trim(), color: DEFAULT_LABEL_COLOR };
+      }
+      const name = typeof label.name === 'string' ? label.name.trim() : '';
+      const color = typeof label.color === 'string' ? label.color : DEFAULT_LABEL_COLOR;
+      return { name, color };
+    }),
+  );
+
+  const status = input.isCompleted === true || input.status === 'completed'
+    ? 'completed'
+    : 'needsAction';
+  const rawNotes = input.notes ?? input.description ?? null;
+  const normalizedNotes =
+    typeof rawNotes === 'string' ? rawNotes.trim() : '';
+
+  return {
+    title,
+    priority: normalizeMetadataPriority(input.priority ?? 'none'),
+    labels: normalizedLabels,
+    due_date: normalizeMetadataDueDate(input.dueDate ?? null),
+    status,
+    notes: normalizedNotes,
+    time_block: null,
+  };
+}
+
 const STORAGE_KEY = 'libreollama_task_store_v2'; // v2: removed hardcoded lists, using Google Tasks sync
 const DEFAULT_LIST_ID = DEFAULT_TASK_LISTS[0]?.id ?? 'todo';
 
@@ -157,36 +167,34 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
       taskOrder: [],
       listsById: hydrateDefaultLists().listsById,
       listOrder: hydrateDefaultLists().listOrder,
-      mutationQueue: [],
-      pendingByTaskId: {},
       syncStatus: 'idle',
       syncError: null,
       lastSyncAt: undefined,
-      nextPollAt: undefined,
-      pollIntervalMs: 60_000,
-      isPollerActive: false,
-      addTask: (input) => {
+      addTask: async (input) => {
         const timestamp = new Date().toISOString();
         const id = createId();
         const listId = input.listId ?? input.boardListId ?? input.status ?? DEFAULT_LIST_ID;
-        const clientMutationId = createClientMutationId('task.create');
+        const title = input.title.trim();
+        const metadata = buildMetadataPayload(input, title);
+        const isCompleted = metadata.status === 'completed';
+  const resolvedNotes = metadata.notes ?? undefined;
         const task: Task = {
           id,
-          title: input.title.trim(),
+          title,
           description: input.description,
           status: input.status ?? listId,
-          priority: input.priority ?? 'none',
-          dueDate: input.dueDate,
+          priority: metadata.priority,
+          dueDate: metadata.due_date ?? undefined,
           createdAt: timestamp,
           dateCreated: timestamp,
           updatedAt: timestamp,
           assignee: input.assignee,
-          labels: input.labels ?? [],
+          labels: metadata.labels,
           listId,
           projectId: input.projectId,
           boardListId: input.boardListId ?? listId,
-          notes: input.notes,
-          isCompleted: input.isCompleted ?? false,
+          notes: resolvedNotes,
+          isCompleted,
           checklist: input.checklist ?? [],
           isPinned: input.isPinned ?? false,
           order: input.order,
@@ -195,22 +203,115 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           externalId: undefined,
           googleListId: input.googleListId,
           pendingSync: true,
-          clientMutationId,
           syncState: 'pending',
           lastSyncedAt: undefined,
           syncError: null,
         };
 
+        // Optimistic UI update
         set((state) => {
           state.tasksById[id] = task;
           state.taskOrder.unshift(id);
-          enqueueMutationDraft(state, { kind: 'task.create', task }, id);
         });
 
         emitTaskEvent('task_created', { source: input.source ?? 'task_store', id });
+
+        // Persist to Rust backend
+        let createSucceeded = false;
+        try {
+          await invoke('create_task', {
+            task: {
+              id,
+              list_id: listId,
+              title,
+              priority: metadata.priority,
+              labels: metadata.labels.map((label) => label.name),
+              time_block: metadata.time_block ?? undefined,
+              notes: input.notes,
+            },
+          });
+          createSucceeded = true;
+        } catch (error) {
+          console.error('[taskStore] Failed to create task in Rust:', error);
+          // Task is already in UI, sync will retry later
+        }
+
+        // Fire a sync to push upstream ASAP when we have a persisted record
+        if (createSucceeded) {
+          try { await get().syncNow(); } catch {}
+        }
         return task;
       },
-      updateTask: (id, updates) => {
+      moveTask: async (id: string, toListId: string) => {
+        const task = get().tasksById[id];
+        if (!task) return;
+
+        const sourceListId = task.listId;
+        if (sourceListId === toListId) {
+          return;
+        }
+
+        const taskBackup = { ...task };
+
+        set((state) => {
+          const draft = state.tasksById[id];
+          if (draft) {
+            draft.listId = toListId;
+            draft.boardListId = toListId;
+            draft.status = toListId as any;
+          }
+        });
+
+        try {
+          const newId = await invoke<string>('move_task_across_lists', {
+            input: {
+              task_id: id,
+              to_list_id: toListId,
+            },
+          });
+
+          await get().fetchTasks();
+
+          emitTaskEvent('task_moved', { from: sourceListId, to: toListId, id: newId });
+        } catch (error) {
+          console.error('[taskStore] Failed to move task between lists, queuing for retry:', error);
+          try {
+            await invoke('queue_move_task', {
+              input: {
+                task_id: id,
+                to_list_id: toListId,
+              },
+            });
+
+            set((state) => {
+              const draft = state.tasksById[id];
+              if (!draft) return;
+              draft.pendingSync = true;
+              draft.syncState = 'pending_move';
+              draft.syncError =
+                error instanceof Error ? error.message : String(error ?? 'Move queued');
+            });
+
+            emitTaskEvent('task_move_queued', { from: sourceListId, to: toListId, id });
+          } catch (queueError) {
+            set((state) => {
+              if (state.tasksById[id]) {
+                state.tasksById[id] = taskBackup;
+              } else {
+                state.tasksById[id] = taskBackup;
+                state.taskOrder = state.taskOrder.includes(id)
+                  ? state.taskOrder
+                  : [id, ...state.taskOrder];
+              }
+            });
+            console.error('[taskStore] Failed to queue fallback move:', queueError);
+            throw queueError;
+          }
+        }
+      },
+
+      updateTask: async (id, updates) => {
+        // Optimistic UI update
         set((state) => {
           const existing = state.tasksById[id];
           if (!existing) return;
@@ -220,32 +321,56 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
             ...updates,
             updatedAt,
             pendingSync: true,
-            clientMutationId: createClientMutationId('task.update'),
             syncState: 'pending',
             syncError: null,
           };
           state.tasksById[id] = nextTask;
-          enqueueMutationDraft(state, {
-            kind: 'task.update',
-            id,
-            changes: updates,
-          }, id);
         });
+
+        // Persist to Rust backend
+        try {
+          const payload: Record<string, unknown> = {};
+          if (typeof updates.priority !== 'undefined') {
+            payload.priority = updates.priority;
+          }
+          if (typeof updates.labels !== 'undefined') {
+            payload.labels = updates.labels;
+          }
+          if (typeof updates.title !== 'undefined') {
+            payload.title = updates.title;
+          }
+          if (typeof updates.notes !== 'undefined') {
+            payload.notes = updates.notes;
+          }
+          if (typeof updates.dueDate !== 'undefined') {
+            payload.due_date = updates.dueDate ?? null;
+          }
+
+          if (Object.keys(payload).length > 0) {
+            await invoke('update_task', {
+              taskId: id,
+              updates: payload,
+            });
+          }
+        } catch (error) {
+          console.error('[taskStore] Failed to update task in Rust:', error);
+        }
       },
-      deleteTask: (id) => {
+      deleteTask: async (id) => {
+        // Optimistic UI update
         set((state) => {
-          const target = state.tasksById[id];
-          if (!target) return;
-          enqueueMutationDraft(state, {
-            kind: 'task.delete',
-            id,
-            externalId: target.externalId,
-          }, id);
           delete state.tasksById[id];
           state.taskOrder = state.taskOrder.filter((taskId) => taskId !== id);
-          delete state.pendingByTaskId[id];
         });
+        
         emitTaskEvent('task_deleted', { id });
+
+        // Persist to Rust backend
+        try {
+          await invoke('delete_task', { taskId: id });
+        } catch (error) {
+          console.error('[taskStore] Failed to delete task in Rust:', error);
+        }
       },
       toggleTaskCompletion: (id) => {
         const task = get().tasksById[id];
@@ -256,10 +381,10 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         });
         emitTaskEvent(nextCompleted ? 'task_completed' : 'task_reopened', { id });
       },
-      duplicateTask: (id) => {
+      duplicateTask: async (id) => {
         const task = get().tasksById[id];
         if (!task) return null;
-        return get().addTask({
+        return await get().addTask({
           title: `${task.title} (Copy)`,
           description: task.description,
           status: task.status,
@@ -280,23 +405,6 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         get().updateTask(id, { dueDate });
         emitTaskEvent('task_due_changed', { id, dueDate });
       },
-      upsertTasksFromGoogle: (tasks, meta) => {
-        set((state) => {
-          tasks.forEach((task) => {
-            state.tasksById[task.id] = {
-              ...task,
-              pendingSync: false,
-              syncState: 'idle',
-              syncError: null,
-              lastSyncedAt: meta.fetchedAt,
-            };
-            if (!state.taskOrder.includes(task.id)) {
-              state.taskOrder.push(task.id);
-            }
-          });
-          state.lastSyncAt = meta.fetchedAt;
-        });
-      },
       reconcileLists: (lists, opts) => {
         set((state) => {
           const replace = opts?.replace ?? false;
@@ -316,98 +424,152 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           });
         });
       },
-      markMutationInFlight: (mutationId) => {
-        set((state) => {
-          const mutation = state.mutationQueue.find((item) => item.id === mutationId);
-          if (!mutation) return;
-          mutation.state = 'in-flight';
-          mutation.attempts += 1;
-        });
+      fetchTasks: async () => {
+        try {
+          const [rustTasks, rustLists] = await Promise.all([
+            invoke<any[]>('get_tasks'),
+            invoke<any[]>('get_task_lists')
+          ]);
+          
+          set((state) => {
+            const tasksById: Record<string, Task> = {};
+            const taskOrder: string[] = [];
+
+            for (const rustTask of rustTasks) {
+              const task: Task = {
+                id: rustTask.id,
+                title: rustTask.title || 'Untitled',
+                description: undefined,
+                status: rustTask.list_id,
+                priority: rustTask.priority as Task['priority'],
+                dueDate: rustTask.due_date ?? undefined,
+                createdAt: new Date(rustTask.created_at * 1000).toISOString(),
+                dateCreated: new Date(rustTask.created_at * 1000).toISOString(),
+                updatedAt: new Date(rustTask.updated_at * 1000).toISOString(),
+                assignee: undefined,
+                labels: deserializeLabels(rustTask.labels),
+                listId: rustTask.list_id,
+                boardListId: rustTask.list_id,
+                notes: rustTask.notes,
+                isCompleted: false,
+                completedAt: null,
+                subtasks: [],
+                externalId: rustTask.google_id,
+                pendingSync: ['pending', 'pending_move'].includes(rustTask.sync_state),
+                syncState: rustTask.sync_state,
+                lastSyncedAt: rustTask.last_synced_at
+                  ? rustTask.last_synced_at * 1000
+                  : undefined,
+                syncError: rustTask.sync_error,
+              };
+              tasksById[task.id] = task;
+              taskOrder.push(task.id);
+            }
+
+            state.tasksById = tasksById;
+            state.taskOrder = taskOrder;
+            
+            // Store task lists
+            const listsById: Record<string, TaskList> = {};
+            const listOrder: string[] = [];
+            
+            for (const rustList of rustLists) {
+              const list: TaskList = {
+                id: rustList.id,
+                name: rustList.title,
+                color: undefined,
+                isVisible: true,
+                source: 'google',
+              };
+              listsById[list.id] = list;
+              listOrder.push(list.id);
+            }
+            
+            state.listsById = listsById;
+            state.listOrder = listOrder;
+          });
+        } catch (error) {
+          console.error('[taskStore] Failed to fetch tasks from Rust:', error);
+        }
       },
-      resolveMutation: (mutationId, payload) => {
+      createTaskList: async (title) => {
+        const trimmed = title.trim();
+        if (!trimmed) throw new Error('List title cannot be empty');
+
+        // optimistic add with temporary client id
+        const tempId = `tmp_${Date.now()}`;
+        const optimistic: TaskList = { id: tempId, name: trimmed, color: undefined, isVisible: true, source: 'google' };
         set((state) => {
-          state.mutationQueue = state.mutationQueue.filter((mutation) => mutation.id !== mutationId);
-          Object.keys(state.pendingByTaskId).forEach((taskId) => {
-            if (state.pendingByTaskId[taskId] === mutationId) {
-              const task = state.tasksById[taskId];
-              if (task) {
-                state.tasksById[taskId] = {
-                  ...task,
-                  pendingSync: false,
-                  syncState: 'idle',
-                  syncError: null,
-                  clientMutationId: undefined,
-                  ...payload,
-                };
-              }
-              delete state.pendingByTaskId[taskId];
+          state.listsById[optimistic.id] = optimistic;
+          state.listOrder.push(optimistic.id);
+        });
+
+        try {
+          const created = await invoke<any>('create_task_list', { input: { title: trimmed } });
+          const real: TaskList = {
+            id: created.id,
+            name: created.title,
+            color: undefined,
+            isVisible: true,
+            source: 'google',
+          };
+          set((state) => {
+            // swap temp id with real id
+            delete state.listsById[tempId];
+            state.listsById[real.id] = real;
+            state.listOrder = state.listOrder.map((x) => (x === tempId ? real.id : x));
+          });
+          // Trigger immediate backend sync for fastest propagation
+          try { await get().syncNow(); } catch {}
+          return real;
+        } catch (e) {
+          // rollback optimistic
+          set((state) => {
+            delete state.listsById[tempId];
+            state.listOrder = state.listOrder.filter((x) => x !== tempId);
+          });
+          throw e;
+        }
+      },
+      deleteTaskList: async (id, reassignTo) => {
+        // optimistic remove
+        let backup: TaskList | undefined;
+        set((state) => {
+          backup = state.listsById[id];
+          delete state.listsById[id];
+          state.listOrder = state.listOrder.filter((x) => x !== id);
+          // also detach tasks in this list locally (they will be reconciled from backend)
+          Object.values(state.tasksById).forEach((t) => {
+            if (t.listId === id) {
+              t.listId = reassignTo ?? t.listId; // keep same until backend reconciliation
             }
           });
         });
-      },
-      failMutation: (mutationId, error) => {
-        set((state) => {
-          const mutation = state.mutationQueue.find((item) => item.id === mutationId);
-          if (mutation) {
-            mutation.state = 'failed';
-            mutation.lastError = error;
+
+        try {
+          await invoke('delete_task_list', { input: { id, reassign_to: reassignTo } });
+          // Trigger immediate backend sync for fastest propagation
+          try { await get().syncNow(); } catch {}
+        } catch (e) {
+          // rollback
+          if (backup) {
+            set((state) => {
+              state.listsById[id] = backup as TaskList;
+              if (!state.listOrder.includes(id)) state.listOrder.push(id);
+            });
           }
-          Object.keys(state.pendingByTaskId).forEach((taskId) => {
-            if (state.pendingByTaskId[taskId] === mutationId) {
-              const task = state.tasksById[taskId];
-              if (task) {
-                state.tasksById[taskId] = {
-                  ...task,
-                  syncState: 'error',
-                  syncError: error,
-                };
-              }
-            }
-          });
-        });
+          throw e;
+        }
       },
-      shiftNextMutation: () => {
-        let mutation: TaskMutation | undefined;
-        set((state) => {
-          mutation = state.mutationQueue.shift();
-          if (mutation) {
-            mutation.state = 'in-flight';
-            mutation.attempts += 1;
-          }
-        });
-        return mutation;
-      },
-      requeueMutation: (mutation) => {
-        set((state) => {
-          mutation.state = 'queued';
-          state.mutationQueue.unshift(mutation);
-          const taskId = getTaskIdFromMutation(mutation);
-          if (taskId) {
-            state.pendingByTaskId[taskId] = mutation.id;
-          }
-        });
-      },
-      clearFailedMutations: () => {
-        set((state) => {
-          state.mutationQueue = state.mutationQueue.filter((mutation) => mutation.state !== 'failed');
-          Object.keys(state.pendingByTaskId).forEach((taskId) => {
-            const mutationId = state.pendingByTaskId[taskId];
-            const stillQueued = state.mutationQueue.some((mutation) => mutation.id === mutationId);
-            if (!stillQueued) {
-              delete state.pendingByTaskId[taskId];
-            }
-          });
-        });
-      },
-      registerPollerActive: (active) => {
-        set((state) => {
-          state.isPollerActive = active;
-        });
-      },
-      scheduleNextPoll: (delayMs) => {
-        set((state) => {
-          state.nextPollAt = Date.now() + delayMs;
-        });
+      syncNow: async () => {
+        try {
+          set((state) => { state.syncStatus = 'syncing'; });
+          await invoke('sync_tasks_now');
+          await get().fetchTasks();
+          set((state) => { state.syncStatus = 'idle'; state.lastSyncAt = Date.now(); });
+        } catch (e) {
+          set((state) => { state.syncStatus = 'error'; state.syncError = String(e); });
+        }
       },
       setSyncStatus: (status, error) => {
         set((state) => {
@@ -424,12 +586,9 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         taskOrder: state.taskOrder,
         listsById: state.listsById,
         listOrder: state.listOrder,
-        mutationQueue: state.mutationQueue,
-        pendingByTaskId: state.pendingByTaskId,
         lastSyncAt: state.lastSyncAt,
-        pollIntervalMs: state.pollIntervalMs,
       }),
-      version: 1,
+      version: 2, // v2: Backend-heavy architecture, tasks loaded from Rust
     },
   ),
 );
@@ -457,8 +616,6 @@ export const selectTasks = (state: TaskStoreState): Task[] =>
 export const selectTaskLists = (state: TaskStoreState): TaskList[] =>
   state.listOrder.map((id) => state.listsById[id]).filter(Boolean);
 
-export const selectMutationQueue = (state: TaskStoreState) => state.mutationQueue;
-
 export const selectSyncStatus = (state: TaskStoreState) => ({
   status: state.syncStatus,
   error: state.syncError,
@@ -474,10 +631,20 @@ export function useTaskLists() {
 
 export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
-    let cleanup: (() => void) | undefined;
-
+    function onSyncComplete() {
+      // Pull latest from backend after each cycle
+      void useTaskStore.getState().fetchTasks();
+    }
+    const handler = (e: Event) => onSyncComplete();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('tauri://event', handler as EventListener);
+      // Also listen for the custom event name if available via @tauri-apps/api/event
+      import('@tauri-apps/api/event').then(({ listen }) => {
+        listen('tasks:sync:complete', () => onSyncComplete());
+      }).catch(() => {});
+    }
     async function initialize() {
-      // Hydrate Google Workspace tokens before starting sync
+      // Hydrate Google Workspace tokens
       const { useGoogleWorkspaceSettings } = await import('../settings/state/googleWorkspace');
       const hydrate = useGoogleWorkspaceSettings.getState().hydrate;
       await hydrate();
@@ -491,15 +658,13 @@ export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
         });
       }
       
-      // Start background sync after tokens are loaded
-      cleanup = startGoogleTasksBackgroundSync();
+      // Load tasks from Rust backend
+      // Background sync happens automatically in Rust every 60 seconds (cadence controlled by backend)
+      await useTaskStore.getState().fetchTasks();
+      console.log('[TaskStoreProvider] Tasks loaded from Rust backend');
     }
 
     void initialize();
-
-    return () => {
-      if (cleanup) cleanup();
-    };
   }, []);
 
   return <>{children}</>;

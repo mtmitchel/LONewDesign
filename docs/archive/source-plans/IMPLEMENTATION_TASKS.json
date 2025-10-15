@@ -1,0 +1,959 @@
+{
+  "metadata": {
+    "plan_version": "1.0",
+    "created_at": "2025-01-13",
+    "total_tasks": 28,
+    "estimated_duration": "5-7 days",
+    "critical_path": ["T1", "T2", "T3", "T6", "T7", "T11", "T15", "T19", "T26"]
+  },
+  "phases": [
+    {
+      "id": "P1",
+      "name": "Database Schema & Infrastructure",
+      "tasks": ["T1", "T2", "T3", "T4"]
+    },
+    {
+      "id": "P2",
+      "name": "Metadata Normalization Layer",
+      "tasks": ["T5", "T6", "T7"]
+    },
+    {
+      "id": "P3",
+      "name": "Backend Command Refactor",
+      "tasks": ["T8", "T9", "T10", "T11"]
+    },
+    {
+      "id": "P4",
+      "name": "Sync Engine Overhaul",
+      "tasks": ["T12", "T13", "T14", "T15", "T16"]
+    },
+    {
+      "id": "P5",
+      "name": "Frontend Store & Event-Driven Updates",
+      "tasks": ["T17", "T18", "T19", "T20"]
+    },
+    {
+      "id": "P6",
+      "name": "UI Indicators & Conflict Resolution",
+      "tasks": ["T21", "T22", "T23"]
+    },
+    {
+      "id": "P7",
+      "name": "Testing & Quality Assurance",
+      "tasks": ["T24", "T25", "T26"]
+    },
+    {
+      "id": "P8",
+      "name": "Observability & Rollout",
+      "tasks": ["T27", "T28"]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T1",
+      "phase": "P1",
+      "priority": "critical",
+      "title": "Create enhanced schema migration",
+      "description": "Add new columns to tasks_metadata table: metadata_hash, dirty_fields, status, sync_attempts, last_remote_hash, deleted_at",
+      "files": [
+        {
+          "path": "src-tauri/migrations/20250113000005_add_metadata_tracking.sql",
+          "action": "create",
+          "changes": "New migration file with ALTER TABLE statements"
+        }
+      ],
+      "implementation_steps": [
+        "Create migration file with timestamp 20250113000005",
+        "Add ALTER TABLE ADD COLUMN for: metadata_hash TEXT NOT NULL DEFAULT '', dirty_fields TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'needsAction', sync_attempts INTEGER NOT NULL DEFAULT 0, last_remote_hash TEXT, deleted_at INTEGER",
+        "Add indexes: CREATE INDEX IF NOT EXISTS idx_tasks_metadata_hash ON tasks_metadata(metadata_hash); CREATE INDEX IF NOT EXISTS idx_tasks_sync_state_updated ON tasks_metadata(sync_state, updated_at); CREATE INDEX IF NOT EXISTS idx_tasks_dirty_fields ON tasks_metadata(dirty_fields) WHERE dirty_fields != '[]';",
+        "Write down migration that drops new columns for rollback"
+      ],
+      "validation": [
+        "Run: cd src-tauri && cargo sqlx database create",
+        "Run: cd src-tauri && cargo sqlx migrate run",
+        "Verify columns exist: sqlite3 src-tauri/tasks.db '.schema tasks_metadata'",
+        "Verify indexes: sqlite3 src-tauri/tasks.db '.indexes tasks_metadata'"
+      ],
+      "dependencies": [],
+      "rollback": "Run down migration: sqlite3 src-tauri/tasks.db < migrations/20250113000005_add_metadata_tracking_down.sql"
+    },
+    {
+      "id": "T2",
+      "phase": "P1",
+      "priority": "critical",
+      "title": "Create supporting tables (mutation log & sync queue)",
+      "description": "Create task_mutation_log and sync_queue tables for audit trail and explicit sync operations",
+      "files": [
+        {
+          "path": "src-tauri/migrations/20250113000006_create_supporting_tables.sql",
+          "action": "create",
+          "changes": "New tables: task_mutation_log, sync_queue"
+        }
+      ],
+      "implementation_steps": [
+        "Create task_mutation_log: id TEXT PRIMARY KEY, task_id TEXT NOT NULL, operation TEXT NOT NULL, payload TEXT NOT NULL, previous_hash TEXT, new_hash TEXT NOT NULL, actor TEXT, created_at INTEGER NOT NULL",
+        "Create sync_queue: id TEXT PRIMARY KEY, operation TEXT NOT NULL, task_id TEXT NOT NULL, payload TEXT NOT NULL, scheduled_at INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT, created_at INTEGER NOT NULL",
+        "Add indexes on task_mutation_log(task_id, created_at), sync_queue(status, scheduled_at), sync_queue(task_id)",
+        "Write down migration to drop tables"
+      ],
+      "validation": [
+        "Run migrations",
+        "Verify tables: sqlite3 src-tauri/tasks.db '.tables' | grep -E '(mutation_log|sync_queue)'",
+        "Test insert: sqlite3 src-tauri/tasks.db \"INSERT INTO task_mutation_log VALUES ('test-id', 'task-1', 'update', '{}', 'old', 'new', 'system', 123456789)\""
+      ],
+      "dependencies": [],
+      "rollback": "Drop tables: DROP TABLE IF EXISTS task_mutation_log; DROP TABLE IF EXISTS sync_queue;"
+    },
+    {
+      "id": "T3",
+      "phase": "P1",
+      "priority": "critical",
+      "title": "Backfill existing tasks with new columns",
+      "description": "Populate metadata_hash, dirty_fields=[], status for all existing tasks",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "Add new command backfill_metadata at end of commands section (~line 500)",
+          "changes": "New Tauri command to compute and update metadata_hash for existing rows"
+        }
+      ],
+      "implementation_steps": [
+        "Create backfill_metadata command that reads all tasks",
+        "For each task, compute metadata_hash using normalize_metadata + sha256",
+        "Set dirty_fields='[]', sync_attempts=0",
+        "Infer status from sync_state: if sync_state contains 'complete', set status='completed', else 'needsAction'",
+        "Update rows in transaction",
+        "Return count of updated rows"
+      ],
+      "validation": [
+        "Invoke command from UI or CLI",
+        "Verify all rows have non-empty metadata_hash: sqlite3 src-tauri/tasks.db \"SELECT COUNT(*) FROM tasks_metadata WHERE metadata_hash = ''\"",
+        "Should return 0"
+      ],
+      "dependencies": ["T1", "T6"],
+      "rollback": "Revert column values: UPDATE tasks_metadata SET metadata_hash='', dirty_fields='[]', status='needsAction', sync_attempts=0"
+    },
+    {
+      "id": "T4",
+      "phase": "P1",
+      "priority": "medium",
+      "title": "Verify and recreate list_id index",
+      "description": "Ensure idx_tasks_list_id exists for efficient list-scoped queries",
+      "files": [
+        {
+          "path": "src-tauri/migrations/20250113000007_ensure_list_index.sql",
+          "action": "create",
+          "changes": "CREATE INDEX IF NOT EXISTS statement"
+        }
+      ],
+      "implementation_steps": [
+        "Create migration with: CREATE INDEX IF NOT EXISTS idx_tasks_list_id ON tasks_metadata(list_id);",
+        "Write down migration: DROP INDEX IF EXISTS idx_tasks_list_id;"
+      ],
+      "validation": [
+        "Run migration",
+        "Check indexes: sqlite3 src-tauri/tasks.db \".indexes tasks_metadata\" | grep list_id"
+      ],
+      "dependencies": [],
+      "rollback": "DROP INDEX IF EXISTS idx_tasks_list_id;"
+    },
+    {
+      "id": "T5",
+      "phase": "P2",
+      "priority": "high",
+      "title": "Create TypeScript metadata normalizer",
+      "description": "Implement shared normalization and hash calculation in TypeScript",
+      "files": [
+        {
+          "path": "lib/metadata.ts",
+          "action": "create",
+          "changes": "New module with normalize, hash, serialize functions"
+        }
+      ],
+      "implementation_steps": [
+        "Create Priority type: 'high' | 'medium' | 'low' | 'none'",
+        "Create Label interface: { name: string, color: string }",
+        "Implement normalizeLabels: dedupe, sort by name",
+        "Implement normalizePriority: validate against enum, default 'none'",
+        "Implement normalizeDueDate: validate YYYY-MM-DD format",
+        "Implement calculateMetadataHash: JSON.stringify ordered keys + crypto.subtle.digest('SHA-256')",
+        "Export serializeForGoogle: convert to Google Tasks API format with meta JSON in notes"
+      ],
+      "validation": [
+        "Run: npm test -- lib/metadata.test.ts",
+        "Verify hash consistency: same input produces same hash",
+        "Verify label normalization removes dupes and sorts",
+        "Verify date format validation rejects invalid dates"
+      ],
+      "dependencies": [],
+      "rollback": "Delete lib/metadata.ts"
+    },
+    {
+      "id": "T6",
+      "phase": "P2",
+      "priority": "critical",
+      "title": "Create Rust metadata normalizer module",
+      "description": "Implement shared normalization and hash calculation in Rust",
+      "files": [
+        {
+          "path": "src-tauri/src/task_metadata.rs",
+          "action": "create",
+          "changes": "New module with normalize, hash, serialize functions"
+        },
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "Add mod task_metadata; at top (~line 10)",
+          "changes": "Import new module"
+        }
+      ],
+      "implementation_steps": [
+        "Create Priority enum: High, Medium, Low, None with string serialization",
+        "Create Label struct: name: String, color: String",
+        "Implement normalize_labels: dedupe, sort, validate colors",
+        "Implement normalize_priority: FromStr with fallback to None",
+        "Implement normalize_due_date: chrono NaiveDate parse YYYY-MM-DD",
+        "Implement calculate_metadata_hash: serde_json ordered map + sha2::Sha256",
+        "Implement serialize_for_google: TaskMetadata -> Google API JSON with meta in notes",
+        "Implement deserialize_from_google: Parse meta JSON from notes, map fields"
+      ],
+      "validation": [
+        "Run: cd src-tauri && cargo test task_metadata",
+        "Verify hash matches TypeScript for same input",
+        "Verify round-trip: serialize -> deserialize produces identical metadata",
+        "Run: cd src-tauri && cargo check"
+      ],
+      "dependencies": [],
+      "rollback": "Delete src-tauri/src/task_metadata.rs and remove mod declaration"
+    },
+    {
+      "id": "T7",
+      "phase": "P2",
+      "priority": "high",
+      "title": "Add property tests for metadata round-trip",
+      "description": "Ensure serialization is lossless and hashes are deterministic",
+      "files": [
+        {
+          "path": "src-tauri/src/task_metadata.rs",
+          "action": "modify",
+          "line_range": "Add #[cfg(test)] mod tests at end",
+          "changes": "Property tests using proptest crate"
+        }
+      ],
+      "implementation_steps": [
+        "Add proptest dependency to Cargo.toml",
+        "Generate arbitrary TaskMetadata instances",
+        "Test: normalize(x) == normalize(normalize(x)) (idempotence)",
+        "Test: hash(serialize(x)) == hash(serialize(normalize(x)))",
+        "Test: deserialize(serialize(x)) preserves all fields"
+      ],
+      "validation": [
+        "Run: cd src-tauri && cargo test --lib task_metadata::tests::prop",
+        "All property tests pass with 1000 iterations"
+      ],
+      "dependencies": ["T6"],
+      "rollback": "Remove proptest dependency and test module"
+    },
+    {
+      "id": "T8",
+      "phase": "P3",
+      "priority": "high",
+      "title": "Refactor create_task command",
+      "description": "Update create_task to compute metadata_hash, dirty_fields, log mutation, enqueue sync",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "create_task function (~line 150-200)",
+          "changes": "Add hash computation, mutation log insert, sync queue insert"
+        }
+      ],
+      "implementation_steps": [
+        "Import task_metadata::calculate_metadata_hash, normalize_*",
+        "Generate ULID if id not provided",
+        "Normalize all metadata fields",
+        "Compute metadata_hash",
+        "Set dirty_fields to all metadata fields as JSON array",
+        "Insert into tasks_metadata in transaction",
+        "Insert into task_mutation_log with operation='create'",
+        "Insert into sync_queue with operation='create', payload=serialize_for_google",
+        "Emit tasks::created event",
+        "Return full row as JSON"
+      ],
+      "validation": [
+        "Create task via UI",
+        "Verify metadata_hash non-empty in DB",
+        "Verify dirty_fields contains expected fields",
+        "Verify sync_queue has pending entry",
+        "Verify mutation_log has create record"
+      ],
+      "dependencies": ["T1", "T2", "T6"],
+      "rollback": "Restore previous create_task implementation from git"
+    },
+    {
+      "id": "T9",
+      "phase": "P3",
+      "priority": "critical",
+      "title": "Refactor update_task command",
+      "description": "Implement field-level dirty tracking, hash recomputation, mutation logging",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "update_task function (~line 250-350)",
+          "changes": "Add FOR UPDATE lock, diff calculation, dirty_fields merge"
+        }
+      ],
+      "implementation_steps": [
+        "Fetch current row with SELECT ... FOR UPDATE",
+        "Normalize incoming changes",
+        "Compare to existing values, build changed_fields list",
+        "If no changes, return existing row (idempotent)",
+        "Merge changed_fields into existing dirty_fields (union)",
+        "Update fields, recompute metadata_hash",
+        "Set sync_state='pending', sync_attempts=0",
+        "Insert mutation_log with previous_hash and new_hash",
+        "Upsert sync_queue entry (merge if existing)",
+        "Emit tasks::updated event",
+        "Return updated row"
+      ],
+      "validation": [
+        "Update task metadata via UI",
+        "Verify dirty_fields updated correctly",
+        "Verify metadata_hash changed",
+        "Update same field twice, verify dirty_fields doesn't duplicate",
+        "Verify sync_queue has pending entry"
+      ],
+      "dependencies": ["T1", "T2", "T6"],
+      "rollback": "Restore previous update_task from git"
+    },
+    {
+      "id": "T10",
+      "phase": "P3",
+      "priority": "medium",
+      "title": "Implement soft delete_task",
+      "description": "Set deleted_at timestamp and sync_state='pending_delete' instead of hard delete",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "delete_task function (~line 400-450)",
+          "changes": "Update to soft delete pattern"
+        }
+      ],
+      "implementation_steps": [
+        "Update task: SET deleted_at=unix_timestamp, sync_state='pending_delete'",
+        "Insert mutation_log with operation='delete'",
+        "Upsert sync_queue with operation='delete'",
+        "Emit tasks::deleted event",
+        "UI filters out tasks where deleted_at IS NOT NULL"
+      ],
+      "validation": [
+        "Delete task via UI",
+        "Verify task remains in DB with deleted_at set",
+        "Verify UI no longer shows task",
+        "Verify sync_queue has delete entry"
+      ],
+      "dependencies": ["T1", "T2"],
+      "rollback": "Restore hard delete implementation"
+    },
+    {
+      "id": "T11",
+      "phase": "P3",
+      "priority": "critical",
+      "title": "Enhance queue_move_task and move_task_across_lists",
+      "description": "Update move commands to preserve metadata, track dirty_fields, handle pending states",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "queue_move_task (~line 450), move_task_across_lists (~line 500)",
+          "changes": "Add metadata preservation, dirty_fields update"
+        }
+      ],
+      "implementation_steps": [
+        "queue_move_task: Update list_id, add 'list_id' to dirty_fields, preserve all metadata, recompute hash, set sync_state='pending_move', log mutation",
+        "move_task_across_lists: On remote success, update google_id, list_id, preserve metadata, clear pending_move_from, set sync_state='synced', clear dirty_fields only if sync confirmed",
+        "Both commands wrap payload in { input: {...} }",
+        "Insert sync_queue entries"
+      ],
+      "validation": [
+        "Move task between lists",
+        "Verify metadata preserved",
+        "Verify dirty_fields includes list_id",
+        "Verify sync_queue has move entry",
+        "After sync, verify metadata unchanged"
+      ],
+      "dependencies": ["T1", "T2", "T6"],
+      "rollback": "Restore previous move implementations"
+    },
+    {
+      "id": "T12",
+      "phase": "P4",
+      "priority": "high",
+      "title": "Implement sync queue worker",
+      "description": "Create mutation puller that processes sync_queue entries with retry/backoff",
+      "files": [
+        {
+          "path": "src-tauri/src/sync_service.rs",
+          "action": "modify",
+          "line_range": "Add process_sync_queue function (~line 600)",
+          "changes": "New worker function scanning sync_queue"
+        }
+      ],
+      "implementation_steps": [
+        "Query sync_queue WHERE status='pending' ORDER BY scheduled_at LIMIT 10",
+        "For each entry: deserialize payload, call appropriate Google API method",
+        "On 401: trigger token refresh, retry",
+        "On 409/412: mark sync_state='conflict', trigger targeted pull for that task",
+        "On success: update tasks_metadata.sync_state='synced', clear dirty_fields, set last_synced_at, delete from sync_queue",
+        "On failure: increment attempts, exponential backoff, set last_error",
+        "Emit events: tasks::synced or tasks::sync_failed"
+      ],
+      "validation": [
+        "Create task, verify sync_queue entry",
+        "Run sync worker",
+        "Verify entry removed from queue",
+        "Verify task sync_state='synced'",
+        "Test 401 by invalidating token, verify retry",
+        "Test 409 by simulating conflict, verify conflict state set"
+      ],
+      "dependencies": ["T2", "T6", "T8", "T9"],
+      "rollback": "Comment out process_sync_queue invocation"
+    },
+    {
+      "id": "T13",
+      "phase": "P4",
+      "priority": "high",
+      "title": "Enhance remote poller with conflict detection",
+      "description": "Update poll_google_tasks to detect conflicts using dirty_fields and hashes",
+      "files": [
+        {
+          "path": "src-tauri/src/sync_service.rs",
+          "action": "modify",
+          "line_range": "poll_google_tasks function (~line 200-400)",
+          "changes": "Add hash comparison, dirty_fields conflict logic"
+        }
+      ],
+      "implementation_steps": [
+        "For each remote task, compute remote_hash using deserialize_from_google + calculate_hash",
+        "Fetch local row by google_id",
+        "If local not found: create with dirty_fields=[], sync_state='synced'",
+        "If local.dirty_fields empty: if remote_hash != local.last_remote_hash, update local to remote values",
+        "If local.dirty_fields not empty:",
+        "  - If local.updated_at > remote.updated: keep local, schedule push",
+        "  - Else: field-level merge (apply remote for non-dirty fields, keep local for dirty fields), log conflict, set sync_state='conflict'",
+        "Store remote_hash in last_remote_hash after merge",
+        "Emit events"
+      ],
+      "validation": [
+        "Edit task locally, then modify same task remotely before sync",
+        "Run poller",
+        "Verify dirty fields preserved",
+        "Verify conflict logged",
+        "Verify sync_state='conflict' if remote newer"
+      ],
+      "dependencies": ["T1", "T6", "T12"],
+      "rollback": "Restore previous poller implementation"
+    },
+    {
+      "id": "T14",
+      "phase": "P4",
+      "priority": "medium",
+      "title": "Implement targeted pull on conflict",
+      "description": "When push fails with 409/412, immediately pull that specific task",
+      "files": [
+        {
+          "path": "src-tauri/src/sync_service.rs",
+          "action": "modify",
+          "line_range": "process_sync_queue error handling (~line 650)",
+          "changes": "Add targeted pull invocation on conflict status"
+        }
+      ],
+      "implementation_steps": [
+        "On 409/412 error, extract task_id from failed mutation",
+        "Invoke fetch_google_task_by_id(task_id)",
+        "Run conflict detection logic immediately",
+        "Keep mutation in queue for retry after conflict resolution"
+      ],
+      "validation": [
+        "Simulate 409 conflict",
+        "Verify targeted pull triggered",
+        "Verify conflict state set without waiting for next poll cycle"
+      ],
+      "dependencies": ["T12", "T13"],
+      "rollback": "Remove targeted pull call"
+    },
+    {
+      "id": "T15",
+      "phase": "P4",
+      "priority": "critical",
+      "title": "Add resume_pending_mutations on startup",
+      "description": "Ensure no mutations are stranded; process queue on app launch",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "main function setup hook (~line 50)",
+          "changes": "Call sync_service.resume_pending_mutations on startup"
+        }
+      ],
+      "implementation_steps": [
+        "In tauri::Builder setup, after initializing sync_service",
+        "Call sync_service.process_sync_queue() once",
+        "Log count of pending mutations"
+      ],
+      "validation": [
+        "Create task while offline",
+        "Restart app",
+        "Verify sync_queue processed automatically",
+        "Check logs for startup sync message"
+      ],
+      "dependencies": ["T12"],
+      "rollback": "Remove resume call"
+    },
+    {
+      "id": "T16",
+      "phase": "P4",
+      "priority": "medium",
+      "title": "Implement idempotency checks",
+      "description": "Prevent duplicate task creation on retry using deterministic IDs and hash checks",
+      "files": [
+        {
+          "path": "src-tauri/src/sync_service.rs",
+          "action": "modify",
+          "line_range": "create_google_task function (~line 500)",
+          "changes": "Check for existing task with same hash before creating"
+        }
+      ],
+      "implementation_steps": [
+        "Before creating remote task, query Google for tasks in list with matching title + notes",
+        "If found with matching metadata_hash, treat as success (already exists)",
+        "Use deterministic ULID generation seeded by list_id + title for local IDs"
+      ],
+      "validation": [
+        "Create task, let sync fail, retry",
+        "Verify no duplicate created remotely",
+        "Check logs for idempotency hit"
+      ],
+      "dependencies": ["T12"],
+      "rollback": "Remove idempotency check"
+    },
+    {
+      "id": "T17",
+      "phase": "P5",
+      "priority": "high",
+      "title": "Refactor taskStore to event-driven model",
+      "description": "Remove optimistic updates, listen to Tauri events, derive state from get_tasks",
+      "files": [
+        {
+          "path": "components/modules/tasks/taskStore.tsx",
+          "action": "modify",
+          "line_range": "Full file refactor (~500 lines)",
+          "changes": "Replace optimistic state with event listeners"
+        }
+      ],
+      "implementation_steps": [
+        "Remove optimistic task updates from actions",
+        "Add event listeners for tasks::created, tasks::updated, tasks::synced, tasks::sync_failed, tasks::deleted",
+        "On events, call fetchTasks() or update specific task in state",
+        "Actions return command results directly",
+        "Remove rollback logic (no longer needed)"
+      ],
+      "validation": [
+        "Create task, verify store updates after command returns",
+        "Update task metadata, verify store reflects change",
+        "Listen for sync events, verify state updates",
+        "Test offline: verify UI shows pending state"
+      ],
+      "dependencies": ["T8", "T9", "T10", "T11", "T12"],
+      "rollback": "Restore previous taskStore from git"
+    },
+    {
+      "id": "T18",
+      "phase": "P5",
+      "priority": "medium",
+      "title": "Update get_tasks to return audit columns",
+      "description": "Ensure get_tasks includes dirty_fields, sync_state, metadata_hash, sync_attempts",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "get_tasks query (~line 100)",
+          "changes": "Add new columns to SELECT"
+        },
+        {
+          "path": "components/modules/tasks/types.ts",
+          "action": "modify",
+          "line_range": "Task interface (~line 10)",
+          "changes": "Add new fields to TypeScript type"
+        }
+      ],
+      "implementation_steps": [
+        "Update SQL: SELECT ..., dirty_fields, sync_state, metadata_hash, sync_attempts, last_synced_at FROM tasks_metadata",
+        "Update TaskMetadata struct in Rust",
+        "Update Task interface in TypeScript to include new fields"
+      ],
+      "validation": [
+        "Call get_tasks from UI",
+        "Verify response includes new fields",
+        "Run TypeScript type check: npm run typecheck"
+      ],
+      "dependencies": ["T1", "T8"],
+      "rollback": "Remove new fields from query and types"
+    },
+    {
+      "id": "T19",
+      "phase": "P5",
+      "priority": "critical",
+      "title": "Update forms to use new updateTask payload",
+      "description": "TaskSidePanel and other forms send normalized metadata and handle dirty_fields",
+      "files": [
+        {
+          "path": "components/modules/tasks/TaskSidePanel.tsx",
+          "action": "modify",
+          "line_range": "Save handlers (~line 100-200)",
+          "changes": "Use metadata normalizers, send full payload"
+        }
+      ],
+      "implementation_steps": [
+        "Import normalizers from lib/metadata.ts",
+        "On save, normalize priority, labels, due_date before sending",
+        "Call updateTask with normalized payload",
+        "Disable close button until command resolves",
+        "Show toast on success/failure"
+      ],
+      "validation": [
+        "Edit task metadata in side panel",
+        "Verify normalized values saved",
+        "Refresh app, verify metadata persists",
+        "Check DB for correct dirty_fields"
+      ],
+      "dependencies": ["T5", "T9", "T17"],
+      "rollback": "Restore previous form implementation"
+    },
+    {
+      "id": "T20",
+      "phase": "P5",
+      "priority": "medium",
+      "title": "Ensure date formatting consistency",
+      "description": "All date inputs/outputs use YYYY-MM-DD, conversion to/from Google RFC3339 in backend only",
+      "files": [
+        {
+          "path": "components/modules/tasks/TaskSidePanel.tsx",
+          "action": "modify",
+          "line_range": "Date picker (~line 150)",
+          "changes": "Format as YYYY-MM-DD"
+        },
+        {
+          "path": "lib/metadata.ts",
+          "action": "modify",
+          "line_range": "Date utilities",
+          "changes": "Add formatDateForStorage, parseDateFromStorage"
+        }
+      ],
+      "implementation_steps": [
+        "Add date format utilities to lib/metadata.ts",
+        "Update all date pickers to use YYYY-MM-DD",
+        "Backend handles RFC3339 conversion in serialize_for_google",
+        "Backend parses RFC3339 to YYYY-MM-DD in deserialize_from_google"
+      ],
+      "validation": [
+        "Set due date to Oct 31",
+        "Verify stored as 2025-10-31 in DB",
+        "Sync with Google, verify date unchanged",
+        "Pull from Google, verify date parsed correctly"
+      ],
+      "dependencies": ["T5", "T6"],
+      "rollback": "Revert date format changes"
+    },
+    {
+      "id": "T21",
+      "phase": "P6",
+      "priority": "medium",
+      "title": "Add sync status badges to TaskCard",
+      "description": "Display pending/synced/error/conflict indicators on task cards",
+      "files": [
+        {
+          "path": "components/modules/tasks/TaskCard.tsx",
+          "action": "modify",
+          "line_range": "Badge section (~line 50)",
+          "changes": "Add conditional badge based on sync_state"
+        }
+      ],
+      "implementation_steps": [
+        "Read task.sync_state from props",
+        "Show badge: pending (clock icon), error (warning icon), conflict (alert icon), pending_move (arrow icon)",
+        "Style badges with appropriate colors",
+        "Add tooltip with details"
+      ],
+      "validation": [
+        "Create task, verify pending badge",
+        "After sync, verify badge removed",
+        "Simulate error, verify error badge",
+        "Hover badges, verify tooltips"
+      ],
+      "dependencies": ["T18"],
+      "rollback": "Remove badge components"
+    },
+    {
+      "id": "T22",
+      "phase": "P6",
+      "priority": "medium",
+      "title": "Implement conflict resolution UI",
+      "description": "Show conflict banner when sync_state='conflict', allow user to accept remote/keep local",
+      "files": [
+        {
+          "path": "components/modules/tasks/ConflictBanner.tsx",
+          "action": "create",
+          "changes": "New component for conflict resolution"
+        },
+        {
+          "path": "components/modules/tasks/TaskSidePanel.tsx",
+          "action": "modify",
+          "line_range": "Top section (~line 30)",
+          "changes": "Conditionally render ConflictBanner"
+        }
+      ],
+      "implementation_steps": [
+        "Create ConflictBanner component",
+        "Query mutation_log for conflict entries by task_id",
+        "Display local vs remote values side-by-side",
+        "Buttons: Keep Local, Accept Remote, Merge (field-by-field selection)",
+        "On choice, call updateTask with resolved metadata, clear conflict state"
+      ],
+      "validation": [
+        "Create conflict scenario (local edit + remote edit)",
+        "Verify banner appears in side panel",
+        "Choose Keep Local, verify conflict resolved",
+        "Choose Accept Remote, verify metadata updated"
+      ],
+      "dependencies": ["T13", "T18"],
+      "rollback": "Remove ConflictBanner component"
+    },
+    {
+      "id": "T23",
+      "phase": "P6",
+      "priority": "low",
+      "title": "Add global sync status indicator",
+      "description": "Show pending sync count and last sync time in app header/status bar",
+      "files": [
+        {
+          "path": "components/ui/SyncStatusBar.tsx",
+          "action": "create",
+          "changes": "New component for global sync status"
+        },
+        {
+          "path": "App.tsx",
+          "action": "modify",
+          "line_range": "Header section",
+          "changes": "Add SyncStatusBar"
+        }
+      ],
+      "implementation_steps": [
+        "Create command get_sync_status: returns pending count, last_synced_at, error count",
+        "Create SyncStatusBar component: polls status every 5s",
+        "Display: 'X pending changes' or 'Synced' with timestamp",
+        "Click to show detailed sync queue"
+      ],
+      "validation": [
+        "Create tasks, verify pending count updates",
+        "After sync, verify shows 'Synced'",
+        "Simulate error, verify error indicator"
+      ],
+      "dependencies": ["T12", "T18"],
+      "rollback": "Remove SyncStatusBar component"
+    },
+    {
+      "id": "T24",
+      "phase": "P7",
+      "priority": "high",
+      "title": "Create Rust integration tests",
+      "description": "Test full CRUD + sync cycle with mocked Google API",
+      "files": [
+        {
+          "path": "src-tauri/tests/integration_test.rs",
+          "action": "create",
+          "changes": "New integration test suite"
+        }
+      ],
+      "implementation_steps": [
+        "Use in-memory SQLite for tests",
+        "Mock Google Tasks API responses (httptest crate)",
+        "Test: create task → verify in DB → verify sync_queue entry",
+        "Test: update task → verify dirty_fields → mock sync success → verify cleared",
+        "Test: move task → verify metadata preserved → mock Google move → verify synced",
+        "Test: conflict resolution → local edit + remote edit → verify merge",
+        "Test: offline mode → mutations queued → network restored → all synced",
+        "Test: idempotency → retry create → no duplicates"
+      ],
+      "validation": [
+        "Run: cd src-tauri && cargo test --test integration_test",
+        "All tests pass",
+        "Coverage: cargo tarpaulin --test integration_test"
+      ],
+      "dependencies": ["T8", "T9", "T11", "T12", "T13"],
+      "rollback": "Delete test file"
+    },
+    {
+      "id": "T25",
+      "phase": "P7",
+      "priority": "medium",
+      "title": "Create TypeScript unit tests",
+      "description": "Test store selectors, normalizers, event handling",
+      "files": [
+        {
+          "path": "components/modules/tasks/__tests__/taskStore.test.tsx",
+          "action": "modify",
+          "line_range": "Expand existing tests",
+          "changes": "Add tests for event-driven updates"
+        },
+        {
+          "path": "lib/__tests__/metadata.test.ts",
+          "action": "create",
+          "changes": "Tests for normalizers and hash"
+        }
+      ],
+      "implementation_steps": [
+        "Test normalizeLabels: deduplication, sorting",
+        "Test normalizePriority: validation, defaults",
+        "Test calculateMetadataHash: determinism, collision resistance",
+        "Test store event listeners: mock Tauri events, verify state updates",
+        "Test selectors: selectTasksByList, selectTaskMetadata"
+      ],
+      "validation": [
+        "Run: npm test -- components/modules/tasks/__tests__",
+        "Run: npm test -- lib/__tests__/metadata.test.ts",
+        "All tests pass with coverage > 80%"
+      ],
+      "dependencies": ["T5", "T17"],
+      "rollback": "Delete new test files"
+    },
+    {
+      "id": "T26",
+      "phase": "P7",
+      "priority": "critical",
+      "title": "Create E2E test suite",
+      "description": "Playwright tests covering full user workflows with metadata persistence",
+      "files": [
+        {
+          "path": "tests/e2e/task-metadata-persistence.spec.ts",
+          "action": "create",
+          "changes": "New E2E test file"
+        }
+      ],
+      "implementation_steps": [
+        "Test: create task with metadata → refresh → verify metadata persists",
+        "Test: update priority → refresh → verify updated",
+        "Test: add labels → move across lists → refresh → verify labels intact",
+        "Test: set due date → sync with Google → verify date unchanged",
+        "Test: edit task in two clients → verify conflict UI → resolve",
+        "Test: offline mode → create/edit tasks → go online → verify all synced"
+      ],
+      "validation": [
+        "Run: npm run test:e2e",
+        "All scenarios pass",
+        "Record videos of each test for documentation"
+      ],
+      "dependencies": ["T17", "T19", "T21", "T22"],
+      "rollback": "Delete E2E test file"
+    },
+    {
+      "id": "T27",
+      "phase": "P8",
+      "priority": "medium",
+      "title": "Add structured logging and metrics",
+      "description": "Emit logs for all CRUD operations, sync events, conflicts with correlation IDs",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "All command functions",
+          "changes": "Add tracing::info! calls with structured fields"
+        },
+        {
+          "path": "src-tauri/src/sync_service.rs",
+          "action": "modify",
+          "line_range": "All sync functions",
+          "changes": "Add tracing with correlation IDs"
+        }
+      ],
+      "implementation_steps": [
+        "Add tracing dependency to Cargo.toml",
+        "Initialize tracing subscriber in main",
+        "Add log statements: command invoked, metadata changed, sync started/completed/failed, conflict detected",
+        "Include fields: task_id, operation, dirty_fields, hash_before, hash_after, correlation_id",
+        "Create get_sync_metrics command: pending count, average sync latency, conflict rate"
+      ],
+      "validation": [
+        "Run app, create/update tasks",
+        "Check logs for structured entries",
+        "Call get_sync_metrics, verify JSON response"
+      ],
+      "dependencies": ["T8", "T9", "T12", "T13"],
+      "rollback": "Remove tracing calls"
+    },
+    {
+      "id": "T28",
+      "phase": "P8",
+      "priority": "high",
+      "title": "Implement account-scoped feature flags and version checks",
+      "description": "Gate new sync logic with feature flag, enforce minimum client version",
+      "files": [
+        {
+          "path": "src-tauri/src/main.rs",
+          "action": "modify",
+          "line_range": "Add feature flag check to commands (~line 50)",
+          "changes": "Check account config before allowing new commands"
+        },
+        {
+          "path": "src-tauri/src/config.rs",
+          "action": "create",
+          "changes": "New module for feature flag management"
+        }
+      ],
+      "implementation_steps": [
+        "Create account_config table: account_id, feature_flags JSON, min_client_version, updated_at",
+        "Create config module: functions to check if feature enabled for account",
+        "Add version check to all write commands: reject if client version < min_version",
+        "Create admin command set_feature_flag(account_id, flag, enabled)",
+        "Add UI banner when feature disabled or upgrade required"
+      ],
+      "validation": [
+        "Enable flag for test account",
+        "Verify new sync logic activates",
+        "Disable flag, verify fallback to legacy mode",
+        "Simulate old client version, verify writes rejected with clear message"
+      ],
+      "dependencies": ["All previous tasks"],
+      "rollback": "Set feature flag to false globally"
+    }
+  ],
+  "success_criteria": {
+    "critical": [
+      "100% metadata persistence across refresh, move, sync, offline operations",
+      "No data loss under any scenario (network failures, conflicts, crashes)",
+      "All E2E tests pass demonstrating real-world workflows",
+      "Conflict detection and resolution fully functional"
+    ],
+    "performance": [
+      "CRUD operations complete in <100ms",
+      "Sync queue processes within 5s of mutation",
+      "UI remains responsive during background sync",
+      "Database queries use indexes efficiently (<10ms per query)"
+    ],
+    "observability": [
+      "Structured logs capture all state transitions",
+      "Metrics available for pending sync count, latency, conflicts",
+      "Mutation log provides audit trail for debugging",
+      "Feature flags allow gradual rollout and rollback"
+    ]
+  },
+  "rollback_plan": {
+    "database": "Down migrations in src-tauri/migrations/*_down.sql",
+    "code": "Git revert to commit before implementation start",
+    "feature_flag": "Set new_sync_enabled=false globally",
+    "data_recovery": "Mutation log allows replay from any point; nightly SQLite backups for disaster recovery"
+  }
+}

@@ -215,6 +215,84 @@
       "success_criteria": "Sync loop runs every 5 minutes, queries pending mutations, logs execution",
       "dependencies": ["p2_t1_create_sync_service_module"],
       "rollback_procedure": "Revert sync_cycle method to skeleton implementation"
+    },
+    {
+      "task_id": "p2_t3_wire_frontend_list_crud",
+      "phase": 2,
+      "description": "Expose task list create/delete commands to the React store and UI with optimistic updates",
+      "target_files": [
+        {
+          "path": "components/modules/tasks/taskStore.tsx",
+          "line_range": "list reconciliation + actions",
+          "function_name": "reconcileLists"
+        },
+        {
+          "path": "components/modules/TasksModule.tsx",
+          "line_range": "handleAddList, handleDeleteList",
+          "function_name": null
+        },
+        {
+          "path": "components/modules/calendar/CalendarTasksRail.tsx",
+          "line_range": "list filters",
+          "function_name": null
+        }
+      ],
+      "code_changes": [],
+      "validation_steps": [
+        "npm run tauri dev",
+        "Create a list from Tasks board and verify it appears in Calendar rail",
+        "Refresh data to confirm persistence via Rust backend"
+      ],
+      "success_criteria": "Lists created/deleted in UI persist through Rust service and remain synced after refresh",
+      "dependencies": ["p2_t2_implement_sync_loop"],
+      "rollback_procedure": "Revert list action wiring and restore stubbed UI handlers"
+    },
+    {
+      "task_id": "p2_t4_surface_manual_sync",
+      "phase": 2,
+      "description": "Add manual sync affordance and ensure 60-second cadence instrumentation",
+      "target_files": [
+        {
+          "path": "components/modules/TasksModule.tsx",
+          "line_range": "header controls",
+          "function_name": null
+        },
+        {
+          "path": "components/modules/tasks/taskStore.tsx",
+          "line_range": "sync status state",
+          "function_name": "setSyncStatus"
+        }
+      ],
+      "code_changes": [],
+      "validation_steps": [
+        "Trigger manual sync and verify backend logs and UI status",
+        "Confirm 60s interval still fires while manual sync is available"
+      ],
+      "success_criteria": "Manual control triggers immediate backend sync and UI reflects status without breaking 60s interval",
+      "dependencies": ["p2_t3_wire_frontend_list_crud"],
+      "rollback_procedure": "Remove manual sync control and revert store changes"
+    }
+  ,
+    {
+      "task_id": "p2_t5_move_task_across_lists",
+      "phase": 2,
+      "description": "Implement atomic cross-list task move with metadata preservation (create-in-target + metadata clone + delete-in-source)",
+      "target_files": [
+        { "path": "src-tauri/src/sync_service.rs", "line_range": "new function", "function_name": "move_task_across_lists" },
+        { "path": "src-tauri/src/main.rs", "line_range": "tauri commands", "function_name": "move_task_across_lists" },
+        { "path": "components/modules/tasks/taskStore.tsx", "line_range": "store actions", "function_name": "moveTask" },
+        { "path": "components/modules/tasks/TasksBoard.tsx", "line_range": "onMoveTask handler", "function_name": null }
+      ],
+      "code_changes": [],
+      "validation_steps": [
+        "Drag a task from list A to list B; verify it appears in list B immediately (optimistic)",
+        "Refresh app; task remains in list B with due date, priority, and labels intact",
+        "Edge case: completed task moves correctly",
+        "Network failure mid-move: rollback to original list and toast error"
+      ],
+      "success_criteria": "Cross-list move preserves core fields and metadata after refresh; no orphan rows; UI ID swapped to new task",
+      "dependencies": ["p2_t2_implement_sync_loop", "p2_t3_wire_frontend_list_crud"],
+      "rollback_procedure": "Revert new command/handler, restore previous onMoveTask to local-only updateTask path"
     }
   ],
   "execution_order": [
@@ -224,7 +302,10 @@
     "p1_t4_wire_db_to_main",
     "p1_t5_test_cross_platform",
     "p2_t1_create_sync_service_module",
-    "p2_t2_implement_sync_loop"
+    "p2_t2_implement_sync_loop",
+    "p2_t3_wire_frontend_list_crud",
+    "p2_t4_surface_manual_sync",
+    "p2_t5_move_task_across_lists"
   ],
   "critical_warnings": [
     "Phase 2 removes entire frontend sync system - BREAKING CHANGE requiring data migration",

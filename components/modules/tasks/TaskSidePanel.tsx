@@ -21,6 +21,19 @@ type TaskSidePanelProps = {
   className?: string;
 };
 
+function normalizeLabels(input: unknown): TaskLabel[] {
+  if (Array.isArray(input)) return input as TaskLabel[];
+  if (typeof input === 'string') {
+    try {
+      const parsed = JSON.parse(input);
+      return Array.isArray(parsed) ? (parsed as TaskLabel[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export function TaskSidePanel({
   task,
   onClose,
@@ -79,7 +92,13 @@ export function TaskSidePanel({
   }, []);
 
   const handleFieldChange = React.useCallback((field: keyof Task, value: unknown) => {
-    setEditedTask((prev) => (prev ? { ...prev, [field]: value } : prev));
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      if (field === 'labels') {
+        return { ...prev, labels: normalizeLabels(value) };
+      }
+      return { ...prev, [field]: value };
+    });
   }, []);
 
   const handleAddSubtask = React.useCallback(() => {
@@ -149,8 +168,9 @@ export function TaskSidePanel({
       if (!prev) return prev;
       const next = newLabel.trim();
       if (!next) return prev;
-      if (prev.labels.some((label) => getTaskLabelName(label) === next)) return prev;
-      return { ...prev, labels: [...prev.labels, { name: next, color: selectedLabelColor }] };
+      const labels = normalizeLabels(prev.labels);
+      if (labels.some((label) => getTaskLabelName(label) === next)) return prev;
+      return { ...prev, labels: [...labels, { name: next, color: selectedLabelColor }] };
     });
     setNewLabel('');
   }, [newLabel, selectedLabelColor]);
@@ -158,9 +178,10 @@ export function TaskSidePanel({
   const handleRemoveLabel = React.useCallback((labelToRemove: string) => {
     setEditedTask((prev) => {
       if (!prev) return prev;
+      const labels = normalizeLabels(prev.labels);
       return {
         ...prev,
-        labels: prev.labels.filter((label) => getTaskLabelName(label) !== labelToRemove),
+        labels: labels.filter((label) => getTaskLabelName(label) !== labelToRemove),
       };
     });
   }, []);
@@ -236,7 +257,7 @@ export function TaskSidePanel({
                 <CalendarComponent
                   mode="single"
                   selected={parseDisplayDate(editedTask.dueDate ?? '')}
-                  onSelect={(date) => handleFieldChange('dueDate', date ? format(date, 'MMM d') : undefined)}
+                  onSelect={(date) => handleFieldChange('dueDate', date ? format(date, 'yyyy-MM-dd') : undefined)}
                   initialFocus
                 />
               </PopoverContent>
@@ -274,7 +295,7 @@ export function TaskSidePanel({
             </div>
             {editedTask.labels.length > 0 ? (
               <div className="flex flex-wrap gap-[var(--space-2)]">
-                {editedTask.labels.map((label, index) => {
+                {normalizeLabels(editedTask.labels).map((label, index) => {
                   const labelName = getTaskLabelName(label);
                   const labelColor = typeof label === 'string' ? 'var(--label-gray)' : label.color;
                   return (
@@ -311,9 +332,10 @@ export function TaskSidePanel({
                                 onClick={() => {
                                   setEditedTask((prev) => {
                                     if (!prev) return prev;
+                                    const labels = normalizeLabels(prev.labels);
                                     return {
                                       ...prev,
-                                      labels: prev.labels.map((existing, idx) =>
+                                      labels: labels.map((existing, idx) =>
                                         idx === index ? { name: labelName, color: option.value } : existing,
                                       ),
                                     };

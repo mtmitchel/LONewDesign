@@ -9,7 +9,7 @@ export interface Subtask {
   dueDate?: string;
 }
 
-export type TaskSyncState = 'idle' | 'pending' | 'syncing' | 'error';
+export type TaskSyncState = 'idle' | 'pending' | 'pending_move' | 'syncing' | 'error';
 
 export interface Task {
   id: string;

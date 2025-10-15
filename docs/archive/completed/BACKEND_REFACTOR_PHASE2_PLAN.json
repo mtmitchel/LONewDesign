@@ -1,0 +1,465 @@
+{
+  "plan_metadata": {
+    "plan_name": "Backend Refactor - Phase 2: Google Cleanup & AI Extraction",
+    "created": "2025-01-20",
+    "author": "GitHub Copilot",
+    "description": "Complete the backend modularization by removing duplicate Google code and extracting AI/LLM commands into separate modules",
+    "prerequisites": [
+      "Phase 1 completed (commands/google.rs and commands/tasks.rs extracted)",
+      "cargo check passes with 0 errors",
+      "Git working directory clean or changes committed"
+    ],
+    "estimated_duration": "45-60 minutes",
+    "rollback_strategy": "git reset --hard HEAD (if committed before starting) or restore from backup"
+  },
+  
+  "phases": [
+    {
+      "phase_id": "phase_1",
+      "phase_name": "Google Duplicates Cleanup",
+      "description": "Remove duplicate Google structs and constants from main.rs",
+      "estimated_duration": "10 minutes",
+      "tasks": [
+        {
+          "task_id": "1.1",
+          "description": "Remove duplicate Google constants from main.rs",
+          "target_files": ["src-tauri/src/main.rs"],
+          "code_changes": {
+            "operation": "delete_lines",
+            "details": "Remove lines 23-25: GOOGLE_WORKSPACE_SERVICE, GOOGLE_WORKSPACE_ACCOUNT, GOOGLE_TASKS_BASE_URL (these are defined in commands/google.rs)"
+          },
+          "validation_steps": [
+            "Verify constants removed",
+            "Check no references remain in main.rs",
+            "Verify commands/google.rs has these constants"
+          ],
+          "success_criteria": [
+            "Lines 23-25 deleted from main.rs",
+            "No compilation errors",
+            "cargo check passes"
+          ],
+          "dependencies": [],
+          "rollback_procedure": "git checkout src-tauri/src/main.rs"
+        },
+        {
+          "task_id": "1.2",
+          "description": "Remove duplicate Google structs from main.rs",
+          "target_files": ["src-tauri/src/main.rs"],
+          "code_changes": {
+            "operation": "delete_lines",
+            "details": "Remove lines 73-189 (after previous deletion, line numbers will shift): GoogleTokenRequestInput, GoogleRefreshRequestInput, GoogleTokenResponse, GoogleAuthContext, GoogleTasksCommandResponse, GoogleTasksListTasklistsInput, GoogleTasksListTasksInput, GoogleTasksInsertInput, GoogleTasksPatchInput, GoogleTasksDeleteInput, GoogleTasksMoveInput (all defined in commands/google.rs)"
+          },
+          "validation_steps": [
+            "Verify 11 Google structs removed",
+            "Check GoogleOAuthCallbackPayload remains (line ~60, used by deep-link handler)",
+            "Verify commands/google.rs has these structs"
+          ],
+          "success_criteria": [
+            "117 lines deleted from main.rs",
+            "GoogleOAuthCallbackPayload remains in main.rs",
+            "File size reduced by ~120 lines total",
+            "cargo check passes"
+          ],
+          "dependencies": ["1.1"],
+          "rollback_procedure": "git checkout src-tauri/src/main.rs"
+        },
+        {
+          "task_id": "1.3",
+          "description": "Remove unused imports from main.rs",
+          "target_files": ["src-tauri/src/main.rs"],
+          "code_changes": {
+            "operation": "remove_unused_imports",
+            "details": "Remove unused imports identified during previous analysis: Entry, KeyringError, Method (if unused after Google cleanup)"
+          },
+          "validation_steps": [
+            "Run cargo check",
+            "Review warning messages for unused imports",
+            "Remove any imports not referenced in main.rs"
+          ],
+          "success_criteria": [
+            "No unused import warnings for removed items",
+            "cargo check passes with reduced warnings",
+            "All remaining imports are actively used"
+          ],
+          "dependencies": ["1.2"],
+          "rollback_procedure": "git checkout src-tauri/src/main.rs"
+        },
+        {
+          "task_id": "1.4",
+          "description": "Verify Phase 1 completion",
+          "target_files": ["src-tauri/src/main.rs"],
+          "code_changes": {
+            "operation": "validation_only",
+            "details": "Run cargo check and verify clean compilation"
+          },
+          "validation_steps": [
+            "cargo check exits with code 0",
+            "No new errors introduced",
+            "File size reduced by ~120-130 lines",
+            "Google commands still work via commands::google module"
+          ],
+          "success_criteria": [
+            "cargo check passes",
+            "No duplicate Google code in main.rs",
+            "All Google functionality accessible via commands module"
+          ],
+          "dependencies": ["1.3"],
+          "rollback_procedure": "git checkout src-tauri/src/main.rs"
+        }
+      ]
+    },
+    {
+      "phase_id": "phase_2",
+      "phase_name": "AI Command Extraction",
+      "description": "Extract AI/LLM commands to separate modules with shared types",
+      "estimated_duration": "35-50 minutes",
+      "tasks": [
+        {
+          "task_id": "2.1",
+          "description": "Create commands/ai_types.rs with shared AI types",
+          "target_files": ["src-tauri/src/commands/ai_types.rs"],
+          "code_changes": {
+            "operation": "create_file",
+            "details": "Extract shared types from main.rs: ChatMessageInput (line 46), StreamEvent (line 52), TestResult (line 67), ModelInfo (line 191), ModelsResponse (line 199), ChatRequest (line 220). Add necessary imports (serde::Deserialize, serde::Serialize, serde_json::Value)."
+          },
+          "validation_steps": [
+            "File created with all 6 shared types",
+            "All types have proper derives",
+            "All types are marked pub",
+            "Imports include serde traits"
+          ],
+          "success_criteria": [
+            "commands/ai_types.rs exists",
+            "Contains ChatMessageInput, StreamEvent, TestResult, ModelInfo, ModelsResponse, ChatRequest",
+            "All types are public and properly derived",
+            "File compiles independently"
+          ],
+          "dependencies": ["1.4"],
+          "rollback_procedure": "rm src-tauri/src/commands/ai_types.rs"
+        },
+        {
+          "task_id": "2.2",
+          "description": "Create commands/mistral.rs with Mistral commands",
+          "target_files": ["src-tauri/src/commands/mistral.rs"],
+          "code_changes": {
+            "operation": "create_file",
+            "details": "Extract from main.rs: DEFAULT_MISTRAL_BASE_URL constant (line 21), resolve_base_url function (line 240, mark pub), test_mistral_credentials (line 297), fetch_mistral_models (line 370), mistral_chat_stream (line 563), mistral_complete (line 745). Import ApiState, TestResult, ModelInfo, ModelsResponse, ChatRequest, StreamEvent from appropriate modules. Add tauri::command macro to all commands."
+          },
+          "validation_steps": [
+            "File created with 4 commands",
+            "resolve_base_url is pub (used by ai_utils)",
+            "All commands have #[tauri::command] macro",
+            "Imports from crate and super::ai_types",
+            "Streaming logic preserved in mistral_chat_stream"
+          ],
+          "success_criteria": [
+            "commands/mistral.rs exists",
+            "Contains 4 commands + helper function + constant",
+            "All commands properly annotated",
+            "File compiles independently",
+            "~200 lines moved from main.rs"
+          ],
+          "dependencies": ["2.1"],
+          "rollback_procedure": "rm src-tauri/src/commands/mistral.rs"
+        },
+        {
+          "task_id": "2.3",
+          "description": "Create commands/ollama.rs with Ollama commands",
+          "target_files": ["src-tauri/src/commands/ollama.rs"],
+          "code_changes": {
+            "operation": "create_file",
+            "details": "Extract from main.rs: DEFAULT_OLLAMA_BASE_URL constant (line 22), resolve_ollama_base_url function (line 247), OllamaModelInfo (line 456), OllamaTagsResponse (line 465), test_ollama_connection (line 341), ollama_list_models (line 470), ollama_pull_model (line 503), ollama_delete_model (line 533), ollama_chat_stream (line 1304), ollama_complete (line 825). Import ApiState, TestResult, StreamEvent, ChatRequest from appropriate modules. Check for duplicate OllamaMessage definitions."
+          },
+          "validation_steps": [
+            "File created with 6 commands",
+            "No duplicate OllamaMessage structs",
+            "All commands have #[tauri::command] macro",
+            "Imports from crate and super::ai_types",
+            "Streaming and pull/delete logic preserved"
+          ],
+          "success_criteria": [
+            "commands/ollama.rs exists",
+            "Contains 6 commands + 2 helper functions + 2 constants + 2-3 structs",
+            "All commands properly annotated",
+            "File compiles independently",
+            "~300 lines moved from main.rs"
+          ],
+          "dependencies": ["2.1"],
+          "rollback_procedure": "rm src-tauri/src/commands/ollama.rs"
+        },
+        {
+          "task_id": "2.4",
+          "description": "Create commands/openai.rs with OpenAI/OpenRouter commands",
+          "target_files": ["src-tauri/src/commands/openai.rs"],
+          "code_changes": {
+            "operation": "create_file",
+            "details": "Extract from main.rs: fetch_openrouter_models (line 410), openai_chat_stream (line 1116), openai_complete (line 1448). Import ApiState, ModelInfo, ModelsResponse, ChatRequest, StreamEvent from appropriate modules. These use OpenAI-compatible API format."
+          },
+          "validation_steps": [
+            "File created with 3 commands",
+            "All commands have #[tauri::command] macro",
+            "Imports from crate and super::ai_types",
+            "OpenRouter-specific API logic preserved",
+            "Streaming logic preserved in openai_chat_stream"
+          ],
+          "success_criteria": [
+            "commands/openai.rs exists",
+            "Contains 3 commands",
+            "All commands properly annotated",
+            "File compiles independently",
+            "~260 lines moved from main.rs"
+          ],
+          "dependencies": ["2.1"],
+          "rollback_procedure": "rm src-tauri/src/commands/openai.rs"
+        },
+        {
+          "task_id": "2.5",
+          "description": "Create commands/deepl.rs with DeepL translation",
+          "target_files": ["src-tauri/src/commands/deepl.rs"],
+          "code_changes": {
+            "operation": "create_file",
+            "details": "Extract from main.rs: deepl_translate command (line 1034). Import ApiState. This is a standalone translation command."
+          },
+          "validation_steps": [
+            "File created with 1 command",
+            "Command has #[tauri::command] macro",
+            "Imports ApiState from crate",
+            "DeepL API logic preserved"
+          ],
+          "success_criteria": [
+            "commands/deepl.rs exists",
+            "Contains deepl_translate command",
+            "Command properly annotated",
+            "File compiles independently",
+            "~80 lines moved from main.rs"
+          ],
+          "dependencies": ["2.1"],
+          "rollback_procedure": "rm src-tauri/src/commands/deepl.rs"
+        },
+        {
+          "task_id": "2.6",
+          "description": "Create commands/ai_utils.rs with cross-provider utilities",
+          "target_files": ["src-tauri/src/commands/ai_utils.rs"],
+          "code_changes": {
+            "operation": "create_file",
+            "details": "Extract from main.rs: generate_conversation_title command (line 907). Import ApiState, ChatMessageInput, ChatRequest from appropriate modules. Import resolve_base_url from super::mistral. This command uses generic OpenAI-compatible API."
+          },
+          "validation_steps": [
+            "File created with 1 command",
+            "Command has #[tauri::command] macro",
+            "Imports resolve_base_url from mistral module",
+            "Imports shared types from ai_types",
+            "Title generation logic preserved"
+          ],
+          "success_criteria": [
+            "commands/ai_utils.rs exists",
+            "Contains generate_conversation_title command",
+            "Command properly annotated",
+            "File compiles independently",
+            "~125 lines moved from main.rs"
+          ],
+          "dependencies": ["2.1", "2.2"],
+          "rollback_procedure": "rm src-tauri/src/commands/ai_utils.rs"
+        },
+        {
+          "task_id": "2.7",
+          "description": "Update commands/mod.rs to register AI modules",
+          "target_files": ["src-tauri/src/commands/mod.rs"],
+          "code_changes": {
+            "operation": "add_modules",
+            "details": "Add module declarations: pub mod ai_types; pub mod mistral; pub mod ollama; pub mod openai; pub mod deepl; pub mod ai_utils;. Update register() function to call mistral::register(), ollama::register(), openai::register(), deepl::register(), ai_utils::register() (or inline register commands if not using per-module register functions)."
+          },
+          "validation_steps": [
+            "All 6 new modules declared",
+            "register() function includes all new commands",
+            "File compiles",
+            "All command paths accessible"
+          ],
+          "success_criteria": [
+            "commands/mod.rs updated",
+            "All AI modules declared and registered",
+            "cargo check passes",
+            "All 15 AI commands accessible"
+          ],
+          "dependencies": ["2.2", "2.3", "2.4", "2.5", "2.6"],
+          "rollback_procedure": "git checkout src-tauri/src/commands/mod.rs"
+        },
+        {
+          "task_id": "2.8",
+          "description": "Update invoke_handler in main.rs",
+          "target_files": ["src-tauri/src/main.rs"],
+          "code_changes": {
+            "operation": "update_invoke_handler",
+            "details": "Replace command names with module paths: commands::mistral::test_mistral_credentials, commands::mistral::fetch_mistral_models, commands::mistral::mistral_chat_stream, commands::mistral::mistral_complete, commands::ollama::test_ollama_connection, commands::ollama::ollama_list_models, commands::ollama::ollama_pull_model, commands::ollama::ollama_delete_model, commands::ollama::ollama_chat_stream, commands::ollama::ollama_complete, commands::openai::fetch_openrouter_models, commands::openai::openai_chat_stream, commands::openai::openai_complete, commands::deepl::deepl_translate, commands::ai_utils::generate_conversation_title. Remove local command implementations."
+          },
+          "validation_steps": [
+            "All 15 AI commands have module paths in invoke_handler",
+            "sync_tasks_now and init_database_command remain in main.rs (not AI-related)",
+            "No duplicate command registrations",
+            "File compiles"
+          ],
+          "success_criteria": [
+            "invoke_handler updated with all module paths",
+            "No local command implementations for AI commands",
+            "cargo check passes",
+            "All commands callable from frontend"
+          ],
+          "dependencies": ["2.7"],
+          "rollback_procedure": "git checkout src-tauri/src/main.rs"
+        },
+        {
+          "task_id": "2.9",
+          "description": "Remove extracted AI code from main.rs",
+          "target_files": ["src-tauri/src/main.rs"],
+          "code_changes": {
+            "operation": "delete_extracted_code",
+            "details": "Remove: DEFAULT_MISTRAL_BASE_URL (line 21), DEFAULT_OLLAMA_BASE_URL (line 22), ChatMessageInput (line 46), StreamEvent (line 52), TestResult (line 67), ModelInfo (line 191), ModelsResponse (line 199), ChatRequest (line 220), resolve_base_url (line 240), resolve_ollama_base_url (line 247), test_mistral_credentials (line 297), test_ollama_connection (line 341), fetch_mistral_models (line 370), fetch_openrouter_models (line 410), OllamaModelInfo (line 456), OllamaTagsResponse (line 465), ollama_list_models (line 470), ollama_pull_model (line 503), ollama_delete_model (line 533), mistral_chat_stream (line 563), mistral_complete (line 745), ollama_complete (line 825), generate_conversation_title (line 907), deepl_translate (line 1034), openai_chat_stream (line 1116), ollama_chat_stream (line 1304), openai_complete (line 1448). Total: ~1000 lines to remove."
+          },
+          "validation_steps": [
+            "All AI types removed",
+            "All AI constants removed",
+            "All AI helper functions removed",
+            "All AI commands removed",
+            "ApiState, GoogleOAuthCallbackPayload, init_database_command, sync_tasks_now remain",
+            "main() function remains with deep-link handler"
+          ],
+          "success_criteria": [
+            "~1000 lines removed from main.rs",
+            "main.rs now ~500 lines (from original 2324)",
+            "Only database init, sync trigger, and core setup remain",
+            "File compiles"
+          ],
+          "dependencies": ["2.8"],
+          "rollback_procedure": "git checkout src-tauri/src/main.rs"
+        },
+        {
+          "task_id": "2.10",
+          "description": "Add imports to main.rs for AI types",
+          "target_files": ["src-tauri/src/main.rs"],
+          "code_changes": {
+            "operation": "add_imports",
+            "details": "If any AI types are still referenced in main.rs (unlikely after extraction), add: use commands::ai_types::{...};. Most likely no imports needed since all AI code moved to modules."
+          },
+          "validation_steps": [
+            "Check for any remaining AI type references in main.rs",
+            "Add imports only if needed",
+            "Verify no unused imports",
+            "File compiles"
+          ],
+          "success_criteria": [
+            "No AI type references in main.rs, or properly imported if needed",
+            "cargo check passes",
+            "No unused import warnings"
+          ],
+          "dependencies": ["2.9"],
+          "rollback_procedure": "git checkout src-tauri/src/main.rs"
+        },
+        {
+          "task_id": "2.11",
+          "description": "Verify Phase 2 completion and full refactor",
+          "target_files": ["src-tauri/src/main.rs", "src-tauri/src/commands/"],
+          "code_changes": {
+            "operation": "validation_only",
+            "details": "Run cargo check, cargo build, test commands from frontend"
+          },
+          "validation_steps": [
+            "cargo check exits with code 0",
+            "cargo build --release succeeds",
+            "All 32 commands (16 Google/Tasks + 15 AI + 2 utility) work from frontend",
+            "main.rs reduced to ~500 lines (78% reduction from 2324)",
+            "No duplicate code between main.rs and modules",
+            "All modules compile independently"
+          ],
+          "success_criteria": [
+            "Zero compilation errors",
+            "All commands functional",
+            "main.rs contains only: ApiState, GoogleOAuthCallbackPayload, init_database_command, sync_tasks_now, main() with setup",
+            "commands/ directory structure: mod.rs, google.rs, tasks.rs, ai_types.rs, mistral.rs, ollama.rs, openai.rs, deepl.rs, ai_utils.rs",
+            "Total backend refactor complete"
+          ],
+          "dependencies": ["2.10"],
+          "rollback_procedure": "git reset --hard HEAD"
+        }
+      ]
+    }
+  ],
+  
+  "final_structure": {
+    "main.rs": {
+      "lines": "~500 (from 2324, 78% reduction)",
+      "contains": [
+        "ApiState struct",
+        "GoogleOAuthCallbackPayload struct",
+        "init_database_command",
+        "sync_tasks_now",
+        "main() with app setup and deep-link handler"
+      ]
+    },
+    "commands/mod.rs": {
+      "modules": ["google", "tasks", "ai_types", "mistral", "ollama", "openai", "deepl", "ai_utils"],
+      "exports": "All command registration"
+    },
+    "commands/google.rs": {
+      "lines": "~745",
+      "contains": "12 Google OAuth and Tasks commands + types"
+    },
+    "commands/tasks.rs": {
+      "lines": "~150",
+      "contains": "4 Task CRUD commands"
+    },
+    "commands/ai_types.rs": {
+      "lines": "~80",
+      "contains": "6 shared AI types"
+    },
+    "commands/mistral.rs": {
+      "lines": "~200",
+      "contains": "4 Mistral commands + helpers"
+    },
+    "commands/ollama.rs": {
+      "lines": "~300",
+      "contains": "6 Ollama commands + types + helpers"
+    },
+    "commands/openai.rs": {
+      "lines": "~260",
+      "contains": "3 OpenAI/OpenRouter commands"
+    },
+    "commands/deepl.rs": {
+      "lines": "~80",
+      "contains": "1 DeepL translation command"
+    },
+    "commands/ai_utils.rs": {
+      "lines": "~125",
+      "contains": "1 cross-provider title generation command"
+    }
+  },
+  
+  "success_metrics": {
+    "code_quality": {
+      "main_rs_size": "78% reduction (2324 → ~500 lines)",
+      "modularity": "9 modules vs 1 monolith",
+      "separation_of_concerns": "Commands grouped by provider/domain"
+    },
+    "maintainability": {
+      "single_responsibility": "Each module handles one provider or domain",
+      "discoverability": "Clear module names indicate functionality",
+      "testability": "Modules can be tested independently"
+    },
+    "compilation": {
+      "errors": "0",
+      "warnings": "Reduced from 29 (mostly unused code)",
+      "build_time": "Potentially faster due to modularization"
+    }
+  },
+  
+  "notes": [
+    "Phase 1 is low-risk and can be done quickly",
+    "Phase 2 requires careful attention to imports and dependencies",
+    "generate_conversation_title imports resolve_base_url from mistral module",
+    "GoogleOAuthCallbackPayload stays in main.rs (used by deep-link handler)",
+    "ApiState stays in main.rs (shared across all modules)",
+    "sync_tasks_now and init_database_command stay in main.rs (not AI-related)",
+    "Each AI module can be created independently after ai_types.rs exists",
+    "Test each module as it's created before proceeding",
+    "Commit after Phase 1, commit after each Phase 2 task for safety"
+  ]
+}

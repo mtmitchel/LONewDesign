@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.therefore.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:smart",
     "beforeBuildCommand": "npm run build",
-    "devUrl": "http://localhost:5174",
+    "devUrl": "http://localhost:5173",
     "frontendDist": "../dist"
   },
   "app": {
@@ -19,7 +19,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http://localhost:5174 ws://localhost:5174"
+      "csp": "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http://localhost:5173 ws://localhost:5173"
     }
   },
   "plugins": {

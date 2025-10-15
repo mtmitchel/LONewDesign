@@ -107,25 +107,33 @@ This architecture provides better reliability, offline support, state persistenc
 - ❌ Complex frontend sync state management → **MOVING TO RUST BACKEND**
 
 **Current Focus (Backend-Heavy Pivot)**
-- 🔄 **Phase 1: SQLite Foundation** - Adding sqlx, creating database initialization, migrations
-- ⏳ **Phase 2: Tasks Backend Refactor** - Moving ALL sync logic to Rust, removing frontend queue
+- ✅ **Phase 1: SQLite Foundation** - sqlx + database initialization landed, migrations seeded
+- 🔄 **Phase 2: Tasks Backend Refactor** - Sync service owns polling/mutations; frontend wiring in progress
 - ⏳ **Phase 3: Projects Persistence** - SQLite storage for projects/phases/milestones
 - ⏳ **Phase 4: Notes & Chats** - Local-first persistence
 
+#### Status – 2025-01-14
+
+* ✅ SyncService now runs on a 60-second cadence, exposes `sync_now`, and persists Google Task list create/delete operations into SQLite.
+* ✅ Backend reconciliation removes orphaned lists and reassigns or prunes tasks when Google deletes a list.
+* ✅ Store-level wiring landed for `create_task_list`, `delete_task_list`, and `sync_tasks_now` in `taskStore` with optimistic updates.
+* 🔄 UI still needs to call these store methods from `TasksModule` and `CalendarTasksRail` and surface errors.
+* 🔄 Manual “Sync now” affordance and cadence telemetry still need to be added to the React shell.
+
 **Immediate Next Steps**
 
-1. **Phase 1 Tasks (SQLite Foundation)**
-   - Add sqlx dependency to Cargo.toml
-   - Create database init system with app_data_dir
-   - Write 001_create_core_tables.sql migration
-   - Test cross-platform paths
+Phase 1 foundation work is completed; remaining effort is focused on Phase 2 wiring and UI affordances.
 
-2. **Phase 2 Tasks (Backend Refactor)**
-   - Create sync_service.rs with SyncService struct
-   - Implement polling loop + mutation execution in Rust
-   - Remove googleTasksSyncService.ts
-   - Simplify taskStore.tsx to UI-only state
-   
+1. **Backend list lifecycle wiring**
+   - Wire `create_task_list`, `delete_task_list`, and `sync_tasks_now` through `taskStore`, `TasksModule`, and `CalendarTasksRail` with optimistic updates.
+   - Refresh list order and badges after mutations; surface service errors gracefully in the UI.
+   - Surface a manual “Sync now” control that invokes `sync_tasks_now` and verify the new 60s cadence metrics.
+2. **Deletion safeguards**
+   - Require reassignment selection (defaulting to Inbox/To Do) before list deletion and confirm the Rust fallback path.
+   - Backfill manual checks ensuring tasks migrate or prune correctly when lists disappear upstream.
+3. **Regression pass**
+   - Re-run end-to-end Google Tasks sync to confirm list + task creation, updates, and deletions round-trip without regressions.
+
 See detailed executable tasks document for complete implementation plan.
 
 ---

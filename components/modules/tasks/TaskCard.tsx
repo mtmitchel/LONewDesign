@@ -33,7 +33,7 @@ export function TaskCard({
     taskTitle, 
     dueDate,
     priority = 'none',
-    labels = [],
+    labels: rawLabels = [],
     isCompleted, 
     onToggleCompletion, 
     onClick, 
@@ -47,6 +47,8 @@ export function TaskCard({
     low: 'bg-blue-500 text-white',
     none: ''
   };
+
+  const labels = Array.isArray(rawLabels) ? rawLabels : [];
 
   return (
     <ContextMenu>

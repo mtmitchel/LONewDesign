@@ -25,6 +25,7 @@ import {
   ContextMenuTrigger,
   ContextMenuSeparator
 } from '../ui/context-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
@@ -37,7 +38,8 @@ import { TASK_LISTS } from './tasks/constants';
 import type { Task, TaskLabel } from './tasks/types';
 import { projects } from './projects/data';
 import { openQuickAssistant } from '../assistant';
-import { useTaskStore, useTasks } from './tasks/taskStore';
+import { useTaskStore, useTasks, selectSyncStatus } from './tasks/taskStore';
+import { toast } from 'sonner';
 
 const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
 const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
@@ -122,8 +124,13 @@ export function TasksModule() {
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const taskLabels = Array.isArray(task.labels)
+      ? task.labels
+      : typeof task.labels === 'string'
+        ? (() => { try { const v = JSON.parse(task.labels as unknown as string); return Array.isArray(v) ? v : []; } catch { return []; } })()
+        : [];
     const matchesLabels = selectedLabels.length === 0 || 
-      task.labels.some(label => selectedLabels.includes(getLabelName(label)));
+      taskLabels.some(label => selectedLabels.includes(getLabelName(label)));
     const matchesList = selectedList === null || task.listId === selectedList || task.status === selectedList;
     const matchesProject = projectFilter === null || task.projectId === projectFilter;
     return matchesSearch && matchesLabels && matchesList && matchesProject;
@@ -146,7 +153,12 @@ export function TasksModule() {
   React.useEffect(() => {
     const newMap = new Map<string, string>();
     tasks.forEach(task => {
-      task.labels.forEach(label => {
+      const taskLabels = Array.isArray(task.labels)
+        ? task.labels
+        : typeof task.labels === 'string'
+          ? (() => { try { const v = JSON.parse(task.labels as unknown as string); return Array.isArray(v) ? v : []; } catch { return []; } })()
+          : [];
+      taskLabels.forEach(label => {
         const name = getLabelName(label);
         const color = getLabelColor(label);
         if (!newMap.has(name)) {
@@ -184,11 +196,15 @@ export function TasksModule() {
     });
   };
 
+  const moveTask = useTaskStore((s) => s.moveTask);
   const handleMoveTask = (taskId: string, newListId: string) => {
-    updateTask(taskId, {
-      listId: newListId,
-      status: newListId as any,
-    });
+    const task = useTaskStore.getState().tasksById[taskId];
+    if (!task) return;
+    if (task.listId === newListId) {
+      // within-list reorder handled elsewhere
+      return;
+    }
+    void moveTask(taskId, newListId);
   };
 
   const getTasksByStatus = (status: string) => {
@@ -216,15 +232,22 @@ export function TasksModule() {
   
   const handleDuplicateTask = (task: Task) => {
     duplicateTask(task.id);
+    toast.success('Task duplicated');
   };
   
-  const handleUpdateTask = (updatedTask: Task) => {
-    updateTask(updatedTask.id, updatedTask);
+  const handleUpdateTask = async (updatedTask: Task) => {
+    try {
+      await updateTask(updatedTask.id, updatedTask);
+      toast.success('Task updated');
+    } catch (e) {
+      toast.error('Failed to update task');
+    }
     setSelectedTask(null); // Close side panel after update
   };
 
   const handleDeleteTask = (taskId: string) => {
     deleteTask(taskId);
+    toast.success('Task deleted');
     if (selectedTask?.id === taskId) {
       setSelectedTask(null); // Close side panel if the deleted task was open
     }
@@ -235,13 +258,20 @@ export function TasksModule() {
     openQuickAssistant({ mode: 'task', scope });
   }, [projectFilter]);
 
-  const handleAddList = () => {
-    if (newListName.trim()) {
-      const newList = {
-        id: `list-${Date.now()}`,
-        title: newListName.trim()
-      };
-      setColumns([...columns, newList]);
+  const createTaskList = useTaskStore((s) => s.createTaskList);
+  const deleteTaskList = useTaskStore((s) => s.deleteTaskList);
+  const syncNow = useTaskStore((s) => s.syncNow);
+
+  const handleAddList = async () => {
+    const title = newListName.trim();
+    if (!title) return;
+    try {
+      await createTaskList(title);
+      toast.success('List created');
+    } catch (e) {
+      console.error('[TasksModule] Failed to create list:', e);
+      toast.error('Failed to create list');
+    } finally {
       setNewListName('');
       setIsAddingList(false);
     }
@@ -266,20 +296,20 @@ export function TasksModule() {
     });
   };
 
-  const confirmDeleteList = () => {
+  const [fallbackList, setFallbackList] = useState<string>('todo');
+
+  const confirmDeleteList = async () => {
     if (!deleteListDialog) return;
-    
     const { listId } = deleteListDialog;
-    const tasksInList = tasks.filter(task => task.listId === listId);
-    
-    setColumns(columns.filter(col => col.id !== listId));
-    
-    // Move tasks from deleted list to "todo"
-    tasksInList.forEach(task => {
-      updateTask(task.id, { listId: 'todo', status: 'todo' as any });
-    });
-    
-    setDeleteListDialog(null);
+    try {
+      await deleteTaskList(listId, fallbackList);
+      toast.success('List deleted');
+    } catch (e) {
+      console.error('[TasksModule] Failed to delete list:', e);
+      toast.error('Failed to delete list');
+    } finally {
+      setDeleteListDialog(null);
+    }
   };
 
   const BoardView = () => (
@@ -757,10 +787,23 @@ export function TasksModule() {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="ghost" size="sm" className="h-9 text-[color:var(--text-secondary)]">
-              <RefreshCw size={14} className="mr-2" />
-              Refresh
-            </Button>
+            {(() => {
+              const { status } = useTaskStore(selectSyncStatus);
+              const isSyncing = status === 'syncing';
+              return (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-9 text-[color:var(--text-secondary)] ${isSyncing ? 'animate-pulse' : ''}`}
+                  title="Sync lists and tasks"
+                  onClick={() => { void syncNow(); }}
+                  disabled={isSyncing}
+                >
+                  <RefreshCw size={14} className={`mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
+                  {isSyncing ? 'Syncing…' : 'Sync'}
+                </Button>
+              );
+            })()}
             <Button
               onClick={handleOpenAssistant}
               className="h-9 bg-[var(--primary)] text-[var(--primary-foreground)] md:hidden"
@@ -805,13 +848,30 @@ export function TasksModule() {
             <Button variant="ghost" onClick={() => setDeleteListDialog(null)}>
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={confirmDeleteList}
-              className="bg-[var(--danger)] hover:bg-[var(--danger-hover)] text-white"
-            >
-              Delete
-            </Button>
+           <div className="flex items-center justify-between w-full">
+             <div className="flex items-center gap-2">
+               <span className="text-sm text-[color:var(--text-secondary)]">Reassign tasks to</span>
+               <Select value={fallbackList} onValueChange={(v) => setFallbackList(v)}>
+                 <SelectTrigger className="w-40 h-8">
+                   <SelectValue placeholder="Select list" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   {taskLists
+                     .filter(l => l.id !== deleteListDialog?.listId)
+                     .map(l => (
+                       <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                     ))}
+                 </SelectContent>
+               </Select>
+             </div>
+             <Button 
+               variant="destructive" 
+               onClick={confirmDeleteList}
+               className="bg-[var(--danger)] hover:bg-[var(--danger-hover)] text-white"
+             >
+               Delete
+             </Button>
+           </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

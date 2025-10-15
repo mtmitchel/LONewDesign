@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Sync Service Modularization Complete (2025-01-20)
+- **Module Extraction Complete**: Refactored sync_service.rs from 1,266-line monolith into 6 focused modules:
+  - `sync/types.rs` (82 lines) - Shared type definitions
+  - `sync/oauth.rs` (63 lines) - OAuth token management
+  - `sync/google_client.rs` (110 lines) - HTTP operations for Google Tasks API
+  - `sync/queue_worker.rs` (351 lines) - Sync queue processing
+  - `sync/reconciler.rs` (396 lines) - Remote polling and reconciliation logic
+  - `sync/mod.rs` (25 lines) - Module manifest and re-exports
+- **Orchestrator Pattern**: Reduced sync_service.rs to 81-line orchestrator that coordinates extracted modules
+- **Compilation Verified**: All modules compile successfully (cargo check passes with 0 errors, 11 benign warnings)
+- **Git Branch**: Changes on `refactor/sync-service-modularization` with 8 atomic commits
+- **Documentation Updated**: Sync Refactor Master Plan now fully cross-references Task Metadata CRUD Plan with section references throughout
+
+### ⚠️ KNOWN ISSUES - Task Display Broken (2025-01-20)
+- **Tasks not visible in UI**: 10 tasks exist in SQLite database but frontend not displaying them
+- **Root Cause**: Current implementation violates Task Metadata CRUD Plan requirements:
+  - ❌ Missing `title` column (CRUD Plan §5.1) - using `notes` field inconsistently
+  - ❌ No metadata hash implementation (CRUD Plan §6.2)
+  - ❌ No dirty fields tracking (CRUD Plan §5.1, §7.2)
+  - ❌ No sync queue tables (CRUD Plan §5.2)
+  - ❌ No Google Tasks metadata serialization (CRUD Plan §6.3)
+  - ❌ Hard delete instead of soft delete (CRUD Plan §7.3)
+- **Status**: Phase 1 (Database Infrastructure) pending, Phase 2 (Module Extraction) complete
+- **Next Steps**: Must implement Phases 1, 3, 4 of Sync Refactor Master Plan to achieve CRUD Plan compliance
+
 ### Task metadata property tests (2025-10-14)
 - Added proptest-based property tests that cover metadata normalization round-trips and hash stability in the Rust backend, ensuring no fields are lost between serialize/deserialize cycles.
 - Introduced the `proptest` dev dependency so future Rust modules can adopt property-driven validation where appropriate.

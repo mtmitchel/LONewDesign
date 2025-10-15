@@ -179,6 +179,8 @@ export function CalendarTasksRail({
 }: CalendarTasksRailProps) {
   const storeTasks = useTasks();
   const lists = useTaskLists();
+  const createTaskList = useTaskStore((s) => s.createTaskList);
+  const deleteTaskList = useTaskStore((s) => s.deleteTaskList);
   const addTask = useTaskStore((state) => state.addTask);
   const updateTask = useTaskStore((state) => state.updateTask);
   const deleteTask = useTaskStore((state) => state.deleteTask);
@@ -326,6 +328,15 @@ export function CalendarTasksRail({
     });
   }, [tasks, filter, sortBy, now, weekEnd]);
 
+  const selectedListId = useMemo(
+    () => (filter.startsWith('list:') ? filter.replace('list:', '') : null),
+    [filter],
+  );
+  const selectedListMeta = useMemo(
+    () => (selectedListId ? availableLists.find((candidate) => candidate.id === selectedListId) ?? null : null),
+    [availableLists, selectedListId],
+  );
+
   const completedCount = useMemo(() => tasks.filter((task) => task.isCompleted).length, [tasks]);
 
   const setFilterValue = (value: TaskFilterKey) => {
@@ -421,8 +432,8 @@ export function CalendarTasksRail({
     announce('Task deleted');
   };
 
-  const handleDuplicate = (taskId: string) => {
-    const duplicate = duplicateTask(taskId);
+  const handleDuplicate = async (taskId: string) => {
+    const duplicate = await duplicateTask(taskId);
     if (duplicate) {
       emitAnalytics('task_created', { source: 'calendar_rail', parentId: taskId, id: duplicate.id, reason: 'duplicate' });
       announce('Task duplicated');
@@ -596,7 +607,15 @@ export function CalendarTasksRail({
               <DropdownMenuItem onClick={() => console.log('Rename list')}>
                 Rename list
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => console.log('Delete list')} className="text-[color:var(--accent-coral)]">
+              <DropdownMenuItem
+                disabled={!selectedListMeta}
+                onClick={() => {
+                  if (selectedListMeta) {
+                    deleteTaskList(selectedListMeta.id);
+                  }
+                }}
+                className="text-[color:var(--accent-coral)]"
+              >
                 Delete list
               </DropdownMenuItem>
             </DropdownMenuContent>

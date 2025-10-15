@@ -115,12 +115,26 @@ export function TasksBoard({
     const taskId = active.id as string;
     const overId = over.id as string;
 
-    // If dropped on a column (droppable area)
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) {
+      return;
+    }
+
+    // Dropped onto column backdrop
     if (overId.startsWith('column-')) {
       const newListId = overId.replace('column-', '');
-      const task = tasks.find(t => t.id === taskId);
-      if (task && task.listId !== newListId) {
+      if (task.listId !== newListId) {
         onMoveTask?.(taskId, newListId);
+      }
+      return;
+    }
+
+    // Dropped onto another task card; infer its column
+    const overTask = tasks.find(t => t.id === overId);
+    if (overTask) {
+      const targetListId = overTask.listId ?? overTask.status;
+      if (targetListId && task.listId !== targetListId) {
+        onMoveTask?.(taskId, targetListId);
       }
     }
   };
