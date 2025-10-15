@@ -1,0 +1,1 @@
+ALTER TABLE tasks_metadata ADD COLUMN has_conflict BOOLEAN NOT NULL DEFAULT 0;

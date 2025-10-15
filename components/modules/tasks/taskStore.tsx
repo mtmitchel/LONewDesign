@@ -24,6 +24,8 @@ type TaskSourceMeta = {
   source?: string;
 };
 
+type SubtaskItem = NonNullable<Task['subtasks']>[number];
+
 export type TaskInput = Partial<
   Omit<
     Task,
@@ -121,7 +123,120 @@ function deserializeLabels(raw: unknown): Task['labels'] {
     }
     break;
   }
-  return Array.isArray(current) ? (current as Task['labels']) : [];
+
+  if (!Array.isArray(current)) return [];
+
+  const entries = current as Task['labels'];
+
+  return entries
+    .map((label) => {
+      if (typeof label === 'string') {
+        const name = label.trim();
+        return name ? { name, color: DEFAULT_LABEL_COLOR } : null;
+      }
+      if (label && typeof label === 'object' && 'name' in label) {
+        const rawName = (label as { name?: string }).name;
+        const nameValue = typeof rawName === 'string' ? rawName.trim() : '';
+        if (!nameValue) return null;
+        const rawColor = (label as { color?: string }).color;
+        const colorValue = typeof rawColor === 'string' && rawColor.trim().length > 0
+          ? rawColor
+          : DEFAULT_LABEL_COLOR;
+        return { name: nameValue, color: colorValue };
+      }
+      return null;
+    })
+    .filter((entry): entry is { name: string; color: string } => entry !== null);
+}
+
+function deserializeSubtasks(raw: unknown): Task['subtasks'] {
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((value, index) => {
+      if (!value || typeof value !== 'object') {
+        return null;
+      }
+
+      const idValue = (() => {
+        const maybeId = (value as { id?: unknown }).id;
+        if (typeof maybeId === 'string' && maybeId.trim().length > 0) {
+          return maybeId;
+        }
+        return createId('subtask');
+      })();
+
+      const titleValue = (() => {
+        const maybeTitle = (value as { title?: unknown }).title;
+        if (typeof maybeTitle === 'string') {
+          const trimmed = maybeTitle.trim();
+          return trimmed || null;
+        }
+        return null;
+      })();
+
+      if (!titleValue) {
+        return null;
+      }
+
+      const completedValue = (() => {
+        const maybeCompleted = (value as { is_completed?: unknown; isCompleted?: unknown }).is_completed ?? (value as { isCompleted?: unknown }).isCompleted;
+        return Boolean(maybeCompleted);
+      })();
+
+      const dueDateValue = (() => {
+        const maybeDue = (value as { due_date?: unknown; dueDate?: unknown }).due_date ?? (value as { dueDate?: unknown }).dueDate;
+        return typeof maybeDue === 'string' ? maybeDue : undefined;
+      })();
+
+      const positionValue = (() => {
+        const maybePosition = (value as { position?: unknown }).position;
+        if (typeof maybePosition === 'number' && Number.isFinite(maybePosition)) {
+          return maybePosition;
+        }
+        return index;
+      })();
+
+      return {
+        id: idValue,
+        title: titleValue,
+        isCompleted: completedValue,
+        dueDate: dueDateValue,
+        position: positionValue,
+      } as SubtaskItem;
+    })
+    .filter((entry): entry is SubtaskItem => entry !== null);
+}
+
+function serializeSubtasksForBackend(subtasks: Task['subtasks'] | undefined) {
+  if (!Array.isArray(subtasks)) {
+    return [];
+  }
+
+  return subtasks
+    .map((subtask, index) => {
+      const title = (subtask.title || '').trim();
+      if (!title) {
+        return null;
+      }
+
+      const payload: Record<string, unknown> = {
+        title,
+        is_completed: Boolean(subtask.isCompleted),
+        position: typeof subtask.position === 'number' ? subtask.position : index,
+      };
+
+      if (subtask.id) {
+        payload.id = subtask.id;
+      }
+
+      if (subtask.dueDate) {
+        payload.due_date = subtask.dueDate;
+      }
+
+      return payload;
+    })
+    .filter((entry): entry is Record<string, unknown> => entry !== null);
 }
 
 const DEFAULT_LABEL_COLOR = '#808080';
@@ -171,75 +286,69 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
       syncError: null,
       lastSyncAt: undefined,
       addTask: async (input) => {
-        const timestamp = new Date().toISOString();
-        const id = createId();
-        const listId = input.listId ?? input.boardListId ?? input.status ?? DEFAULT_LIST_ID;
         const title = input.title.trim();
+        const listId = input.listId ?? input.boardListId ?? input.status ?? DEFAULT_LIST_ID;
         const metadata = buildMetadataPayload(input, title);
-        const isCompleted = metadata.status === 'completed';
-  const resolvedNotes = metadata.notes ?? undefined;
-        const task: Task = {
-          id,
-          title,
-          description: input.description,
-          status: input.status ?? listId,
-          priority: metadata.priority,
-          dueDate: metadata.due_date ?? undefined,
-          createdAt: timestamp,
-          dateCreated: timestamp,
-          updatedAt: timestamp,
-          assignee: input.assignee,
-          labels: metadata.labels,
-          listId,
-          projectId: input.projectId,
-          boardListId: input.boardListId ?? listId,
-          notes: resolvedNotes,
-          isCompleted,
-          checklist: input.checklist ?? [],
-          isPinned: input.isPinned ?? false,
-          order: input.order,
-          completedAt: input.completedAt ?? null,
-          subtasks: input.subtasks ?? [],
-          externalId: undefined,
-          googleListId: input.googleListId,
-          pendingSync: true,
-          syncState: 'pending',
-          lastSyncedAt: undefined,
-          syncError: null,
-        };
 
-        // Optimistic UI update
-        set((state) => {
-          state.tasksById[id] = task;
-          state.taskOrder.unshift(id);
+        const id = createId(); // Still need a client-side id for the backend to use
+        const rustTask = await invoke<any>('create_task', {
+            task: {
+                id,
+                list_id: listId,
+                title,
+                priority: metadata.priority,
+                labels: metadata.labels.map((label) => label.name),
+                due_date: metadata.due_date,
+                status: metadata.status,
+                time_block: metadata.time_block ?? undefined,
+                notes: metadata.notes ?? null,
+                subtasks: serializeSubtasksForBackend(input.subtasks ?? []),
+            },
         });
 
-        emitTaskEvent('task_created', { source: input.source ?? 'task_store', id });
+        const isCompleted = rustTask.status === 'completed';
+        const subtasks = deserializeSubtasks(rustTask.subtasks);
 
-        // Persist to Rust backend
-        let createSucceeded = false;
-        try {
-          await invoke('create_task', {
-            task: {
-              id,
-              list_id: listId,
-              title,
-              priority: metadata.priority,
-              labels: metadata.labels.map((label) => label.name),
-              time_block: metadata.time_block ?? undefined,
-              notes: input.notes,
-            },
-          });
-          createSucceeded = true;
-        } catch (error) {
-          console.error('[taskStore] Failed to create task in Rust:', error);
-          // Task is already in UI, sync will retry later
-        }
+        const task: Task = {
+            id: rustTask.id,
+            title: rustTask.title || 'Untitled',
+            description: undefined,
+            status: rustTask.list_id,
+            priority: rustTask.priority as Task['priority'],
+            dueDate: rustTask.due_date ?? undefined,
+            createdAt: new Date(rustTask.created_at * 1000).toISOString(),
+            dateCreated: new Date(rustTask.created_at * 1000).toISOString(),
+            updatedAt: new Date(rustTask.updated_at * 1000).toISOString(),
+            assignee: undefined,
+            labels: deserializeLabels(rustTask.labels),
+            listId: rustTask.list_id,
+            boardListId: rustTask.list_id,
+            notes: rustTask.notes ?? undefined,
+            isCompleted,
+            completedAt: isCompleted
+              ? new Date(rustTask.updated_at * 1000).toISOString()
+              : null,
+            subtasks,
+            externalId: rustTask.google_id,
+            pendingSync: ['pending', 'pending_move'].includes(rustTask.sync_state),
+            syncState: rustTask.sync_state,
+            lastSyncedAt: rustTask.last_synced_at
+            ? rustTask.last_synced_at * 1000
+            : undefined,
+            syncError: rustTask.sync_error,
+            hasConflict: rustTask.has_conflict,
+        };
+
+        set((state) => {
+          state.tasksById[task.id] = task;
+          state.taskOrder.unshift(task.id);
+        });
+
+        emitTaskEvent('task_created', { source: input.source ?? 'task_store', id: task.id });
 
         // Fire a sync to push upstream ASAP when we have a persisted record
-        if (createSucceeded) {
-          try { await get().syncNow(); } catch {}
-        }
+        try { await get().syncNow(); } catch {}
+        
         return task;
       },
       moveTask: async (id: string, toListId: string) => {
@@ -263,19 +372,6 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         });
 
         try {
-          const newId = await invoke<string>('move_task_across_lists', {
-            input: {
-              task_id: id,
-              to_list_id: toListId,
-            },
-          });
-
-          await get().fetchTasks();
-
-          emitTaskEvent('task_moved', { from: sourceListId, to: toListId, id: newId });
-        } catch (error) {
-          console.error('[taskStore] Failed to move task between lists, queuing for retry:', error);
-          try {
             await invoke('queue_move_task', {
               input: {
                 task_id: id,
@@ -288,12 +384,10 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
               if (!draft) return;
               draft.pendingSync = true;
               draft.syncState = 'pending_move';
-              draft.syncError =
-                error instanceof Error ? error.message : String(error ?? 'Move queued');
             });
 
             emitTaskEvent('task_move_queued', { from: sourceListId, to: toListId, id });
-          } catch (queueError) {
+        } catch (error) {
             set((state) => {
               if (state.tasksById[id]) {
                 state.tasksById[id] = taskBackup;
@@ -304,70 +398,125 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
                   : [id, ...state.taskOrder];
               }
             });
-            console.error('[taskStore] Failed to queue fallback move:', queueError);
-            throw queueError;
-          }
+            console.error('[taskStore] Failed to queue fallback move:', error);
+            throw error;
         }
       },
 
       updateTask: async (id, updates) => {
-        // Optimistic UI update
-        set((state) => {
-          const existing = state.tasksById[id];
-          if (!existing) return;
-          const updatedAt = new Date().toISOString();
-          const nextTask: Task = {
-            ...existing,
-            ...updates,
-            updatedAt,
-            pendingSync: true,
-            syncState: 'pending',
-            syncError: null,
-          };
-          state.tasksById[id] = nextTask;
-        });
-
         // Persist to Rust backend
         try {
-          const payload: Record<string, unknown> = {};
-          if (typeof updates.priority !== 'undefined') {
-            payload.priority = updates.priority;
-          }
-          if (typeof updates.labels !== 'undefined') {
-            payload.labels = updates.labels;
-          }
-          if (typeof updates.title !== 'undefined') {
-            payload.title = updates.title;
-          }
-          if (typeof updates.notes !== 'undefined') {
-            payload.notes = updates.notes;
-          }
-          if (typeof updates.dueDate !== 'undefined') {
-            payload.due_date = updates.dueDate ?? null;
-          }
+            const payload: Record<string, unknown> = {};
 
-          if (Object.keys(payload).length > 0) {
-            await invoke('update_task', {
-              taskId: id,
-              updates: payload,
-            });
-          }
+            if (typeof updates.priority !== 'undefined') {
+              payload.priority = normalizeMetadataPriority(updates.priority ?? 'none');
+            }
+
+            if (typeof updates.labels !== 'undefined') {
+              const normalized = normalizeMetadataLabels(
+                (Array.isArray(updates.labels) ? updates.labels : []).map((label) => {
+                  if (typeof label === 'string') {
+                    const name = label.trim();
+                    return { name, color: DEFAULT_LABEL_COLOR };
+                  }
+                  const name = typeof label?.name === 'string' ? label.name.trim() : '';
+                  const color =
+                    typeof label?.color === 'string' && label.color
+                      ? label.color
+                      : DEFAULT_LABEL_COLOR;
+                  return { name, color };
+                }),
+              );
+              payload.labels = normalized.map((label) => label.name);
+            }
+
+            if (typeof updates.title !== 'undefined') {
+              payload.title = typeof updates.title === 'string'
+                ? updates.title.trim()
+                : updates.title;
+            }
+
+            if (typeof updates.notes !== 'undefined') {
+              if (typeof updates.notes === 'string') {
+                const trimmed = updates.notes.trim();
+                payload.notes = trimmed.length > 0 ? trimmed : null;
+              } else {
+                payload.notes = updates.notes ?? null;
+              }
+            }
+
+            if (typeof updates.dueDate !== 'undefined') {
+              payload.due_date = normalizeMetadataDueDate(updates.dueDate ?? null);
+            }
+
+            if (typeof updates.isCompleted !== 'undefined') {
+              payload.status = updates.isCompleted ? 'completed' : 'needsAction';
+            }
+
+            if (typeof updates.subtasks !== 'undefined') {
+              payload.subtasks = serializeSubtasksForBackend(updates.subtasks);
+            }
+
+            if (Object.keys(payload).length > 0) {
+                const rustTask = await invoke<any>('update_task_command', {
+                    taskId: id,
+                    updates: payload,
+                });
+
+                const isCompleted = rustTask.status === 'completed';
+                const subtasks = deserializeSubtasks(rustTask.subtasks);
+
+                const task: Task = {
+                    id: rustTask.id,
+                    title: rustTask.title || 'Untitled',
+                    description: undefined,
+                    status: rustTask.list_id,
+                    priority: rustTask.priority as Task['priority'],
+                    dueDate: rustTask.due_date ?? undefined,
+                    createdAt: new Date(rustTask.created_at * 1000).toISOString(),
+                    dateCreated: new Date(rustTask.created_at * 1000).toISOString(),
+                    updatedAt: new Date(rustTask.updated_at * 1000).toISOString(),
+                    assignee: undefined,
+                    labels: deserializeLabels(rustTask.labels),
+                    listId: rustTask.list_id,
+                    boardListId: rustTask.list_id,
+                    notes: rustTask.notes ?? undefined,
+                    isCompleted,
+                    completedAt: isCompleted
+                      ? new Date(rustTask.updated_at * 1000).toISOString()
+                      : null,
+                    subtasks,
+                    externalId: rustTask.google_id,
+                    pendingSync: ['pending', 'pending_move'].includes(rustTask.sync_state),
+                    syncState: rustTask.sync_state,
+                    lastSyncedAt: rustTask.last_synced_at
+                    ? rustTask.last_synced_at * 1000
+                    : undefined,
+                    syncError: rustTask.sync_error,
+                    hasConflict: rustTask.has_conflict,
+                };
+
+                set((state) => {
+                    state.tasksById[id] = task;
+                });
+            }
         } catch (error) {
-          console.error('[taskStore] Failed to update task in Rust:', error);
+            console.error('[taskStore] Failed to update task in Rust:', error);
         }
       },
       deleteTask: async (id) => {
-        // Optimistic UI update
-        set((state) => {
-          delete state.tasksById[id];
-          state.taskOrder = state.taskOrder.filter((taskId) => taskId !== id);
-        });
-        
-        emitTaskEvent('task_deleted', { id });
-
         // Persist to Rust backend
         try {
           await invoke('delete_task', { taskId: id });
+          
+          // Optimistic UI update
+          set((state) => {
+            delete state.tasksById[id];
+            state.taskOrder = state.taskOrder.filter((taskId) => taskId !== id);
+          });
+          
+          emitTaskEvent('task_deleted', { id });
+
         } catch (error) {
           console.error('[taskStore] Failed to delete task in Rust:', error);
         }
@@ -396,6 +545,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           boardListId: task.boardListId,
           notes: task.notes,
           checklist: task.checklist,
+          subtasks: task.subtasks,
           isCompleted: false,
           projectId: task.projectId,
           source: 'task_duplicate',
@@ -430,12 +580,17 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
             invoke<any[]>('get_tasks'),
             invoke<any[]>('get_task_lists')
           ]);
-          
-          set((state) => {
+
+        console.log('[taskStore] Fetched tasks from Rust:', rustTasks);
+
+        set((state) => {
             const tasksById: Record<string, Task> = {};
             const taskOrder: string[] = [];
 
             for (const rustTask of rustTasks) {
+              const isCompleted = rustTask.status === 'completed';
+              const subtasks = deserializeSubtasks(rustTask.subtasks);
+
               const task: Task = {
                 id: rustTask.id,
                 title: rustTask.title || 'Untitled',
@@ -450,10 +605,12 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
                 labels: deserializeLabels(rustTask.labels),
                 listId: rustTask.list_id,
                 boardListId: rustTask.list_id,
-                notes: rustTask.notes,
-                isCompleted: false,
-                completedAt: null,
-                subtasks: [],
+                notes: rustTask.notes ?? undefined,
+                isCompleted,
+                completedAt: isCompleted
+                  ? new Date(rustTask.updated_at * 1000).toISOString()
+                  : null,
+                subtasks,
                 externalId: rustTask.google_id,
                 pendingSync: ['pending', 'pending_move'].includes(rustTask.sync_state),
                 syncState: rustTask.sync_state,
@@ -461,6 +618,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
                   ? rustTask.last_synced_at * 1000
                   : undefined,
                 syncError: rustTask.sync_error,
+                hasConflict: rustTask.has_conflict,
               };
               tasksById[task.id] = task;
               taskOrder.push(task.id);

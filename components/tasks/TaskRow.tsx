@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, AlertTriangle } from "lucide-react";
 import { cn } from "../ui/utils";
 
 export type Priority = "high" | "medium" | "low" | "none";
@@ -10,6 +10,7 @@ export interface TaskRowProps {
   priority?: Priority;         // low-ink chips
   labels?: string[];           // optional low-ink tags
   completed?: boolean;
+  hasConflict?: boolean;
   onToggle?: (id: string) => void;
   onOpen?: (id: string) => void;
 }
@@ -28,7 +29,7 @@ const priorityChip = (p?: Priority) => {
 };
 
 export function TaskRow({
-  id, title, dueLabel, priority = "none", labels = [], completed,
+  id, title, dueLabel, priority = "none", labels = [], completed, hasConflict,
   onToggle, onOpen
 }: TaskRowProps) {
   return (
@@ -69,6 +70,7 @@ export function TaskRow({
             completed && "line-through opacity-60"
           )}
         >
+          {hasConflict && <AlertTriangle className="h-4 w-4 text-yellow-500 inline-block mr-2" />}
           {title}
         </div>
 

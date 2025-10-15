@@ -7,6 +7,7 @@ export interface Subtask {
   title: string;
   isCompleted: boolean;
   dueDate?: string;
+  position?: number;
 }
 
 export type TaskSyncState = 'idle' | 'pending' | 'pending_move' | 'syncing' | 'error';
@@ -40,6 +41,7 @@ export interface Task {
   syncState?: TaskSyncState;
   lastSyncedAt?: number;
   syncError?: string | null;
+  hasConflict?: boolean;
 }
 
 export interface ChecklistItem {

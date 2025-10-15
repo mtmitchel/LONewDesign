@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixes
+- Hardened duplicate-task cleanup so freshly created tasks waiting to sync are no longer mistaken for orphan records and removed during a manual sync cycle.
+
+### Known Issues
+- Newly created task lists are currently pruned after a manual sync because they have not yet been reconciled with Google Tasks; further backend wiring is required to persist their remote identifiers before pruning.
+
+### Google Tasks Sync Backend Refinements (2025-10-15)
+- Implemented "Resume on Startup" for the sync service to ensure immediate data synchronization on application launch.
+- Added idempotency checks to the sync queue worker to prevent duplicate processing of sync entries.
+- Implemented a manual sync trigger command (`sync_tasks_now`) to allow users to trigger a sync on demand.
+- Refactored the `taskStore` to be a read-only view of the backend state for create and update operations, ensuring a single source of truth.
+- Added a UI indicator for sync status in the `Sidebar` to provide users with real-time feedback on the sync process.
+- Added a UI indicator for conflicts in the `TaskCard` to alert users of any sync conflicts.
+- Fixed a bug where the `isCompleted` status of a task was hardcoded to `false` during fetch, ensuring the correct completion status is displayed.
+- Fixed a bug where `moveTask` was calling a non-existent command, and `updateTask` was calling a renamed command, restoring task management functionality.
+- Fixed a bug where the `access_token` was not being parsed correctly from the nested JSON structure, resolving authentication errors with the Google API.
+- Resolved several compilation errors in the Rust backend code, improving code stability and reliability.
+
 ### Google Tasks Sync Backend (2025-10-16)
 - Implemented a robust background sync service for Google Tasks.
 - The service processes a sync queue, polls for remote changes, and handles conflicts.

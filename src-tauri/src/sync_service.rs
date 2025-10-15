@@ -1,20 +1,31 @@
-use crate::task_metadata;
 use crate::commands::google::google_workspace_store_get;
-use crate::sync::types::{SyncQueueEntry, GOOGLE_TASKS_BASE_URL};
-use crate::task_metadata::TaskMetadata;
+use crate::sync::google_client;
+use crate::sync::types::{SyncQueueEntry, TaskMetadataRecord, GOOGLE_TASKS_BASE_URL};
+use crate::task_metadata;
+use chrono::Utc;
 use reqwest::Client;
 use serde::Deserialize;
 use sqlx::SqlitePool;
 use std::collections::HashSet;
 use std::sync::Arc;
-use tokio::time::{interval, Duration};
 use tauri::AppHandle;
+use tokio::time::{interval, Duration};
+use uuid::Uuid;
+
+#[derive(Debug, Deserialize)]
+struct GoogleToken {
+    #[serde(rename = "accessToken")]
+    access_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct GoogleAccount {
+    token: GoogleToken,
+}
 
 #[derive(Debug, Deserialize)]
 struct GoogleAuthTokens {
-    access_token: String,
-    refresh_token: Option<String>,
-    expires_in: u64,
+    account: GoogleAccount,
 }
 
 #[derive(Debug, Deserialize)]
@@ -23,20 +34,40 @@ struct GoogleTask {
     title: String,
     due: Option<String>,
     notes: Option<String>,
+    #[serde(default)]
+    status: Option<String>,
 }
 
 pub struct SyncService {
     pool: SqlitePool,
     http_client: Client,
     app_handle: AppHandle,
+    api_state: crate::ApiState,
 }
 
 impl SyncService {
-    pub fn new(pool: SqlitePool, http_client: Client, app_handle: AppHandle) -> Self {
-        Self { pool, http_client, app_handle }
+    pub fn new(
+        pool: SqlitePool,
+        http_client: Client,
+        app_handle: AppHandle,
+        api_state: crate::ApiState,
+    ) -> Self {
+        Self {
+            pool,
+            http_client,
+            app_handle,
+            api_state,
+        }
     }
 
     pub fn start(self: Arc<Self>) {
+        let service = self.clone();
+        tokio::spawn(async move {
+            if let Err(e) = service.sync_cycle().await {
+                eprintln!("[sync_service] Initial sync cycle error: {}", e);
+            }
+        });
+
         let service = self.clone();
         tokio::spawn(async move {
             let mut ticker = interval(Duration::from_secs(60));
@@ -52,136 +83,628 @@ impl SyncService {
     async fn get_access_token(&self) -> Result<String, String> {
         match google_workspace_store_get()? {
             Some(tokens_str) => {
-                let tokens: GoogleAuthTokens = serde_json::from_str(&tokens_str).map_err(|e| e.to_string())?;
-                Ok(tokens.access_token)
+                println!("[sync_service] tokens_str: {}", tokens_str);
+                let tokens: GoogleAuthTokens =
+                    serde_json::from_str(&tokens_str).map_err(|e| e.to_string())?;
+                Ok(tokens.account.token.access_token)
             }
             None => Err("Not logged in".to_string()),
         }
     }
 
-    async fn sync_cycle(&self) -> Result<(), String> {
+    pub async fn sync_cycle(&self) -> Result<(), String> {
         self.process_sync_queue().await?;
+        self.cleanup_duplicate_tasks().await?;
         self.poll_google_tasks().await?;
         Ok(())
     }
 
     async fn process_sync_queue(&self) -> Result<(), String> {
+        let access_token = match self.get_access_token().await {
+            Ok(token) => token,
+            Err(err) => {
+                eprintln!(
+                    "[sync_service] Cannot process queue without access token: {}",
+                    err
+                );
+                return Err(err);
+            }
+        };
+
         let entries: Vec<SyncQueueEntry> = sqlx::query_as(
-            "SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY scheduled_at LIMIT 10",
+            "SELECT id, operation, task_id, payload, scheduled_at, status, attempts, last_error, created_at \
+             FROM sync_queue \
+             WHERE status = 'pending' AND scheduled_at <= ? \
+             ORDER BY scheduled_at ASC \
+             LIMIT 25"
         )
+        .bind(chrono::Utc::now().timestamp())
         .fetch_all(&self.pool)
         .await
         .map_err(|e| format!("Failed to fetch sync queue entries: {}", e))?;
 
         for entry in entries {
+            let claimed = sqlx::query(
+                "UPDATE sync_queue SET status = 'processing', attempts = attempts + 1, last_error = NULL WHERE id = ? AND status = 'pending'"
+            )
+            .bind(&entry.id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Failed to claim sync queue entry {}: {}", entry.id, e))?;
+
+            if claimed.rows_affected() == 0 {
+                continue;
+            }
+
+            let attempt_number = entry.attempts + 1;
+
             let result = match entry.operation.as_str() {
-                "create" => self.execute_create(&entry).await,
-                "update" => self.execute_update(&entry).await,
-                "delete" => self.execute_delete(&entry).await,
-                _ => Err(format!("Unknown sync operation: {}", entry.operation)),
+                "create" => self.execute_create(&entry, &access_token).await,
+                "update" => self.execute_update(&entry, &access_token).await,
+                "delete" => self.execute_delete(&entry, &access_token).await,
+                "move" => self.execute_move(&entry, &access_token).await,
+                other => Err(format!("Unsupported sync operation '{}'", other)),
             };
 
-            if let Err(e) = result {
-                eprintln!("[sync_service] Failed to execute sync entry {}: {}", entry.id, e);
-                let attempts = entry.attempts + 1;
-                if attempts > 5 {
-                    sqlx::query("UPDATE sync_queue SET status = 'failed', last_error = ? WHERE id = ?")
-                        .bind(e)
-                        .bind(&entry.id)
-                        .execute(&self.pool)
-                        .await
-                        .map_err(|e| e.to_string())?;
-                } else {
-                    let delay = 2i64.pow(attempts as u32);
-                    sqlx::query("UPDATE sync_queue SET attempts = ?, scheduled_at = scheduled_at + ? WHERE id = ?")
-                        .bind(attempts)
-                        .bind(delay)
-                        .bind(&entry.id)
-                        .execute(&self.pool)
-                        .await
-                        .map_err(|e| e.to_string())?;
-                }
+            if let Err(err) = result {
+                eprintln!(
+                    "[sync_service] Failed processing sync queue entry {}: {}",
+                    entry.id, err
+                );
+                self.mark_queue_failure(&entry, attempt_number, err).await?;
             }
         }
 
         Ok(())
     }
 
-    async fn execute_create(&self, entry: &SyncQueueEntry) -> Result<(), String> {
-        let access_token = self.get_access_token().await?;
+    async fn execute_create(
+        &self,
+        entry: &SyncQueueEntry,
+        access_token: &str,
+    ) -> Result<(), String> {
+        let Some(task) = self.fetch_task_record(&entry.task_id).await? else {
+            self.cleanup_queue_entry(&entry.id).await?;
+            return Ok(());
+        };
 
-        let metadata: TaskMetadata = serde_json::from_str(&entry.payload).unwrap();
-        let google_task = metadata.serialize_for_google();
+        if task.deleted_at.is_some() {
+            self.cleanup_tombstoned_create(&entry.id, &task.id).await?;
+            return Ok(());
+        }
 
-        let response = self.http_client
-            .post(format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks", entry.task_id))
-            .bearer_auth(access_token)
-            .json(&google_task)
-            .send()
+        let payload: serde_json::Value = serde_json::from_str(&entry.payload)
+            .map_err(|e| format!("Invalid create payload for {}: {}", entry.id, e))?;
+
+        let google_id = google_client::create_google_task_with_payload(
+            &self.http_client,
+            access_token,
+            &task.list_id,
+            payload,
+        )
+        .await?;
+
+        self.finalize_task_sync(&entry.id, &task, Some(&google_id))
             .await
-            .map_err(|e| e.to_string())?;
+    }
 
-        if response.status().is_success() {
+    async fn execute_update(
+        &self,
+        entry: &SyncQueueEntry,
+        access_token: &str,
+    ) -> Result<(), String> {
+        let Some(task) = self.fetch_task_record(&entry.task_id).await? else {
+            self.cleanup_queue_entry(&entry.id).await?;
+            return Ok(());
+        };
+
+        if task.deleted_at.is_some() {
+            self.cleanup_queue_entry(&entry.id).await?;
+            return Ok(());
+        }
+
+        let payload: serde_json::Value = serde_json::from_str(&entry.payload)
+            .map_err(|e| format!("Invalid update payload for {}: {}", entry.id, e))?;
+
+        if task.google_id.is_none() {
+            let google_id = google_client::create_google_task_with_payload(
+                &self.http_client,
+                access_token,
+                &task.list_id,
+                payload,
+            )
+            .await?;
+            return self
+                .finalize_task_sync(&entry.id, &task, Some(&google_id))
+                .await;
+        }
+
+        google_client::update_google_task_with_payload(
+            &self.http_client,
+            access_token,
+            &task.list_id,
+            task.google_id
+                .as_ref()
+                .ok_or_else(|| "Missing google_id for update".to_string())?,
+            payload,
+        )
+        .await?;
+
+        self.finalize_task_sync(&entry.id, &task, None).await
+    }
+
+    async fn execute_delete(
+        &self,
+        entry: &SyncQueueEntry,
+        access_token: &str,
+    ) -> Result<(), String> {
+        let task_opt = self.fetch_task_record(&entry.task_id).await?;
+
+        if let Some(task) = task_opt {
+            if let Some(google_id) = task.google_id.as_ref() {
+                google_client::delete_google_task(
+                    &self.http_client,
+                    access_token,
+                    &task.list_id,
+                    google_id,
+                )
+                .await?;
+            }
+
+            let mut tx = self
+                .pool
+                .begin()
+                .await
+                .map_err(|e| format!("Failed to begin delete transaction: {}", e))?;
+
+            sqlx::query("DELETE FROM tasks_metadata WHERE id = ?")
+                .bind(&task.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| format!("Failed to remove task {} after delete: {}", task.id, e))?;
+
             sqlx::query("DELETE FROM sync_queue WHERE id = ?")
                 .bind(&entry.id)
-                .execute(&self.pool)
+                .execute(&mut *tx)
                 .await
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| format!("Failed to clear delete queue entry {}: {}", entry.id, e))?;
+
+            tx.commit()
+                .await
+                .map_err(|e| format!("Failed to commit delete transaction: {}", e))?;
         } else {
-            // TODO: Handle error
+            self.cleanup_queue_entry(&entry.id).await?;
         }
 
         Ok(())
     }
 
-    async fn execute_update(&self, entry: &SyncQueueEntry) -> Result<(), String> {
-        let access_token = self.get_access_token().await?;
+    async fn execute_move(&self, entry: &SyncQueueEntry, access_token: &str) -> Result<(), String> {
+        let to_list_id: String = serde_json::from_str(&entry.payload)
+            .map_err(|e| format!("Invalid move payload {}: {}", entry.id, e))?;
 
-        let metadata: TaskMetadata = serde_json::from_str(&entry.payload).unwrap();
-        let google_task = metadata.serialize_for_google();
+        let Some(task) = self.fetch_task_record(&entry.task_id).await? else {
+            self.cleanup_queue_entry(&entry.id).await?;
+            return Ok(());
+        };
 
-        let response = self.http_client
-            .patch(format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks/{}", entry.task_id, entry.task_id))
-            .bearer_auth(access_token)
-            .json(&google_task)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        if response.status().is_success() {
-            sqlx::query("DELETE FROM sync_queue WHERE id = ?")
-                .bind(&entry.id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| e.to_string())?;
-        } else {
-            // TODO: Handle error
+        #[derive(sqlx::FromRow)]
+        struct MovePayload {
+            title: String,
+            notes: Option<String>,
+            due_date: Option<String>,
+            priority: String,
+            labels: String,
+            status: String,
+            time_block: Option<String>,
         }
+
+        let clone_payload: MovePayload = sqlx::query_as(
+            "SELECT title, notes, due_date, priority, labels, status, time_block FROM tasks_metadata WHERE id = ?"
+        )
+        .bind(&task.id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to load move payload for {}: {}", task.id, e))?;
+
+        let metadata = task_metadata::TaskMetadata {
+            title: clone_payload.title,
+            notes: clone_payload.notes,
+            due_date: clone_payload.due_date,
+            priority: clone_payload.priority,
+            labels: clone_payload.labels,
+            status: clone_payload.status,
+            time_block: clone_payload.time_block,
+        };
+
+        let google_payload = serde_json::to_value(metadata.normalize().serialize_for_google())
+            .map_err(|e| format!("Failed to serialize move payload: {}", e))?;
+
+        let new_google_id = google_client::create_google_task_with_payload(
+            &self.http_client,
+            access_token,
+            &to_list_id,
+            google_payload,
+        )
+        .await?;
+
+        if let (Some(source_list), Some(old_google_id)) = (
+            task.pending_move_from.as_ref(),
+            task.pending_delete_google_id.as_ref(),
+        ) {
+            if let Err(err) = google_client::delete_google_task(
+                &self.http_client,
+                access_token,
+                source_list,
+                old_google_id,
+            )
+            .await
+            {
+                eprintln!(
+                    "[sync_service] Failed to delete old task {} during move: {}",
+                    old_google_id, err
+                );
+            }
+        }
+
+        let now = chrono::Utc::now().timestamp();
+        sqlx::query(
+            "UPDATE tasks_metadata SET list_id = ?, google_id = ?, updated_at = ?, sync_state = 'synced', dirty_fields = '[]', sync_attempts = 0, last_synced_at = ?, sync_error = NULL, pending_move_from = NULL, pending_delete_google_id = NULL WHERE id = ?"
+        )
+        .bind(&to_list_id)
+        .bind(&new_google_id)
+        .bind(now)
+        .bind(now)
+        .bind(&task.id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to finalize move for task {}: {}", task.id, e))?;
+
+        self.cleanup_queue_entry(&entry.id).await
+    }
+
+    async fn cleanup_tombstoned_create(&self, entry_id: &str, task_id: &str) -> Result<(), String> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| format!("Failed to begin tombstone cleanup: {}", e))?;
+
+        sqlx::query("DELETE FROM sync_queue WHERE id = ?")
+            .bind(entry_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to clear queue entry {}: {}", entry_id, e))?;
+
+        sqlx::query("DELETE FROM tasks_metadata WHERE id = ?")
+            .bind(task_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to remove tombstoned task {}: {}", task_id, e))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| format!("Failed to commit tombstone cleanup: {}", e))?;
 
         Ok(())
     }
 
-    async fn execute_delete(&self, entry: &SyncQueueEntry) -> Result<(), String> {
-        let access_token = self.get_access_token().await?;
+    async fn mark_queue_failure(
+        &self,
+        entry: &SyncQueueEntry,
+        attempts: i64,
+        error: String,
+    ) -> Result<(), String> {
+        let delay = 2_i64.pow(attempts.clamp(1, 10) as u32);
+        let next_run = chrono::Utc::now().timestamp() + delay;
 
-        let response = self.http_client
-            .delete(format!("https://tasks.googleapis.com/tasks/v1/lists/{}/tasks/{}", entry.task_id, entry.task_id))
-            .bearer_auth(access_token)
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
+        sqlx::query(
+            "UPDATE sync_queue SET status = 'pending', scheduled_at = ?, last_error = ?, attempts = ? WHERE id = ?"
+        )
+        .bind(next_run)
+        .bind(&error)
+        .bind(attempts)
+        .bind(&entry.id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to update sync queue failure state: {}", e))?;
 
-        if response.status().is_success() {
-            sqlx::query("DELETE FROM sync_queue WHERE id = ?")
-                .bind(&entry.id)
-                .execute(&self.pool)
-                .await
-                .map_err(|e| e.to_string())?;
-        } else {
-            // TODO: Handle error
-        }
+        let _ = sqlx::query(
+            "UPDATE tasks_metadata SET sync_state = 'error', sync_error = ?, sync_attempts = ? WHERE id = ?"
+        )
+        .bind(&error)
+        .bind(attempts)
+        .bind(&entry.task_id)
+        .execute(&self.pool)
+        .await;
 
         Ok(())
+    }
+
+    async fn finalize_task_sync(
+        &self,
+        entry_id: &str,
+        task: &TaskMetadataRecord,
+        new_google_id: Option<&str>,
+    ) -> Result<(), String> {
+        let now = chrono::Utc::now().timestamp();
+
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| format!("Failed to begin sync finalization: {}", e))?;
+
+        sqlx::query(
+            "UPDATE tasks_metadata \
+             SET google_id = COALESCE(?, google_id), \
+                 sync_state = 'synced', \
+                 dirty_fields = '[]', \
+                 sync_attempts = 0, \
+                 last_synced_at = ?, \
+                 sync_error = NULL, \
+                 last_remote_hash = metadata_hash, \
+                 pending_move_from = NULL, \
+                 pending_delete_google_id = NULL \
+             WHERE id = ?",
+        )
+        .bind(new_google_id)
+        .bind(now)
+        .bind(&task.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to update task {} after sync: {}", task.id, e))?;
+
+        sqlx::query("DELETE FROM sync_queue WHERE id = ?")
+            .bind(entry_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to delete queue entry {}: {}", entry_id, e))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| format!("Failed to commit sync finalization: {}", e))?;
+
+        Ok(())
+    }
+
+    async fn cleanup_queue_entry(&self, entry_id: &str) -> Result<(), String> {
+        sqlx::query("DELETE FROM sync_queue WHERE id = ?")
+            .bind(entry_id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| format!("Failed to cleanup queue entry {}: {}", entry_id, e))?;
+        Ok(())
+    }
+
+    async fn cleanup_duplicate_tasks(&self) -> Result<(), String> {
+        // Step 1: Remove any orphan shadow entries that lost their google_id linkage
+        let orphan_ids: Vec<String> = sqlx::query_scalar(
+            "SELECT orphan.id \
+             FROM tasks_metadata orphan \
+             JOIN tasks_metadata remote \
+               ON remote.google_id IS NOT NULL \
+              AND remote.id = ('google-' || remote.google_id) \
+              AND remote.list_id = orphan.list_id \
+              AND remote.title = orphan.title \
+              AND IFNULL(remote.notes, '') = IFNULL(orphan.notes, '') \
+              AND IFNULL(remote.due_date, '') = IFNULL(orphan.due_date, '') \
+             WHERE orphan.google_id IS NULL \
+               AND orphan.deleted_at IS NULL \
+               AND remote.deleted_at IS NULL \
+               AND orphan.sync_state NOT IN ('pending', 'processing')",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to detect orphan duplicate tasks: {}", e))?;
+
+        if !orphan_ids.is_empty() {
+            let mut tx = self
+                .pool
+                .begin()
+                .await
+                .map_err(|e| format!("Failed to begin orphan duplicate cleanup: {}", e))?;
+
+            for task_id in orphan_ids {
+                sqlx::query("DELETE FROM sync_queue WHERE task_id = ?")
+                    .bind(&task_id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| {
+                        format!("Failed to remove queue entries for {}: {}", task_id, e)
+                    })?;
+
+                sqlx::query("DELETE FROM tasks_metadata WHERE id = ?")
+                    .bind(&task_id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(|e| format!("Failed to remove duplicate task {}: {}", task_id, e))?;
+            }
+
+            tx.commit()
+                .await
+                .map_err(|e| format!("Failed to commit orphan duplicate cleanup: {}", e))?;
+        }
+
+        // Step 2: Flag fully-synced duplicate tasks (same metadata, different google IDs) for deletion
+        #[derive(sqlx::FromRow)]
+        struct SyncedDuplicate {
+            id: String,
+            google_id: String,
+            list_id: String,
+            sync_state: String,
+        }
+
+        let synced_duplicates: Vec<SyncedDuplicate> = sqlx::query_as(
+            "SELECT id, google_id, list_id, sync_state FROM (\
+                 SELECT id, google_id, list_id, sync_state, \
+                        ROW_NUMBER() OVER (PARTITION BY list_id, metadata_hash ORDER BY COALESCE(last_synced_at, updated_at, created_at) DESC) AS rn \
+                 FROM tasks_metadata \
+                 WHERE deleted_at IS NULL AND google_id IS NOT NULL\
+             ) WHERE rn > 1"
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to fetch synced duplicate tasks: {}", e))?;
+
+        if synced_duplicates.is_empty() {
+            return Ok(());
+        }
+
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| format!("Failed to begin synced duplicate cleanup: {}", e))?;
+
+        for duplicate in synced_duplicates {
+            if duplicate.sync_state == "pending_delete" {
+                continue;
+            }
+
+            let now = Utc::now().timestamp();
+
+            sqlx::query(
+                "UPDATE tasks_metadata SET deleted_at = ?, sync_state = 'pending_delete', sync_attempts = 0 WHERE id = ?"
+            )
+            .bind(now)
+            .bind(&duplicate.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to flag duplicate task {} for deletion: {}", duplicate.id, e))?;
+
+            let mutation_id = Uuid::new_v4().to_string();
+            sqlx::query(
+                "INSERT INTO task_mutation_log (id, task_id, operation, payload, actor, created_at) VALUES (?, ?, 'delete', '', 'system', ?)"
+            )
+            .bind(&mutation_id)
+            .bind(&duplicate.id)
+            .bind(now)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to log duplicate deletion for {}: {}", duplicate.id, e))?;
+
+            sqlx::query("DELETE FROM sync_queue WHERE task_id = ?")
+                .bind(&duplicate.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    format!(
+                        "Failed to clear existing queue entries for {}: {}",
+                        duplicate.id, e
+                    )
+                })?;
+
+            let queue_id = Uuid::new_v4().to_string();
+            sqlx::query(
+                "INSERT INTO sync_queue (id, task_id, operation, payload, scheduled_at, created_at, status, attempts) \
+                 VALUES (?, ?, 'delete', '', ?, ?, 'pending', 0)"
+            )
+            .bind(&queue_id)
+            .bind(&duplicate.id)
+            .bind(now)
+            .bind(now)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to enqueue duplicate {} for remote deletion: {}", duplicate.id, e))?;
+        }
+
+        tx.commit()
+            .await
+            .map_err(|e| format!("Failed to commit synced duplicate cleanup: {}", e))?;
+
+        Ok(())
+    }
+
+    async fn prune_missing_remote_tasks(
+        &self,
+        list_id: &str,
+        remote_google_ids: &HashSet<String>,
+    ) -> Result<(), String> {
+        #[derive(sqlx::FromRow)]
+        struct LocalTask {
+            id: String,
+            google_id: Option<String>,
+            sync_state: String,
+        }
+
+        let local_tasks: Vec<LocalTask> = sqlx::query_as(
+            "SELECT id, google_id, sync_state FROM tasks_metadata WHERE list_id = ? AND google_id IS NOT NULL AND deleted_at IS NULL"
+        )
+        .bind(list_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to load local tasks for pruning: {}", e))?;
+
+        if local_tasks.is_empty() {
+            return Ok(());
+        }
+
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| format!("Failed to begin pruning transaction: {}", e))?;
+
+        for task in local_tasks {
+            let Some(google_id) = task.google_id.as_ref() else {
+                continue;
+            };
+
+            if remote_google_ids.contains(google_id) {
+                continue;
+            }
+
+            if task.sync_state == "pending_delete" {
+                continue;
+            }
+
+            sqlx::query("DELETE FROM sync_queue WHERE task_id = ?")
+                .bind(&task.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    format!(
+                        "Failed to clear queue entries for stale task {}: {}",
+                        task.id, e
+                    )
+                })?;
+
+            sqlx::query("DELETE FROM tasks_metadata WHERE id = ?")
+                .bind(&task.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| {
+                    format!(
+                        "Failed to remove stale task {} missing remotely: {}",
+                        task.id, e
+                    )
+                })?;
+
+            println!(
+                "[sync_service] Pruned local task {} missing from Google list {}",
+                task.id, list_id
+            );
+        }
+
+        tx.commit()
+            .await
+            .map_err(|e| format!("Failed to commit pruning transaction: {}", e))?;
+
+        Ok(())
+    }
+
+    async fn fetch_task_record(&self, task_id: &str) -> Result<Option<TaskMetadataRecord>, String> {
+        sqlx::query_as(
+            "SELECT id, google_id, list_id, priority, labels, due_date, time_block, notes, status, \
+                    metadata_hash, dirty_fields, pending_move_from, pending_delete_google_id, deleted_at, \
+                    sync_state, sync_attempts, last_synced_at, last_remote_hash, sync_error \
+             FROM tasks_metadata WHERE id = ?"
+        )
+        .bind(task_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to fetch task {} for sync: {}", task_id, e))
     }
 
     async fn poll_google_tasks(&self) -> Result<(), String> {
@@ -193,7 +716,8 @@ impl SyncService {
         let mut remote_list_ids = HashSet::new();
 
         let lists_url = format!("{}/users/@me/lists", GOOGLE_TASKS_BASE_URL);
-        let lists_response = self.http_client
+        let lists_response = self
+            .http_client
             .get(&lists_url)
             .bearer_auth(&access_token)
             .send()
@@ -240,7 +764,8 @@ impl SyncService {
             println!("[sync_service] Fetching tasks from list {}", list_id);
 
             let tasks_url = format!("{}/lists/{}/tasks", GOOGLE_TASKS_BASE_URL, list_id);
-            let tasks_response = match self.http_client
+            let tasks_response = match self
+                .http_client
                 .get(&tasks_url)
                 .bearer_auth(&access_token)
                 .send()
@@ -291,11 +816,31 @@ impl SyncService {
                 list_id
             );
 
+            let mut remote_google_ids: HashSet<String> = HashSet::new();
+
             // Reconcile each task with local database
             for task in tasks {
+                if let Some(id_str) = task
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                {
+                    remote_google_ids.insert(id_str);
+                }
+
                 if let Err(e) = self.reconcile_task(list_id, task).await {
                     eprintln!("[sync_service] Failed to reconcile task: {}", e);
                 }
+            }
+
+            if let Err(e) = self
+                .prune_missing_remote_tasks(list_id, &remote_google_ids)
+                .await
+            {
+                eprintln!(
+                    "[sync_service] Failed pruning missing remote tasks for list {}: {}",
+                    list_id, e
+                );
             }
         }
 
@@ -350,15 +895,13 @@ impl SyncService {
 
         if exists.is_some() {
             // Update existing list
-            sqlx::query(
-                "UPDATE task_lists SET title = ?, updated_at = ? WHERE id = ?",
-            )
-            .bind(title)
-            .bind(now)
-            .bind(list_id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| format!("Failed to update list: {}", e))?;
+            sqlx::query("UPDATE task_lists SET title = ?, updated_at = ? WHERE id = ?")
+                .bind(title)
+                .bind(now)
+                .bind(list_id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| format!("Failed to update list: {}", e))?;
 
             eprintln!("[sync_service] Updated task list {} ({})", list_id, title);
         } else {
@@ -381,24 +924,36 @@ impl SyncService {
         Ok(())
     }
 
-    async fn reconcile_task(&self, list_id: &str, task_json: &serde_json::Value) -> Result<(), String> {
-        let task: GoogleTask = serde_json::from_value(task_json.clone()).map_err(|e| e.to_string())?;
+    async fn reconcile_task(
+        &self,
+        list_id: &str,
+        task_json: &serde_json::Value,
+    ) -> Result<(), String> {
+        let task: GoogleTask =
+            serde_json::from_value(task_json.clone()).map_err(|e| e.to_string())?;
 
         let google_id = &task.id;
         let title = &task.title;
 
-        // Store the title in the notes field (this is what the frontend displays)
-        let notes_to_store = Some(title.to_string());
-        // Parse Google due date if present
-        let due_to_store = task.due.as_ref().map(|s| {
-            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
-                dt.date_naive().to_string()
-            } else if s.len() >= 10 && s.as_bytes()[4] == b'-' && s.as_bytes()[7] == b'-' {
-                s[..10].to_string()
-            } else {
-                s.to_string()
-            }
-        });
+        let remote_payload = task_metadata::GoogleTaskPayload {
+            title: task.title.clone(),
+            notes: task.notes.clone(),
+            due: task.due.clone(),
+            status: task
+                .status
+                .clone()
+                .unwrap_or_else(|| "needsAction".to_string()),
+        };
+        let remote_metadata =
+            task_metadata::TaskMetadata::deserialize_from_google(&remote_payload).normalize();
+        let remote_metadata_hash = remote_metadata.compute_hash();
+
+        let notes_to_store = remote_metadata.notes.clone();
+        let due_to_store = remote_metadata.due_date.clone();
+        let priority_to_store = remote_metadata.priority.clone();
+        let labels_to_store = remote_metadata.labels.clone();
+        let status_to_store = remote_metadata.status.clone();
+        let time_block_to_store = remote_metadata.time_block.clone();
 
         let now = chrono::Utc::now().timestamp();
 
@@ -413,10 +968,11 @@ impl SyncService {
             id: String,
             sync_state: String,
             metadata_hash: Option<String>,
+            has_conflict: bool,
         }
 
         let existing: Option<ExistingTask> =
-            sqlx::query_as("SELECT id, sync_state, metadata_hash FROM tasks_metadata WHERE google_id = ?")
+            sqlx::query_as("SELECT id, sync_state, metadata_hash, has_conflict FROM tasks_metadata WHERE google_id = ?")
                 .bind(google_id)
                 .fetch_optional(&self.pool)
                 .await
@@ -428,23 +984,19 @@ impl SyncService {
             existing.as_ref().map(|t| &t.id)
         );
 
-        let remote_metadata = task_metadata::TaskMetadata {
-            title: title.to_string(),
-            notes: task.notes.clone(),
-            due_date: task.due.clone(),
-            priority: "none".to_string(),
-            labels: "[]".to_string(),
-            status: "needsAction".to_string(),
-            time_block: None,
-        };
-        let remote_metadata_hash = remote_metadata.compute_hash();
-
         if let Some(existing_task) = existing {
-            if existing_task.sync_state != "synced" && existing_task.metadata_hash.as_ref() != Some(&remote_metadata_hash) {
+            if existing_task.sync_state != "synced"
+                && existing_task.metadata_hash.as_ref() != Some(&remote_metadata_hash)
+            {
                 println!(
                     "[sync_service] CONFLICT DETECTED for task {}. Local is dirty and hashes do not match. Remote wins.",
                     existing_task.id
                 );
+                sqlx::query("UPDATE tasks_metadata SET has_conflict = 1 WHERE id = ?")
+                    .bind(&existing_task.id)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| format!("Failed to mark task as conflicted: {}", e))?;
             }
 
             // Update existing task
@@ -461,11 +1013,16 @@ impl SyncService {
             }
 
             let result = sqlx::query(
-                "UPDATE tasks_metadata SET list_id = ?, notes = ?, due_date = COALESCE(?, due_date), updated_at = ?, sync_state = 'synced', last_synced_at = ?, metadata_hash = ? WHERE id = ?"
+                "UPDATE tasks_metadata SET list_id = ?, title = ?, notes = ?, due_date = ?, priority = ?, labels = ?, status = ?, time_block = ?, updated_at = ?, sync_state = 'synced', last_synced_at = ?, metadata_hash = ?, dirty_fields = '[]', has_conflict = 0, sync_attempts = 0, sync_error = NULL WHERE id = ?"
             )
             .bind(list_id)
+            .bind(&remote_metadata.title)
             .bind(notes_to_store.as_deref())
             .bind(due_to_store.as_deref())
+            .bind(&priority_to_store)
+            .bind(&labels_to_store)
+            .bind(&status_to_store)
+            .bind(time_block_to_store.as_deref())
             .bind(now)
             .bind(now)
             .bind(&remote_metadata_hash)
@@ -500,31 +1057,37 @@ impl SyncService {
                 return Ok(());
             }
 
-            // Check if we have this task with a different local ID (preserve existing metadata)
-            let existing_by_id: Option<(String, String, String)> = sqlx::query_as(
-                "SELECT id, priority, labels FROM tasks_metadata WHERE notes = ? AND list_id = ? AND google_id IS NULL LIMIT 1"
+            // Check if we have this task with a different local ID (preserve metadata)
+            let existing_by_hash: Option<String> = sqlx::query_scalar(
+                "SELECT id FROM tasks_metadata WHERE metadata_hash = ? AND list_id = ? AND google_id IS NULL LIMIT 1"
             )
-            .bind(notes_to_store.as_deref())
+            .bind(&remote_metadata_hash)
             .bind(list_id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| format!("Failed to check for existing task by content: {}", e))?;
+            .map_err(|e| format!("Failed to check for existing task by metadata hash: {}", e))?;
 
-            if let Some((existing_id, _existing_priority, _existing_labels)) = existing_by_id {
+            if let Some(existing_id) = existing_by_hash {
                 // Update existing task with google_id (preserve metadata)
                 eprintln!(
                     "[sync_service] Found existing task {}, linking to google_id {}",
                     existing_id, google_id
                 );
                 let result = sqlx::query(
-                    "UPDATE tasks_metadata SET google_id = ?, list_id = ?, notes = ?, due_date = COALESCE(?, due_date), updated_at = ?, sync_state = 'synced', last_synced_at = ? WHERE id = ?"
+                    "UPDATE tasks_metadata SET google_id = ?, list_id = ?, title = ?, notes = ?, due_date = ?, priority = ?, labels = ?, status = ?, time_block = ?, updated_at = ?, sync_state = 'synced', last_synced_at = ?, metadata_hash = ?, dirty_fields = '[]', sync_attempts = 0, sync_error = NULL WHERE id = ?"
                 )
                 .bind(google_id)
                 .bind(list_id)
+                .bind(&remote_metadata.title)
                 .bind(notes_to_store.as_deref())
                 .bind(due_to_store.as_deref())
+                .bind(&priority_to_store)
+                .bind(&labels_to_store)
+                .bind(&status_to_store)
+                .bind(time_block_to_store.as_deref())
                 .bind(now)
                 .bind(now)
+                .bind(&remote_metadata_hash)
                 .bind(&existing_id)
                 .execute(&self.pool)
                 .await
@@ -546,33 +1109,24 @@ impl SyncService {
                     local_id
                 );
 
-                let metadata = task_metadata::TaskMetadata {
-                    title: title.to_string(),
-                    notes: task.notes.clone(),
-                    due_date: task.due.clone(),
-                    priority: "none".to_string(),
-                    labels: "[]".to_string(),
-                    status: "needsAction".to_string(),
-                    time_block: None,
-                };
-                let metadata_hash = metadata.compute_hash();
-
                 let result = sqlx::query(
-                    "INSERT INTO tasks_metadata (id, google_id, list_id, title, priority, labels, due_date, notes, created_at, updated_at, sync_state, last_synced_at, metadata_hash, dirty_fields)\n                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO tasks_metadata (id, google_id, list_id, title, priority, labels, status, due_date, notes, time_block, created_at, updated_at, sync_state, last_synced_at, metadata_hash, dirty_fields)\n                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 )
                 .bind(local_id.clone())
                 .bind(google_id)
                 .bind(list_id)
-                .bind(title)
-                .bind("none")
-                .bind("[]")
-                .bind(task.due.as_deref())
-                .bind(task.notes.as_deref())
+                .bind(&remote_metadata.title)
+                .bind(&priority_to_store)
+                .bind(&labels_to_store)
+                .bind(&status_to_store)
+                .bind(due_to_store.as_deref())
+                .bind(notes_to_store.as_deref())
+                .bind(time_block_to_store.as_deref())
                 .bind(now)
                 .bind(now)
                 .bind("synced")
                 .bind(now)
-                .bind(metadata_hash)
+                .bind(&remote_metadata_hash)
                 .bind("[]")
                 .execute(&self.pool)
                 .await
@@ -589,10 +1143,6 @@ impl SyncService {
             }
         }
 
-        
-
         Ok(())
-
     }
-
 }

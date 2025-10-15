@@ -1,8 +1,8 @@
 //! Tauri main entry
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod db;
 mod commands;
+mod db;
 mod sync;
 mod sync_service;
 mod task_metadata;
@@ -10,7 +10,7 @@ mod task_metadata;
 use std::time::Duration;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 #[derive(Clone)]
@@ -47,9 +47,15 @@ async fn init_database_command(app: AppHandle) -> Result<String, String> {
 // Task CRUD Commands - now in commands/tasks.rs
 
 #[tauri::command]
-async fn sync_tasks_now(_app: AppHandle) -> Result<String, String> {
-    // Trigger immediate sync by emitting event or calling sync service
-    // TODO: Wire this to actually trigger sync
+async fn sync_tasks_now(
+    sync_service: tauri::State<'_, std::sync::Arc<sync_service::SyncService>>,
+) -> Result<String, String> {
+    let service = sync_service.inner().clone();
+    tokio::spawn(async move {
+        if let Err(e) = service.sync_cycle().await {
+            eprintln!("[sync_tasks_now] Sync cycle error: {}", e);
+        }
+    });
     Ok("Sync triggered".to_string())
 }
 
@@ -107,24 +113,28 @@ fn main() {
             // Initialize database and start sync service
             let app_handle_for_db = app_handle.clone();
             let app_handle_for_sync = app_handle.clone();
+            let sync_service = tauri::async_runtime::block_on(async move {
+                let pool = db::init_database(&app_handle_for_db)
+                    .await
+                    .expect("Failed to initialize database");
+                println!("[main] Database initialized, creating sync service");
+                let http_client = reqwest::Client::builder()
+                    .connect_timeout(std::time::Duration::from_secs(15))
+                    .timeout(std::time::Duration::from_secs(120))
+                    .build()
+                    .expect("Failed to build HTTP client for sync service");
+                let api_state = ApiState::new();
+                std::sync::Arc::new(sync_service::SyncService::new(
+                    pool,
+                    http_client,
+                    app_handle_for_sync,
+                    api_state,
+                ))
+            });
+
+            app.manage(sync_service.clone());
             tauri::async_runtime::spawn(async move {
-                match db::init_database(&app_handle_for_db).await {
-                    Ok(pool) => {
-                        println!("[main] Database initialized, starting sync service");
-                        let http_client = reqwest::Client::builder()
-                            .connect_timeout(std::time::Duration::from_secs(15))
-                            .timeout(std::time::Duration::from_secs(120))
-                            .build()
-                            .expect("Failed to build HTTP client for sync service");
-                        let sync_service = std::sync::Arc::new(
-                            sync_service::SyncService::new(pool, http_client, app_handle_for_sync)
-                        );
-                        sync_service.start();
-                    }
-                    Err(e) => {
-                        eprintln!("[main] Failed to initialize database: {}", e);
-                    }
-                }
+                sync_service.start();
             });
 
             Ok(())
@@ -137,6 +147,9 @@ fn main() {
             commands::tasks::delete_task,
             commands::tasks::get_tasks,
             commands::tasks::get_task_lists,
+            commands::tasks::create_task_list,
+            commands::tasks::delete_task_list,
+            commands::tasks::queue_move_task,
             sync_tasks_now,
             commands::mistral::test_mistral_credentials,
             commands::mistral::fetch_mistral_models,

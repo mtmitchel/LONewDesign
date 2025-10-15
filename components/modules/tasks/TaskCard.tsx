@@ -9,7 +9,7 @@ import {
     ContextMenuTrigger,
     ContextMenuSeparator,
 } from '../../ui/context-menu';
-import { Edit, Trash, Copy, CheckSquare, Check } from 'lucide-react';
+import { Edit, Trash, Copy, CheckSquare, Check, AlertTriangle } from 'lucide-react';
 
 type TaskLabel = string | { name: string; color: string };
 
@@ -19,6 +19,7 @@ interface TaskCardProps {
   priority?: 'low' | 'medium' | 'high' | 'none';
   labels?: TaskLabel[];
   isCompleted: boolean;
+  hasConflict?: boolean;
   onToggleCompletion: () => void;
   onClick: () => void;
   onEdit: () => void;
@@ -35,6 +36,7 @@ export function TaskCard({
     priority = 'none',
     labels: rawLabels = [],
     isCompleted, 
+    hasConflict,
     onToggleCompletion, 
     onClick, 
     onEdit, 
@@ -92,6 +94,7 @@ export function TaskCard({
                     </button>
                   <div className="flex-1 min-w-0">
                     <h4 className={`text-[length:var(--task-title-size)] font-[var(--font-weight-medium)] leading-snug line-clamp-2 ${isCompleted ? 'line-through text-[color:var(--text-tertiary)] opacity-60' : 'text-[color:var(--text-primary)]'}`}>
+                      {hasConflict && <AlertTriangle className="h-4 w-4 text-yellow-500 inline-block mr-2" />}
                       {taskTitle}
                     </h4>
                     {(dueDate || priority !== 'none' || labels.length > 0) && (

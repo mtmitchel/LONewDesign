@@ -1,7 +1,7 @@
 //! Ollama AI commands
 
-use crate::ApiState;
 use super::ai_types::{ChatMessageInput, StreamEvent, TestResult};
+use crate::ApiState;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};

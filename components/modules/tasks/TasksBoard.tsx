@@ -242,6 +242,7 @@ export function TasksBoard({
               priority={activeTask.priority ?? 'none'}
               labels={activeTask.labels ?? []}
               isCompleted={Boolean(activeTask.isCompleted)}
+              hasConflict={activeTask.hasConflict}
               onToggleCompletion={() => {}}
               onClick={() => {}}
               onEdit={() => {}}

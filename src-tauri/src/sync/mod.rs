@@ -7,4 +7,6 @@
 //! - `queue_worker`: Mutation queue processing
 //! - `reconciler`: Polling and reconciliation logic
 
+pub mod google_client;
+pub mod queue_worker;
 pub mod types;

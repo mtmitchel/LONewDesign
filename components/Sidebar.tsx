@@ -9,12 +9,15 @@ import {
   MessageSquare,
   PenTool,
   Settings,
-  Sun
+  Sun,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { PaneCaret, PaneFooter } from './dev/PaneCaret';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { cn } from './ui/utils';
 import { SidebarAssistantLauncher } from './ui/chrome/SidebarAssistantLauncher';
+import { useTaskStore, selectSyncStatus } from './modules/tasks/taskStore';
 
 interface SidebarProps {
   activeModule: string;
@@ -37,7 +40,29 @@ const modules = [
 ];
 
 export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleCollapse, onAssistantOpen }: SidebarProps) {
+  const { status, error } = useTaskStore(selectSyncStatus);
   const sidebarWidth = collapsed ? 'var(--sidebar-w-closed)' : 'var(--sidebar-w-open)';
+
+  const renderSyncStatus = () => {
+    if (collapsed) {
+      return (
+        <div className="flex justify-center">
+          {status === 'syncing' && <Wifi className="h-4 w-4 animate-pulse" />}
+          {status === 'error' && <WifiOff className="h-4 w-4 text-red-500" />}
+          {status === 'idle' && <Wifi className="h-4 w-4" />}
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-xs text-gray-500">
+        {status === 'syncing' && 'Syncing...'}
+        {status === 'error' && `Sync Error: ${error}`}
+        {status === 'idle' && 'Synced'}
+      </div>
+    );
+  };
+
   return (
     <div
       className="flex flex-col border-r border-[var(--border-subtle)] bg-[var(--bg-surface)] transition-all duration-200"
@@ -123,6 +148,11 @@ export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleColla
           onOpen={onAssistantOpen}
           className="pb-[var(--sidebar-gutter)]"
         />
+
+        {/* Sync Status */}
+        <div className="px-[var(--sidebar-gutter)]">
+          {renderSyncStatus()}
+        </div>
 
         {/* Standardized Pane Caret - Bottom placement */}
         <PaneFooter>

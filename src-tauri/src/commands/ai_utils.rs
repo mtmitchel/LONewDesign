@@ -1,8 +1,8 @@
 //! Cross-provider AI utilities
 
-use crate::ApiState;
 use super::ai_types::{ChatMessageInput, ChatRequest};
 use super::mistral::resolve_base_url;
+use crate::ApiState;
 use serde::Deserialize;
 use tauri::State;
 

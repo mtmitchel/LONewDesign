@@ -416,13 +416,7 @@ pub async fn google_tasks_move_task(
         let mut segments = url
             .path_segments_mut()
             .map_err(|_| "Google Tasks base URL cannot be relative".to_string())?;
-        segments.extend([
-            "lists",
-            list_id.as_str(),
-            "tasks",
-            task_id.as_str(),
-            "move",
-        ]);
+        segments.extend(["lists", list_id.as_str(), "tasks", task_id.as_str(), "move"]);
     }
 
     let mut query = Vec::new();
@@ -616,13 +610,14 @@ async fn google_tasks_request(
             ));
         }
 
-        let data = if response.status() == StatusCode::NO_CONTENT {
-            None
-        } else {
-            Some(response.json::<Value>().await.map_err(|error| {
-                format!("Failed to parse Google Tasks API response: {error}")
-            })?)
-        };
+        let data =
+            if response.status() == StatusCode::NO_CONTENT {
+                None
+            } else {
+                Some(response.json::<Value>().await.map_err(|error| {
+                    format!("Failed to parse Google Tasks API response: {error}")
+                })?)
+            };
 
         return Ok(GoogleTasksCommandResponse {
             data,

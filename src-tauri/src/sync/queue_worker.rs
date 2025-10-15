@@ -227,7 +227,7 @@ async fn fetch_task_record(
         "SELECT id, google_id, list_id, priority, labels, due_date, time_block, notes, status, \
             metadata_hash, dirty_fields, pending_move_from, pending_delete_google_id, deleted_at, \
             sync_state, sync_attempts, last_synced_at, last_remote_hash, sync_error \
-         FROM tasks_metadata WHERE id = ?"
+         FROM tasks_metadata WHERE id = ?",
     )
     .bind(task_id)
     .fetch_optional(db_pool)
@@ -288,10 +288,7 @@ fn payload_metadata_hash(_payload: &serde_json::Value) -> String {
     String::from("placeholder-hash")
 }
 
-fn derive_post_sync_state(
-    task: &TaskMetadataRecord,
-    payload_hash: &str,
-) -> (String, String) {
+fn derive_post_sync_state(task: &TaskMetadataRecord, payload_hash: &str) -> (String, String) {
     if task.metadata_hash == payload_hash {
         ("synced".to_string(), "[]".to_string())
     } else {
@@ -309,10 +306,12 @@ async fn finalize_task_sync(
     let (sync_state_after, dirty_fields_after) = derive_post_sync_state(task, payload_hash);
     let now = chrono::Utc::now().timestamp();
 
-    let mut tx = db_pool
-        .begin()
-        .await
-        .map_err(|e| format!("Failed to begin transaction for queue entry {}: {}", entry.id, e))?;
+    let mut tx = db_pool.begin().await.map_err(|e| {
+        format!(
+            "Failed to begin transaction for queue entry {}: {}",
+            entry.id, e
+        )
+    })?;
 
     sqlx::query(
         "UPDATE tasks_metadata \
@@ -325,7 +324,7 @@ async fn finalize_task_sync(
              last_remote_hash = ?, \
              pending_move_from = NULL, \
              pending_delete_google_id = NULL \
-         WHERE id = ?"
+         WHERE id = ?",
     )
     .bind(new_google_id)
     .bind(&sync_state_after)

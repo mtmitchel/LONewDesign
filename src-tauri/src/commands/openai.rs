@@ -1,7 +1,7 @@
 //! OpenAI and OpenRouter commands
 
-use crate::ApiState;
 use super::ai_types::{ChatMessageInput, ModelInfo, StreamEvent};
+use crate::ApiState;
 use futures_util::StreamExt;
 use reqwest::StatusCode;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow};

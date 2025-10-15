@@ -1,7 +1,9 @@
 //! Mistral AI commands
 
+use super::ai_types::{
+    ChatMessageInput, ChatRequest, ModelInfo, ModelsResponse, StreamChunk, StreamEvent, TestResult,
+};
 use crate::ApiState;
-use super::ai_types::{ChatMessageInput, ChatRequest, ModelInfo, ModelsResponse, StreamChunk, StreamEvent, TestResult};
 use futures_util::StreamExt;
 use reqwest::StatusCode;
 use serde::Deserialize;
@@ -220,7 +222,7 @@ pub async fn mistral_chat_stream(
                                 finish_reason: finish_reason.clone(),
                                 error: None,
                             },
-        );
+                        );
                         return Ok(());
                     }
 
