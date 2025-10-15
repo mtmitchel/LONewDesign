@@ -2,7 +2,7 @@
 
 > Updated 2025-10-10 – validates the local (Ollama) provider used by the Assistant and Chat modules.
 
-## Prereqs
+## Prerequisites
 - Ollama running locally (`ollama serve`) on `http://127.0.0.1:11434`.
 - At least one chat-capable model pulled (e.g., `ollama pull llama3:8b`).
 - LibreOllama Desktop running in Tauri (`npm run tauri:dev` or `npm run tauri:dev:smart`).
@@ -34,7 +34,7 @@
 - Stop the Ollama server and re-run the connection test → expect warning toast.
 - Try a model name that is not pulled locally → assistant/chat should surface the backend error gracefully.
 
-## Debug Tips
+## Debug tips
 ```bash
 # List local models
 curl http://127.0.0.1:11434/api/tags | jq '.models[].name'

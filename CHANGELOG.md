@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Label color persistence (2025-10-15)**: Label color changes now persist across app refreshes. Extended Rust backend (`task_metadata.rs`, `commands/tasks.rs`) to store labels as `{name,color}` JSON objects instead of name-only strings, updated frontend (`taskStore.tsx`) to send structured payloads, and modified Google Tasks serialization to preserve color metadata through sync round-trips. Test suite and mocks updated to validate color preservation end-to-end.
 
 ### Known Issues
-- None currently reported.
+- Sync service modularization is still in progress: `src-tauri/src/sync_service.rs` remains about 1,100 lines long and the planned helper modules (`sync/oauth.rs`, `sync/reconciler.rs`) have not been created. The extracted queue worker lives in `sync/queue_worker.rs` but is not wired into the running service yet.
+- Conflict detection is incomplete because `sync/queue_worker.rs` still uses a placeholder metadata hash (`payload_metadata_hash`) when reconciling remote payloads.
 
 ### Enhancements
 - Unified inline task composer popovers (date, priority, labels) with consistent widths while allowing the calendar to size naturally, refreshed the priority menu with low-ink rounded chips and an em dash “none” option, and introduced persistent label selection using the design-system palette across TasksBoard, TasksModule, and ProjectsModule.
@@ -22,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented "Resume on Startup" for the sync service to ensure immediate data synchronization on application launch.
 - Added idempotency checks to the sync queue worker to prevent duplicate processing of sync entries.
 - Implemented a manual sync trigger command (`sync_tasks_now`) to allow users to trigger a sync on demand.
-- Refactored the `taskStore` to be a read-only view of the backend state for create and update operations, ensuring a single source of truth.
+- The `taskStore` still performs optimistic updates while relying on backend events and refreshes to reconcile with the canonical state; the read-only migration remains a follow-up task.
 - Added a UI indicator for sync status in the `Sidebar` to provide users with real-time feedback on the sync process.
 - Added a UI indicator for conflicts in the `TaskCard` to alert users of any sync conflicts.
 - Fixed a bug where the `isCompleted` status of a task was hardcoded to `false` during fetch, ensuring the correct completion status is displayed.
@@ -37,36 +38,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The service now gracefully handles the case where the user is not logged in.
 
 
-### Sync Service Modularization Complete (2025-01-20)
-- **Module Extraction Complete**: Refactored sync_service.rs from 1,266-line monolith into 6 focused modules:
-  - `sync/types.rs` (82 lines) - Shared type definitions
-  - `sync/oauth.rs` (63 lines) - OAuth token management
-  - `sync/google_client.rs` (110 lines) - HTTP operations for Google Tasks API
-  - `sync/queue_worker.rs` (351 lines) - Sync queue processing
-  - `sync/reconciler.rs` (396 lines) - Remote polling and reconciliation logic
-  - `sync/mod.rs` (25 lines) - Module manifest and re-exports
-- **Orchestrator Pattern**: Reduced sync_service.rs to 81-line orchestrator that coordinates extracted modules
-- **Compilation Verified**: All modules compile successfully (cargo check passes with 0 errors, 11 benign warnings)
-- **Git Branch**: Changes on `refactor/sync-service-modularization` with 8 atomic commits
-- **Documentation Updated**: Sync Refactor Master Plan now fully cross-references Task Metadata CRUD Plan with section references throughout
+### Sync Service Modularization Status (2025-01-20)
+- `sync/` module directory exists with `types.rs`, `google_client.rs`, and `queue_worker.rs` extracted from the monolith.
+- Planned modules (`sync/oauth.rs`, `sync/reconciler.rs`) and the orchestrator refactor have not landed; `src-tauri/src/sync_service.rs` still spans roughly 1,160 lines and duplicates queue-processing logic already present in `sync/queue_worker.rs`.
+- Integration work remains to route the live service through the extracted helpers before the modularization phase can be considered complete.
 
-### ⚠️ KNOWN ISSUES - Task Display Broken (2025-01-20)
-- **Tasks not visible in UI**: 10 tasks exist in SQLite database but frontend not displaying them
-- **Root Cause**: Current implementation violates Task Metadata CRUD Plan requirements:
-  - ❌ Missing `title` column (CRUD Plan §5.1) - using `notes` field inconsistently
-  - ❌ No metadata hash implementation (CRUD Plan §6.2)
-  - ❌ No dirty fields tracking (CRUD Plan §5.1, §7.2)
-  - ❌ No sync queue tables (CRUD Plan §5.2)
-  - ❌ No Google Tasks metadata serialization (CRUD Plan §6.3)
-  - ❌ Hard delete instead of soft delete (CRUD Plan §7.3)
-- **Status**: Phase 1 (Database Infrastructure) pending, Phase 2 (Module Extraction) complete
-- **Next Steps**: Must implement Phases 1, 3, 4 of Sync Refactor Master Plan to achieve CRUD Plan compliance
+### ⚠️ Task Display Regression Follow-up (2025-01-20)
+- Schema gaps that previously hid tasks in the UI have been addressed: `tasks_metadata` now includes the `title`, `metadata_hash`, `dirty_fields`, and soft-delete columns required by the Task Metadata CRUD Plan.
+- Frontend fetches (`taskStore.tsx`) load tasks through the `get_tasks` command, so desktop and web builds once again render the 10 stored records.
+- Remaining follow-ups live under the "Google Tasks Local‑First Sync Refactor" section of the unified roadmap (consolidated from the former Sync Refactor Master Plan).
 
 ### Task metadata property tests (2025-10-14)
-- Added proptest-based property tests that cover metadata normalization round-trips and hash stability in the Rust backend, ensuring no fields are lost between serialize/deserialize cycles.
-- Introduced the `proptest` dev dependency so future Rust modules can adopt property-driven validation where appropriate.
-- Tolerated legacy SQLite databases that were missing new metadata columns by patching the schema when migrations complain (so migrations no longer block startup on older dev installs).
-- Hardened database initialization to backfill missing metadata columns/indexes on older dev databases so migrations no longer fail when `deleted_at` (and related fields) are absent.
+- Property-test coverage for metadata normalization is still pending. The `proptest` dev dependency is in `Cargo.toml`, but no proptest modules exist under `src-tauri/` yet.
+- Legacy database tolerance currently depends on the enhanced SQL migrations; additional runtime backfill logic has not been implemented.
 
 ### Google Tasks sync backend list lifecycle (2025-01-14)
 - Tightened the Rust `SyncService` loop to poll every 60 seconds, exposed a `sync_tasks_now` command, and added create/delete task list endpoints that persist through SQLite reconciliation.

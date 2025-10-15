@@ -1,139 +1,27 @@
-# Sync Refactor Master Plan
+# Sync refactor master plan (stub)
 
-> **Consolidated from**: 4 source planning documents (archived in `docs/archive/source-plans/`)
-> 
-> **Created**: 2025-01-20  
-> **Last Updated**: 2025-01-20
-> **Status**: In Progress - Phase 1 Pending, Phase 2 Complete ✅
->
-> **⚠️ CRITICAL**: This plan fully implements the **Task Metadata CRUD Plan** requirements.  
-> See: `docs/archive/source-plans/TASK_METADATA_CRUD_PLAN.md` for detailed architectural specification.
+> Consolidated into the **Google Tasks Local‑First Sync Refactor** section of `docs/roadmap/Unified-Workspace-Roadmap.md` (2025-10-15). This file remains as a lightweight pointer to avoid broken links.
 
----
+## Where Did Everything Go?
 
-## 📊 Status Dashboard
+All phases, tasks, architecture diagrams, and progress tables now live inside the unified roadmap so product and engineering planning share a single canonical document.
 
-| Phase | Status | Tasks Complete | Duration Estimate |
-|-------|--------|----------------|-------------------|
-| **Phase 1**: Database Infrastructure | 🟡 Pending | 0/5 | 2-3 days |
-| **Phase 2**: Module Extraction | ✅ **COMPLETE** | 11/11 | DONE |
-| **Phase 3**: Metadata CRUD Enhancement | 🟡 Pending | 0/11 | 2-3 days |
-| **Phase 4**: Sync Engine Overhaul | 🟡 Pending | 0/8 | 2-3 days |
-| **Phase 5**: Frontend & Testing | 🟡 Pending | 0/8 | 1-2 days |
+### Active reference
+- Open: `docs/roadmap/Unified-Workspace-Roadmap.md` → search for "Google Tasks Local‑First Sync Refactor".
 
-**Total Estimated Time Remaining**: 7-11 days
+### Archived full text
+- Historical snapshot: `docs/archive/Sync-Refactor-Master-Plan-2025-10-15.md`
+- Source architectural spec: `docs/archive/source-plans/TASK_METADATA_CRUD_PLAN.md`
 
----
+### Rationale
+- Eliminates drift between roadmap and backend implementation plan.
+- Consolidates status dashboards (phases P1–P5) with adjacent product workstreams.
+- Simplifies cross-linking from `CHANGELOG.md`, `Guidelines.md`, and state architecture guides.
 
-## 🎯 Goals & Architecture
+### Updating guidance
+Update only the consolidated section in the unified roadmap. Do not resurrect this file with duplicate content; instead, append clarifications or corrections there.
 
-### **Primary Objective**
-Transform the Therefore task management system into a **bulletproof, local-first architecture** with SQLite as the canonical source of truth, deterministic Google Tasks sync, and zero metadata loss across all operations.
-
-**This plan implements the complete architecture specified in the Task Metadata CRUD Plan**, including:
-- Local-first SQLite backend with canonical data
-- Field-level dirty tracking and metadata hashing
-- Explicit sync queue with mutation logging
-- Conflict detection and resolution
-- Google Tasks metadata serialization (JSON encoding in notes field)
-- Soft deletes with reconciliation support
-
-### **Key Requirements**
-1. ✅ **Local Data Is Canonical**: SQLite is single source of truth (CRUD Plan §2.1)
-2. ✅ **No Metadata Loss**: Priority, labels, due dates persist through all operations (CRUD Plan §2.2)
-3. ✅ **Deterministic Sync**: Idempotent operations with conflict detection (CRUD Plan §2.3)
-4. ✅ **Offline-First**: All CRUD succeeds offline with mutation queue (CRUD Plan §2.5)
-5. ✅ **Auditable History**: Full change tracking with timestamps and hashes (CRUD Plan §2.6)
-6. ✅ **Testability**: Comprehensive test coverage at all layers (CRUD Plan §2.7)
-
-### **Architecture Layers**
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  React UI Components (TasksBoard, CalendarRail, Forms)     │
-├─────────────────────────────────────────────────────────────┤
-│  Zustand Task Store (Read-only view, dispatches commands)  │
-├─────────────────────────────────────────────────────────────┤
-│  Tauri IPC Boundary (invoke commands, listen to events)    │
-├─────────────────────────────────────────────────────────────┤
-│  Rust Commands (CRUD, validation, emit events)             │
-├─────────────────────────────────────────────────────────────┤
-│  SQLite Database (tasks_metadata, mutation_log, sync_queue)│
-├─────────────────────────────────────────────────────────────┤
-│  Sync Service (Queue worker, poller, conflict resolution)  │
-├─────────────────────────────────────────────────────────────┤
-│  Google Tasks API (External sync target)                   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Reference**: See Task Metadata CRUD Plan §4 for detailed layer responsibilities and data flow.
-
----
-
-## Phase 1: Database Infrastructure 🟡
-
-**Goal**: Establish SQLite backend with migrations, schema enhancements, and supporting tables.
-
-### **Prerequisites**
-- ✅ Rust/Tauri project structure exists
-- ✅ commands/ module directory created
-- ✅ cargo check passes with 0 errors
-
-### **Tasks**
-
-#### **P1.1: Add SQLx Dependencies**
-```toml
-# Add to src-tauri/Cargo.toml
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "macros", "migrate"] }
-tokio = { version = "1.36", features = ["full"] }
-```
-
-**Validation**: `cargo build` succeeds
-
----
-
-#### **P1.2: Create Database Module**
-**File**: `src-tauri/src/db.rs`
-
-```rust
-use sqlx::{sqlite::SqlitePool, migrate::MigrateDatabase, Sqlite};
-use std::path::PathBuf;
-use tauri::Manager;
-
-pub async fn get_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let app_dir = app.path()
-        .app_data_dir()
-        .ok_or("Failed to resolve app data directory")?;
-    std::fs::create_dir_all(&app_dir)
-        .map_err(|e| format!("Failed to create app data directory: {}", e))?;
-    Ok(app_dir.join("therefore.db"))
-}
-
-pub async fn init_database(app: &tauri::AppHandle) -> Result<SqlitePool, String> {
-    let db_path = get_db_path(app).await?;
-    let db_url = format!("sqlite://{}?mode=rwc", db_path.display());
-    
-    if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-        Sqlite::create_database(&db_url).await
-            .map_err(|e| format!("Error creating database: {}", e))?;
-    }
-    
-    let pool = SqlitePool::connect(&db_url).await
-        .map_err(|e| format!("Error connecting to database: {}", e))?;
-    
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await
-        .map_err(|e| format!("Error running migrations: {}", e))?;
-    
-    Ok(pool)
-}
-```
-
-**Validation**: File compiles, exports `init_database` and `get_db_path`
-
----
-
+— End of file —
 #### **P1.3: Create Enhanced Schema Migration**
 **File**: `src-tauri/migrations/001_create_enhanced_schema.sql`
 
@@ -206,7 +94,7 @@ CREATE TABLE IF NOT EXISTS sync_queue (
     scheduled_at INTEGER NOT NULL,
     status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'failed'
     last_error TEXT,
-    retry_count INTEGER DEFAULT 0,
+    attempts INTEGER DEFAULT 0,
     created_at INTEGER NOT NULL,
     FOREIGN KEY (task_id) REFERENCES tasks_metadata(id) ON DELETE CASCADE
 );
@@ -323,7 +211,9 @@ Register in `invoke_handler!`:
 
 ---
 
-## Phase 2: Module Extraction ✅ **COMPLETE**
+## Phase 2: Module Extraction ✅
+
+> **Status 2025-10-15**: Main command modules remain split (`commands/*.rs`), and `main.rs` stays ~170 lines. No additional work required for this phase; sync-service modularization tracks under Phase 4.
 
 **Goal**: Extract monolithic main.rs into focused command modules.
 
@@ -354,6 +244,8 @@ Register in `invoke_handler!`:
 ## Phase 3: Metadata CRUD Enhancement 🟡
 
 **Goal**: Implement field-level dirty tracking, metadata hashing, and mutation logging in all CRUD commands.
+
+> **Status 2025-10-15**: Normalizer module, create/update/delete commands, subtasks, and soft-delete flow are live (P3.1–P3.5, P3.7). Remaining work covers conflict hashing in the queue worker, move helpers, and the planned Rust property/integration tests (P3.6, P3.8–P3.11).
 
 **Reference**: Implements Task Metadata CRUD Plan §6 (Metadata Serialization), §7 (Backend Commands), and §10 (Workflows)
 
@@ -601,6 +493,8 @@ Update `delete_task` to:
 
 **Goal**: Implement robust background sync with queue worker, conflict detection, and retry logic.
 
+> **Status 2025-10-15**: Background polling, duplicate cleanup, and manual `sync_tasks_now` trigger are operational inside `sync_service.rs`. Extracted helpers (`sync/google_client.rs`, `sync/queue_worker.rs`) compile but are not invoked yet, and conflict hashing/backoff still rely on placeholders. Remaining work includes wiring the orchestrator, implementing the dedicated reconciler, and finishing idempotency safeguards (P4.1–P4.7).
+
 **Reference**: Implements CRUD Plan §8 (Sync Engine Design) and §11 (Conflict Detection & Resolution)
 
 ### **Tasks**
@@ -835,6 +729,8 @@ async fn sync_tasks_now(app: AppHandle) -> Result<String, String> {
 
 **Goal**: Update React store, add UI indicators, and comprehensive testing.
 
+> **Status 2025-10-15**: `taskStore.tsx` now serializes structured labels/subtasks and surfaces sync metadata, but it still performs optimistic updates and lacks the planned event-driven read-only model. UI indicators/conflict tooling and the end-to-end test matrix remain outstanding.
+
 **Reference**: Implements CRUD Plan §9 (React Store Refactor), §10 (Workflow Specifications), and §14 (Testing Strategy)
 
 ### **Tasks**
@@ -938,14 +834,14 @@ P1 (Database) → P2 (Modules ✅) → P3 (CRUD) → P4 (Sync) → P5 (Frontend/
 
 ## 📊 Progress Tracking
 
-**Last Updated**: 2025-01-20
+**Last Updated**: 2025-10-15
 
 | Phase | Started | Completed | Notes |
 |-------|---------|-----------|-------|
-| P1 | - | - | Ready to start |
-| P2 | 2025-01-20 | 2025-01-20 ✅ | Modules extracted |
-| P3 | - | - | Pending P1 |
-| P4 | - | - | Pending P3 |
-| P5 | - | - | Pending P4 |
+| P1 | 2025-01-20 | — | Schema/migrations live; cross-platform validation pending |
+| P2 | 2025-01-20 | 2025-01-20 ✅ | Command modules extracted from `main.rs` |
+| P3 | 2025-10-14 | — | CRUD commands normalized; tests + conflict hashing still TODO |
+| P4 | 2025-10-15 | — | Background sync active; orchestrator modularization outstanding |
+| P5 | 2025-10-14 | — | Store emits structured metadata; read-only/event flow pending |
 
-**Next Action**: Begin Phase 1 - Add SQLx dependencies to Cargo.toml
+**Next Action**: Wire `sync/queue_worker.rs` into `SyncService` and implement real payload hashing (P4.1, P3.8).

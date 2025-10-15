@@ -1,7 +1,9 @@
-# ∴ UI Kit Usage Plan
-*Asana + Sunsama Design System Implementation Guide*
+# ∴ UI kit usage plan
+*Asana + Sunsama design system implementation guide*
 
-## 🎯 **Overview**
+> **See also:** Unified product roadmap at `docs/roadmap/Unified-Workspace-Roadmap.md` for UI component delivery phases and module priorities.
+
+## 🎯 Overview
 
 This plan outlines how to effectively use the ∴ UI Kit. The system leans on warm canvas neutrals, blue-gray primary accents, and coral highlights while borrowing structure from Asana + Sunsama. Treat this as the day-to-day reference for composing new surfaces with the tokenized primitives.
 

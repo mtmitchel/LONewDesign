@@ -3,7 +3,7 @@
 > This is the canonical markdown reference for `styles/globals.css`, replacing the legacy `design-tokens.md` file at the repo root.
 > **Last Updated:** October 9, 2025 - Consolidated calendar usage guidance and deprecated the root `design-tokens.md` snapshot.
 
-## Import & Base Setup
+## Import and base setup
 
 ```css
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -13,9 +13,9 @@
 @tailwind utilities;
 ```
 
-## Custom Variants & Utilities
+## Custom variants and utilities
 
-### Tailwind Arbitrary Token Helpers
+### Tailwind arbitrary token helpers
 When applying tokens through Tailwind classes, namespace the arbitrary values to avoid conflicts and keep intent clear:
 
 - Color tokens → `text-[color:var(--text-primary)]`, `hover:text-[color:var(--primary)]`
@@ -23,7 +23,7 @@ When applying tokens through Tailwind classes, namespace the arbitrary values to
 
 This mirrors the conventions used across the app shell and prevents duplicate-property warnings in editor tooling.
 
-### Compose Editor Placeholder
+### Compose editor placeholder
 ```css
 [data-compose-editor]:empty:before {
   content: attr(data-placeholder);
@@ -32,7 +32,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 }
 ```
 
-### Hide Scrollbar Utility
+### Hide scrollbar utility
 ```css
 .hide-scrollbar {
   -ms-overflow-style: none; /* IE/Edge */
@@ -43,9 +43,9 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 }
 ```
 
-## Design Token System
+## Design token system
 
-### Radius & Motion
+### Radius and motion
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--radius-full` | `9999px` | Pills, circular elements |
@@ -54,26 +54,26 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--easing-standard` | `cubic-bezier(0.2, 0.8, 0.3, 1)` | Default easing |
 | `--easing-emphasized` | `cubic-bezier(0.2, 0.9, 0.1, 1)` | Emphasized motion |
 
-### Elevation (Shadows)
+### Elevation (shadows)
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--elevation-sm` | `0 1px 2px rgba(0,0,0,0.06)` | Subtle elevation |
 | `--elevation-lg` | `0 12px 32px rgb(0 0 0 / 0.18)` | Medium elevation |
 | `--elevation-xl` | `0 24px 60px rgba(0,0,0,0.18)` | High elevation (modals) |
 
-### Layers (Z-index)
+### Layers (z-index)
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--z-overlay` | `70` | Modal overlays |
 
-### Canvas & Surfaces (Warm Off-White System)
+### Canvas and surfaces (warm off-white system)
 | Token | Value | Description |
 |-------|-------|-------------|
 | `--bg-canvas` | `hsl(60 9% 98%)` / `#FAFAF7` | Warm off-white background |
 | `--bg-surface` | `hsl(0 0% 100%)` / `#FFFFFF` | Pure white surfaces |
 | `--bg-surface-elevated` | `hsl(210 20% 95%)` / `#F1F5F9` | Subtle elevation |
 
-### Primary Colors (Blue-Gray, Asana-inspired)
+### Primary colors (blue-gray, Asana-inspired)
 | Token | Value | Description |
 |-------|-------|-------------|
 | `--primary` | `hsl(214 25% 27%)` / `#334155` | Main brand color |
@@ -83,7 +83,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--primary-tint-15` | `hsl(214 25% 27% / 0.15)` | 15% opacity tint |
 | `--primary-tint-20` | `hsl(214 25% 27% / 0.2)` | 20% opacity tint |
 
-### Accent Color (Coral)
+### Accent color (coral)
 | Token | Value | Description |
 |-------|-------|-------------|
 | `--accent-coral` | `hsl(0 85% 71%)` / `#F87171` | Coral accent |
@@ -93,7 +93,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--accent-coral-tint-15` | `hsl(0 85% 71% / 0.15)` | 15% opacity |
 | `--accent-coral-tint-20` | `hsl(0 85% 71% / 0.2)` | 20% opacity |
 
-### Status Colors
+### Status colors
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--success` | `hsl(160 50% 60%)` | Success states |
@@ -104,14 +104,14 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--neutral` | `var(--primary)` | Neutral tags |
 | `--info` | `hsl(200 70% 65%)` | Info states |
 
-### Text Colors (High Contrast)
+### Text colors (high contrast)
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--text-primary` | `hsl(223 44% 12%)` / `#111827` | Primary text |
 | `--text-secondary` | `hsl(215 25% 27%)` / `#374151` | Secondary text |
 | `--text-tertiary` | `hsl(215 16% 46%)` | Tertiary text, labels |
 
-### Borders (Warm Neutral)
+### Borders (warm neutral)
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--border-subtle` | `hsl(220 13% 91%)` / `#E5E7EB` | Subtle borders |
@@ -119,7 +119,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--border-divider` | `hsl(210 20% 95%)` / `#F1F5F9` | Light dividers |
 | `--border-hairline` | `rgba(0,0,0,0.06)` | Hairline borders |
 
-### Spacing Scale (Complete)
+### Spacing scale (complete)
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--space-1` | `4px` | XS - Micro spacing |
@@ -130,7 +130,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--space-6` | `24px` | XXL - Large sections |
 | `--space-8` | `32px` | XXXL - Major layout |
 
-### Border Radius Scale
+### Border radius scale
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--radius-sm` | `6px` | Buttons, small elements |
@@ -138,7 +138,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--radius-lg` | `12px` | Modals, containers |
 | `--radius-pill` | `9999px` | Pills, badges |
 
-### Typography Scale
+### Typography scale
 | Token | Value | Size | Usage |
 |-------|-------|------|-------|
 | `--text-xs` | `0.75rem` | 12px | Labels, captions |
@@ -148,7 +148,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--text-xl` | `1.25rem` | 20px | Section headings |
 | `--text-2xl` | `1.5rem` | 24px | Page titles |
 
-### Font Weights
+### Font weights
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--font-weight-normal` | `400` | Body text |
@@ -156,7 +156,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--font-weight-semibold` | `600` | Subheadings |
 | `--font-weight-bold` | `700` | Main headings |
 
-### Button Variants (Asana + Sunsama System)
+### Button variants (Asana + Sunsama system)
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--btn-primary-bg` | `var(--primary)` / `#334155` | Primary button |
@@ -173,7 +173,7 @@ This mirrors the conventions used across the app shell and prevents duplicate-pr
 | `--btn-primary-padding-x` | `16px` | Horizontal padding |
 | `--btn-primary-radius` | `6px` | Button corners |
 
-### Pane Caret Colors (Standardized)
+### Pane caret colors (standardized)
 | Token | Value | Usage |
 |-------|-------|-------|
 | `--caret-rest` | `#94A3B8` (slate-400) | Default state |
@@ -583,7 +583,7 @@ These tokens switch based on `.density-compact` class:
 | `--due-today` | `var(--primary)` | Due today |
 | `--due-overdue` | `var(--danger)` | Overdue date |
 
-## Shadcn Compatibility Layer
+## Shadcn compatibility layer
 
 These semantic mappings ensure compatibility with shadcn components:
 
@@ -609,7 +609,7 @@ These semantic mappings ensure compatibility with shadcn components:
 --ring: var(--primary);
 ```
 
-## Base Typography Styles
+## Base typography styles
 
 Default typography applied to elements without Tailwind text classes:
 
@@ -626,7 +626,7 @@ input: font-size: var(--text-base), font-weight: var(--font-weight-normal)
 
 All elements use `line-height: 1.6` for comfortable reading.
 
-## Density Class Activation
+## Density class activation
 
 Apply the `.density-compact` class to activate compact density mode for tasks:
 
@@ -648,9 +648,7 @@ Apply the `.density-compact` class to activate compact density mode for tasks:
 
 **Usage:** Add `.density-compact` to the container element (e.g., board grid) to switch all child task cards and list headers to compact mode.
 
-## Shadcn Compatibility Layer
-
-## Font Family
+## Font family
 
 ```css
 font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

@@ -1,4 +1,6 @@
-# LibreOllama Desktop – Tauri Migration Master Plan
+# LibreOllama desktop – Tauri migration master plan
+
+> **Status:** Implemented. This plan served as the scaffolding guide; refer to `README.md` for active dev commands and `docs/guidelines/Guidelines.md` for build conventions.
 
 This document defines the high-level goals, execution plan, and concrete tasks to convert the current React UI into a Rust Tauri desktop application while preserving the design system and focusing on the TriPane Mail module first.
 
@@ -9,17 +11,17 @@ This document defines the high-level goals, execution plan, and concrete tasks t
 - Ensure secure content rendering (sanitize email HTML).
 - Provide dev/build scripts and documentation.
 
-## Execution Overview
+## Execution overview
 1) Initialize Vite + TypeScript + Tailwind at the repo root (no file moves).
 2) Scaffold Tauri under `src-tauri` with secure defaults and CSP.
 3) Normalize Radix UI imports (remove version suffixes).
 4) Ensure design tokens flow through Tailwind build and UI.
 5) Sanitize `EmailOverlay` HTML content.
 6) Finalize TriPane Mail module keyboard behavior.
-7) Harden CSP and allowlist.
-8) Document run/build steps.
+7. Harden CSP and allowlist.
+8. Document run/build steps.
 
-## Structured Plan (Executable Tasks)
+## Structured plan (executable tasks)
 
 implemented
 ```json
@@ -339,7 +341,7 @@ implemented
 }
 ```
 
-## Quick Start (after tasks 1–2)
+## Quick start (after tasks 1–2)
 - npm install
 - npm run dev (web preview)
 - npm run tauri:dev (desktop dev)
@@ -351,7 +353,7 @@ implemented
 - components/modules/MailModuleTriPane.tsx (primary module)
 - components/PaneCaret.tsx and components/PaneCaretSpec.tsx
 
-## Next Steps
+## Next steps
 - Execute tasks in the listed order.
 - Validate UI matches tokens and Figma design.
 - Plan follow-ups for Dashboard, Chat, Notes modules after Mail TriPane completion.

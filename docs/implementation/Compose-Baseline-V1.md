@@ -1,4 +1,4 @@
-# Compose Baseline v1.0 (LibreOllama Design System)
+# Compose baseline v1.0 (LibreOllama design system)
 
 Approved production baseline for the Gmail-style docked Compose modal. This document captures visual, behavioral, and token alignment for future reuse and audits.
 
@@ -9,7 +9,7 @@ Approved production baseline for the Gmail-style docked Compose modal. This docu
 - Toolbar: Two-tier (Formatting Bar + Action Row), neutral tone
 - Motion + Radius tokens applied
 
-## Key Tokens
+## Key tokens
 - Radius: `--radius-full: 9999px`, `--radius-lg`
 - Motion: `--duration-fast: 150ms`, `--easing-standard: cubic-bezier(0.2, 0.8, 0.3, 1)`
 - Surfaces: `--bg-surface`, `--bg-surface-elevated`
@@ -17,7 +17,7 @@ Approved production baseline for the Gmail-style docked Compose modal. This docu
 - Text: `--text-primary`, `--text-secondary`, `--text-tertiary`
 - Hover: `--hover-bg`
 
-## Layout & Rhythm
+## Layout and rhythm
 - Dock insets: `bottom/right: var(--space-5)`
 - Header: 40px
 - Envelope rows (Recipients, Subject): 36px (h-9)
@@ -25,7 +25,7 @@ Approved production baseline for the Gmail-style docked Compose modal. This docu
 - Action Row: 40px (h-10)
 - Tier gap: `var(--space-3)` (≈12px)
 
-## Envelope Behavior
+## Envelope behavior
 - Collapsed: “Recipients” with `Cc/Bcc` links on right
 - Expanded: To/Cc/Bcc with chips; 56px label column for To/Cc/Bcc
 - Blur auto-resets to collapsed when no chips and no Cc/Bcc
@@ -39,13 +39,13 @@ Approved production baseline for the Gmail-style docked Compose modal. This docu
 - `sr-only` labels, `aria-labelledby` for Subject
 - Tooltip and button `aria-label`s present
 
-## Acceptance Checklist
+## Acceptance checklist
 - No horizontal scrollbars
 - Dividers use hairline/subtle tokens
 - Motion uses tokens (no hard-coded easing/durations)
 - Compose remains docked within center pane regardless of Context pane state
 
-## File References
+## File references
 - components/modules/compose/ComposeDocked.tsx
 - components/modules/compose/ComposeEnvelope.tsx
 - components/modules/compose/ComposeToolbar.tsx
@@ -60,7 +60,7 @@ Use this as the design-system reference for future modules (e.g., Notes editor, 
 
 ---
 
-## Implementation Snapshot (2025-10-05)
+## Implementation snapshot (2025-10-05)
 
 All baseline requirements are live in `components/modules/compose/`. Key references:
 
@@ -76,7 +76,7 @@ All baseline requirements are live in `components/modules/compose/`. Key referen
 └── index.ts                 // Exports
 ```
 
-### Feature Highlights
+### Feature highlights
 - Docked modal: 720×560px default, smooth fade/slide animation, Gmail-style header actions (minimize, pop out, close).
 - Recipients: chip input with validation, duplicate prevention, `Cc/Bcc` toggles that collapse when empty, smart parsing for `Name <email>`.
 - Subject + editor: focus styling via tokens, contentEditable editor sanitized by DOMPurify, maintains formatting on paste.
@@ -84,11 +84,11 @@ All baseline requirements are live in `components/modules/compose/`. Key referen
 - Keyboard and a11y: focus trap, `Escape` guard with dirty draft confirmation, ARIA labels on controls, chip announcements, tooltip hints.
 - Footer: sticky action row with primary send button, secondary options, consistent spacing.
 
-### Token Alignment
+### Token alignment
 - Custom compose-specific tokens (`--compose-docked-width`, `--compose-header-height`, etc.) applied for dimensions, spacing, and shadow.
 - Reuses shared palette tokens for borders (`--border-subtle`), text hierarchy, hover states, and motion (`--duration-fast`, `--easing-standard`).
 
-### Integration Notes
+### Integration notes
 ```tsx
 import { ComposeDocked } from '@/components/modules/compose';
 

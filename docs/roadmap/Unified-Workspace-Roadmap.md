@@ -25,6 +25,68 @@
 
 This architecture provides better reliability, offline support, state persistence across app restarts, and eliminates complex frontend state management issues.
 
+### Google Tasks Local‑First Sync Refactor (Consolidated)
+
+> Source documents consolidated here (2025-10-15): former standalone master plan (now `Sync-Refactor-Master-Plan-Stub.md`) + archived source plans. This section is the **single authoritative reference** for the task metadata + sync engine refactor. All engineering work tracking the local-first Google Tasks implementation should link to the subsections below instead of standalone plans.
+
+#### 🎯 Objective
+Provide a bulletproof, local-first, conflict-aware Google Tasks synchronization layer where **SQLite is canonical**, the **Rust backend owns all mutations + polling**, and the **React layer is read-only/event-driven** for task entities.
+
+#### 📊 Phase Status Dashboard (Engineering Sync Refactor)
+
+| Phase | Scope | Status | Complete | Notes |
+|-------|-------|--------|----------|-------|
+| P1 | Database Infrastructure | 🟢 Mostly Complete | 4/5 | Cross‑platform path validation pending |
+| P2 | Command Module Extraction | ✅ Complete | 11/11 | `main.rs` slimmed to ~170 LOC |
+| P3 | Metadata CRUD Enhancements | 🟡 In Progress | 6/11 | Conflict hashing & move helpers outstanding |
+| P4 | Sync Engine Overhaul | 🟡 In Progress | 3/8 | Queue worker extracted, not fully wired; reconciler pending |
+| P5 | Frontend Read‑Only + Testing | 🟡 Pending | 0/8 | Store still optimistic; property/integration tests TODO |
+
+**Next Critical Action:** Wire `sync/queue_worker.rs` into live `SyncService` and replace placeholder payload hashing (unblocks conflict detection + idempotency).
+
+#### 🧱 Architecture Layers
+```
+React UI (read-only task views, conflict banners)
+└─ Zustand Task Store (event-driven mirror, no optimistic writes)
+	└─ Tauri IPC (invoke + event emitters)
+		└─ Rust Commands (CRUD, validation, mutation logging)
+			└─ SQLite (tasks_metadata, task_mutation_log, sync_queue, task_lists)
+				└─ Sync Service (queue worker + poller + reconciler)
+					└─ Google Tasks API
+```
+
+#### ✅ Implemented Highlights
+* Enhanced schema with `metadata_hash`, `dirty_fields`, soft deletes, mutation log, sync queue.
+* Task metadata normalizer + deterministic SHA‑256 hashing + Google notes metadata packing.
+* Create / update / delete (soft) commands populate queue + mutation log.
+* Background polling + manual `sync_tasks_now` trigger operational.
+
+#### 🔄 Outstanding (High Priority)
+1. Queue worker orchestration: ensure single source of truth (remove duplicated logic in `sync_service.rs`).
+2. Real payload + metadata hashing inside queue worker (remove placeholder `payload_metadata_hash`).
+3. Conflict detection: field‑level merge & event emission (`tasks::conflict`).
+4. Read‑only taskStore refactor: shift from optimistic updates to event-only hydration.
+5. Property + integration tests (Rust) for normalization, CRUD, conflict paths, queue idempotency.
+
+#### 🧪 Testing Strategy (Snapshot)
+| Layer | Tests (Planned) | Status |
+|-------|-----------------|--------|
+| Metadata Normalizer | Determinism, whitespace, label ordering | Pending |
+| CRUD Commands | Create/update/delete/move idempotency | Partial |
+| Queue Worker | Retry/backoff, conflict marking, idempotency | Pending |
+| Poller/Reconciler | Field merge scenarios, soft delete pruning | Pending |
+| Frontend Store | Event application, no direct writes | Pending |
+
+#### 🔗 Cross References
+* Assistant & broader product phases: see sections 1–16 below.
+* State patterns: `state-and-sync-guide.md` (legacy notes + pointer here).
+* Changelog: latest sync backend refinements recorded under "Google Tasks Sync Backend" and related headings; unresolved items here become Known Issues until closed.
+
+#### 🗃️ Archival note
+The full historical narrative (rationale, step-by-step task list) now lives in `docs/archive/Sync-Refactor-Master-Plan-2025-10-15.md` for provenance. Only update this consolidated section going forward.
+
+---
+
 ### Objectives
 
 * Provide a single Google OAuth connection that powers mail triage, calendar sync, and bidirectional task management.

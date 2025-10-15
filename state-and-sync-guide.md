@@ -1,9 +1,10 @@
-> **⚠️ ARCHITECTURE CHANGE (2025-01-13):**  
-> This guide describes the **legacy frontend-heavy pattern**. For Google Tasks sync and future features, we're adopting a **backend-heavy architecture** where Rust owns sync logic and SQLite provides persistence.  
-> 
-> **See:**  
-> - `docs/roadmap/Unified-Workspace-Roadmap.md` - Google Workspace integration section  
-> - `docs/implementation/backend-sync-refactor-tasks.json` - Executable tasks  
+> **⚠️ Architecture change (2025-01-13, consolidated 2025-10-15):**  
+> This guide captures the **legacy frontend-heavy pattern**. For the active backend-heavy approach (local-first SQLite + Rust-owned sync) refer to the unified roadmap section titled **"Google Tasks Local‑First Sync Refactor"** in `docs/roadmap/Unified-Workspace-Roadmap.md`.  
+>  
+> **See also:**  
+> - Roadmap: `docs/roadmap/Unified-Workspace-Roadmap.md` (search heading above)  
+> - Executable tasks (historical): `docs/implementation/backend-sync-refactor-tasks.json`  
+> - Architectural spec (archived): `docs/archive/source-plans/TASK_METADATA_CRUD_PLAN.md`  
 > - Memory graph: Search "Backend-Heavy Architecture Pattern"  
 >
 > **Current patterns still apply to:** UI-only state, non-synced features, general Zustand usage
