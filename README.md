@@ -1,5 +1,7 @@
 # ∴ (Tauri + React)
 
+> **New here?** Start with `docs/roadmap/Unified-Workspace-Roadmap.md` for the complete product and engineering roadmap showing what's in progress, what's next, and what's complete. For development setup and coding conventions, see `docs/guidelines/Guidelines.md`.
+
 ## Prereqs
 - Node.js 18+
 - Rust + Cargo (stable)

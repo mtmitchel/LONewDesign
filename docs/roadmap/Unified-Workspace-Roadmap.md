@@ -1,5 +1,7 @@
 # Unified workspace roadmap (v2)
 
+> **This is the single authoritative source** for what's being built, what's in progress, and what's complete. All engineers should reference this roadmap when planning work. For coding conventions and setup, see `../guidelines/Guidelines.md`.
+
 > Formerly `Unified-UI-Redesign.md`; this living roadmap now covers the unified UI redesign and the Google Workspace (Mail · Calendar · Tasks) integration workstreams.
 
 ## Scope overview

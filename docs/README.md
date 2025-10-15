@@ -1,5 +1,7 @@
 # Documentation index
 
+> **🚀 Start here:** New to the project? Read `roadmap/Unified-Workspace-Roadmap.md` for the complete product and engineering roadmap, then `guidelines/Guidelines.md` for development conventions. Everything else is reference material.
+
 Authoritative entry points for planning, architecture, and implementation. Keep this file updated when adding or archiving major documents.
 
 ## Core roadmaps
