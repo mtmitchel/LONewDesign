@@ -5,6 +5,7 @@ use sqlx::SqlitePool;
 
 use crate::sync::google_client;
 use crate::sync::types::{SyncQueueEntry, TaskMetadataRecord};
+use crate::task_metadata;
 
 /// Executes pending mutations from the sync queue
 ///
@@ -79,6 +80,7 @@ async fn process_queue_entry(
         "create" => process_create_operation(db_pool, http_client, access_token, entry).await,
         "update" => process_update_operation(db_pool, http_client, access_token, entry).await,
         "delete" => process_delete_operation(db_pool, http_client, access_token, entry).await,
+        "move" => process_move_operation(db_pool, http_client, access_token, entry).await,
         other => Err(format!("Unsupported sync operation '{}'", other)),
     }
 }
@@ -120,7 +122,7 @@ async fn process_create_operation(
     }
 
     let payload = parse_queue_payload(entry)?;
-    let payload_hash = payload_metadata_hash(&payload);
+    let payload_hash = payload_metadata_hash(&payload)?;
 
     let google_id = google_client::create_google_task_with_payload(
         http_client,
@@ -150,7 +152,7 @@ async fn process_update_operation(
     }
 
     let payload = parse_queue_payload(entry)?;
-    let payload_hash = payload_metadata_hash(&payload);
+    let payload_hash = payload_metadata_hash(&payload)?;
 
     if task.google_id.is_none() {
         let google_id = google_client::create_google_task_with_payload(
@@ -219,6 +221,103 @@ async fn process_delete_operation(
     Ok(())
 }
 
+async fn process_move_operation(
+    db_pool: &SqlitePool,
+    http_client: &Client,
+    access_token: &str,
+    entry: &SyncQueueEntry,
+) -> Result<(), String> {
+    let to_list_id: String = serde_json::from_str(&entry.payload)
+        .map_err(|e| format!("Invalid move payload {}: {}", entry.id, e))?;
+
+    let Some(task) = fetch_task_record(db_pool, &entry.task_id).await? else {
+        cleanup_queue_entry(db_pool, &entry.id).await?;
+        return Ok(());
+    };
+
+    if task.deleted_at.is_some() {
+        cleanup_queue_entry(db_pool, &entry.id).await?;
+        return Ok(());
+    }
+
+    #[derive(sqlx::FromRow)]
+    struct MovePayload {
+        title: String,
+        notes: Option<String>,
+        due_date: Option<String>,
+        priority: String,
+        labels: String,
+        status: String,
+        time_block: Option<String>,
+    }
+
+    let clone_payload: MovePayload = sqlx::query_as(
+        "SELECT title, notes, due_date, priority, labels, status, time_block FROM tasks_metadata WHERE id = ?",
+    )
+    .bind(&task.id)
+    .fetch_one(db_pool)
+    .await
+    .map_err(|e| format!("Failed to load move payload for {}: {}", task.id, e))?;
+
+    let metadata = task_metadata::TaskMetadata {
+        title: clone_payload.title,
+        notes: clone_payload.notes,
+        due_date: clone_payload.due_date,
+        priority: clone_payload.priority,
+        labels: clone_payload.labels,
+        status: clone_payload.status,
+        time_block: clone_payload.time_block,
+    };
+
+    let normalized = metadata.normalize();
+    let google_payload_value = serde_json::to_value(normalized.serialize_for_google())
+        .map_err(|e| format!("Failed to serialize move payload: {}", e))?;
+    let payload_hash = payload_metadata_hash(&google_payload_value)?;
+
+    let new_google_id = google_client::create_google_task_with_payload(
+        http_client,
+        access_token,
+        &to_list_id,
+        google_payload_value,
+    )
+    .await?;
+
+    if let (Some(source_list), Some(old_google_id)) = (
+        task.pending_move_from.as_ref(),
+        task.pending_delete_google_id.as_ref(),
+    ) {
+        if let Err(err) = google_client::delete_google_task(
+            http_client,
+            access_token,
+            source_list,
+            old_google_id,
+        )
+        .await
+        {
+            eprintln!(
+                "[sync_service] Failed to delete old task {} during move: {}",
+                old_google_id, err
+            );
+        }
+    }
+
+    let now = chrono::Utc::now().timestamp();
+    sqlx::query(
+        "UPDATE tasks_metadata SET list_id = ?, google_id = ?, updated_at = ?, sync_state = 'synced', dirty_fields = '[]', sync_attempts = 0, last_synced_at = ?, sync_error = NULL, pending_move_from = NULL, pending_delete_google_id = NULL, last_remote_hash = ? WHERE id = ?",
+    )
+    .bind(&to_list_id)
+    .bind(&new_google_id)
+    .bind(now)
+    .bind(now)
+    .bind(&payload_hash)
+    .bind(&task.id)
+    .execute(db_pool)
+    .await
+    .map_err(|e| format!("Failed to finalize move for task {}: {}", task.id, e))?;
+
+    cleanup_queue_entry(db_pool, &entry.id).await
+}
+
 async fn fetch_task_record(
     db_pool: &SqlitePool,
     task_id: &str,
@@ -281,11 +380,11 @@ fn parse_queue_payload(entry: &SyncQueueEntry) -> Result<serde_json::Value, Stri
         .map_err(|e| format!("Invalid JSON payload for queue entry {}: {}", entry.id, e))
 }
 
-fn payload_metadata_hash(_payload: &serde_json::Value) -> String {
-    // TODO: Implement proper metadata hash calculation
-    // let metadata = task_metadata::deserialize_from_google(payload);
-    // task_metadata::calculate_metadata_hash(&metadata)
-    String::from("placeholder-hash")
+fn payload_metadata_hash(payload: &serde_json::Value) -> Result<String, String> {
+    let google_payload: task_metadata::GoogleTaskPayload = serde_json::from_value(payload.clone())
+        .map_err(|e| format!("Failed to parse queue payload for hashing: {}", e))?;
+    let metadata = task_metadata::TaskMetadata::deserialize_from_google(&google_payload);
+    Ok(metadata.compute_hash())
 }
 
 fn derive_post_sync_state(task: &TaskMetadataRecord, payload_hash: &str) -> (String, String) {
