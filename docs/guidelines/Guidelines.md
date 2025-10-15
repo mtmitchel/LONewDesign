@@ -2,6 +2,75 @@
 
 > **New developer onboarding:** First read `../roadmap/Unified-Workspace-Roadmap.md` to understand what's being built and current progress. Then return here for coding conventions, build commands, and contribution guidelines.
 
+## Pre-flight checklist (before starting work)
+
+Before writing any code, complete these steps in order:
+
+1. **Read context documents** (15-20 min first time, 2-3 min for updates):
+   - `docs/roadmap/Unified-Workspace-Roadmap.md` — Find your task, understand its context and dependencies
+   - `docs/guidelines/Guidelines.md` (this file) — Review coding conventions and project structure
+   - `state-and-sync-guide.md` — If touching state management, understand Zustand patterns and backend-heavy architecture
+   - `docs/technical/design-tokens-reference.md` — If touching UI/styles, review design system tokens
+
+2. **Find your task assignment**:
+   - Check roadmap for phase/section with your work (look for 🔄 in-progress markers)
+   - Read implementation plan if one exists (`docs/implementation/*.md`)
+   - Check if related GitHub issues or PR discussions exist
+
+3. **Verify development environment**:
+   - Run `npm install` if dependencies may have changed
+   - Run `npm run type-check` to ensure clean baseline (should be 0 errors)
+   - Verify app runs: `npm run tauri:dev` or `npm run dev` (don't restart if already running)
+   
+4. **Check for related work**:
+   - Search codebase for similar patterns (`grep` or semantic search)
+   - Review recently changed files in git history that touch related code
+   - Check `CHANGELOG.md` for recent related changes
+
+5. **Plan before coding** (for non-trivial tasks):
+   - Break task into subtasks if complex (>3 files or >200 lines changed)
+   - Identify which files need changes and what functions/components affected
+   - Consider what documentation will need updating (see post-completion checklist)
+
+**Quick reference**: For small fixes (<50 lines, 1-2 files), steps 1-3 sufficient. For features/refactors, complete all 5.
+
+## Post-completion checklist (after finishing work)
+
+After code is written and tested, complete these steps before marking task done:
+
+1. **Verify code quality**:
+   - Run `npm run type-check` — must show 0 errors
+   - Test manually in running app — verify feature works as expected
+   - Check console for errors/warnings related to your changes
+   - Verify no regressions in related features
+
+2. **Update documentation** (in this order):
+   - `CHANGELOG.md` — Add entry under `[Unreleased]` section using [Keep a Changelog](https://keepachangelog.com) format
+   - `docs/roadmap/Unified-Workspace-Roadmap.md` — Update status from 🔄 to ✅ for completed items, add notes if needed
+   - Implementation plan (if exists) — Update status/progress in `docs/implementation/*.md`
+   - Technical docs (if changed) — Update `docs/technical/design-tokens-reference.md` if tokens added/changed
+   - Assistant roadmap (if relevant) — Update `docs/assistant/Advanced-Assistant-Roadmap.md` if AI features touched
+
+3. **Clean up workspace**:
+   - Remove debug console.logs and commented-out code
+   - Delete any temporary/test files created during development
+   - Ensure no `.bak` or other backup files accidentally committed
+   - Review `git status` and `git diff` before committing
+
+4. **Commit with clear message**:
+   - Use present-tense verb (feat/fix/docs/refactor/test/chore)
+   - Keep subject ≤72 chars, scope by module
+   - Example: `feat(tasks): add priority picker to inline composer`
+   - Example: `fix(sync): prevent duplicate tasks during manual sync`
+   - Reference roadmap section or issue if applicable
+
+5. **Update memory graph** (for significant features/decisions):
+   - Use MCP memory tools to document new patterns, architectural decisions, or guidelines
+   - Link new entities to `∴` project entity
+   - Add observations about what was learned or what future developers should know
+
+**Quick reference**: For small fixes, steps 1-4 required. For features/architecture changes, complete all 5.
+
 ## Project structure and module organization
 ∴ blends a Vite/React front end with a Tauri shell. Web entry points live in `main.tsx` and `App.tsx`; feature flows sit in `components/modules`, reusable primitives in `components/ui`, and reference demos/specs under `components/extended` and `components/figma`. Global styling and tokens stay in `styles/globals.css` and `tailwind.config.ts`. Tauri-native code resides in `src-tauri/src/main.rs` with configuration in `src-tauri/tauri.conf.json`. Archived experiments remain in `archive/` for inspiration only.
 
@@ -39,6 +108,32 @@ Rules:
 3. Sentence case for all Markdown headings (capitalize only first word and proper nouns).
 4. Avoid introducing new snake_case or ALLCAPS filenames; keep legacy ones only as stubs until irrelevant.
 5. If renaming would break external references, keep the old file as a stub with a pointer comment.
+
+## Finding open tasks and work items
+
+**Where to look for work:**
+
+1. **Primary source**: `docs/roadmap/Unified-Workspace-Roadmap.md`
+   - Look for 🔄 (in progress) or ⏳ (pending) markers
+   - Each numbered section/phase lists specific tasks with status
+   - Check "Google Tasks Local‑First Sync Refactor" section for sync-related work
+   - Assistant/AI work tracked in section 1 or see `docs/assistant/Advanced-Assistant-Roadmap.md`
+
+2. **Implementation details**: `docs/implementation/*.md`
+   - `settings-modularization-plan.md` — Settings refactor tasks
+   - `Compose-Baseline-V1.md` — Gmail-style compose modal spec
+   - `Sync-Refactor-Master-Plan-Stub.md` — Points to consolidated roadmap section
+
+3. **Reference for context**:
+   - `CHANGELOG.md` — Recent changes and what's been completed
+   - `docs/README.md` — Index of all documentation with descriptions
+   - GitHub issues/PRs — Check for open discussions or blocked work
+
+**How to identify your next task:**
+- Ask maintainer for assignment OR
+- Look for 🔄 items in roadmap that match your skills OR  
+- Check `CHANGELOG.md` [Unreleased] section for in-progress work
+- Avoid starting new ⏳ tasks without discussing dependencies first
 
 ## Testing guidelines
 There is no dedicated test runner yet; rely on `npm run type-check` plus manual validation in both the browser and the Tauri window. When adding stateful or data-heavy modules, scaffold Vitest + React Testing Library specs alongside the component (e.g., `Component.test.tsx`) and document the exercise in your PR. Guard any Rust commands surfaced from `src-tauri` with integration checks or a detailed manual test script.

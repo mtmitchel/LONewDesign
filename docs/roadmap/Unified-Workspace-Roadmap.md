@@ -4,6 +4,19 @@
 
 > Formerly `Unified-UI-Redesign.md`; this living roadmap now covers the unified UI redesign and the Google Workspace (Mail · Calendar · Tasks) integration workstreams.
 
+**Status legend:**
+- ✅ **Complete** — Shipped and verified working
+- 🔄 **In progress** — Active development, PRs open or work underway
+- ⏳ **Pending** — Planned but not yet started, may have dependencies
+- 🛠️ **Blocked** — Waiting on external dependency or decision
+
+**How to use this roadmap:**
+1. Find your assigned section or search for relevant keywords
+2. Check status markers to see what's available to work on
+3. Read task descriptions and check for implementation plan references
+4. Mark items 🔄 when you start, ✅ when complete, update notes as needed
+5. Keep status current — this is the source of truth for project progress
+
 ## Scope overview
 
 * Deliver a cohesive redesign that unifies capture, navigation, project context, scheduling, and knowledge management.
