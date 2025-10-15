@@ -1,0 +1,634 @@
+{
+  "plan_metadata": {
+    "title": "sync_service.rs Modularization Refactor",
+    "created": "2025-01-21",
+    "status": "ready_for_execution",
+    "objective": "Reduce sync_service.rs from 1,266 lines to ~200 lines by extracting functional modules",
+    "target_reduction": "84% (1,066 lines moved to sync/ modules)",
+    "baseline_metrics": {
+      "current_lines": 1266,
+      "target_lines": 200,
+      "method_count": 30,
+      "threshold_violation": "81% over 700-line rule"
+    }
+  },
+  
+  "executable_tasks": [
+    {
+      "task_id": "sync_refactor_001",
+      "description": "Create sync module directory structure",
+      "target_files": [],
+      "code_changes": [
+        {
+          "operation": "create_directory",
+          "path": "src-tauri/src/sync",
+          "reason": "Foundation for extracted modules"
+        }
+      ],
+      "validation_steps": [
+        "Verify directory exists: ls -la src-tauri/src/sync",
+        "Check permissions are correct"
+      ],
+      "success_criteria": [
+        "Directory src-tauri/src/sync/ exists",
+        "No compilation errors"
+      ],
+      "dependencies": [],
+      "rollback_procedure": "rm -rf src-tauri/src/sync"
+    },
+    
+    {
+      "task_id": "sync_refactor_002",
+      "description": "Extract type definitions to sync/types.rs",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync/types.rs",
+          "line_range": "new file",
+          "operation": "create"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "file": "src-tauri/src/sync/types.rs",
+          "content_description": "Extract types from sync_service.rs lines 15-91 plus constants",
+          "exact_content": [
+            "use serde::{Deserialize, Serialize};",
+            "",
+            "// Google Tasks API constants",
+            "pub const GOOGLE_TASKS_BASE_URL: &str = \"https://tasks.googleapis.com/tasks/v1\";",
+            "pub const GOOGLE_WORKSPACE_SERVICE: &str = \"com.libreollama.desktop/google-workspace\";",
+            "pub const GOOGLE_WORKSPACE_ACCOUNT: &str = \"oauth\";",
+            "",
+            "// Copy structs from sync_service.rs lines 15-91:",
+            "// - GoogleOAuthTokens (lines 15-20)",
+            "// - FrontendToken (lines 22-28)",
+            "// - GoogleWorkspaceAccount (lines 30-33)",
+            "// - GoogleWorkspaceState (lines 35-38)",
+            "// - TaskListRecord (lines 40-48)",
+            "// - SyncQueueEntry (lines 62-71)",
+            "// - TaskMetadataRecord (lines 73-91)",
+            "",
+            "// All derives and attributes must be preserved exactly"
+          ]
+        }
+      ],
+      "validation_steps": [
+        "Check file exists: test -f src-tauri/src/sync/types.rs",
+        "Verify all 7 structs present: grep -c '^pub struct' src-tauri/src/sync/types.rs (expect 7)",
+        "Verify constants defined: grep -c '^pub const' src-tauri/src/sync/types.rs (expect 3)"
+      ],
+      "success_criteria": [
+        "File src-tauri/src/sync/types.rs exists",
+        "Contains 7 struct definitions",
+        "Contains 3 constant definitions",
+        "All derives preserved (Debug, Serialize, Deserialize, sqlx::FromRow, Clone)"
+      ],
+      "dependencies": ["sync_refactor_001"],
+      "rollback_procedure": "rm src-tauri/src/sync/types.rs"
+    },
+    
+    {
+      "task_id": "sync_refactor_003",
+      "description": "Extract OAuth token management to sync/oauth.rs",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync/oauth.rs",
+          "line_range": "new file",
+          "operation": "create"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "file": "src-tauri/src/sync/oauth.rs",
+          "content_description": "Extract get_oauth_tokens from sync_service.rs lines 378-436",
+          "transformations": [
+            "Remove 'async fn get_oauth_tokens(&self)' → 'pub async fn get_oauth_tokens()'",
+            "Function is self-contained (uses keyring, no db_pool or http_client)",
+            "Add imports: keyring::Entry, serde::{Deserialize, Serialize}",
+            "Add use crate::sync::types::{GoogleOAuthTokens, GoogleWorkspaceState, GoogleWorkspaceAccount, FrontendToken, GOOGLE_WORKSPACE_SERVICE, GOOGLE_WORKSPACE_ACCOUNT}"
+          ]
+        }
+      ],
+      "validation_steps": [
+        "Check file exists: test -f src-tauri/src/sync/oauth.rs",
+        "Verify function signature: grep 'pub async fn get_oauth_tokens' src-tauri/src/sync/oauth.rs",
+        "Check no self references: ! grep 'self\\.' src-tauri/src/sync/oauth.rs"
+      ],
+      "success_criteria": [
+        "File src-tauri/src/sync/oauth.rs exists",
+        "Function signature: pub async fn get_oauth_tokens() -> Result<GoogleOAuthTokens, String>",
+        "No self references remain",
+        "Imports keyring and types correctly"
+      ],
+      "dependencies": ["sync_refactor_002"],
+      "rollback_procedure": "rm src-tauri/src/sync/oauth.rs"
+    },
+    
+    {
+      "task_id": "sync_refactor_004",
+      "description": "Extract Google API HTTP operations to sync/google_client.rs",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync/google_client.rs",
+          "line_range": "new file",
+          "operation": "create"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "file": "src-tauri/src/sync/google_client.rs",
+          "content_description": "Extract 4 functions from sync_service.rs lines 751-876",
+          "functions_to_extract": [
+            {
+              "name": "create_google_task_with_payload",
+              "source_lines": "751-792",
+              "new_signature": "pub async fn create_google_task_with_payload(http_client: &Client, access_token: &str, list_id: &str, payload: serde_json::Value) -> Result<String, String>",
+              "changes": "Replace self.http_client with http_client parameter"
+            },
+            {
+              "name": "update_google_task_with_payload",
+              "source_lines": "794-823",
+              "new_signature": "pub async fn update_google_task_with_payload(http_client: &Client, access_token: &str, list_id: &str, google_id: &str, payload: serde_json::Value) -> Result<(), String>",
+              "changes": "Replace self.http_client with http_client parameter"
+            },
+            {
+              "name": "delete_google_task",
+              "source_lines": "825-843",
+              "new_signature": "pub async fn delete_google_task(http_client: &Client, access_token: &str, list_id: &str, google_id: &str) -> Result<(), String>",
+              "changes": "Replace self.http_client with http_client parameter"
+            },
+            {
+              "name": "backoff_seconds",
+              "source_lines": "845-851",
+              "new_signature": "pub fn backoff_seconds(attempts: i64) -> i64",
+              "changes": "Remove Self:: prefix, make standalone function"
+            }
+          ],
+          "imports": [
+            "use reqwest::{Client, StatusCode};",
+            "use crate::sync::types::GOOGLE_TASKS_BASE_URL;"
+          ]
+        }
+      ],
+      "validation_steps": [
+        "Check file exists: test -f src-tauri/src/sync/google_client.rs",
+        "Verify 4 functions: grep -c '^pub async fn\\|^pub fn' src-tauri/src/sync/google_client.rs (expect 4)",
+        "Check Client parameter usage: grep 'http_client: &Client' src-tauri/src/sync/google_client.rs"
+      ],
+      "success_criteria": [
+        "File src-tauri/src/sync/google_client.rs exists",
+        "Contains 4 public functions",
+        "All functions use http_client parameter instead of self",
+        "GOOGLE_TASKS_BASE_URL imported from types"
+      ],
+      "dependencies": ["sync_refactor_002"],
+      "rollback_procedure": "rm src-tauri/src/sync/google_client.rs"
+    },
+    
+    {
+      "task_id": "sync_refactor_005",
+      "description": "Extract sync queue processing to sync/queue_worker.rs",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync/queue_worker.rs",
+          "line_range": "new file",
+          "operation": "create"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "file": "src-tauri/src/sync/queue_worker.rs",
+          "content_description": "Extract queue processing from sync_service.rs lines 440-747",
+          "main_entry_point": {
+            "name": "execute_pending_mutations",
+            "source_lines": "440-501",
+            "new_signature": "pub async fn execute_pending_mutations(db_pool: &SqlitePool, http_client: &Client, access_token: &str) -> Result<(), String>",
+            "changes": [
+              "Remove 'async fn execute_pending_mutations(&self)' and make pub with explicit parameters",
+              "Replace 'self.get_oauth_tokens().await?' with access_token parameter",
+              "Replace 'self.db_pool' with 'db_pool' parameter",
+              "Replace 'self.process_queue_entry()' with 'process_queue_entry()' function call"
+            ]
+          },
+          "internal_functions": [
+            {
+              "name": "process_queue_entry",
+              "source_lines": "503-511",
+              "signature": "async fn process_queue_entry(db_pool: &SqlitePool, http_client: &Client, access_token: &str, entry: &SyncQueueEntry) -> Result<(), String>",
+              "visibility": "private (no pub)"
+            },
+            {
+              "name": "process_create_operation",
+              "source_lines": "513-557",
+              "signature": "async fn process_create_operation(db_pool: &SqlitePool, http_client: &Client, access_token: &str, entry: &SyncQueueEntry) -> Result<(), String>",
+              "changes": "Replace self.create_google_task_with_payload() with crate::sync::google_client::create_google_task_with_payload(http_client, ...)"
+            },
+            {
+              "name": "process_update_operation",
+              "source_lines": "559-603",
+              "changes": "Replace self.create/update_google_task_with_payload with google_client calls"
+            },
+            {
+              "name": "process_delete_operation",
+              "source_lines": "605-640",
+              "changes": "Replace self.delete_google_task with google_client::delete_google_task call"
+            },
+            {
+              "name": "fetch_task_record",
+              "source_lines": "642-655",
+              "signature": "async fn fetch_task_record(db_pool: &SqlitePool, task_id: &str) -> Result<Option<TaskMetadataRecord>, String>"
+            },
+            {
+              "name": "cleanup_queue_entry",
+              "source_lines": "657-665",
+              "signature": "async fn cleanup_queue_entry(db_pool: &SqlitePool, entry_id: &str) -> Result<(), String>"
+            },
+            {
+              "name": "mark_queue_failure",
+              "source_lines": "667-693",
+              "signature": "async fn mark_queue_failure(db_pool: &SqlitePool, entry: &SyncQueueEntry, attempts: i64, error: String) -> Result<(), String>",
+              "changes": "Replace Self::backoff_seconds() with crate::sync::google_client::backoff_seconds()"
+            },
+            {
+              "name": "parse_queue_payload",
+              "source_lines": "695-699",
+              "signature": "fn parse_queue_payload(entry: &SyncQueueEntry) -> Result<serde_json::Value, String>",
+              "note": "Pure function, no parameters needed"
+            },
+            {
+              "name": "payload_metadata_hash",
+              "source_lines": "701-706",
+              "signature": "fn payload_metadata_hash(_payload: &serde_json::Value) -> String",
+              "note": "Pure function with TODO"
+            },
+            {
+              "name": "derive_post_sync_state",
+              "source_lines": "708-717",
+              "signature": "fn derive_post_sync_state(task: &TaskMetadataRecord, payload_hash: &str) -> (String, String)",
+              "note": "Pure function"
+            },
+            {
+              "name": "finalize_task_sync",
+              "source_lines": "719-747",
+              "signature": "async fn finalize_task_sync(db_pool: &SqlitePool, entry: &SyncQueueEntry, task: &TaskMetadataRecord, new_google_id: Option<&str>, payload_hash: &str) -> Result<(), String>"
+            }
+          ],
+          "imports": [
+            "use sqlx::SqlitePool;",
+            "use reqwest::Client;",
+            "use crate::sync::types::{SyncQueueEntry, TaskMetadataRecord};",
+            "use crate::sync::google_client;"
+          ]
+        }
+      ],
+      "validation_steps": [
+        "Check file exists: test -f src-tauri/src/sync/queue_worker.rs",
+        "Verify main entry point: grep 'pub async fn execute_pending_mutations' src-tauri/src/sync/queue_worker.rs",
+        "Count internal functions: grep -c '^async fn\\|^fn' src-tauri/src/sync/queue_worker.rs (expect 11)",
+        "Verify google_client calls: grep 'google_client::' src-tauri/src/sync/queue_worker.rs"
+      ],
+      "success_criteria": [
+        "File src-tauri/src/sync/queue_worker.rs exists",
+        "Main entry point (execute_pending_mutations) is public",
+        "11 internal functions are private",
+        "All self references replaced with explicit parameters",
+        "Calls google_client functions correctly",
+        "File size ~310 lines (below 700 threshold)"
+      ],
+      "dependencies": ["sync_refactor_002", "sync_refactor_004"],
+      "rollback_procedure": "rm src-tauri/src/sync/queue_worker.rs"
+    },
+    
+    {
+      "task_id": "sync_refactor_006",
+      "description": "Extract polling and reconciliation to sync/reconciler.rs",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync/reconciler.rs",
+          "line_range": "new file",
+          "operation": "create"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "file": "src-tauri/src/sync/reconciler.rs",
+          "content_description": "Extract reconciliation logic from sync_service.rs lines 880-1265",
+          "main_entry_point": {
+            "name": "poll_google_tasks",
+            "source_lines": "880-1004",
+            "new_signature": "pub async fn poll_google_tasks(db_pool: &SqlitePool, http_client: &Client, access_token: &str) -> Result<(), String>",
+            "changes": [
+              "Remove 'async fn poll_google_tasks(&self)' and make pub with explicit parameters",
+              "Replace 'self.get_oauth_tokens().await?' - remove this call, use access_token parameter",
+              "Replace 'self.db_pool' with 'db_pool' parameter",
+              "Replace 'self.http_client' with 'http_client' parameter",
+              "Replace 'self.reconcile_task_list()' with 'reconcile_task_list()' function call",
+              "Replace 'self.reconcile_task()' with 'reconcile_task()' function call",
+              "NOTE: Remove app_handle.emit() call - that stays in sync_service.rs sync_cycle"
+            ]
+          },
+          "internal_functions": [
+            {
+              "name": "reconcile_task_list",
+              "source_lines": "1006-1055",
+              "signature": "async fn reconcile_task_list(db_pool: &SqlitePool, list: &serde_json::Value) -> Result<(), String>",
+              "visibility": "private (no pub)"
+            },
+            {
+              "name": "reconcile_task",
+              "source_lines": "1057-1263",
+              "signature": "async fn reconcile_task(db_pool: &SqlitePool, list_id: &str, task: &serde_json::Value) -> Result<(), String>",
+              "note": "Large complex function (~200 lines) with nested logic"
+            }
+          ],
+          "imports": [
+            "use sqlx::SqlitePool;",
+            "use reqwest::Client;",
+            "use std::collections::HashSet;",
+            "use crate::sync::types::{TaskListRecord, GOOGLE_TASKS_BASE_URL};"
+          ]
+        }
+      ],
+      "validation_steps": [
+        "Check file exists: test -f src-tauri/src/sync/reconciler.rs",
+        "Verify main entry point: grep 'pub async fn poll_google_tasks' src-tauri/src/sync/reconciler.rs",
+        "Count functions: grep -c '^async fn' src-tauri/src/sync/reconciler.rs (expect 2 internal)",
+        "Check no app_handle references: ! grep 'app_handle' src-tauri/src/sync/reconciler.rs"
+      ],
+      "success_criteria": [
+        "File src-tauri/src/sync/reconciler.rs exists",
+        "Main entry point (poll_google_tasks) is public",
+        "2 internal functions are private (reconcile_task_list, reconcile_task)",
+        "All self references replaced with explicit parameters",
+        "No app_handle references (event emission stays in sync_service.rs)",
+        "File size ~386 lines (below 700 threshold)"
+      ],
+      "dependencies": ["sync_refactor_002"],
+      "rollback_procedure": "rm src-tauri/src/sync/reconciler.rs"
+    },
+    
+    {
+      "task_id": "sync_refactor_007",
+      "description": "Create sync module manifest (mod.rs)",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync/mod.rs",
+          "line_range": "new file",
+          "operation": "create"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "create_file",
+          "file": "src-tauri/src/sync/mod.rs",
+          "exact_content": [
+            "//! Sync service modules for Google Tasks integration",
+            "//!",
+            "//! This module provides structured sync functionality:",
+            "//! - `types`: Shared data structures and constants",
+            "//! - `oauth`: OAuth token management",
+            "//! - `google_client`: HTTP operations for Google Tasks API",
+            "//! - `queue_worker`: Mutation queue processing",
+            "//! - `reconciler`: Polling and reconciliation logic",
+            "",
+            "pub mod types;",
+            "pub mod oauth;",
+            "pub mod google_client;",
+            "pub mod queue_worker;",
+            "pub mod reconciler;",
+            "",
+            "// Re-export commonly used types",
+            "pub use types::{",
+            "    GoogleOAuthTokens,",
+            "    TaskListRecord,",
+            "    SyncQueueEntry,",
+            "    TaskMetadataRecord,",
+            "    GOOGLE_TASKS_BASE_URL,",
+            "    GOOGLE_WORKSPACE_SERVICE,",
+            "    GOOGLE_WORKSPACE_ACCOUNT,",
+            "};"
+          ]
+        }
+      ],
+      "validation_steps": [
+        "Check file exists: test -f src-tauri/src/sync/mod.rs",
+        "Verify module declarations: grep -c '^pub mod' src-tauri/src/sync/mod.rs (expect 5)",
+        "Check re-exports: grep 'pub use types' src-tauri/src/sync/mod.rs"
+      ],
+      "success_criteria": [
+        "File src-tauri/src/sync/mod.rs exists",
+        "Contains 5 pub mod declarations",
+        "Re-exports commonly used types",
+        "Has documentation comments"
+      ],
+      "dependencies": ["sync_refactor_002", "sync_refactor_003", "sync_refactor_004", "sync_refactor_005", "sync_refactor_006"],
+      "rollback_procedure": "rm src-tauri/src/sync/mod.rs"
+    },
+    
+    {
+      "task_id": "sync_refactor_008",
+      "description": "Refactor sync_service.rs to orchestrator pattern",
+      "target_files": [
+        {
+          "path": "src-tauri/src/sync_service.rs",
+          "line_range": "1-1266",
+          "operation": "major_refactor"
+        }
+      ],
+      "code_changes": [
+        {
+          "operation": "remove_lines",
+          "lines_to_remove": [
+            "10-13 (constants - moved to sync/types.rs)",
+            "15-91 (type definitions - moved to sync/types.rs)",
+            "378-436 (get_oauth_tokens - moved to sync/oauth.rs)",
+            "440-747 (queue processing - moved to sync/queue_worker.rs)",
+            "751-876 (google client - moved to sync/google_client.rs)",
+            "880-1265 (reconciliation - moved to sync/reconciler.rs)"
+          ]
+        },
+        {
+          "operation": "add_imports",
+          "location": "after line 8 (after existing use statements)",
+          "new_imports": [
+            "",
+            "mod sync;",
+            "use sync::{oauth, queue_worker, reconciler};",
+            "use sync::types::*;"
+          ]
+        },
+        {
+          "operation": "update_method",
+          "method_name": "sync_cycle",
+          "original_lines": "371-376",
+          "find_pattern": "async fn sync_cycle(&self) -> Result<(), String> {\n        println!(\"[sync_service] Starting sync cycle\");\n\n        // Step 1: Execute pending mutations\n        self.execute_pending_mutations().await?;\n\n        // Step 2: Poll Google Tasks API\n        self.poll_google_tasks().await?;\n\n        println!(\"[sync_service] Sync cycle complete\");",
+          "replace_with": "async fn sync_cycle(&self) -> Result<(), String> {\n        println!(\"[sync_service] Starting sync cycle\");\n\n        // Get OAuth tokens\n        let tokens = oauth::get_oauth_tokens().await?;\n\n        // Step 1: Execute pending mutations\n        queue_worker::execute_pending_mutations(\n            &self.db_pool,\n            &self.http_client,\n            &tokens.access_token\n        ).await?;\n\n        // Step 2: Poll Google Tasks API\n        reconciler::poll_google_tasks(\n            &self.db_pool,\n            &self.http_client,\n            &tokens.access_token\n        ).await?;\n\n        println!(\"[sync_service] Sync cycle complete\");",
+          "note": "Keep app_handle.emit() call at end - no changes needed"
+        },
+        {
+          "operation": "update_method",
+          "method_name": "move_task_across_lists",
+          "note": "Update line ~121: self.get_oauth_tokens() → oauth::get_oauth_tokens()",
+          "find_pattern": "let tokens = self.get_oauth_tokens().await?;",
+          "replace_with": "let tokens = oauth::get_oauth_tokens().await?;"
+        },
+        {
+          "operation": "update_method",
+          "method_name": "create_task_list",
+          "note": "Update line ~252: self.get_oauth_tokens() → oauth::get_oauth_tokens()",
+          "find_pattern": "let tokens = self.get_oauth_tokens().await?;",
+          "replace_with": "let tokens = oauth::get_oauth_tokens().await?;"
+        },
+        {
+          "operation": "update_method",
+          "method_name": "delete_task_list",
+          "note": "Update line ~304: self.get_oauth_tokens() → oauth::get_oauth_tokens()",
+          "find_pattern": "let tokens = self.get_oauth_tokens().await?;",
+          "replace_with": "let tokens = oauth::get_oauth_tokens().await?;"
+        }
+      ],
+      "validation_steps": [
+        "Check line count: wc -l src-tauri/src/sync_service.rs (expect ~200 lines)",
+        "Verify sync module import: grep 'mod sync;' src-tauri/src/sync_service.rs",
+        "Check oauth calls updated: grep 'oauth::get_oauth_tokens' src-tauri/src/sync_service.rs",
+        "Check queue_worker calls: grep 'queue_worker::execute_pending_mutations' src-tauri/src/sync_service.rs",
+        "Check reconciler calls: grep 'reconciler::poll_google_tasks' src-tauri/src/sync_service.rs",
+        "Verify no duplicate type definitions: ! grep '^pub struct GoogleOAuthTokens' src-tauri/src/sync_service.rs"
+      ],
+      "success_criteria": [
+        "File reduced from 1,266 to ~200 lines (84% reduction)",
+        "SyncService struct definition preserved",
+        "Public API methods intact (new, start, sync_now, move_task_across_lists, create_task_list, delete_task_list)",
+        "sync_cycle updated to call extracted modules",
+        "All OAuth calls updated to oauth::get_oauth_tokens()",
+        "No duplicate type definitions",
+        "mod sync and use statements added correctly"
+      ],
+      "dependencies": ["sync_refactor_007"],
+      "rollback_procedure": "git checkout src-tauri/src/sync_service.rs && rm -rf src-tauri/src/sync"
+    },
+    
+    {
+      "task_id": "sync_refactor_009",
+      "description": "Verify compilation and integration",
+      "target_files": [],
+      "code_changes": [],
+      "validation_steps": [
+        "Run cargo check: cd src-tauri && cargo check",
+        "Check for errors: echo $? (expect 0)",
+        "Verify no warnings about unused imports: cargo check 2>&1 | grep -i 'unused'",
+        "Check module structure: tree src-tauri/src/sync",
+        "Verify line counts: wc -l src-tauri/src/sync/*.rs src-tauri/src/sync_service.rs"
+      ],
+      "success_criteria": [
+        "cargo check passes with 0 errors",
+        "All modules compile successfully",
+        "Line count targets met:",
+        "  - types.rs: ~150 lines",
+        "  - oauth.rs: ~80 lines",
+        "  - google_client.rs: ~150 lines",
+        "  - queue_worker.rs: ~310 lines",
+        "  - reconciler.rs: ~386 lines",
+        "  - mod.rs: ~25 lines",
+        "  - sync_service.rs: ~200 lines",
+        "Total reduction: 1,266 → 200 lines (1,066 lines extracted)"
+      ],
+      "dependencies": ["sync_refactor_008"],
+      "rollback_procedure": "git reset --hard HEAD && git clean -fd src-tauri/src/sync"
+    }
+  ],
+  
+  "execution_order": [
+    "sync_refactor_001",
+    "sync_refactor_002",
+    "sync_refactor_003",
+    "sync_refactor_004",
+    "sync_refactor_005",
+    "sync_refactor_006",
+    "sync_refactor_007",
+    "sync_refactor_008",
+    "sync_refactor_009"
+  ],
+  
+  "critical_warnings": [
+    {
+      "warning_id": "CW001",
+      "severity": "HIGH",
+      "title": "move_task_across_lists complexity",
+      "description": "The move_task_across_lists method (~120 lines) remains in sync_service.rs by design. It's high-level orchestration that combines OAuth, Google API calls, and database operations. Do not attempt to extract this method."
+    },
+    {
+      "warning_id": "CW002",
+      "severity": "HIGH",
+      "title": "Function signature conversions",
+      "description": "All extracted methods lose 'self' reference. Replace self.db_pool, self.http_client, self._app_handle with explicit parameters. Verify each function call site is updated."
+    },
+    {
+      "warning_id": "CW003",
+      "severity": "MEDIUM",
+      "title": "Constants location",
+      "description": "GOOGLE_TASKS_BASE_URL and keyring constants must be defined in types.rs and imported by other modules. Do not duplicate constants across files."
+    },
+    {
+      "warning_id": "CW004",
+      "severity": "MEDIUM",
+      "title": "google_client function calls",
+      "description": "queue_worker.rs and reconciler.rs call google_client functions. Use 'crate::sync::google_client::function_name()' or 'use crate::sync::google_client;' and call 'google_client::function_name()'."
+    },
+    {
+      "warning_id": "CW005",
+      "severity": "LOW",
+      "title": "TaskMetadata import",
+      "description": "sync_service.rs line 9 imports 'use crate::commands::tasks::TaskMetadata'. This import may not be needed after refactor - verify usage and remove if unused."
+    },
+    {
+      "warning_id": "CW006",
+      "severity": "LOW",
+      "title": "Event emission stays in orchestrator",
+      "description": "app_handle.emit('tasks:sync:complete') call stays in sync_service.rs sync_cycle(). Do not move this to reconciler.rs - event emission is orchestrator responsibility."
+    }
+  ],
+  
+  "git_workflow": {
+    "branch_name": "refactor/sync-service-modularization",
+    "pre_refactor_tag": "pre-sync-refactor",
+    "commit_strategy": "one commit per task",
+    "commit_message_format": "[sync-refactor] {task_id}: {description}",
+    "example_commits": [
+      "[sync-refactor] sync_refactor_001: Create sync module directory structure",
+      "[sync-refactor] sync_refactor_002: Extract type definitions to sync/types.rs",
+      "[sync-refactor] sync_refactor_003: Extract OAuth token management to sync/oauth.rs"
+    ]
+  },
+  
+  "verification_metrics": {
+    "before": {
+      "sync_service_lines": 1266,
+      "method_count": 30,
+      "largest_method": "reconcile_task (~200 lines)"
+    },
+    "after": {
+      "sync_service_lines": 200,
+      "method_count": 7,
+      "module_count": 5,
+      "total_extracted_lines": 1066,
+      "modules": {
+        "types.rs": "~150 lines",
+        "oauth.rs": "~80 lines",
+        "google_client.rs": "~150 lines",
+        "queue_worker.rs": "~310 lines",
+        "reconciler.rs": "~386 lines"
+      }
+    },
+    "improvement": {
+      "line_reduction": "84%",
+      "pattern": "Same as Phase 2 main.rs refactor (93% reduction)",
+      "all_modules_under_threshold": "Yes (all < 400 lines, well below 700 threshold)"
+    }
+  }
+}
