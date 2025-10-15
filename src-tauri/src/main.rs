@@ -27,6 +27,10 @@ impl ApiState {
             .expect("failed to build reqwest client");
         Self { client }
     }
+
+    pub fn client(&self) -> &reqwest::Client {
+        &self.client
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]

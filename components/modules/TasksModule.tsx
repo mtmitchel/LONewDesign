@@ -30,7 +30,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
-import { TaskComposer } from './tasks/TaskComposer';
+import { TaskComposer, type ComposerLabel } from './tasks/TaskComposer';
 import { TasksBoard } from './tasks/TasksBoard';
 import { TaskSidePanel } from './tasks/TaskSidePanel';
 import { SegmentedToggle } from '../controls/SegmentedToggle';
@@ -170,6 +170,10 @@ export function TasksModule() {
   }, [tasks]);
   
   const allLabels = Array.from(labelsColorMap.keys()).sort();
+  const availableLabelOptions = React.useMemo(
+    () => Array.from(labelsColorMap.entries()).map(([name, color]) => ({ name, color })),
+    [labelsColorMap],
+  );
 
   const toggleLabelFilter = (label: string) => {
     setSelectedLabels(prev => 
@@ -181,14 +185,19 @@ export function TasksModule() {
 
   const handleAddTaskToColumn = (
     listId: string,
-    draft: { title: string; dueDate?: string; priority?: 'low' | 'medium' | 'high' | 'none' },
+    draft: {
+      title: string;
+      dueDate?: string;
+      priority?: 'low' | 'medium' | 'high' | 'none';
+      labels?: ComposerLabel[];
+    },
   ) => {
     addTask({
       title: draft.title,
       status: listId,
       priority: draft.priority ?? 'none',
       dueDate: draft.dueDate,
-      labels: [],
+      labels: draft.labels?.map((label) => ({ name: label.name, color: label.color })) ?? [],
       isCompleted: false,
       listId,
       projectId: projectFilter ?? undefined,
@@ -318,6 +327,7 @@ export function TasksModule() {
         variant="standalone"
         columns={columns}
         tasks={filteredTasks}
+        availableLabels={availableLabelOptions}
         onAddTask={handleAddTaskToColumn}
         onToggleTaskCompletion={toggleTaskCompletion}
         onDeleteTask={handleDeleteTask}
@@ -532,11 +542,12 @@ export function TasksModule() {
                     {listComposerSection === column.id ? (
                         <div className="px-4 py-2">
                             <TaskComposer 
-                                onAddTask={(title, dueDate, priority) => {
-                                  handleAddTaskToColumn(column.id, { title, dueDate, priority });
+                                onAddTask={(title, dueDate, priority, labels) => {
+                                  handleAddTaskToColumn(column.id, { title, dueDate, priority, labels });
                                   setListComposerSection(null);
                                 }}
                                 onCancel={() => setListComposerSection(null)}
+                                availableLabels={availableLabelOptions}
                             />
                         </div>
                     ) : (

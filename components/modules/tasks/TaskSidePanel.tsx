@@ -196,9 +196,20 @@ export function TaskSidePanel({
     'flex flex-col',
     presentation === 'inline'
       ? 'h-full w-full border-l border-[var(--quick-panel-border)] bg-[var(--quick-panel-bg)]'
-      : 'fixed top-[var(--pane-header-h)] right-0 bottom-0 z-[var(--z-overlay)] h-[calc(100%-var(--pane-header-h))] w-[var(--quick-panel-width)] border-l border-[var(--quick-panel-border)] bg-[var(--quick-panel-bg)] shadow-[var(--elevation-xl)]',
+      : 'fixed top-[var(--pane-header-h)] right-0 bottom-0 z-[var(--z-overlay)] h-[calc(100%-var(--pane-header-h))] border-l border-[var(--quick-panel-border)] bg-[var(--quick-panel-bg)] shadow-[var(--elevation-xl)]',
     className,
   );
+
+  const overlayStyle = React.useMemo<React.CSSProperties | undefined>(() => {
+    if (presentation !== 'overlay') {
+      return undefined;
+    }
+
+    return {
+      width:
+        'clamp(var(--task-panel-min-width, 320px), calc((100vw - var(--sidebar-current-width, var(--sidebar-width))) * var(--task-panel-ratio, 0.38)), var(--task-panel-max-width, 640px))',
+    };
+  }, [presentation]);
 
   const regionProps = presentation === 'inline' && headingId
     ? { role: 'region' as const, 'aria-labelledby': headingId }
@@ -209,7 +220,7 @@ export function TaskSidePanel({
   }
 
   return (
-    <div className={containerClass} {...regionProps}>
+    <div className={containerClass} style={overlayStyle} {...regionProps}>
       <PaneHeader role="heading" className="justify-between">
         <h2 id={headingId} className="text-[length:var(--text-lg)] font-semibold text-[color:var(--text-primary)]">
           Task details

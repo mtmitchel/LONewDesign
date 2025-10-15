@@ -14,7 +14,7 @@ import { Task, Priority } from './types';
 import { TaskColumnHeader } from './TaskColumnHeader';
 import { TaskAddButton } from './TaskAddButton';
 import { TaskCard } from './TaskCard';
-import { TaskComposer } from './TaskComposer';
+import { TaskComposer, type ComposerLabel } from './TaskComposer';
 import { SortableTaskCard } from './SortableTaskCard';
 import { DroppableColumn } from './DroppableColumn';
 
@@ -27,12 +27,14 @@ type TaskDraft = {
   title: string;
   dueDate?: string;
   priority?: Priority;
+  labels?: ComposerLabel[];
 };
 
 type TasksBoardProps = {
   variant: 'standalone' | 'embedded';
   columns?: readonly Column[];
   tasks: Task[];
+  availableLabels: ComposerLabel[];
   onAddTask: (listId: string, draft: TaskDraft) => void;
   onToggleTaskCompletion: (taskId: string) => void;
   onDeleteTask?: (taskId: string) => void;
@@ -49,6 +51,7 @@ export function TasksBoard({
   variant,
   columns = TASK_LISTS,
   tasks,
+  availableLabels,
   onAddTask,
   onToggleTaskCompletion,
   onDeleteTask,
@@ -81,9 +84,14 @@ export function TasksBoard({
   }, []);
 
   const handleAddFromComposer = React.useCallback(
-    (columnId: string, title: string, dueDate?: string, priority?: Priority) => {
-      if (!title.trim()) return;
-      onAddTask(columnId, { title: title.trim(), dueDate, priority });
+    (
+      columnId: string,
+      title: string,
+      dueDate?: string,
+      priority?: Priority,
+      labels?: ComposerLabel[],
+    ) => {
+      onAddTask(columnId, { title, dueDate, priority, labels });
       setActiveComposer(null);
     },
     [onAddTask],
@@ -209,8 +217,11 @@ export function TasksBoard({
                       .join(' ')}
                   >
                     <TaskComposer
-                      onAddTask={(title, dueDate, priority) => handleAddFromComposer(columnId, title, dueDate, priority)}
+                      onAddTask={(title, dueDate, priority, labels) =>
+                        handleAddFromComposer(columnId, title, dueDate, priority, labels)
+                      }
                       onCancel={handleComposerClose}
+                      availableLabels={availableLabels}
                     />
                   </div>
                 ) : (

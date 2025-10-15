@@ -1,4 +1,5 @@
 import React from 'react';
+import { format, parseISO } from 'date-fns';
 import { Card, CardContent } from '../../ui/card';
 import { Checkbox } from '../../ui/checkbox';
 import { Badge } from '../../ui/badge';
@@ -52,6 +53,30 @@ export function TaskCard({
 
   const labels = Array.isArray(rawLabels) ? rawLabels : [];
 
+  const formattedDueDate = React.useMemo(() => {
+    if (!dueDate) return undefined;
+
+    const trimmed = dueDate.trim();
+    if (!trimmed) return undefined;
+
+    let parsed: Date | undefined;
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      parsed = parseISO(trimmed);
+    } else {
+      const candidate = new Date(trimmed);
+      parsed = Number.isNaN(candidate.getTime()) ? undefined : candidate;
+    }
+
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      return trimmed;
+    }
+
+    return format(parsed, 'MMM d');
+  }, [dueDate]);
+
+  const hasMetaChips = priority !== 'none' || labels.length > 0;
+
   return (
     <ContextMenu>
         <ContextMenuTrigger>
@@ -97,16 +122,11 @@ export function TaskCard({
                       {hasConflict && <AlertTriangle className="h-4 w-4 text-yellow-500 inline-block mr-2" />}
                       {taskTitle}
                     </h4>
-                    {(dueDate || priority !== 'none' || labels.length > 0) && (
-                      <div className="mt-[var(--space-1)] flex items-center flex-wrap gap-x-[var(--task-meta-gap-x)] gap-y-[var(--space-2)]">
-                        {dueDate && (
-                          <span className="text-[length:var(--task-meta-size)] font-[var(--font-weight-normal)] text-[color:var(--text-tertiary)]">
-                            {dueDate}
-                          </span>
-                        )}
+                    {hasMetaChips && (
+                      <div className="mt-[var(--space-1)] flex flex-wrap items-center gap-x-[var(--task-meta-gap-x)] gap-y-[var(--space-2)]">
                         {priority !== 'none' && (
-                          <Badge 
-                            variant="soft" 
+                          <Badge
+                            variant="soft"
                             tone={priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : 'low'}
                             size="sm"
                           >
@@ -121,10 +141,10 @@ export function TaskCard({
                                 variant="soft"
                                 size="sm"
                                 className="relative"
-                                style={{ 
+                                style={{
                                   backgroundColor: `color-mix(in oklab, ${getTaskLabelColor(label)} 18%, transparent)`,
                                   color: `color-mix(in oklab, ${getTaskLabelColor(label)} 85%, var(--text-primary))`,
-                                  boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${getTaskLabelColor(label)} 35%, transparent)`
+                                  boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${getTaskLabelColor(label)} 35%, transparent)`,
                                 }}
                               >
                                 {getTaskLabelName(label)}
@@ -132,6 +152,11 @@ export function TaskCard({
                             ))}
                           </div>
                         ) : null}
+                      </div>
+                    )}
+                    {formattedDueDate && (
+                      <div className={`text-[length:var(--task-meta-size)] font-[var(--font-weight-normal)] text-[color:var(--text-tertiary)] ${hasMetaChips ? 'mt-[var(--space-1)]' : 'mt-[var(--space-2)]'}`}>
+                        {formattedDueDate}
                       </div>
                     )}
                   </div>

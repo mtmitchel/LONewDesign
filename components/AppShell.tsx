@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { openQuickAssistant, type QuickAssistantScope } from './assistant';
 
@@ -10,6 +10,22 @@ interface AppShellProps {
 
 export function AppShell({ children, activeModule, onModuleChange }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const root = document.documentElement;
+    const computed = getComputedStyle(root);
+    const expandedWidth = computed.getPropertyValue('--sidebar-width').trim() || '256px';
+    const collapsedWidth = computed.getPropertyValue('--sidebar-collapsed-width').trim() || '72px';
+
+    root.style.setProperty(
+      '--sidebar-current-width',
+      sidebarCollapsed ? collapsedWidth : expandedWidth,
+    );
+  }, [sidebarCollapsed]);
 
   const handleAssistantOpen = useCallback(() => {
     const scope: QuickAssistantScope = { source: activeModule };

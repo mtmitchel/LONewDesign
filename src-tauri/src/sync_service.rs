@@ -845,13 +845,24 @@ impl SyncService {
         }
 
         // Remove task lists that no longer exist remotely
-        let local_lists: Vec<(String,)> = sqlx::query_as("SELECT id FROM task_lists")
-            .fetch_all(&self.pool)
-            .await
-            .map_err(|e| format!("Failed to fetch local task lists: {}", e))?;
+        let local_lists: Vec<(String, Option<String>)> =
+            sqlx::query_as("SELECT id, google_id FROM task_lists")
+                .fetch_all(&self.pool)
+                .await
+                .map_err(|e| format!("Failed to fetch local task lists: {}", e))?;
 
-        for (local_id,) in local_lists {
-            if !remote_list_ids.contains(&local_id) {
+        for (local_id, google_id) in local_lists {
+            let remote_identifier = google_id.as_ref().unwrap_or(&local_id);
+
+            if !remote_list_ids.contains(remote_identifier) {
+                if google_id.is_none() {
+                    println!(
+                        "[sync_service] Retaining local task list {} awaiting Google ID assignment",
+                        local_id
+                    );
+                    continue;
+                }
+
                 println!(
                     "[sync_service] Removing local task list {} not found in Google Tasks",
                     local_id

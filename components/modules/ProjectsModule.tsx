@@ -10,6 +10,7 @@ import { ProjectOverview } from "./projects/ProjectOverview";
 import { ProjectContextPanel } from "./projects/ProjectContextPanel";
 import { CreateProjectModal } from "./projects/CreateProjectModal";
 import { TasksBoard } from "./tasks/TasksBoard";
+import type { ComposerLabel } from "./tasks/TaskComposer";
 import { TaskSidePanel } from "./tasks/TaskSidePanel";
 import type { Task as BoardTask } from "./tasks/types";
 import { Plus } from "lucide-react";
@@ -50,6 +51,11 @@ const tabs = [
   { id: "chat", label: "Chats" },
   { id: "emails", label: "Emails" },
 ];
+
+const getLabelName = (label: BoardTask["labels"][number]) =>
+  typeof label === "string" ? label : label.name;
+const getLabelColor = (label: BoardTask["labels"][number]) =>
+  typeof label === "string" ? "var(--label-gray)" : label.color;
 
 export function ProjectsModule() {
   const [leftPaneVisible, setLeftPaneVisible] = React.useState(true);
@@ -191,6 +197,19 @@ export function ProjectsModule() {
       })),
     [currentTasks],
   );
+  const projectAvailableLabels = React.useMemo<ComposerLabel[]>(() => {
+    const map = new Map<string, string>();
+    boardTasks.forEach((task) => {
+      (task.labels ?? []).forEach((label) => {
+        const name = getLabelName(label);
+        const color = getLabelColor(label);
+        if (!map.has(name)) {
+          map.set(name, color);
+        }
+      });
+    });
+    return Array.from(map.entries()).map(([name, color]) => ({ name, color }));
+  }, [boardTasks]);
   const selectedBoardTask = React.useMemo(() => boardTasks.find((task) => task.id === selectedTaskId) ?? null, [boardTasks, selectedTaskId]);
   const showInlineTaskPanel = Boolean(isDesktop && activeTab === "tasks" && selectedBoardTask);
 
@@ -239,7 +258,15 @@ export function ProjectsModule() {
   }, [activeTab]);
 
   const handleCreateTask = React.useCallback(
-    (listId: string, draft?: { title?: string; dueDate?: string; priority?: BoardTask["priority"] }) => {
+    (
+      listId: string,
+      draft?: {
+        title?: string;
+        dueDate?: string;
+        priority?: BoardTask["priority"];
+        labels?: ComposerLabel[];
+      },
+    ) => {
       if (!selectedProject) return;
       const timestamp = new Date().toISOString();
       const priority = draft?.priority && draft.priority !== "none" ? draft.priority : undefined;
@@ -254,7 +281,7 @@ export function ProjectsModule() {
         createdAt: timestamp,
         dateCreated: timestamp,
         isCompleted: false,
-        labels: [],
+        labels: draft?.labels?.map((label) => ({ name: label.name, color: label.color })) ?? [],
         completedAt: null,
       };
       setBoardTasksByProject((prev) => ({
@@ -484,6 +511,7 @@ export function ProjectsModule() {
                       variant="embedded"
                       columns={boardColumns}
                       tasks={boardTasks}
+                      availableLabels={projectAvailableLabels}
                       onAddTask={(listId, draft) => handleCreateTask(listId, draft)}
                       onToggleTaskCompletion={handleToggleProjectTask}
                       onDeleteTask={handleDeleteProjectTask}

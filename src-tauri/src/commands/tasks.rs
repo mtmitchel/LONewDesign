@@ -1,10 +1,12 @@
+use crate::commands::google::google_workspace_store_get;
 use crate::db;
+use crate::sync::types::GOOGLE_TASKS_BASE_URL;
 use crate::task_metadata;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, Sqlite, SqlitePool, Transaction};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -99,6 +101,22 @@ pub struct DeleteTaskListInput {
 pub struct QueueMoveTaskInput {
     pub task_id: String,
     pub to_list_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct StoredGoogleToken {
+    #[serde(rename = "accessToken")]
+    access_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct StoredGoogleAccount {
+    token: StoredGoogleToken,
+}
+
+#[derive(Debug, Deserialize)]
+struct StoredGoogleAuth {
+    account: StoredGoogleAccount,
 }
 
 #[tauri::command]
@@ -448,6 +466,7 @@ pub async fn get_task_lists(app: AppHandle) -> Result<Vec<TaskList>, String> {
 #[tauri::command]
 pub async fn create_task_list(
     app: AppHandle,
+    state: State<'_, crate::ApiState>,
     input: CreateTaskListInput,
 ) -> Result<TaskList, String> {
     let pool = db::init_database(&app).await?;
@@ -456,19 +475,66 @@ pub async fn create_task_list(
         return Err("Task list title cannot be empty".to_string());
     }
 
-    let now = Utc::now().timestamp();
-    let list_id = Uuid::new_v4().to_string();
+    let tokens = google_workspace_store_get()
+        .map_err(|e| format!("Failed to load Google credentials: {}", e))?
+        .ok_or_else(|| {
+            "Google account not connected. Please sign in before creating task lists.".to_string()
+        })?;
 
-    sqlx::query("INSERT INTO task_lists (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)")
-        .bind(&list_id)
-        .bind(&title)
-        .bind(now)
-        .bind(now)
-        .execute(&pool)
+    let auth: StoredGoogleAuth = serde_json::from_str(&tokens)
+        .map_err(|e| format!("Failed to parse Google auth tokens: {}", e))?;
+    let access_token = auth.account.token.access_token;
+
+    let response = state
+        .client()
+        .post(format!("{}/users/@me/lists", GOOGLE_TASKS_BASE_URL))
+        .bearer_auth(&access_token)
+        .json(&serde_json::json!({ "title": title }))
+        .send()
         .await
-        .map_err(|e| format!("Failed to create task list: {}", e))?;
+        .map_err(|e| format!("Failed to create Google task list: {}", e))?;
 
-    Ok(TaskList { id: list_id, title })
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!("Google API error {}: {}", status, text));
+    }
+
+    let list_json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Google task list response: {}", e))?;
+
+    let google_id = list_json
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Google API response missing list id".to_string())?
+        .to_string();
+
+    let resolved_title = list_json
+        .get("title")
+        .and_then(|v| v.as_str())
+        .unwrap_or_else(|| input.title.trim())
+        .to_string();
+
+    let now = Utc::now().timestamp();
+
+    sqlx::query(
+        "INSERT INTO task_lists (id, google_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(&google_id)
+    .bind(&google_id)
+    .bind(&resolved_title)
+    .bind(now)
+    .bind(now)
+    .execute(&pool)
+    .await
+    .map_err(|e| format!("Failed to persist task list locally: {}", e))?;
+
+    Ok(TaskList {
+        id: google_id,
+        title: resolved_title,
+    })
 }
 
 #[tauri::command]

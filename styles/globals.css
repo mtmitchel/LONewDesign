@@ -934,6 +934,9 @@
   --quick-panel-width: 320px;       /* Right panel width */
   --quick-panel-bg: var(--bg-surface); /* Panel background */
   --quick-panel-border: 1px solid var(--border-default); /* Left border */
+  --task-panel-ratio: 0.38;
+  --task-panel-min-width: 320px;
+  --task-panel-max-width: 640px;
   --quick-tile-size: 80px;          /* Quick action tile height */
   --quick-tile-gap: 12px;           /* Gap between tiles */
   --quick-tile-padding: 16px;       /* Internal tile padding */
@@ -998,6 +1001,7 @@
   --sidebar-gutter: var(--space-4);
   --sidebar-w-open: var(--sidebar-width);
   --sidebar-w-closed: var(--sidebar-collapsed-width);
+  --sidebar-current-width: var(--sidebar-width);
 
   /* Assistant launcher */
   --launcher-open-h: 40px;
