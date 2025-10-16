@@ -716,12 +716,10 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         try {
           const [rustTasks, rustLists] = await Promise.all([
             invoke<any[]>('get_tasks'),
-            invoke<any[]>('get_task_lists')
+            invoke<any[]>('get_task_lists'),
           ]);
 
-        console.log('[taskStore] Fetched tasks from Rust:', rustTasks);
-
-        set((state) => {
+          set((state) => {
             const tasksById: Record<string, Task> = {};
             const taskOrder: string[] = [];
 

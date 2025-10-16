@@ -513,80 +513,104 @@ impl SyncService {
             println!("[sync_service] Fetching tasks from list {}", list_id);
 
             let tasks_url = format!("{}/lists/{}/tasks", GOOGLE_TASKS_BASE_URL, list_id);
-            let tasks_response = match self
-                .http_client
-                .get(&tasks_url)
-                .bearer_auth(access_token)
-                .send()
-                .await
-            {
-                Ok(r) => r,
-                Err(e) => {
-                    eprintln!(
-                        "[sync_service] Failed to fetch tasks for list {}: {}",
-                        list_id, e
-                    );
-                    continue;
-                }
-            };
+            let mut remote_google_ids: HashSet<String> = HashSet::new();
+            let mut total_fetched = 0_usize;
+            let mut page_token: Option<String> = None;
+            let mut encountered_error = false;
 
-            if !tasks_response.status().is_success() {
-                let status = tasks_response.status();
-                let text = tasks_response.text().await.unwrap_or_default();
-                if status == reqwest::StatusCode::UNAUTHORIZED {
-                    return Err(format!(
-                        "Google API error {} for list {}: {}",
-                        status, list_id, text
-                    ));
+            loop {
+                let current_token = page_token.clone();
+                let mut request = self
+                    .http_client
+                    .get(&tasks_url)
+                    .bearer_auth(access_token)
+                    .query(&[("showHidden", "true"), ("showCompleted", "true"), ("maxResults", "100")]);
+
+                if let Some(ref token) = current_token {
+                    request = request.query(&[("pageToken", token.as_str())]);
                 }
-                eprintln!(
-                    "[sync_service] Google API error {} for list {}: {}",
-                    status, list_id, text
-                );
+
+                let tasks_response = match request.send().await {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!(
+                            "[sync_service] Failed to fetch tasks for list {}: {}",
+                            list_id, e
+                        );
+                        encountered_error = true;
+                        break;
+                    }
+                };
+
+                if !tasks_response.status().is_success() {
+                    let status = tasks_response.status();
+                    let text = tasks_response.text().await.unwrap_or_default();
+                    if status == reqwest::StatusCode::UNAUTHORIZED {
+                        return Err(format!(
+                            "Google API error {} for list {}: {}",
+                            status, list_id, text
+                        ));
+                    }
+                    eprintln!(
+                        "[sync_service] Google API error {} for list {}: {}",
+                        status, list_id, text
+                    );
+                    encountered_error = true;
+                    break;
+                }
+
+                let tasks_json: Value = match tasks_response.json().await {
+                    Ok(j) => j,
+                    Err(e) => {
+                        eprintln!(
+                            "[sync_service] Failed to parse tasks for list {}: {}",
+                            list_id, e
+                        );
+                        encountered_error = true;
+                        break;
+                    }
+                };
+
+                if let Some(tasks) = tasks_json.get("items").and_then(|v| v.as_array()) {
+                    total_fetched += tasks.len();
+
+                    // Reconcile each task with local database
+                    for task in tasks {
+                        if let Some(id_str) = task
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                        {
+                            remote_google_ids.insert(id_str);
+                        }
+
+                        if let Err(e) = self.reconcile_task(list_id, task).await {
+                            eprintln!("[sync_service] Failed to reconcile task: {}", e);
+                        }
+                    }
+                } else if current_token.is_none() {
+                    println!("[sync_service] No tasks in list {}", list_id);
+                }
+
+                page_token = tasks_json
+                    .get("nextPageToken")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+
+                if page_token.is_none() {
+                    break;
+                }
+            }
+
+            if encountered_error {
                 continue;
             }
 
-            let tasks_json: Value = match tasks_response.json().await {
-                Ok(j) => j,
-                Err(e) => {
-                    eprintln!(
-                        "[sync_service] Failed to parse tasks for list {}: {}",
-                        list_id, e
-                    );
-                    continue;
-                }
-            };
-
-            let tasks = match tasks_json.get("items").and_then(|v| v.as_array()) {
-                Some(t) => t,
-                None => {
-                    println!("[sync_service] No tasks in list {}", list_id);
-                    continue;
-                }
-            };
-
             println!(
                 "[sync_service] Found {} tasks in list {}",
-                tasks.len(),
+                total_fetched,
                 list_id
             );
-
-            let mut remote_google_ids: HashSet<String> = HashSet::new();
-
-            // Reconcile each task with local database
-            for task in tasks {
-                if let Some(id_str) = task
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-                {
-                    remote_google_ids.insert(id_str);
-                }
-
-                if let Err(e) = self.reconcile_task(list_id, task).await {
-                    eprintln!("[sync_service] Failed to reconcile task: {}", e);
-                }
-            }
 
             if let Err(e) = self
                 .prune_missing_remote_tasks(list_id, &remote_google_ids)

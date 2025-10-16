@@ -9,6 +9,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { TASK_LISTS } from './constants';
 import { Task, Priority } from './types';
 import { TaskColumnHeader } from './TaskColumnHeader';
@@ -66,6 +67,7 @@ export function TasksBoard({
   const [activeComposer, setActiveComposer] = React.useState<string | null>(null);
   const [sortOption, setSortOption] = React.useState<Record<string, string>>({});
   const [activeTaskId, setActiveTaskId] = React.useState<string | null>(null);
+  const [showCompletedByColumn, setShowCompletedByColumn] = React.useState<Record<string, boolean>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -108,6 +110,16 @@ export function TasksBoard({
 
   const handleSortChange = React.useCallback((columnId: string, nextSort: string) => {
     setSortOption((prev) => ({ ...prev, [columnId]: nextSort }));
+  }, []);
+
+  const handleSetCompletedVisibility = React.useCallback((columnId: string, visible: boolean) => {
+    setShowCompletedByColumn((prev) => {
+      const current = prev[columnId] ?? false;
+      if (current === visible) {
+        return prev;
+      }
+      return { ...prev, [columnId]: visible };
+    });
   }, []);
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -164,7 +176,16 @@ export function TasksBoard({
           const columnId = column.id;
           const columnTasks = getTasksForColumn(columnId);
           const composerIsActive = activeComposer === columnId;
-          const hasTasks = columnTasks.length > 0;
+                const showCompleted = showCompletedByColumn[columnId] ?? false;
+          const activeTasks = columnTasks.filter((task) => !task.isCompleted);
+          const completedTasks = columnTasks.filter((task) => task.isCompleted);
+          const hasCompletedTasks = completedTasks.length > 0;
+          const isCompletedExpanded = showCompleted && hasCompletedTasks;
+          const sortableItems = (isCompletedExpanded ? [...activeTasks, ...completedTasks] : activeTasks).map(
+            (task) => task.id,
+          );
+          const hasVisibleCards = activeTasks.length > 0 || isCompletedExpanded;
+          const shouldOffsetComposer = activeTasks.length > 0 || hasCompletedTasks;
           return (
             <section
               key={columnId}
@@ -172,27 +193,31 @@ export function TasksBoard({
             >
               <TaskColumnHeader
                 columnTitle={column.title}
-                taskCount={columnTasks.length}
+                taskCount={activeTasks.length}
+                completedCount={completedTasks.length}
+                showCompleted={showCompleted}
                 currentSort={sortOption[columnId] ?? 'date-created'}
                 onSort={(value) => handleSortChange(columnId, value)}
-                onHideCompleted={noop}
+                onSetCompletedVisibility={(visible) => handleSetCompletedVisibility(columnId, visible)}
                 onRenameList={noop}
                 onDeleteList={() => onDeleteList?.(columnId)}
               />
 
-              <SortableContext items={columnTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+              <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
                 <DroppableColumn
                   id={`column-${columnId}`}
                   className={[
                     'flex flex-col rounded-[var(--board-lane-radius)] bg-[var(--board-lane-bg)] px-[var(--lane-padding-x)]',
-                    hasTasks ? 'py-[var(--lane-padding-y)] min-h-[160px]' : 'pb-[var(--lane-padding-y)] pt-[var(--space-3)]',
+                    hasVisibleCards
+                      ? 'py-[var(--lane-padding-y)] min-h-[160px]'
+                      : 'pb-[var(--lane-padding-y)] pt-[var(--space-3)]',
                   ]
                     .filter(Boolean)
                     .join(' ')}
                 >
-                  {hasTasks ? (
+                  {activeTasks.length > 0 ? (
                     <ul className="space-y-[var(--gap-card-to-card)]">
-                      {columnTasks.map((task) => (
+                      {activeTasks.map((task) => (
                         <li key={task.id} className="mx-[var(--board-card-inset-x)]">
                           <SortableTaskCard
                             task={task}
@@ -207,34 +232,74 @@ export function TasksBoard({
                     </ul>
                   ) : null}
 
-                {composerIsActive ? (
-                  <div
-                    className={[
-                      'mx-[var(--board-card-inset-x)]',
-                      hasTasks ? 'mt-[var(--gap-header-to-stack)]' : undefined,
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    <TaskComposer
-                      onAddTask={(title, dueDate, priority, labels) =>
-                        handleAddFromComposer(columnId, title, dueDate, priority, labels)
-                      }
-                      onCancel={handleComposerClose}
-                      availableLabels={availableLabels}
+                  {hasCompletedTasks ? (
+                    <div
+                      className={[
+                        activeTasks.length > 0 ? 'mt-[var(--gap-header-to-stack)]' : 'mt-[var(--space-2)]',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSetCompletedVisibility(columnId, !isCompletedExpanded)}
+                        className="mx-[var(--board-card-inset-x)] flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[calc(var(--space-2)/2)] text-left text-sm text-[color:var(--text-secondary)] transition-colors hover:bg-[color-mix(in_oklab,var(--text-secondary)_6%,transparent)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--primary)]"
+                      >
+                        {isCompletedExpanded ? (
+                          <ChevronDown className="size-4" aria-hidden="true" />
+                        ) : (
+                          <ChevronRight className="size-4" aria-hidden="true" />
+                        )}
+                        <span className="truncate">Completed ({completedTasks.length})</span>
+                      </button>
+
+                      {isCompletedExpanded ? (
+                        <ul className="mt-[var(--space-2)] space-y-[var(--gap-card-to-card)]">
+                          {completedTasks.map((task) => (
+                            <li key={task.id} className="mx-[var(--board-card-inset-x)]">
+                              <SortableTaskCard
+                                task={task}
+                                onToggleCompletion={() => onToggleTaskCompletion(task.id)}
+                                onClick={() => onTaskSelect?.(task)}
+                                onEdit={() => onEditTask?.(task)}
+                                onDuplicate={() => onDuplicateTask?.(task)}
+                                onDelete={() => onDeleteTask?.(task.id)}
+                              />
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {composerIsActive ? (
+                    <div
+                      className={[
+                        'mx-[var(--board-card-inset-x)]',
+                        shouldOffsetComposer ? 'mt-[var(--gap-header-to-stack)]' : undefined,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      <TaskComposer
+                        onAddTask={(title, dueDate, priority, labels) =>
+                          handleAddFromComposer(columnId, title, dueDate, priority, labels)
+                        }
+                        onCancel={handleComposerClose}
+                        availableLabels={availableLabels}
+                      />
+                    </div>
+                  ) : (
+                    <TaskAddButton
+                      className={[
+                        'mx-[var(--board-card-inset-x)]',
+                        shouldOffsetComposer ? 'mt-[var(--gap-header-to-stack)]' : undefined,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => handleComposerOpen(columnId)}
                     />
-                  </div>
-                ) : (
-                  <TaskAddButton
-                    className={[
-                      'mx-[var(--board-card-inset-x)]',
-                      hasTasks ? 'mt-[var(--gap-header-to-stack)]' : undefined,
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                    onClick={() => handleComposerOpen(columnId)}
-                  />
-                )}
+                  )}
                 </DroppableColumn>
               </SortableContext>
             </section>
