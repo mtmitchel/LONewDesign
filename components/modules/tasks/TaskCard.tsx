@@ -10,7 +10,7 @@ import {
     ContextMenuTrigger,
     ContextMenuSeparator,
 } from '../../ui/context-menu';
-import { Edit, Trash, Copy, CheckSquare, Check, AlertTriangle } from 'lucide-react';
+import { Edit, Trash, Copy, CheckSquare, Check, AlertTriangle, Flag } from 'lucide-react';
 
 type TaskLabel = string | { name: string; color: string };
 
@@ -44,13 +44,6 @@ export function TaskCard({
     onDuplicate, 
     onDelete 
 }: TaskCardProps) {
-  const priorityColors: { [key: string]: string } = {
-    high: 'bg-red-500 text-white',
-    medium: 'bg-orange-500 text-white',
-    low: 'bg-blue-500 text-white',
-    none: ''
-  };
-
   const labels = Array.isArray(rawLabels) ? rawLabels : [];
 
   const formattedDueDate = React.useMemo(() => {
@@ -129,8 +122,10 @@ export function TaskCard({
                             variant="soft"
                             tone={priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : 'low'}
                             size="sm"
+                            className="flex items-center gap-[var(--space-1)]"
                           >
-                            {priority[0].toUpperCase() + priority.slice(1)}
+                            <Flag className="h-3 w-3" aria-hidden />
+                            <span>{priority[0].toUpperCase() + priority.slice(1)}</span>
                           </Badge>
                         )}
                         {labels.length > 0 ? (

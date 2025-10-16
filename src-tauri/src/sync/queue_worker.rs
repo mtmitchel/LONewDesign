@@ -7,15 +7,22 @@ use crate::sync::google_client;
 use crate::sync::types::{SyncQueueEntry, TaskMetadataRecord};
 use crate::task_metadata;
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum QueueExecutionResult {
+    Completed,
+    RequiresTokenRefresh,
+}
+
 /// Executes pending mutations from the sync queue
 ///
 /// Processes up to 25 pending entries, executing CREATE, UPDATE, or DELETE operations
-/// against the Google Tasks API
+/// against the Google Tasks API. Returns [`QueueExecutionResult::RequiresTokenRefresh`] when
+/// Google responds with 401 so the caller can refresh credentials before retrying.
 pub async fn execute_pending_mutations(
     db_pool: &SqlitePool,
     http_client: &Client,
     access_token: &str,
-) -> Result<(), String> {
+) -> Result<QueueExecutionResult, String> {
     let now = chrono::Utc::now().timestamp();
     let pending_entries: Vec<SyncQueueEntry> = sqlx::query_as(
         "SELECT id, operation, task_id, payload, scheduled_at, status, attempts, last_error, created_at \
@@ -30,7 +37,7 @@ pub async fn execute_pending_mutations(
     .map_err(|e| format!("Failed to fetch sync queue entries: {}", e))?;
 
     if pending_entries.is_empty() {
-        return Ok(());
+        return Ok(QueueExecutionResult::Completed);
     }
 
     for entry in pending_entries {
@@ -58,6 +65,15 @@ pub async fn execute_pending_mutations(
                 );
             }
             Err(err) => {
+                if is_unauthorized_error(&err) {
+                    eprintln!(
+                        "[sync_service] Google API returned unauthorized for queue entry {}: {}",
+                        entry.id, err
+                    );
+                    revert_queue_entry_claim(db_pool, &entry, &err).await?;
+                    return Ok(QueueExecutionResult::RequiresTokenRefresh);
+                }
+
                 eprintln!(
                     "[sync_service] Failed processing sync queue entry {}: {}",
                     entry.id, err
@@ -67,7 +83,7 @@ pub async fn execute_pending_mutations(
         }
     }
 
-    Ok(())
+    Ok(QueueExecutionResult::Completed)
 }
 
 async fn process_queue_entry(
@@ -343,6 +359,24 @@ async fn cleanup_queue_entry(db_pool: &SqlitePool, entry_id: &str) -> Result<(),
     Ok(())
 }
 
+async fn revert_queue_entry_claim(
+    db_pool: &SqlitePool,
+    entry: &SyncQueueEntry,
+    error: &str,
+) -> Result<(), String> {
+    sqlx::query(
+        "UPDATE sync_queue SET status = 'pending', attempts = ?, last_error = ? WHERE id = ?",
+    )
+    .bind(entry.attempts)
+    .bind(error)
+    .bind(&entry.id)
+    .execute(db_pool)
+    .await
+    .map_err(|e| format!("Failed to revert queue entry {} after auth error: {}", entry.id, e))?;
+
+    Ok(())
+}
+
 async fn mark_queue_failure(
     db_pool: &SqlitePool,
     entry: &SyncQueueEntry,
@@ -385,6 +419,10 @@ fn payload_metadata_hash(payload: &serde_json::Value) -> Result<String, String> 
         .map_err(|e| format!("Failed to parse queue payload for hashing: {}", e))?;
     let metadata = task_metadata::TaskMetadata::deserialize_from_google(&google_payload);
     Ok(metadata.compute_hash())
+}
+
+fn is_unauthorized_error(error: &str) -> bool {
+    error.contains("401") && error.to_ascii_lowercase().contains("unauthorized")
 }
 
 fn derive_post_sync_state(task: &TaskMetadataRecord, payload_hash: &str) -> (String, String) {

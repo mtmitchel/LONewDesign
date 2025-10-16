@@ -13,6 +13,18 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_deep_link::DeepLinkExt;
 
+fn init_env() {
+    if dotenvy::dotenv().is_ok() {
+        return;
+    }
+
+    let fallback = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join(".env");
+
+    let _ = dotenvy::from_path(fallback);
+}
+
 #[derive(Clone)]
 pub struct ApiState {
     client: reqwest::Client,
@@ -66,6 +78,7 @@ async fn sync_tasks_now(
 // All Google OAuth and Tasks commands moved to commands/google.rs
 
 fn main() {
+    init_env();
     tauri::Builder::default()
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_shell::init())

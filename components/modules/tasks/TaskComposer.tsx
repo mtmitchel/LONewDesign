@@ -127,12 +127,20 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
       }, 150);
     };
 
+    const isPopoverElement = (element: HTMLElement | null) => {
+      if (!element) return false;
+      return Boolean(
+        element.closest('[data-radix-popover-content]') ||
+          element.closest('[data-slot="popover-content"]')
+      );
+    };
+
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null;
       const root = composerRef.current;
       if (!root) return;
 
-      if (root.contains(target) || target?.closest('[data-radix-popover-content]')) {
+      if (root.contains(target) || isPopoverElement(target)) {
         markInternalInteraction();
         return;
       }
@@ -150,6 +158,14 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
     const root = composerRef.current;
     if (!root) return;
 
+    const isPopoverElement = (element: HTMLElement | null) => {
+      if (!element) return false;
+      return Boolean(
+        element.closest('[data-radix-popover-content]') ||
+          element.closest('[data-slot="popover-content"]')
+      );
+    };
+
     const handleFocusOut = (event: FocusEvent) => {
       if (interactionGuardRef.current) {
         return;
@@ -157,12 +173,12 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
 
       window.setTimeout(() => {
         const activeEl = document.activeElement as HTMLElement | null;
-        if (activeEl && (root.contains(activeEl) || activeEl.closest('[data-radix-popover-content]'))) {
+        if (activeEl && (root.contains(activeEl) || isPopoverElement(activeEl))) {
           return;
         }
 
         const related = event.relatedTarget as HTMLElement | null;
-        if (related && (root.contains(related) || related.closest('[data-radix-popover-content]'))) {
+        if (related && (root.contains(related) || isPopoverElement(related))) {
           return;
         }
 
@@ -425,21 +441,44 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
             </Popover>
           </div>
 
-          {selectedLabels.length > 0 ? (
-            <div className="flex flex-wrap gap-[var(--space-2)]">
+          {(dueDate || priority !== 'none' || selectedLabels.length > 0) && (
+            <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+              {dueDate ? (
+                <Badge
+                  variant="soft"
+                  size="sm"
+                  className="flex items-center gap-[var(--space-1)]"
+                >
+                  <Calendar className="h-3 w-3" aria-hidden />
+                  <span>{format(dueDate, 'MMM d')}</span>
+                </Badge>
+              ) : null}
+
+              {priority !== 'none' ? (
+                <Badge
+                  variant="soft"
+                  tone={priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : 'low'}
+                  size="sm"
+                  className="flex items-center gap-[var(--space-1)]"
+                >
+                  <Flag className="h-3 w-3" aria-hidden />
+                  <span>{priority[0].toUpperCase() + priority.slice(1)}</span>
+                </Badge>
+              ) : null}
+
               {selectedLabels.map((label) => (
                 <Badge
                   key={`summary-${label.name}`}
                   variant="soft"
                   size="sm"
-                  className="flex items-center"
+                  className="flex items-center gap-[var(--space-1)]"
                   style={chipStyle(label.color)}
                 >
-                  {label.name}
+                  <span>{label.name}</span>
                 </Badge>
               ))}
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     </div>

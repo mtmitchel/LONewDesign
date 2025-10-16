@@ -2486,6 +2486,7 @@ name = "libreollama_desktop"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "dotenvy",
  "futures-util",
  "keyring",
  "proptest",
