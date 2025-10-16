@@ -3,7 +3,6 @@ import { Button } from '../../ui/button';
 import { MoreHorizontal, ArrowUpDown, Check } from 'lucide-react';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -38,6 +37,7 @@ export function TaskColumnHeader({
   };
 
   const taskCountLabel = `${taskCount} active task${taskCount === 1 ? '' : 's'}${completedCount ? `, ${completedCount} completed` : ''}`;
+  const toggleCompletedLabel = showCompleted ? 'Hide completed tasks' : 'Show completed tasks';
 
   return (
     <header
@@ -56,11 +56,6 @@ export function TaskColumnHeader({
           >
             {taskCount}
           </span>
-          {completedCount > 0 ? (
-            <span className="shrink-0 text-xs text-[color:var(--text-tertiary)]" title={taskCountLabel}>
-              +{completedCount}
-            </span>
-          ) : null}
         </div>
         <div className="flex items-center gap-[var(--list-header-actions-gap-x)]">
           <DropdownMenu>
@@ -129,16 +124,14 @@ export function TaskColumnHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuCheckboxItem
-                checked={showCompleted}
-                disabled={completedCount === 0}
-                onCheckedChange={(checked) => {
-                  const isChecked = checked === true;
-                  onSetCompletedVisibility(isChecked);
+              <DropdownMenuItem
+                className="text-left"
+                onSelect={() => {
+                  onSetCompletedVisibility(!showCompleted);
                 }}
               >
-                Show completed tasks
-              </DropdownMenuCheckboxItem>
+                {toggleCompletedLabel}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onRenameList}>Rename list</DropdownMenuItem>
               <DropdownMenuItem onClick={onDeleteList} className="text-[color:var(--danger)]">

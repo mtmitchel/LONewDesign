@@ -68,6 +68,7 @@ export function TasksBoard({
   const [sortOption, setSortOption] = React.useState<Record<string, string>>({});
   const [activeTaskId, setActiveTaskId] = React.useState<string | null>(null);
   const [showCompletedByColumn, setShowCompletedByColumn] = React.useState<Record<string, boolean>>({});
+  const [expandedCompletedByColumn, setExpandedCompletedByColumn] = React.useState<Record<string, boolean>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -114,11 +115,42 @@ export function TasksBoard({
 
   const handleSetCompletedVisibility = React.useCallback((columnId: string, visible: boolean) => {
     setShowCompletedByColumn((prev) => {
-      const current = prev[columnId] ?? false;
+      const current = prev[columnId] ?? true;
       if (current === visible) {
         return prev;
       }
-      return { ...prev, [columnId]: visible };
+
+      if (visible) {
+        const next = { ...prev };
+        delete next[columnId];
+        return next;
+      }
+
+      return { ...prev, [columnId]: false };
+    });
+
+    if (!visible) {
+      setExpandedCompletedByColumn((prev) => {
+        if (!(prev[columnId] ?? false)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[columnId];
+        return next;
+      });
+    }
+  }, []);
+
+  const handleToggleCompletedExpansion = React.useCallback((columnId: string) => {
+    setExpandedCompletedByColumn((prev) => {
+      const current = prev[columnId] ?? false;
+      const nextValue = !current;
+      if (!nextValue) {
+        const next = { ...prev };
+        delete next[columnId];
+        return next;
+      }
+      return { ...prev, [columnId]: nextValue };
     });
   }, []);
 
@@ -176,16 +208,20 @@ export function TasksBoard({
           const columnId = column.id;
           const columnTasks = getTasksForColumn(columnId);
           const composerIsActive = activeComposer === columnId;
-                const showCompleted = showCompletedByColumn[columnId] ?? false;
+                 const showCompleted = showCompletedByColumn[columnId] ?? true;
           const activeTasks = columnTasks.filter((task) => !task.isCompleted);
           const completedTasks = columnTasks.filter((task) => task.isCompleted);
           const hasCompletedTasks = completedTasks.length > 0;
-          const isCompletedExpanded = showCompleted && hasCompletedTasks;
-          const sortableItems = (isCompletedExpanded ? [...activeTasks, ...completedTasks] : activeTasks).map(
+                 const isCompletedExpanded = showCompleted && (expandedCompletedByColumn[columnId] ?? false);
+                 const showCompletedSection = showCompleted && hasCompletedTasks;
+                 const sortableItems = (showCompletedSection && isCompletedExpanded
+                   ? [...activeTasks, ...completedTasks]
+                   : activeTasks
+                 ).map(
             (task) => task.id,
           );
-          const hasVisibleCards = activeTasks.length > 0 || isCompletedExpanded;
-          const shouldOffsetComposer = activeTasks.length > 0 || hasCompletedTasks;
+                 const hasVisibleCards = activeTasks.length > 0 || (showCompletedSection && isCompletedExpanded);
+                 const shouldOffsetComposer = activeTasks.length > 0 || showCompletedSection;
           return (
             <section
               key={columnId}
@@ -232,7 +268,7 @@ export function TasksBoard({
                     </ul>
                   ) : null}
 
-                  {hasCompletedTasks ? (
+                         {showCompletedSection ? (
                     <div
                       className={[
                         activeTasks.length > 0 ? 'mt-[var(--gap-header-to-stack)]' : 'mt-[var(--space-2)]',
@@ -242,7 +278,7 @@ export function TasksBoard({
                     >
                       <button
                         type="button"
-                        onClick={() => handleSetCompletedVisibility(columnId, !isCompletedExpanded)}
+                               onClick={() => handleToggleCompletedExpansion(columnId)}
                         className="mx-[var(--board-card-inset-x)] flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[calc(var(--space-2)/2)] text-left text-sm text-[color:var(--text-secondary)] transition-colors hover:bg-[color-mix(in_oklab,var(--text-secondary)_6%,transparent)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--primary)]"
                       >
                         {isCompletedExpanded ? (
@@ -253,7 +289,7 @@ export function TasksBoard({
                         <span className="truncate">Completed ({completedTasks.length})</span>
                       </button>
 
-                      {isCompletedExpanded ? (
+                             {isCompletedExpanded ? (
                         <ul className="mt-[var(--space-2)] space-y-[var(--gap-card-to-card)]">
                           {completedTasks.map((task) => (
                             <li key={task.id} className="mx-[var(--board-card-inset-x)]">
@@ -268,7 +304,7 @@ export function TasksBoard({
                             </li>
                           ))}
                         </ul>
-                      ) : null}
+                         ) : null}
                     </div>
                   ) : null}
 

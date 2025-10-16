@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixes
 - Hardened duplicate-task cleanup so freshly created tasks waiting to sync are no longer mistaken for orphan records and removed during a manual sync cycle.
 - **Label color persistence (2025-10-15)**: Label color changes now persist across app refreshes. Extended Rust backend (`task_metadata.rs`, `commands/tasks.rs`) to store labels as `{name,color}` JSON objects instead of name-only strings, updated frontend (`taskStore.tsx`) to send structured payloads, and modified Google Tasks serialization to preserve color metadata through sync round-trips. Test suite and mocks updated to validate color preservation end-to-end.
+- **Task side panel priority picker (2025-10-16)**: Fixed non-responsive priority dropdown by converting to popover-based control with proper state management. Redesigned due date and priority rows in `TaskSidePanel.tsx` to display on single horizontal lines with badge icons and clear buttons. Updated completed tasks toggle in `TaskColumnHeader.tsx` to use sentence-case menu item. Refined completed-tasks expansion logic in `TasksBoard.tsx` to properly handle visibility and expansion states independently.
 
 ### Known Issues
 - Sync service modularization is still in progress: `src-tauri/src/sync_service.rs` remains about 1,100 lines long and the planned helper modules (`sync/oauth.rs`, `sync/reconciler.rs`) have not been created. The extracted queue worker lives in `sync/queue_worker.rs` but is not wired into the running service yet.

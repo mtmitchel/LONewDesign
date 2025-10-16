@@ -1,11 +1,12 @@
 
 import * as React from 'react';
-import { Calendar, Flag, Tag, Trash2, X, Plus } from 'lucide-react';
+import { Calendar, ChevronDown, Flag, Tag, Trash2, X, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Checkbox } from '../../ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Calendar as CalendarComponent } from '../../ui/calendar';
+import { Badge } from '../../ui/badge';
 import { cn } from '../../ui/utils';
 import { PaneHeader } from '../../layout/PaneHeader';
 import type { Task, TaskLabel, Subtask } from './types';
@@ -34,7 +35,7 @@ function normalizeLabels(input: unknown): TaskLabel[] {
   return [];
 }
 
-export function TaskSidePanel({
+function TaskSidePanel({
   task,
   onClose,
   onUpdateTask,
@@ -48,6 +49,7 @@ export function TaskSidePanel({
   const [newLabel, setNewLabel] = React.useState('');
   const [selectedLabelColor, setSelectedLabelColor] = React.useState('var(--label-blue)');
   const [editingLabelIndex, setEditingLabelIndex] = React.useState<number | null>(null);
+  const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
 
   const titleFieldRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -219,6 +221,34 @@ export function TaskSidePanel({
     return null;
   }
 
+  const dueDateValue = editedTask.dueDate ? parseDisplayDate(editedTask.dueDate) : undefined;
+  const hasDueDate = Boolean(dueDateValue);
+  const dueDateLabel = hasDueDate && dueDateValue ? format(dueDateValue, 'MMM d') : 'No due date';
+  const currentPriority: Task['priority'] = editedTask.priority ?? 'none';
+  const priorityValues: Task['priority'][] = ['high', 'medium', 'low', 'none'];
+
+  const getPriorityLabel = (value: Task['priority']) =>
+    value === 'none' ? 'No priority' : value[0].toUpperCase() + value.slice(1);
+
+  const renderPriorityChip = (value: Task['priority']) => {
+    if (value === 'none') {
+      return null;
+    }
+
+    const tone = value === 'high' ? 'high' : value === 'medium' ? 'medium' : 'low';
+    return (
+      <Badge
+        variant="soft"
+        tone={tone}
+        size="sm"
+        className="flex items-center gap-[var(--space-1)]"
+      >
+        <Flag className="h-3 w-3" aria-hidden />
+        <span>{getPriorityLabel(value)}</span>
+      </Badge>
+    );
+  };
+
   return (
     <div className={containerClass} style={overlayStyle} {...regionProps}>
       <PaneHeader role="heading" className="justify-between">
@@ -249,54 +279,105 @@ export function TaskSidePanel({
             />
           </div>
 
-          <div className="flex flex-col gap-[var(--space-3)] border-t border-[var(--border-subtle)] pt-[var(--space-6)]">
-            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
-              <Calendar className="size-4" aria-hidden />
-              <span>Due date</span>
+          <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-[var(--space-6)]">
+            <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Due date</span>
+            <div className="flex items-center gap-[var(--space-2)]">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="group flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2_5)] py-[var(--space-1_5)] text-left transition-colors hover:bg-[var(--bg-surface-elevated)]"
+                  >
+                    <span
+                      className={cn(
+                        'grid size-8 place-items-center rounded-full border text-[color:var(--text-secondary)] transition-colors',
+                        hasDueDate
+                          ? 'border-[var(--border-default)] group-hover:border-[var(--border-hover)]'
+                          : 'border-dashed border-[var(--border-subtle)] group-hover:border-[var(--border-default)]'
+                      )}
+                    >
+                      <Calendar className="size-4" aria-hidden />
+                    </span>
+                    <span
+                      className={cn(
+                        'text-[length:var(--text-sm)] transition-colors',
+                        hasDueDate ? 'text-[color:var(--text-primary)] font-medium' : 'text-[color:var(--text-tertiary)]'
+                      )}
+                    >
+                      {dueDateLabel}
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={dueDateValue}
+                    onSelect={(date) =>
+                      handleFieldChange('dueDate', date ? format(date, 'yyyy-MM-dd') : undefined)
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {hasDueDate ? (
+                <button
+                  type="button"
+                  onClick={() => handleFieldChange('dueDate', undefined)}
+                  className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
+                  aria-label="Clear due date"
+                >
+                  <X className="size-4" aria-hidden />
+                </button>
+              ) : null}
             </div>
-            <Popover>
+          </div>
+
+          <div className="flex items-center justify-between pt-[var(--space-4)]">
+            <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Priority</span>
+            <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="flex h-10 w-full items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-secondary)] hover:border-[var(--border-hover)]"
+                  className="group flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2_5)] py-[var(--space-1_5)] text-left transition-colors hover:bg-[var(--bg-surface-elevated)]"
+                  aria-label="Change priority"
                 >
-                  <Calendar className="size-4" aria-hidden />
-                  <span>{editedTask.dueDate || 'Pick a date'}</span>
+                  {renderPriorityChip(currentPriority) ?? (
+                    <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">
+                      {getPriorityLabel(currentPriority)}
+                    </span>
+                  )}
+                  <ChevronDown className="size-4 text-[color:var(--text-tertiary)]" aria-hidden />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <CalendarComponent
-                  mode="single"
-                  selected={parseDisplayDate(editedTask.dueDate ?? '')}
-                  onSelect={(date) => handleFieldChange('dueDate', date ? format(date, 'yyyy-MM-dd') : undefined)}
-                  initialFocus
-                />
+              <PopoverContent align="end" className="w-56 p-0">
+                <div className="flex flex-col py-[var(--space-1)]">
+                  {priorityValues.map((value) => {
+                    const isActive = currentPriority === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          handleFieldChange('priority', value);
+                          setPriorityPopoverOpen(false);
+                        }}
+                        className={cn(
+                          'flex w-full items-center justify-between gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] text-left text-sm transition-colors',
+                          isActive
+                            ? 'bg-[color-mix(in_oklab,var(--primary)_8%,transparent)] text-[color:var(--text-primary)]'
+                            : 'text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[color:var(--text-primary)]'
+                        )}
+                      >
+                        <span className={cn(isActive ? 'font-medium' : undefined)}>
+                          {getPriorityLabel(value)}
+                        </span>
+                        {renderPriorityChip(value)}
+                      </button>
+                    );
+                  })}
+                </div>
               </PopoverContent>
             </Popover>
-          </div>
-
-          <div className="flex flex-col gap-[var(--space-3)]">
-            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
-              <Flag className="size-4" aria-hidden />
-              <span>Priority</span>
-            </div>
-            <div className="flex flex-wrap gap-[var(--space-2)]">
-              {(['high', 'medium', 'low', 'none'] as Task['priority'][]).map((priority) => (
-                <button
-                  key={priority}
-                  type="button"
-                  onClick={() => handleFieldChange('priority', priority)}
-                  className={cn(
-                    'rounded-[var(--radius-sm)] border-2 px-[var(--space-3)] py-[var(--space-1_5)] text-sm font-medium capitalize transition-colors',
-                    editedTask.priority === priority
-                      ? 'border-[var(--primary)] bg-[var(--primary-tint-10)] text-[color:var(--primary)]'
-                      : 'border-[var(--border-default)] text-[color:var(--text-primary)] hover:border-[var(--primary)] hover:bg-[var(--primary-tint-5)]',
-                  )}
-                >
-                  {priority}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="flex flex-col gap-[var(--space-3)]">
@@ -563,3 +644,6 @@ const labelColorPalette = [
   { name: 'Teal', value: 'var(--label-teal)' },
   { name: 'Gray', value: 'var(--label-gray)' },
 ];
+
+export { TaskSidePanel };
+export default TaskSidePanel;
