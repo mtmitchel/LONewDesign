@@ -32,7 +32,7 @@ import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { TaskComposer, type ComposerLabel } from './tasks/TaskComposer';
 import { TasksBoard } from './tasks/TasksBoard';
-import { TaskSidePanel } from './tasks/TaskSidePanel';
+import TaskDetailsDrawer from './tasks/TaskDetailsDrawer';
 import { SegmentedToggle } from '../controls/SegmentedToggle';
 import { TASK_LISTS } from './tasks/constants';
 import type { Task, TaskLabel } from './tasks/types';
@@ -251,7 +251,6 @@ export function TasksModule() {
     } catch (e) {
       toast.error('Failed to update task');
     }
-    setSelectedTask(null); // Close side panel after update
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -828,7 +827,7 @@ export function TasksModule() {
 
       {viewMode === 'board' ? <BoardView /> : <ListView />}
 
-      <TaskSidePanel 
+      <TaskDetailsDrawer 
         task={selectedTask}
         onClose={() => setSelectedTask(null)}
         onUpdateTask={handleUpdateTask}

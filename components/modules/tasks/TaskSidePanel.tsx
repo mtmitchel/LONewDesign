@@ -1,14 +1,253 @@
+type LabelEditorState =
+  | { mode: 'create'; name: string }
+  | { mode: 'edit'; index: number; name: string; color: string }
+  | null;
+
+type LabelsSectionProps = {
+  availableLabels: TaskLabel[];
+  labels: TaskLabel[];
+  query: string;
+  onQueryChange: (value: string) => void;
+  onSelectLabel: (label: TaskLabel) => void;
+  onRemoveLabel: (name: string) => void;
+  editorState: LabelEditorState;
+  onEdit: (next: LabelEditorState) => void;
+  onSubmitEdit: (index: number, updates: { name: string; color: string }) => void;
+  onCreateLabel: (label: { name: string; color: string }) => void;
+  onDismissEditor: () => void;
+  labelInputRef: React.RefObject<HTMLInputElement>;
+  popoverOpen: boolean;
+  onPopoverOpenChange: (open: boolean) => void;
+};
+
+function LabelsSection({
+  availableLabels,
+  labels,
+  query,
+  onQueryChange,
+  onSelectLabel,
+  onRemoveLabel,
+  editorState,
+  onEdit,
+  onSubmitEdit,
+  onCreateLabel,
+  onDismissEditor,
+  labelInputRef,
+  popoverOpen,
+  onPopoverOpenChange,
+}: LabelsSectionProps) {
+  const normalizedLabels = React.useMemo(() => labels ?? [], [labels]);
+  const hasLabels = normalizedLabels.length > 0;
+
+  return (
+    <div className="flex flex-col gap-[var(--space-2)] rounded-[var(--radius-md)] border border-transparent px-[var(--space-3)] py-[var(--space-2_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--hover-bg)]">
+      <div className="flex items-center justify-between">
+        <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Labels</span>
+        <Popover open={popoverOpen} onOpenChange={onPopoverOpenChange}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="flex min-h-[36px] flex-wrap items-center justify-end gap-[var(--space-2)] text-right"
+              aria-label="Manage labels"
+            >
+              {hasLabels ? (
+                <div className="flex flex-wrap justify-end gap-[var(--space-2)]">
+                  {normalizedLabels.slice(0, 6).map((label, idx) => {
+                    const c = typeof label === 'string' ? 'var(--label-blue)' : label.color;
+                    const name = getTaskLabelName(label);
+                    return (
+                      <Badge
+                        key={`${name}-${idx}`}
+                        variant="soft"
+                        size="sm"
+                        className="cursor-pointer"
+                        style={{
+                          backgroundColor: `color-mix(in oklab, ${c} 18%, transparent)`,
+                          color: `color-mix(in oklab, ${c} 85%, var(--text-primary))`,
+                          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${c} 35%, transparent)`,
+                        }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onPopoverOpenChange(false);
+                          onEdit({ mode: 'edit', index: idx, name, color: c });
+                        }}
+                      >
+                        <span>{name}</span>
+                        <button
+                          type="button"
+                          onClick={(ev) => { ev.stopPropagation(); onRemoveLabel(name); }}
+                          className="ml-[var(--space-1)] grid place-items-center size-4 rounded-full hover:bg-[color-mix(in_oklab,currentColor_15%,transparent)]"
+                          aria-label={`Remove label ${name}`}
+                          title="Remove"
+                        >
+                          <X className="size-3" aria-hidden />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                  {normalizedLabels.length > 6 ? (
+                    <Badge variant="outline" size="sm">+{normalizedLabels.length - 6}</Badge>
+                  ) : null}
+                </div>
+              ) : (
+                <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">
+                  Search or add label
+                </span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-[320px] p-0">
+            <div className="p-[var(--space-2)]">
+              <div className="mb-[var(--space-2)]">
+                <input
+                  ref={labelInputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => onQueryChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const name = query.trim();
+                      if (name) onCreateLabel({ name, color: 'var(--label-blue)' });
+                    }
+                  }}
+                  placeholder="Search or add label"
+                  className="w-full h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none"
+                />
+              </div>
+              <div className="max-h-[240px] overflow-y-auto flex flex-col gap-[var(--space-1)]">
+                {availableLabels
+                  .filter((l) => !query.trim() || getTaskLabelName(l).toLowerCase().includes(query.trim().toLowerCase()))
+                  .map((label, idx) => {
+                  const name = getTaskLabelName(label);
+                  const color = typeof label === 'string' ? 'var(--label-blue)' : label.color;
+                  const isApplied = normalizedLabels.some((l) => getTaskLabelName(l) === name);
+                  return (
+                    <button
+                      key={`${name}-${idx}`}
+                      type="button"
+                      className={cn('flex items-center justify-between rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-sm hover:bg-[var(--bg-surface-elevated)]', isApplied && 'bg-[var(--bg-surface-elevated)]')}
+                      onClick={() => onSelectLabel({ name, color })}
+                    >
+                      <Badge
+                        variant="soft"
+                        size="sm"
+                        className="flex items-center gap-[var(--space-1)]"
+                        style={{
+                          backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
+                          color: `color-mix(in oklab, ${color} 85%, var(--text-primary))`,
+                          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${color} 35%, transparent)`,
+                        }}
+                      >
+                        {name}
+                      </Badge>
+                      {isApplied ? <Check className="size-4 text-[color:var(--primary)]" aria-hidden /> : null}
+                    </button>
+                  );
+                })}
+                {query.trim() && !availableLabels.some((l) => getTaskLabelName(l).toLowerCase() === query.trim().toLowerCase()) ? (
+                  <button
+                    type="button"
+                    className="flex items-center justify-between rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-sm hover:bg-[var(--bg-surface-elevated)]"
+                    onClick={() => {
+                      onPopoverOpenChange(false);
+                      onEdit({ mode: 'create', name: query.trim() });
+                    }}
+                  >
+                    <span>Create “{query.trim()}”</span>
+                    <Plus className="size-4" aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+      {editorState ? (
+        <div className="rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--space-3)] shadow-[var(--elevation-sm)]">
+          <div className="flex flex-col gap-[var(--space-3)]">
+            <div className="flex items-center gap-[var(--space-2)]">
+              <label className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] w-24">Label name</label>
+              <input
+                ref={labelInputRef}
+                type="text"
+                defaultValue={editorState.name}
+                onChange={(e) => onEdit(
+                  editorState.mode === 'edit'
+                    ? { mode: 'edit', index: editorState.index, name: e.target.value, color: editorState.color }
+                    : { mode: 'create', name: e.target.value }
+                )}
+                className="flex-1 h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-[var(--space-2)]">
+              <span className="text-[length:var(--text-sm)] text-[color:var(--text-primary)] w-24">Color</span>
+              <div className="flex flex-wrap gap-[var(--space-2)]">
+                {labelColorPalette.map((option) => {
+                  const activeColor = editorState.mode === 'edit' ? editorState.color : option.value;
+                  const isActive = activeColor === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => onEdit(
+                        editorState.mode === 'edit'
+                          ? { ...editorState, color: option.value }
+                          : { mode: 'create', name: editorState.name }
+                      )}
+                      className={cn('size-5 rounded-full border transition-transform hover:scale-110', isActive && 'ring-2 ring-[var(--primary)] ring-offset-1')}
+                      style={{
+                        backgroundColor: `color-mix(in oklab, ${option.value} 18%, transparent)`,
+                        borderColor: `color-mix(in oklab, ${option.value} 35%, transparent)`,
+                      }}
+                      aria-label={`Choose ${option.name}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex justify-end gap-[var(--space-2)]">
+              <Button variant="ghost" size="compact" onClick={onDismissEditor}>Cancel</Button>
+              <Button
+                variant="solid"
+                size="compact"
+                onClick={() => {
+                  const name = (editorState?.name ?? '').trim();
+                  if (!name) return onDismissEditor();
+                  const color = editorState?.mode === 'edit' ? editorState.color : labelColorPalette[0].value;
+                  if (editorState.mode === 'edit') {
+                    onSubmitEdit(editorState.index, { name, color });
+                  } else {
+                    onCreateLabel({ name, color });
+                  }
+                  onDismissEditor();
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 
 import * as React from 'react';
-import { Calendar, ChevronDown, Flag, Tag, Trash2, X, Plus } from 'lucide-react';
+import { Calendar, Check, ChevronDown, Flag, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Checkbox } from '../../ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../../ui/command';
 import { Calendar as CalendarComponent } from '../../ui/calendar';
 import { Badge } from '../../ui/badge';
+import { Button } from '../../ui/button';
 import { cn } from '../../ui/utils';
 import { PaneHeader } from '../../layout/PaneHeader';
+import { useTaskStore } from './taskStore';
 import type { Task, TaskLabel, Subtask } from './types';
 
 const getTaskLabelName = (label: TaskLabel) => (typeof label === 'string' ? label : label.name);
@@ -46,12 +285,16 @@ function TaskSidePanel({
   const [editedTask, setEditedTask] = React.useState<Task | null>(null);
   const [newSubtaskTitle, setNewSubtaskTitle] = React.useState('');
   const [newSubtaskDueDate, setNewSubtaskDueDate] = React.useState<string | undefined>(undefined);
-  const [newLabel, setNewLabel] = React.useState('');
-  const [selectedLabelColor, setSelectedLabelColor] = React.useState('var(--label-blue)');
-  const [editingLabelIndex, setEditingLabelIndex] = React.useState<number | null>(null);
+  const [labelQuery, setLabelQuery] = React.useState('');
+  const [labelEditorState, setLabelEditorState] = React.useState<
+    | { mode: 'create'; name: string }
+    | { mode: 'edit'; index: number; name: string; color: string }
+    | null
+  >(null);
+  const [labelsPopoverOpen, setLabelsPopoverOpen] = React.useState(false);
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
-
   const titleFieldRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const labelNameInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const adjustTitleHeight = React.useCallback(() => {
     const el = titleFieldRef.current;
@@ -65,16 +308,16 @@ function TaskSidePanel({
       setEditedTask(null);
       setNewSubtaskTitle('');
       setNewSubtaskDueDate(undefined);
-      setNewLabel('');
-      setEditingLabelIndex(null);
+      setLabelQuery('');
+      setLabelEditorState(null);
       return;
     }
 
     setEditedTask(task);
     setNewSubtaskTitle('');
     setNewSubtaskDueDate(undefined);
-    setNewLabel('');
-    setEditingLabelIndex(null);
+    setLabelQuery('');
+    setLabelEditorState(null);
   }, [task]);
 
   React.useLayoutEffect(() => {
@@ -82,6 +325,21 @@ function TaskSidePanel({
   }, [adjustTitleHeight, editedTask?.title, task?.id, presentation]);
 
   const headingId = task ? `task-panel-title-${task.id}` : undefined;
+
+  // Build available labels from all tasks in store so search shows existing labels
+  const tasksById = useTaskStore((s) => s.tasksById);
+  const availableLabels = React.useMemo(() => {
+    const map = new Map<string, string>();
+    Object.values(tasksById).forEach((t) => {
+      const labels = normalizeLabels(t?.labels ?? []);
+      labels.forEach((lbl) => {
+        const name = getTaskLabelName(lbl);
+        const color = typeof lbl === 'string' ? 'var(--label-blue)' : lbl.color;
+        if (name && !map.has(name.toLowerCase())) map.set(name.toLowerCase(), color);
+      });
+    });
+    return Array.from(map.entries()).map(([k, color]) => ({ name: k, color }));
+  }, [tasksById]);
 
   const parseDisplayDate = React.useCallback((dateStr: string): Date | undefined => {
     if (!dateStr) return undefined;
@@ -165,18 +423,6 @@ function TaskSidePanel({
     });
   }, []);
 
-  const handleAddLabel = React.useCallback(() => {
-    setEditedTask((prev) => {
-      if (!prev) return prev;
-      const next = newLabel.trim();
-      if (!next) return prev;
-      const labels = normalizeLabels(prev.labels);
-      if (labels.some((label) => getTaskLabelName(label) === next)) return prev;
-      return { ...prev, labels: [...labels, { name: next, color: selectedLabelColor }] };
-    });
-    setNewLabel('');
-  }, [newLabel, selectedLabelColor]);
-
   const handleRemoveLabel = React.useCallback((labelToRemove: string) => {
     setEditedTask((prev) => {
       if (!prev) return prev;
@@ -187,6 +433,43 @@ function TaskSidePanel({
       };
     });
   }, []);
+
+  const handleSelectLabel = React.useCallback((label: TaskLabel) => {
+    setEditedTask((prev) => {
+      if (!prev) return prev;
+      const labels = normalizeLabels(prev.labels);
+      const labelName = getTaskLabelName(label);
+      if (labels.some((existing) => getTaskLabelName(existing) === labelName)) {
+        return prev;
+      }
+      return { ...prev, labels: [...labels, label] };
+    });
+    setLabelQuery('');
+  }, []);
+
+  const handleUpdateLabelAtIndex = React.useCallback(
+    (index: number, updates: { name?: string; color?: string }) => {
+      setEditedTask((prev) => {
+        if (!prev) return prev;
+        const labels = normalizeLabels(prev.labels);
+        if (!labels[index]) return prev;
+        const current = labels[index];
+        const nextName = updates.name ?? getTaskLabelName(current);
+        const nextColor = updates.color ?? (typeof current === 'string' ? 'var(--label-gray)' : current.color);
+        labels[index] = { name: nextName, color: nextColor };
+        return { ...prev, labels: [...labels] };
+      });
+    },
+  []);
+
+  React.useEffect(() => {
+    if (!labelEditorState) return;
+    const frame = requestAnimationFrame(() => {
+      labelNameInputRef.current?.focus();
+      labelNameInputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [labelEditorState]);
 
   const handleSaveChanges = React.useCallback(() => {
     if (!editedTask) return;
@@ -209,7 +492,7 @@ function TaskSidePanel({
 
     return {
       width:
-        'clamp(var(--task-panel-min-width, 320px), calc((100vw - var(--sidebar-current-width, var(--sidebar-width))) * var(--task-panel-ratio, 0.38)), var(--task-panel-max-width, 640px))',
+        'clamp(var(--task-panel-min-width, 352px), calc((100vw - var(--sidebar-current-width, var(--sidebar-width))) * var(--task-panel-ratio, 0.38)), var(--task-panel-max-width, 640px))',
     };
   }, [presentation]);
 
@@ -251,278 +534,186 @@ function TaskSidePanel({
 
   return (
     <div className={containerClass} style={overlayStyle} {...regionProps}>
-      <PaneHeader role="heading" className="justify-between">
-        <h2 id={headingId} className="text-[length:var(--text-lg)] font-semibold text-[color:var(--text-primary)]">
-          Task details
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
-          aria-label="Close task details"
-        >
-          <X className="size-5" aria-hidden />
-        </button>
-      </PaneHeader>
+      <div className="sticky top-0 z-10 border-b border-[var(--border-subtle)] bg-[var(--quick-panel-bg)] px-6 py-[var(--space-4)] shadow-[var(--elevation-sm)]">
+        <PaneHeader role="heading" className="justify-between px-0 py-0">
+          <h2 id={headingId} className="text-[length:var(--text-lg)] font-semibold text-[color:var(--text-primary)]">
+            Task details
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-secondary)] transition-colors hover:bg-[var(--hover-bg)]"
+            aria-label="Close task details"
+          >
+            <X className="size-5" aria-hidden />
+          </button>
+        </PaneHeader>
+      </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-6 py-[var(--space-5)]">
         <div className="flex flex-col gap-[var(--space-6)]">
-          <div>
+          <section className="flex flex-col gap-[var(--space-2)]">
             <textarea
               ref={titleFieldRef}
               value={editedTask.title}
               onChange={(event) => handleFieldChange('title', event.target.value)}
-              className="w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-[var(--space-2)] text-[length:var(--text-2xl)] font-semibold leading-tight text-[color:var(--text-primary)] focus:outline-none focus:ring-0 whitespace-pre-wrap"
+              className="w-full resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-[length:var(--text-2xl)] font-semibold leading-tight text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none focus:ring-0 whitespace-pre-wrap"
               placeholder="Task name"
               rows={1}
               onInput={() => adjustTitleHeight()}
             />
-          </div>
+          </section>
 
-          <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-[var(--space-6)]">
-            <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Due date</span>
-            <div className="flex items-center gap-[var(--space-2)]">
-              <Popover>
+          <section className="flex flex-col gap-[var(--space-3)]">
+            <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-transparent px-[var(--space-3)] py-[var(--space-2_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--hover-bg)]">
+              <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Due date</span>
+              <div className="flex items-center gap-[var(--space-2)]">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2_5)] py-[var(--space-1_5)] text-left transition-colors hover:bg-[var(--bg-surface-elevated)]"
+                    >
+                      <Calendar className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
+                      <span
+                        className={cn(
+                          'text-[length:var(--text-sm)]',
+                          hasDueDate
+                            ? 'font-medium text-[color:var(--text-primary)]'
+                            : 'text-[color:var(--text-tertiary)]',
+                        )}
+                      >
+                        {dueDateLabel}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <CalendarComponent
+                      mode="single"
+                      selected={dueDateValue}
+                      onSelect={(date) =>
+                        handleFieldChange('dueDate', date ? format(date, 'yyyy-MM-dd') : undefined)
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {hasDueDate ? (
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange('dueDate', undefined)}
+                    className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-secondary)]"
+                    aria-label="Clear due date"
+                  >
+                    <X className="size-4" aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-transparent px-[var(--space-3)] py-[var(--space-2_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--hover-bg)]">
+              <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Priority</span>
+              <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
                 <PopoverTrigger asChild>
                   <button
                     type="button"
-                    className="group flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2_5)] py-[var(--space-1_5)] text-left transition-colors hover:bg-[var(--bg-surface-elevated)]"
+                    className="group inline-flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2_5)] py-[var(--space-1_5)] text-left transition-colors hover:bg-[var(--bg-surface-elevated)]"
+                    aria-label="Change priority"
                   >
-                    <span
-                      className={cn(
-                        'grid size-8 place-items-center rounded-full border text-[color:var(--text-secondary)] transition-colors',
-                        hasDueDate
-                          ? 'border-[var(--border-default)] group-hover:border-[var(--border-hover)]'
-                          : 'border-dashed border-[var(--border-subtle)] group-hover:border-[var(--border-default)]'
-                      )}
-                    >
-                      <Calendar className="size-4" aria-hidden />
-                    </span>
-                    <span
-                      className={cn(
-                        'text-[length:var(--text-sm)] transition-colors',
-                        hasDueDate ? 'text-[color:var(--text-primary)] font-medium' : 'text-[color:var(--text-tertiary)]'
-                      )}
-                    >
-                      {dueDateLabel}
-                    </span>
+                    {renderPriorityChip(currentPriority) ?? (
+                      <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">
+                        {getPriorityLabel(currentPriority)}
+                      </span>
+                    )}
+                    <ChevronDown className="size-4 text-[color:var(--text-tertiary)]" aria-hidden />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <CalendarComponent
-                    mode="single"
-                    selected={dueDateValue}
-                    onSelect={(date) =>
-                      handleFieldChange('dueDate', date ? format(date, 'yyyy-MM-dd') : undefined)
-                    }
-                    initialFocus
-                  />
+                <PopoverContent align="end" className="w-56 p-2">
+                  <div className="flex flex-col gap-[var(--space-1)]">
+                    {(['high','medium','low'] as const).map((value) => {
+                      const isActive = currentPriority === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            handleFieldChange('priority', value);
+                            setPriorityPopoverOpen(false);
+                          }}
+                          className={cn(
+                            'flex w-full items-center justify-start gap-[var(--space-2)] px-[var(--space-2)] py-[var(--space-1_5)] text-left',
+                            isActive && 'bg-[color-mix(in_oklab,var(--primary)_8%,transparent)]',
+                          )}
+                        >
+                          {renderPriorityChip(value)}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleFieldChange('priority', 'none');
+                        setPriorityPopoverOpen(false);
+                      }}
+                      className={cn('flex w-full items-center justify-start px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[color:var(--text-tertiary)]')}
+                      aria-label="No priority"
+                    >
+                      <span className="inline-flex h-[28px] w-[32px] items-center justify-center">—</span>
+                    </button>
+                  </div>
                 </PopoverContent>
               </Popover>
-              {hasDueDate ? (
-                <button
-                  type="button"
-                  onClick={() => handleFieldChange('dueDate', undefined)}
-                  className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
-                  aria-label="Clear due date"
-                >
-                  <X className="size-4" aria-hidden />
-                </button>
-              ) : null}
             </div>
-          </div>
 
-          <div className="flex items-center justify-between pt-[var(--space-4)]">
-            <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Priority</span>
-            <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="group flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2_5)] py-[var(--space-1_5)] text-left transition-colors hover:bg-[var(--bg-surface-elevated)]"
-                  aria-label="Change priority"
-                >
-                  {renderPriorityChip(currentPriority) ?? (
-                    <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">
-                      {getPriorityLabel(currentPriority)}
-                    </span>
-                  )}
-                  <ChevronDown className="size-4 text-[color:var(--text-tertiary)]" aria-hidden />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 p-0">
-                <div className="flex flex-col py-[var(--space-1)]">
-                  {priorityValues.map((value) => {
-                    const isActive = currentPriority === value;
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          handleFieldChange('priority', value);
-                          setPriorityPopoverOpen(false);
-                        }}
-                        className={cn(
-                          'flex w-full items-center justify-between gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-2)] text-left text-sm transition-colors',
-                          isActive
-                            ? 'bg-[color-mix(in_oklab,var(--primary)_8%,transparent)] text-[color:var(--text-primary)]'
-                            : 'text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[color:var(--text-primary)]'
-                        )}
-                      >
-                        <span className={cn(isActive ? 'font-medium' : undefined)}>
-                          {getPriorityLabel(value)}
-                        </span>
-                        {renderPriorityChip(value)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
+            <LabelsSection
+              availableLabels={availableLabels}
+              labels={normalizeLabels(editedTask.labels)}
+              query={labelQuery}
+              onQueryChange={setLabelQuery}
+              onSelectLabel={handleSelectLabel}
+              onRemoveLabel={handleRemoveLabel}
+              editorState={labelEditorState}
+              onEdit={setLabelEditorState}
+              onSubmitEdit={handleUpdateLabelAtIndex}
+              onCreateLabel={handleSelectLabel}
+              onDismissEditor={() => setLabelEditorState(null)}
+              labelInputRef={labelNameInputRef}
+              popoverOpen={labelsPopoverOpen}
+              onPopoverOpenChange={setLabelsPopoverOpen}
+            />
+          </section>
 
-          <div className="flex flex-col gap-[var(--space-3)]">
-            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
-              <Tag className="size-4" aria-hidden />
-              <span>Labels</span>
-            </div>
-            {editedTask.labels.length > 0 ? (
-              <div className="flex flex-wrap gap-[var(--space-2)]">
-                {normalizeLabels(editedTask.labels).map((label, index) => {
-                  const labelName = getTaskLabelName(label);
-                  const labelColor = typeof label === 'string' ? 'var(--label-gray)' : label.color;
-                  return (
-                    <div key={`${labelName}-${index}`} className="relative inline-flex">
-                      <div
-                        className="inline-flex items-center gap-[var(--space-1)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-[length:var(--text-xs)] font-medium"
-                        style={{
-                          backgroundColor: `color-mix(in oklab, ${labelColor} 18%, transparent)`,
-                          color: `color-mix(in oklab, ${labelColor} 85%, var(--text-primary))`,
-                          boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${labelColor} 35%, transparent)`,
-                        }}
-                        onClick={() => setEditingLabelIndex(editingLabelIndex === index ? null : index)}
-                      >
-                        <span>{labelName}</span>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleRemoveLabel(labelName);
-                          }}
-                          className="grid size-4 place-items-center rounded-full text-current hover:bg-[color-mix(in oklab,currentColor_15%,transparent)]"
-                          aria-label={`Remove label ${labelName}`}
-                        >
-                          <X className="size-3" aria-hidden />
-                        </button>
-                      </div>
-                      {editingLabelIndex === index ? (
-                        <div className="absolute left-0 top-full z-30 mt-1 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] p-[var(--space-3)] shadow-[var(--elevation-lg)]">
-                          <div className="flex flex-wrap gap-[var(--space-2)]">
-                            {labelColorPalette.map((option) => (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => {
-                                  setEditedTask((prev) => {
-                                    if (!prev) return prev;
-                                    const labels = normalizeLabels(prev.labels);
-                                    return {
-                                      ...prev,
-                                      labels: labels.map((existing, idx) =>
-                                        idx === index ? { name: labelName, color: option.value } : existing,
-                                      ),
-                                    };
-                                  });
-                                  setEditingLabelIndex(null);
-                                }}
-                                className="size-5 rounded-full border transition-transform hover:scale-110"
-                                style={{
-                                  backgroundColor: `color-mix(in oklab, ${option.value} 18%, transparent)`,
-                                  borderColor: `color-mix(in oklab, ${option.value} 35%, transparent)`,
-                                }}
-                                aria-label={`Set ${labelName} label to ${option.name}`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : null}
-            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] text-[color:var(--text-secondary)]">
-              <span>Color:</span>
-              <div className="flex items-center gap-[var(--space-1)]">
-                {labelColorPalette.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setSelectedLabelColor(option.value)}
-                    className={cn(
-                      'size-5 rounded-full border transition-transform hover:scale-110',
-                      selectedLabelColor === option.value && 'ring-2 ring-[var(--primary)] ring-offset-1 scale-110',
-                    )}
-                    style={{
-                      backgroundColor: `color-mix(in oklab, ${option.value} 18%, transparent)`,
-                      borderColor: `color-mix(in oklab, ${option.value} 35%, transparent)`,
-                    }}
-                    aria-label={`Choose ${option.name}`} 
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-[var(--space-2)]">
-              <input
-                type="text"
-                value={newLabel}
-                onChange={(event) => setNewLabel(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    handleAddLabel();
-                  }
-                }}
-                placeholder="Add a label"
-                className="flex-1 h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-tint-10)]"
-              />
-              <button
-                type="button"
-                onClick={handleAddLabel}
-                disabled={!newLabel.trim()}
-                className="grid size-9 place-items-center rounded-[var(--radius-md)] border border-[var(--border-default)] text-[color:var(--text-secondary)] transition-colors hover:border-[var(--primary)] hover:text-[color:var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Add label"
-              >
-                <Plus className="size-4" aria-hidden />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-[var(--space-3)]">
-            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
-              <span>Subtasks</span>
-            </div>
+          <section className="flex flex-col gap-[var(--space-3)] rounded-[var(--radius-md)] border border-transparent px-[var(--space-3)] py-[var(--space-2_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--hover-bg)]">
+            <header className="flex items-center justify-between">
+              <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Subtasks</span>
+            </header>
             <div className="flex flex-col gap-[var(--space-2)]">
-              {(editedTask.subtasks ?? []).map((subtask) => (
-                <div key={subtask.id} className="flex items-center gap-[var(--space-2)]">
+              {(editedTask.subtasks ?? []).map((subtask, index) => (
+                <div
+                  key={subtask.id}
+                  className="group flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-transparent px-[var(--space-2_5)] py-[var(--space-1_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--bg-surface-elevated)]"
+                >
                   <Checkbox
                     checked={subtask.isCompleted}
                     onCheckedChange={(checked) => handleToggleSubtaskCompletion(subtask.id, Boolean(checked))}
                     className="size-5"
+                    aria-label={subtask.isCompleted ? 'Mark subtask incomplete' : 'Mark subtask complete'}
                   />
                   <input
                     type="text"
                     value={subtask.title}
                     onChange={(event) => handleUpdateSubtaskTitle(subtask.id, event.target.value)}
                     className={cn(
-                      'flex-1 h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] focus:border-[var(--primary)] focus:outline-none',
+                      'flex-1 rounded-[var(--radius-md)] border border-transparent bg-transparent px-[var(--space-2)] py-[var(--space-1)] text-sm text-[color:var(--text-primary)] focus:border-[var(--border-default)] focus:outline-none focus:ring-0',
                       subtask.isCompleted && 'line-through text-[color:var(--text-tertiary)]',
                     )}
+                    placeholder="Untitled subtask"
                   />
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="grid size-9 place-items-center rounded-[var(--radius-md)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
+                        className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-secondary)]"
                         aria-label="Set subtask due date"
                       >
                         <Calendar className="size-4" aria-hidden />
@@ -532,7 +723,9 @@ function TaskSidePanel({
                       <CalendarComponent
                         mode="single"
                         selected={subtask.dueDate ? new Date(subtask.dueDate) : undefined}
-                        onSelect={(date) => handleUpdateSubtaskDueDate(subtask.id, date ? format(date, 'yyyy-MM-dd') : undefined)}
+                        onSelect={(date) =>
+                          handleUpdateSubtaskDueDate(subtask.id, date ? format(date, 'yyyy-MM-dd') : undefined)
+                        }
                         initialFocus
                       />
                     </PopoverContent>
@@ -540,15 +733,15 @@ function TaskSidePanel({
                   <button
                     type="button"
                     onClick={() => handleDeleteSubtask(subtask.id)}
-                    className="grid size-9 place-items-center rounded-[var(--radius-md)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
+                    className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] opacity-0 transition-opacity duration-200 hover:text-[color:var(--text-secondary)] group-hover:opacity-100"
                     aria-label="Delete subtask"
                   >
                     <Trash2 className="size-4" aria-hidden />
                   </button>
                 </div>
               ))}
-              <div className="flex items-center gap-[var(--space-2)]">
-                <Checkbox disabled className="size-5 opacity-30" aria-hidden />
+              <div className="flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)] px-[var(--space-2_5)] py-[var(--space-2)]">
+                <Plus className="size-4 text-[color:var(--text-tertiary)]" aria-hidden />
                 <input
                   type="text"
                   value={newSubtaskTitle}
@@ -557,16 +750,19 @@ function TaskSidePanel({
                     if (event.key === 'Enter') {
                       event.preventDefault();
                       handleAddSubtask();
+                    } else if (event.key === 'Escape') {
+                      setNewSubtaskTitle('');
                     }
                   }}
                   placeholder="Add a subtask"
-                  className="flex-1 h-9 rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-3)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none"
+                  className="flex-1 border-0 bg-transparent text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none"
+                  aria-label="Add a subtask"
                 />
                 <Popover>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="grid size-9 place-items-center rounded-[var(--radius-md)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)]"
+                      className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-secondary)]"
                       aria-label="Set new subtask due date"
                     >
                       <Calendar className="size-4" aria-hidden />
@@ -581,53 +777,51 @@ function TaskSidePanel({
                     />
                   </PopoverContent>
                 </Popover>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="compact"
                   onClick={handleAddSubtask}
                   disabled={!newSubtaskTitle.trim()}
-                  className="grid size-9 place-items-center rounded-[var(--radius-md)] text-[color:var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Add subtask"
+                  className="text-[color:var(--text-secondary)]"
                 >
-                  <Plus className="size-4" aria-hidden />
-                </button>
+                  Add
+                </Button>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="flex flex-col gap-[var(--space-3)] border-t border-[var(--border-subtle)] pt-[var(--space-6)]">
-            <div className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] uppercase tracking-wide text-[color:var(--text-secondary)]">
-              <span>Description</span>
-            </div>
+          <section className="flex flex-col gap-[var(--space-2)] rounded-[var(--radius-md)] border border-transparent px-[var(--space-3)] py-[var(--space-2_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--hover-bg)]">
+            <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Description</span>
             <textarea
               value={editedTask.description ?? ''}
-              onChange={(event) => handleFieldChange('description', event.target.value)}
+              onChange={(e) => handleFieldChange('description', e.target.value)}
               placeholder="Add notes..."
+              rows={3}
               className="min-h-[120px] rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-canvas)] px-[var(--space-3)] py-[var(--space-2)] text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:border-[var(--primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary-tint-10)]"
             />
-          </div>
-
+          </section>
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-6 py-4">
-        <button
-          type="button"
-          onClick={() => {
-            onDeleteTask(task.id);
-            onClose();
-          }}
-          className="inline-flex items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-2)] text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
-        >
-          <Trash2 className="size-4" aria-hidden />
-          Delete task
-        </button>
-        <button
-          type="button"
-          onClick={handleSaveChanges}
-          className="inline-flex items-center rounded-[var(--radius-sm)] bg-[var(--btn-primary-bg)] px-[var(--space-4)] py-[var(--space-2_5)] text-sm font-medium text-[color:var(--btn-primary-text)] transition-colors hover:bg-[var(--btn-primary-hover)]"
-        >
-          Done
-        </button>
+      <div className="sticky bottom-0 z-10 border-t border-[var(--border-subtle)] bg-[var(--quick-panel-bg)] px-6 py-[var(--space-4)] shadow-[var(--elevation-sm)]">
+        <div className="flex items-center justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-[color:var(--danger)] hover:bg-[color-mix(in_oklab,var(--danger)_12%,transparent)]"
+            onClick={() => {
+              onDeleteTask(task.id);
+              onClose();
+            }}
+          >
+            <Trash2 className="size-4" aria-hidden />
+            Delete task
+          </Button>
+          <Button type="button" variant="solid" onClick={handleSaveChanges}>
+            Done
+          </Button>
+        </div>
       </div>
     </div>
   );

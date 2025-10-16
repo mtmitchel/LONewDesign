@@ -407,6 +407,13 @@
   --modal-inner-x: var(--space-6);
   --modal-inner-y: var(--space-5);
 
+  /* Task detail drawer widths */
+  --task-drawer-w: 420px;
+  --task-drawer-w-lg: 480px;
+  --task-drawer-edge: var(--overlay-gutter);
+  --task-drawer-label-col: 152px;
+  --task-drawer-field-max-w: 360px;
+
   /* Responsive rules */
   @media (max-width: 768px) {
     --modal-max-w-mail: 100%;
@@ -1082,6 +1089,12 @@
   --sidebar-accent-foreground: var(--primary);
   --sidebar-border: var(--border-subtle);
   --sidebar-ring: var(--primary);
+}
+
+@media (min-width: 1440px) {
+  :root {
+    --task-drawer-w: var(--task-drawer-w-lg);
+  }
 }
 
 /* Card shells for overview */
