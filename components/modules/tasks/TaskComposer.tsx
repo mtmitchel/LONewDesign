@@ -30,6 +30,8 @@ const PRIORITY_COLORS: Record<'high' | 'medium' | 'low', string> = {
   low: 'var(--label-blue)',
 };
 
+
+
 const chipStyle = (color: string) => ({
   backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
   color: `color-mix(in oklab, ${color} 85%, var(--text-primary))`,
@@ -48,14 +50,6 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
   const composerRef = React.useRef<HTMLDivElement | null>(null);
   const interactionGuardRef = React.useRef(false);
   const labelInputRef = React.useRef<HTMLInputElement | null>(null);
-  const focusLabelInput = React.useCallback(() => {
-    const input = labelInputRef.current;
-    if (!input) return;
-
-    input.focus({ preventScroll: true });
-    const caretPosition = input.value.length;
-    input.setSelectionRange?.(caretPosition, caretPosition);
-  }, []);
 
   const normalizedAvailableLabels = React.useMemo(() => {
     const map = new Map<string, ComposerLabel>();
@@ -66,6 +60,15 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
     });
     return Array.from(map.values());
   }, [availableLabels]);
+
+  const focusLabelInput = React.useCallback(() => {
+    const input = labelInputRef.current;
+    if (!input) return;
+
+    input.focus({ preventScroll: true });
+    const caretPosition = input.value.length;
+    input.setSelectionRange?.(caretPosition, caretPosition);
+  }, []);
 
   const handleAddTask = React.useCallback(() => {
     const trimmedTitle = title.trim();
@@ -90,10 +93,8 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
     setDueDate(undefined);
     setPriority('none');
     setSelectedLabels([]);
-    setLabelInput('');
     setShowDatePicker(false);
     setShowPriorityPicker(false);
-    setShowLabelsPopover(false);
   }, [title, dueDate, priority, selectedLabels, onAddTask]);
 
   const hasComposerContent = React.useMemo(
@@ -205,20 +206,9 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
     [],
   );
 
-  const addFreeformLabel = React.useCallback(() => {
-    const value = labelInput.trim();
-    if (!value) return;
-
-    toggleLabel({ name: value, color: DEFAULT_LABEL_COLOR });
-    setLabelInput('');
-  }, [labelInput, toggleLabel]);
-
-  React.useLayoutEffect(() => {
-    if (!showLabelsPopover) return;
-
-    const frame = requestAnimationFrame(focusLabelInput);
-    return () => cancelAnimationFrame(frame);
-  }, [showLabelsPopover, focusLabelInput]);
+  const addFreeformLabel = React.useCallback((name: string) => {
+    toggleLabel({ name, color: DEFAULT_LABEL_COLOR });
+  }, [toggleLabel]);
 
   return (
     <div
@@ -400,7 +390,7 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                         onKeyDown={(event) => {
                           if (event.key === 'Enter') {
                             event.preventDefault();
-                            addFreeformLabel();
+                            addFreeformLabel(labelInput);
                           }
                         }}
                         ref={labelInputRef}
@@ -413,29 +403,6 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                       />
                     </div>
                   </div>
-
-                  {selectedLabels.length > 0 ? (
-                    <div className="flex flex-wrap gap-[var(--space-2)]">
-                      {selectedLabels.map((label) => (
-                        <button
-                          key={label.name}
-                          type="button"
-                          onClick={() => toggleLabel(label)}
-                          className="rounded-[var(--chip-radius)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--bg-surface)]"
-                        >
-                          <Badge
-                            variant="soft"
-                            size="sm"
-                            className="flex items-center gap-[var(--space-1)]"
-                            style={chipStyle(label.color)}
-                          >
-                            <span>{label.name}</span>
-                            <span aria-hidden>×</span>
-                          </Badge>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
                 </div>
               </PopoverContent>
             </Popover>

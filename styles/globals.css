@@ -444,10 +444,18 @@
   --chip-outline-alpha: 48%;  /* stronger for edge definition on warm canvas */
   
   /* Per-priority hue-matched strokes for low-ink chips */
-  --chip-high-stroke: color-mix(in oklab, var(--priority-high) var(--chip-outline-alpha), transparent);
-  --chip-medium-stroke: color-mix(in oklab, var(--priority-medium) var(--chip-outline-alpha), transparent);
-  --chip-low-stroke: color-mix(in oklab, var(--priority-low) var(--chip-outline-alpha), transparent);
-  --chip-label-stroke: color-mix(in oklab, var(--label-neutral) var(--chip-outline-alpha), transparent);
+  --chip-high-bg: hsl(0 85% 71% / 0.1);
+  --chip-high-fg: hsl(0 86% 45%);
+  --chip-high-stroke: hsl(0 85% 71% / 0.2);
+  --chip-medium-bg: hsl(38 85% 62% / 0.1);
+  --chip-medium-fg: hsl(38 85% 35%);
+  --chip-medium-stroke: hsl(38 85% 62% / 0.2);
+  --chip-low-bg: #e5edff;
+  --chip-low-fg: #1d4ed8;
+  --chip-low-stroke: #c3d4ff;
+  --chip-label-bg: hsl(210 20% 95%);
+  --chip-label-fg: hsl(215 25% 27%);
+  --chip-label-stroke: hsl(220 13% 91%);
   --chip-shadow: none;           /* legacy alias */
   --chip-hover-bg-boost: 6%;
 
@@ -458,23 +466,23 @@
   --label-neutral: var(--text-secondary);  /* default label color */
 
   /* Low-ink chip tints (unified for board + list) - maximum contrast without looking heavy */
-  --chip-high-bg: color-mix(in oklab, var(--priority-high) 28%, transparent);
-  --chip-high-fg: var(--priority-high);
+  --chip-high-bg: hsl(0 85% 71% / 0.1);
+  --chip-high-fg: hsl(0 86% 45%);
   --chip-high-text: var(--accent-coral);  /* legacy alias */
 
   /* Medium uses warning hue */
-  --chip-medium-bg: color-mix(in oklab, var(--priority-medium) 30%, transparent);
-  --chip-medium-fg: color-mix(in oklab, var(--priority-medium) 85%, var(--chip-text));
+  --chip-medium-bg: hsl(38 85% 62% / 0.1);
+  --chip-medium-fg: hsl(38 85% 35%);
   --chip-medium-text: var(--warning);  /* legacy alias */
 
   /* Low uses info blue (matches event-blue) */
-  --chip-low-bg: color-mix(in oklab, var(--priority-low) 28%, transparent);
-  --chip-low-fg: color-mix(in oklab, var(--priority-low) 85%, var(--chip-text));
-  --chip-low-text: var(--info);  /* legacy alias */
+  --chip-low-bg: #e5edff;
+  --chip-low-fg: #1d4ed8;
+  --chip-low-text: #1d4ed8;  /* legacy alias */
 
   /* Label chips - using darker text-secondary for visibility on warm canvas */
-  --chip-label-bg: color-mix(in oklab, var(--text-secondary) 15%, transparent);
-  --chip-label-fg: var(--text-secondary);
+  --chip-label-bg: hsl(210 20% 95%);
+  --chip-label-fg: hsl(215 25% 27%);
   
   /* Label color presets - low-ink/soft like priority labels */
   --label-blue: hsl(217, 70%, 50%);
@@ -488,8 +496,8 @@
   --label-gray: hsl(220, 20%, 50%);
 
   /* Neutral / no priority */
-  --chip-neutral-bg: var(--bg-surface-elevated);
-  --chip-neutral-text: var(--text-secondary);
+  --chip-neutral-bg: transparent;
+  --chip-neutral-text: var(--text-tertiary);
 
   /* List row density presets */
   --list-row-pad-y--comfortable: var(--space-3);          /* 12px */

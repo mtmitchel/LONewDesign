@@ -19,13 +19,15 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http://localhost:5174 ws://localhost:5174"
+      "csp": "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http://localhost:5173 ws://localhost:5173"
     }
   },
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["therefore"],
+        "schemes": [
+          "therefore"
+        ],
         "name": "ThereforeOAuth"
       }
     }

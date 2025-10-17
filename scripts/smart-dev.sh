@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# Smart dev script that handles dynamic port selection for Tauri + Vite
+set -euo pipefail
 
-echo "🚀 Starting LibreOllama Desktop development..."
-
-# Start Vite with port 5173
-echo "🌐 Starting Vite dev server on port 5173..."
-exec npx vite --port 5173 --host localhost
+# Delegate to the Node helper that handles dynamic port selection + tauri config updates
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec node "$SCRIPT_DIR/dev-with-port.js"

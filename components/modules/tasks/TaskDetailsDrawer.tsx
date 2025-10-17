@@ -1,10 +1,11 @@
 import * as React from 'react';
-import { Calendar, ChevronDown, Flag, GripVertical, X } from 'lucide-react';
+import { Calendar, Check, Flag, GripVertical, Plus, Tag, X } from 'lucide-react';
 import { addDays, format } from 'date-fns';
 
 import { Button } from '../../ui/button';
-import { Checkbox } from '../../ui/checkbox';
 import { Popover, PopoverArrow, PopoverContent, PopoverTrigger } from '../../ui/popover';
+import { Badge, badgeVariants } from '../../ui/badge';
+
 import { Calendar as CalendarComponent } from '../../ui/calendar';
 import { Input } from '../../ui/input';
 import { cn } from '../../ui/utils';
@@ -19,86 +20,27 @@ type Props = {
 };
 
 const getLabelName = (label: TaskLabel) => (typeof label === 'string' ? label : label.name);
-const getLabelColor = (label: TaskLabel) => (typeof label === 'string' ? 'var(--label-blue)' : label.color);
 const QUICK_PICKS = [
   { label: 'Today', resolver: () => new Date() },
   { label: 'Tomorrow', resolver: () => addDays(new Date(), 1) },
   { label: 'Next week', resolver: () => addDays(new Date(), 7) },
-  { label: 'No due date', resolver: () => undefined },
 ];
 
 const GRID_TEMPLATE: React.CSSProperties = {
-  gridTemplateColumns: 'minmax(120px, var(--task-drawer-label-col)) minmax(0, var(--task-drawer-field-max-w))',
-  columnGap: 'var(--row-gap)',
+  gridTemplateColumns: 'max-content minmax(0, var(--task-drawer-field-max-w))',
+  columnGap: 'var(--space-8)',
 };
 
-const LABEL_CELL_CLASS = 'text-[length:var(--text-sm)] text-[color:var(--text-secondary)] leading-[var(--line-tight)] flex items-center min-h-[var(--row-min-h)]';
+const LABEL_CELL_CLASS = 'text-[length:var(--text-sm)] font-medium text-[color:var(--text-secondary)] leading-[var(--line-tight)] flex items-center';
 const VALUE_CELL_CLASS = 'flex items-center min-h-[var(--row-min-h)] w-full';
-const CHIP_CLASS = 'inline-flex items-center gap-[var(--chip-gap)] h-[var(--chip-height)] px-[var(--chip-pad-x)] rounded-[var(--chip-radius)] border border-[var(--chip-border)] bg-[var(--chip-bg)] text-[color:var(--chip-text)] shadow-[var(--chip-inset-shadow)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)] motion-safe:transition-[background-color,border-color,color] duration-[var(--duration-fast)] hover:bg-[var(--hover-bg)]';
+const CHIP_CLASS = 'inline-flex items-center gap-[var(--chip-gap)] h-[var(--chip-height)] px-[var(--chip-px)] py-[var(--chip-py)] rounded-[var(--chip-radius)] text-[length:var(--text-xs)] font-medium border transition-colors duration-[var(--duration-fast)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]';
 
-type SectionProps = {
-  framed?: boolean;
-  children: React.ReactNode;
-};
-
-const Section = ({ framed = true, children }: SectionProps) => (
-  <section
-    className={cn(
-      framed &&
-        'bg-[var(--section-bg)] border border-[var(--section-border)] rounded-[var(--section-radius)] p-[var(--space-4)] shadow-[var(--section-shadow,none)]'
-    )}
-  >
-    <div className="grid gap-y-[var(--row-gap)]" style={GRID_TEMPLATE}>
-      {children}
-    </div>
-  </section>
-);
-
-type RowProps = {
-  label?: React.ReactNode;
-  children: React.ReactNode;
-  align?: 'start' | 'end' | 'between';
-};
-
-const Row = ({ label, children, align = 'start' }: RowProps) => (
-  <>
-    <div className={LABEL_CELL_CLASS}>{label ?? null}</div>
-    <div
-      className={cn(
-        VALUE_CELL_CLASS,
-        align === 'end' && 'justify-end',
-        align === 'between' && 'justify-between',
-      )}
-    >
-      {children}
-    </div>
-  </>
-);
-
-const labelColorStyle = (color: string) => ({
+const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
+const chipStyle = (color: string) => ({
   backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
   color: `color-mix(in oklab, ${color} 85%, var(--text-primary))`,
   boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${color} 35%, transparent)`,
 });
-
-const priorityStyles: Record<Exclude<Task['priority'], undefined>, React.CSSProperties> = {
-  high: {
-    backgroundColor: 'var(--chip-high-bg)',
-    color: 'var(--chip-high-text)',
-    boxShadow: 'inset 0 0 0 1px var(--chip-high-border)',
-  },
-  medium: {
-    backgroundColor: 'var(--chip-medium-bg)',
-    color: 'var(--chip-medium-text)',
-    boxShadow: 'inset 0 0 0 1px var(--chip-medium-border)',
-  },
-  low: {
-    backgroundColor: 'var(--chip-low-bg)',
-    color: 'var(--chip-low-text)',
-    boxShadow: 'inset 0 0 0 1px var(--chip-low-border)',
-  },
-  none: {},
-};
 
 const useOverlayGutter = () => {
   const [value, setValue] = React.useState<number>(16);
@@ -113,15 +55,15 @@ const useOverlayGutter = () => {
 
 export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }: Props) {
   const [edited, setEdited] = React.useState<Task | null>(null);
-  const [isDescExpanded, setIsDescExpanded] = React.useState(false);
   const [savedHint, setSavedHint] = React.useState<string | null>(null);
-  const [priorityOpen, setPriorityOpen] = React.useState(false);
   const [dateOpen, setDateOpen] = React.useState(false);
   const [labelsOpen, setLabelsOpen] = React.useState(false);
-  const [labelQuery, setLabelQuery] = React.useState('');
+  const [priorityOpen, setPriorityOpen] = React.useState(false);
+  const [labelInput, setLabelInput] = React.useState('');
+  const labelInputRef = React.useRef<HTMLInputElement | null>(null);
+
   const overlayPadding = useOverlayGutter();
 
-  const toggleTaskCompletion = useTaskStore((s) => s.toggleTaskCompletion);
   const tasksById = useTaskStore((s) => s.tasksById);
 
   React.useEffect(() => {
@@ -139,14 +81,26 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
     });
   }, [onUpdateTask]);
 
-  const closeOnEsc = React.useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') onClose();
-  }, [onClose]);
+  const handleKeyDown = React.useCallback((e: KeyboardEvent) => {
+    // Escape closes drawer
+    if (e.key === 'Escape') {
+      onClose();
+      return;
+    }
+    
+    // Cmd/Ctrl+Enter marks task complete
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSave({ isCompleted: !edited?.isCompleted });
+      return;
+    }
+  }, [onClose, handleSave, edited]);
+  
   React.useEffect(() => {
     if (!task) return;
-    window.addEventListener('keydown', closeOnEsc);
-    return () => window.removeEventListener('keydown', closeOnEsc);
-  }, [task, closeOnEsc]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [task, handleKeyDown]);
 
   // IMPORTANT: Keep all hooks above any conditional returns to preserve hook order across renders.
   // Build available labels from store on every render (memoized by tasksById).
@@ -154,14 +108,112 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
     const map = new Map<string, string>();
     Object.values(tasksById).forEach((t) => {
       const labels = Array.isArray(t.labels) ? (t.labels as TaskLabel[]) : [];
-      labels.forEach((l) => map.set(getLabelName(l), getLabelColor(l)));
+      labels.forEach((l) => map.set(getLabelName(l), typeof l === 'string' ? 'var(--label-blue)' : l.color));
     });
-    const list = Array.from(map.entries()).map(([name, color]) => ({ name, color }));
-    if (labelQuery) {
-      return list.filter((l) => l.name.toLowerCase().includes(labelQuery.toLowerCase()));
+    return Array.from(map.entries()).map(([name, color]) => ({ name, color }));
+  }, [tasksById]);
+
+  const currentLabels = React.useMemo(() => {
+    const raw = (edited?.labels as TaskLabel[] | undefined) ?? [];
+    return Array.isArray(raw) ? raw : [];
+  }, [edited]);
+
+  const selectedLabels = React.useMemo(
+    () =>
+      currentLabels.map((label) =>
+        typeof label === 'string'
+          ? { name: label, color: DEFAULT_LABEL_COLOR }
+          : { name: label.name, color: label.color ?? DEFAULT_LABEL_COLOR },
+      ),
+    [currentLabels],
+  );
+
+  const normalizedAvailableLabels = React.useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    availableLabels.forEach((label) => {
+      const key = label.name.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, { name: label.name, color: label.color });
+      }
+    });
+    return Array.from(map.values());
+  }, [availableLabels]);
+
+  const mergedLabelOptions = React.useMemo(() => {
+    const map = new Map<string, { name: string; color: string }>();
+    [...normalizedAvailableLabels, ...selectedLabels].forEach((label) => {
+      const key = label.name.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, label);
+      }
+    });
+    return Array.from(map.values());
+  }, [normalizedAvailableLabels, selectedLabels]);
+
+  const toggleLabel = React.useCallback(
+    (label: { name: string; color: string }) => {
+      const exists = currentLabels.some((item) => getLabelName(item) === label.name);
+      const normalized = { name: label.name, color: label.color ?? DEFAULT_LABEL_COLOR };
+      handleSave({
+        labels: exists
+          ? currentLabels.filter((item) => getLabelName(item) !== label.name)
+          : [...currentLabels, normalized],
+      });
+    },
+    [currentLabels, handleSave],
+  );
+
+  const focusLabelInput = React.useCallback(() => {
+    const input = labelInputRef.current;
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    const value = input.value;
+    input.setSelectionRange?.(value.length, value.length);
+  }, []);
+
+  const addFreeformLabel = React.useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    toggleLabel({ name: trimmed, color: DEFAULT_LABEL_COLOR });
+    setLabelInput('');
+  }, [toggleLabel]);
+
+  React.useLayoutEffect(() => {
+    if (!labelsOpen) return;
+    const frame = requestAnimationFrame(() => {
+      focusLabelInput();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [labelsOpen, focusLabelInput]);
+
+  const renderPriorityChip = React.useCallback((value: Task['priority']) => {
+    if (value === 'none') return null;
+    const tone = value === 'high' ? 'high' : value === 'medium' ? 'medium' : 'low';
+    return (
+      <span
+        className={cn(
+          badgeVariants({ variant: 'soft', tone, size: 'sm' }),
+          'inline-flex items-center gap-[var(--space-1)]',
+        )}
+      >
+        <Flag className="size-[var(--icon-2xs)]" aria-hidden />
+        <span>{value[0].toUpperCase() + value.slice(1)}</span>
+      </span>
+    );
+  }, []);
+
+  // Focus management: auto-focus title when drawer opens
+  const titleRef = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    if (task && titleRef.current) {
+      // Small delay to ensure drawer animation doesn't conflict
+      const timer = setTimeout(() => {
+        titleRef.current?.focus();
+        titleRef.current?.select();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-    return list;
-  }, [tasksById, labelQuery]);
+  }, [task]);
 
   if (!task || !edited) return null;
 
@@ -170,116 +222,88 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
   const dueDate = edited.dueDate ? new Date(edited.dueDate) : undefined;
   const isCompleted = Boolean(edited.isCompleted);
   const priority: Task['priority'] = edited.priority ?? 'none';
+  const priorityLabel = priority !== 'none' ? priority[0].toUpperCase() + priority.slice(1) : '';
+  const priorityTone = priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : priority === 'low' ? 'low' : undefined;
   const subCount = edited.subtasks?.length ?? 0;
   const doneCount = (edited.subtasks ?? []).filter((s) => s.isCompleted).length;
 
   const isOverdue = dueDate ? new Date(edited.dueDate!).getTime() < Date.now() && !isCompleted : false;
   const isToday = dueDate ? format(dueDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') : false;
-
-  const renderPriorityChip = (value: Task['priority']) => {
-    if (value === 'none') {
-      return <span className="text-[color:var(--text-tertiary)]">Set priority</span>;
-    }
-    const label = value[0].toUpperCase() + value.slice(1);
-    return (
-      <span className="flex items-center gap-[var(--space-1)] text-[length:var(--text-sm)]">
-        <Flag className="size-[var(--icon-sm)]" aria-hidden />
-        {label}
-      </span>
-    );
-  };
-
   return (
     <>
       {/* overlay */}
       <button
         aria-hidden
-        className="fixed inset-0 z-[69] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)]"
+        className="fixed left-0 right-0 bottom-0 top-[var(--pane-header-h)] z-[69] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)]"
         onClick={onClose}
       />
 
       <aside
-        className="fixed right-0 top-0 bottom-0 z-[70] flex h-dvh flex-col bg-[var(--bg-panel)] shadow-[var(--elevation-xl)] motion-safe:transition-transform duration-[var(--duration-sm)] ease-[var(--ease-emphasized)] px-[var(--panel-pad-x)] py-[var(--panel-pad-y)]"
-        style={{ width: 'var(--task-drawer-w)', maxWidth: 'calc(100vw - 2 * var(--task-drawer-edge))' }}
+        className="fixed right-0 bottom-0 top-[var(--pane-header-h)] z-[70] flex flex-col bg-[var(--bg-panel)] shadow-[var(--elevation-xl)] motion-safe:transition-transform duration-[var(--duration-sm)] ease-[var(--ease-emphasized)] px-[var(--panel-pad-x)] pb-[var(--panel-pad-y)]"
+        style={{
+          width: 'var(--task-drawer-w)',
+          maxWidth: 'calc(100vw - 2 * var(--task-drawer-edge))',
+          maxHeight: 'calc(100dvh - var(--pane-header-h))',
+        }}
         role="dialog"
         aria-labelledby={headingId}
         aria-modal
       >
         {/* Sticky header */}
-        <header className="sticky top-0 bg-[var(--bg-panel)] pb-[var(--space-3)]">
-          <div className="flex items-center gap-[var(--space-2)]">
-            <button
-              type="button"
-              className={cn(
-                'grid place-items-center size-[var(--check-size)] rounded-[var(--radius-sm)] border border-[var(--check-ring)] bg-[var(--check-idle-bg)] motion-safe:transition-colors duration-[var(--duration-fast)]',
-                isCompleted && 'bg-[var(--check-active-bg)] border-[var(--check-active-ring)]'
-              )}
-              aria-pressed={isCompleted}
-              aria-label={isCompleted ? 'Mark as not completed' : 'Mark completed'}
-              onClick={() => toggleTaskCompletion(task.id)}
+        <header className="sticky top-0 bg-[var(--bg-panel)]">
+          <div className="flex items-center justify-between gap-[var(--space-4)] px-[var(--space-4)] py-[12px] border-b border-[color:var(--border-subtle)]">
+            <Button
+              variant={isCompleted ? 'outline' : 'default'}
+              size="sm"
+              onClick={() => handleSave({ isCompleted: !isCompleted })}
             >
-              {isCompleted && <span className="size-[var(--icon-sm)] bg-[var(--check-icon)]" aria-hidden />}
-            </button>
-
-            <input
-              id={headingId}
-              className={cn(
-                'flex-1 bg-transparent outline-none text-[length:var(--text-xl)] font-[var(--font-weight-semibold)] leading-[var(--line-tight)] text-[color:var(--text-primary)] min-h-[var(--field-height)] motion-safe:transition-colors duration-[var(--duration-fast)]',
-                isCompleted && 'text-[color:var(--text-tertiary)] line-through'
-              )}
-              placeholder="Task title"
-              defaultValue={edited.title}
-              onBlur={(e) => e.target.value !== edited.title && handleSave({ title: e.target.value.trim() })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  (e.target as HTMLInputElement).blur();
-                }
-                if (e.key === 'Escape') {
-                  (e.target as HTMLInputElement).blur();
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={onClose}
-              className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-secondary)] hover:bg-[var(--hover-bg)]"
-              aria-label="Close"
-            >
-              <X className="size-5" />
-            </button>
+              {isCompleted ? 'Reopen' : 'Mark complete'}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="size-[var(--icon-sm)]" />
+            </Button>
+          </div>
+          <div className="px-[var(--space-4)] py-[var(--space-3)]">
+            <h1 className="text-[length:var(--text-2xl)] font-semibold text-[color:var(--text-primary)] leading-tight">
+              {task.title}
+            </h1>
           </div>
           <div aria-live="polite" className="sr-only">{savedHint ?? ''}</div>
         </header>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-[var(--section-gap)]">
-            <Section>
-              <Row
-                label={<span>Due date</span>}
-              >
+          <div className="flex flex-col gap-[var(--space-6)] px-[var(--space-6)] py-[var(--space-5)]">
+
+            {/* Metadata */}
+            <div className="grid gap-y-[var(--space-4)]" style={GRID_TEMPLATE}>
+              <span className={LABEL_CELL_CLASS}>Due date</span>
+              <div className={cn(VALUE_CELL_CLASS, 'gap-[var(--space-2)]')}>
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
                   <PopoverTrigger asChild>
-                    <button className={cn(CHIP_CLASS, 'justify-start text-left')}>
-                      <Calendar className="size-[var(--icon-sm)] text-[color:var(--text-secondary)]" />
-                      <span
-                        className={cn(
-                          'truncate',
-                          isOverdue && 'text-[color:var(--due-overdue)]',
-                          !isOverdue && isToday && 'text-[color:var(--due-today)]',
-                          !dueDate && 'text-[color:var(--text-tertiary)]',
-                        )}
-                      >
-                        {dueDate ? format(dueDate, 'EEE, MMM d') : 'Add due date'}
-                      </span>
-                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size={dueDate ? 'sm' : 'icon'}
+                      className={cn(
+                        'rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0 focus-visible:border-[color:var(--border-strong)]',
+                        dueDate
+                          ? 'h-[34px] px-[var(--space-3)] text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)] hover:text-[color:var(--text-primary)]'
+                          : 'size-[34px] text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)]',
+                        dueDate && isOverdue && 'text-[color:var(--due-overdue)]',
+                        dueDate && !isOverdue && isToday && 'text-[color:var(--due-today)]',
+                        dateOpen && 'border-[color:var(--border-strong)]'
+                      )}
+                      aria-label={dueDate ? `Change due date (${format(dueDate, 'EEE, MMM d')})` : 'Add due date'}
+                    >
+                      {dueDate ? format(dueDate, 'EEE, MMM d') : <Calendar className="size-[var(--icon-sm)]" />}
+                    </Button>
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
                     sideOffset={8}
                     collisionPadding={overlayPadding}
-                    className="w-[min(100vw,calc(var(--field-max-w)+var(--space-6)))] max-w-[var(--field-max-w)] p-[var(--space-3)] space-y-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--section-border)] bg-[var(--bg-surface-elevated)] shadow-[var(--elevation-lg)]"
+                    className="w-auto p-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--elevation-lg)]"
                   >
                     <CalendarComponent
                       mode="single"
@@ -290,313 +314,321 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                       }}
                       className="p-0"
                     />
-                    <div className="flex items-center gap-[var(--space-2)] overflow-x-auto overscroll-contain pr-[var(--space-1)]">
-                      {QUICK_PICKS.map(({ label, resolver }) => (
-                        <button
-                          key={label}
-                          type="button"
-                          className={cn(CHIP_CLASS, 'whitespace-nowrap')}
-                          onClick={() => {
-                            const nextDate = resolver();
-                            handleSave({ dueDate: nextDate ? format(nextDate, 'yyyy-MM-dd') : undefined });
-                            setDateOpen(false);
-                          }}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      type="button"
-                      className="self-end text-[length:var(--text-sm)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface-elevated)]"
-                      onClick={() => {
-                        setDateOpen(false);
-                      }}
-                    >
-                      Repeat…
-                    </button>
-                    <PopoverArrow className="fill-[var(--bg-surface-elevated)] drop-shadow-[var(--elevation-sm)]" />
+                    <PopoverArrow className="fill-[var(--bg-surface)] drop-shadow-[var(--elevation-sm)]" />
                   </PopoverContent>
                 </Popover>
-              </Row>
-            </Section>
+              </div>
 
-            <Section>
-              <Row label={<span>Priority</span>}>
+              <span className={LABEL_CELL_CLASS}>Priority</span>
+              <div className={cn(VALUE_CELL_CLASS, 'gap-[var(--space-2)]')}>
                 <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
                   <PopoverTrigger asChild>
-                    <button
-                      className={cn(CHIP_CLASS, 'justify-between')}
-                      style={priorityStyles[priority]}
-                    >
-                      <span className="flex items-center gap-[var(--space-2)]">
-                        {renderPriorityChip(priority)}
-                      </span>
-                      <ChevronDown className="size-[var(--icon-sm)] text-[color:var(--text-tertiary)]" />
-                    </button>
+                    {priority === 'none' || !priorityTone ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-[34px] rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] transition-colors hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-primary)]"
+                        aria-label="Set priority"
+                      >
+                        <Flag className="size-[var(--icon-sm)]" aria-hidden />
+                      </Button>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={`Change priority (${priorityLabel})`}
+                        className={cn(
+                          badgeVariants({ variant: 'soft', tone: priorityTone, size: 'sm' }),
+                          'inline-flex items-center gap-[var(--space-1)] border border-[color:var(--border-subtle)] hover:border-[color:var(--border-strong)] focus-visible:border-[color:var(--border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0',
+                        )}
+                      >
+                        <Flag className="size-[var(--icon-2xs)]" aria-hidden />
+                        <span>{priorityLabel}</span>
+                      </button>
+                    )}
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
                     sideOffset={8}
                     collisionPadding={overlayPadding}
-                    className="w-[min(100vw,260px)] max-w-[var(--field-max-w)] rounded-[var(--radius-md)] border border-[var(--section-border)] bg-[var(--bg-surface-elevated)] p-[var(--space-2)] shadow-[var(--elevation-lg)]"
+                    className="w-[min(260px,100vw)] rounded-[var(--radius-md)] border border-[var(--section-border)] bg-[var(--bg-surface-elevated)] p-[var(--space-2)] shadow-[var(--elevation-lg)]"
                   >
                     <div className="flex flex-col gap-[var(--space-1)]">
-                      {(['high', 'medium', 'low'] as const).map((p) => (
+                      {(['high', 'medium', 'low'] as Task['priority'][]).map((value) => (
                         <button
-                          key={p}
+                          key={value}
                           type="button"
-                          className={cn(CHIP_CLASS, 'justify-start w-full text-left')}
-                          style={priorityStyles[p]}
+                          className={cn(
+                            'flex w-full items-center justify-between rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] hover:bg-[var(--bg-surface)]',
+                            priority === value && 'bg-[color-mix(in_oklab,var(--primary)_10%,transparent)]',
+                          )}
                           onClick={() => {
-                            handleSave({ priority: p });
+                            handleSave({ priority: value });
                             setPriorityOpen(false);
                           }}
                         >
-                          {renderPriorityChip(p)}
+                          <span className="flex items-center gap-[var(--space-2)]">
+                            {renderPriorityChip(value)}
+                          </span>
+                          {priority === value && <Check className="size-4 text-[var(--primary)]" aria-hidden />}
                         </button>
                       ))}
                       <button
                         type="button"
-                        className={cn(CHIP_CLASS, 'justify-start w-full text-left text-[color:var(--text-tertiary)]')}
+                        className={cn(
+                          'flex w-full items-center justify-between rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] text-[color:var(--text-tertiary)] hover:bg-[var(--bg-surface)]',
+                          priority === 'none' && 'bg-[color-mix(in_oklab,var(--primary)_6%,transparent)]',
+                        )}
                         onClick={() => {
                           handleSave({ priority: 'none' });
                           setPriorityOpen(false);
                         }}
                       >
-                        —
+                        <span className="inline-flex h-[28px] w-[32px] items-center justify-center">—</span>
+                        {priority === 'none' && <Check className="size-4 text-[var(--primary)]" aria-hidden />}
                       </button>
                     </div>
                     <PopoverArrow className="fill-[var(--bg-surface-elevated)] drop-shadow-[var(--elevation-sm)]" />
                   </PopoverContent>
                 </Popover>
-              </Row>
-              <Row label={<span>Labels</span>}>
-                <div className="flex flex-wrap items-center gap-[var(--space-2)]">
-                  {(edited.labels as TaskLabel[] | undefined)?.map((label) => {
-                    const name = getLabelName(label);
-                    const color = getLabelColor(label);
-                    return (
-                      <span
-                        key={name}
-                        className={cn(CHIP_CLASS, 'pr-[var(--space-2)] pl-[var(--space-3)]')} // eslint-disable-line tailwindcss/no-custom-classname
-                        style={labelColorStyle(color)}
-                      >
-                        <span>{name}</span>
-                        <button
-                          type="button"
-                          className="-mr-[var(--space-1)] grid size-[var(--icon-sm)] place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]"
-                          onClick={() => {
-                            const next = (edited.labels as TaskLabel[] | undefined)?.filter((l) => getLabelName(l) !== name) ?? [];
-                            handleSave({ labels: next });
-                          }}
-                          aria-label={`Remove label ${name}`}
-                        >
-                          <X className="size-[var(--icon-2xs)]" />
-                        </button>
-                      </span>
-                    );
-                  })}
-                  <Popover open={labelsOpen} onOpenChange={setLabelsOpen}>
-                    <PopoverTrigger asChild>
-                      <button className={cn(CHIP_CLASS, 'justify-center')} aria-label="Add label">
-                        + Add label
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="start"
-                      sideOffset={8}
-                      collisionPadding={overlayPadding}
-                      className="w-[min(100vw,280px)] max-w-[var(--field-max-w)] rounded-[var(--radius-md)] border border-[var(--section-border)] bg-[var(--bg-surface-elevated)] p-[var(--space-3)] shadow-[var(--elevation-lg)]"
-                    >
-                      <div className="flex flex-col gap-[var(--space-3)]">
-                        <Input
-                          value={labelQuery}
-                          onChange={(e) => setLabelQuery(e.target.value)}
-                          placeholder="Search or add label"
-                          className="h-[var(--field-height)]"
-                        />
-                        <div className="flex max-h-48 flex-col gap-[var(--space-1_5)] overflow-y-auto">
-                          {availableLabels.length === 0 && (
-                            <span className="px-[var(--space-1_5)] text-[color:var(--text-tertiary)] text-[length:var(--text-sm)]">
-                              No labels yet
-                            </span>
-                          )}
-                          {availableLabels.map(({ name, color }) => (
-                            <button
-                              key={name}
-                              type="button"
-                              className="flex items-center justify-between rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] hover:bg-[var(--bg-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface-elevated)]"
-                              onClick={() => {
-                                const existing = (edited.labels as TaskLabel[] | undefined) ?? [];
-                                if (!existing.some((l) => getLabelName(l) === name)) {
-                                  handleSave({ labels: [...existing, { name, color }] });
-                                }
-                                setLabelsOpen(false);
-                              }}
-                            >
-                              <span className="flex items-center gap-[var(--space-2)]">
-                                <span className={cn(CHIP_CLASS, 'px-[var(--space-2)]', 'bg-transparent shadow-none border-transparent')} style={labelColorStyle(color)}>
-                                  {name}
-                                </span>
-                              </span>
-                              <span className="text-[color:var(--text-tertiary)]">Select</span>
-                            </button>
-                          ))}
-                        </div>
-                        {labelQuery &&
-                          !availableLabels.some((l) => l.name.toLowerCase() === labelQuery.toLowerCase()) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="justify-start"
-                              onClick={() => {
-                                const existing = (edited.labels as TaskLabel[] | undefined) ?? [];
-                                handleSave({ labels: [...existing, { name: labelQuery.trim(), color: 'var(--label-blue)' }] });
-                                setLabelQuery('');
-                                setLabelsOpen(false);
-                              }}
-                            >
-                              Create “{labelQuery}”
-                            </Button>
-                          )}
-                      </div>
-                      <PopoverArrow className="fill-[var(--bg-surface-elevated)] drop-shadow-[var(--elevation-sm)]" />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </Row>
-            </Section>
+              </div>
 
-            <Section>
-              <Row label={<span>Subtasks</span>} align="end">
-                {subCount > 0 ? (
-                  <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">{doneCount} of {subCount}</span>
-                ) : (
-                  <span className="text-[color:var(--text-tertiary)] text-[length:var(--text-sm)]">No subtasks</span>
-                )}
-              </Row>
-              <Row>
-                <div className="flex w-full flex-col gap-[var(--row-gap)]">
-                  {(edited.subtasks ?? []).map((s) => (
-                    <div key={s.id} className="group flex items-center gap-[var(--space-2)] min-h-[var(--row-min-h)]">
+              <span className={LABEL_CELL_CLASS}>Labels</span>
+              <div className={cn(VALUE_CELL_CLASS, 'gap-[var(--space-2)]')}>
+                <Popover
+                  open={labelsOpen}
+                  onOpenChange={(open) => {
+                    setLabelsOpen(open);
+                    if (open) {
+                      requestAnimationFrame(focusLabelInput);
+                    } else {
+                      setLabelInput('');
+                    }
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    {selectedLabels.length > 0 ? (
                       <button
                         type="button"
-                        className="grid size-[var(--icon-md)] place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] opacity-0 focus:opacity-100 group-hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]"
-                        aria-label="Reorder subtask"
+                        aria-label={`Edit labels (${selectedLabels.map((label) => label.name).join(', ')})`}
+                        className={cn(
+                          'group flex min-h-[34px] max-w-full flex-wrap items-center gap-[var(--space-1)] rounded-full bg-transparent px-[var(--space-1)] py-[var(--space-1)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0',
+                        )}
                       >
-                        <GripVertical className="size-[var(--icon-sm)]" />
+                        {selectedLabels.map((label) => (
+                          <Badge
+                            key={`trigger-${label.name}`}
+                            variant="soft"
+                            size="sm"
+                            className={cn(
+                              'flex items-center gap-[var(--space-1)] border border-[color:var(--border-subtle)] group-hover:border-[color:var(--border-strong)] group-focus-visible:border-[color:var(--border-strong)]',
+                              labelsOpen && 'border-[color:var(--border-strong)]',
+                            )}
+                            style={chipStyle(label.color ?? DEFAULT_LABEL_COLOR)}
+                          >
+                            <span className="max-w-[100px] truncate" title={label.name}>
+                              {label.name}
+                            </span>
+                          </Badge>
+                        ))}
                       </button>
-                      <Checkbox
-                        checked={s.isCompleted}
-                        onCheckedChange={(checked) => {
-                          const next = (edited.subtasks ?? []).map((st) =>
-                            st.id === s.id ? { ...st, isCompleted: Boolean(checked) } : st,
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          'size-[34px] rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] transition-colors hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0 focus-visible:border-[color:var(--border-strong)]',
+                          labelsOpen && 'border-[color:var(--border-strong)] text-[color:var(--text-primary)]',
+                        )}
+                        aria-label="Add labels"
+                      >
+                        <Tag className="size-[var(--icon-sm)]" aria-hidden />
+                      </Button>
+                    )}
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[240px] p-3"
+                    side="bottom"
+                    sideOffset={8}
+                    align="start"
+                    alignOffset={140}
+                    onOpenAutoFocus={(event) => {
+                      event.preventDefault();
+                      requestAnimationFrame(focusLabelInput);
+                    }}
+                    onCloseAutoFocus={(event) => {
+                      event.preventDefault();
+                    }}
+                  >
+                    <div className="flex flex-col gap-[var(--space-2)]">
+                      <div className="flex flex-wrap gap-[var(--space-2)]">
+                        {mergedLabelOptions.map((label) => {
+                          const isSelected = selectedLabels.some((item) => item.name === label.name);
+                          return (
+                            <button
+                              key={label.name}
+                              type="button"
+                              onClick={() => toggleLabel(label)}
+                              className={cn(
+                                'rounded-[var(--chip-radius)] border border-transparent transition-shadow hover:border-[color:var(--border-strong)] focus-visible:border-[color:var(--border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0',
+                                isSelected && 'border-[color:var(--border-strong)]',
+                              )}
+                            >
+                              <Badge
+                                variant="soft"
+                                size="sm"
+                                className="flex items-center gap-[var(--space-1)]"
+                                style={chipStyle(label.color ?? DEFAULT_LABEL_COLOR)}
+                              >
+                                <span>{label.name}</span>
+                                {isSelected ? <Check className="size-3" aria-hidden /> : null}
+                              </Badge>
+                            </button>
                           );
-                          handleSave({ subtasks: next });
-                        }}
-                        className="size-[var(--check-size)]"
-                      />
-                      <input
-                        className="flex-1 h-[var(--field-height)] rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--field-pad-x)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
-                        value={s.title}
-                        onChange={(e) => {
-                          const next = (edited.subtasks ?? []).map((st) =>
-                            st.id === s.id ? { ...st, title: e.target.value } : st,
-                          );
-                          setEdited({ ...edited, subtasks: next });
-                        }}
-                        onBlur={() => handleSave({ subtasks: edited.subtasks })}
-                      />
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className={cn(CHIP_CLASS, 'text-[color:var(--text-secondary)]')}>
-                            <Calendar className="size-[var(--icon-sm)]" />
-                            {s.dueDate ? format(new Date(s.dueDate), 'MMM d') : 'Add due date'}
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          align="start"
-                          sideOffset={8}
-                          collisionPadding={overlayPadding}
-                          className="w-[min(100vw,calc(var(--field-max-w)/1.5))] max-w-[var(--field-max-w)] rounded-[var(--radius-md)] border border-[var(--section-border)] bg-[var(--bg-surface-elevated)] p-[var(--space-3)] shadow-[var(--elevation-lg)]"
-                        >
-                          <CalendarComponent
-                            mode="single"
-                            selected={s.dueDate ? new Date(s.dueDate) : undefined}
-                            onSelect={(d) => {
-                              const next = (edited.subtasks ?? []).map((st) =>
-                                st.id === s.id ? { ...st, dueDate: d ? format(d, 'yyyy-MM-dd') : undefined } : st,
-                              );
-                              handleSave({ subtasks: next });
-                            }}
-                            className="p-0"
-                          />
-                          <PopoverArrow className="fill-[var(--bg-surface-elevated)] drop-shadow-[var(--elevation-sm)]" />
-                        </PopoverContent>
-                      </Popover>
+                        })}
+                      </div>
+                      <div className="relative">
+                        <input
+                          ref={labelInputRef}
+                          type="text"
+                          value={labelInput}
+                          onChange={(event) => setLabelInput(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              addFreeformLabel(labelInput);
+                            }
+                          }}
+                          placeholder="Add label"
+                          autoComplete="off"
+                          spellCheck={false}
+                          inputMode="text"
+                          className="flex h-8 w-full rounded-[var(--radius-sm)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--space-2)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] caret-[var(--primary)] focus:border-[var(--primary)] focus:outline-none"
+                        />
+                      </div>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    className="self-start text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]"
-                    onClick={() => {
-                      const next: Subtask = {
-                        id: `sub-${Date.now()}`,
-                        title: '',
-                        isCompleted: false,
-                        dueDate: undefined,
-                      };
-                      const list = [...(edited.subtasks ?? []), next];
-                      setEdited({ ...edited, subtasks: list });
-                    }}
-                  >
-                    + Add a subtask
-                  </button>
-                </div>
-              </Row>
-            </Section>
+                  </PopoverContent>
+                </Popover>
+                {selectedLabels.length === 0 ? (
+                  <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">No labels</span>
+                ) : null}
+              </div>
+            </div>
 
-            <Section framed={false}>
-              <Row label={<span>Description</span>}>
-                {isDescExpanded ? (
-                  <textarea
-                    className="w-full max-w-[var(--field-max-w)] rounded-[var(--radius-md)] border border-[var(--border-default)] bg-[var(--bg-surface)] px-[var(--field-pad-x)] py-[var(--field-pad-y)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] focus:border-[var(--primary)] focus:outline-none"
-                    defaultValue={edited.description ?? ''}
-                    onBlur={(e) => {
-                      handleSave({ description: e.target.value.trim() || undefined });
-                      setIsDescExpanded(false);
-                    }}
-                    autoFocus
-                    rows={3}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    className="text-left text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)]"
-                    onClick={() => setIsDescExpanded(true)}
-                  >
-                    {edited.description ? edited.description : 'Add notes…'}
-                  </button>
+            <div className="h-px bg-[color:var(--border-subtle)]" />
+
+            {/* Description */}
+            <div className="space-y-[var(--space-2)]">
+              <h2 className="text-[length:var(--text-sm)] font-semibold text-[color:var(--text-secondary)]">Description</h2>
+              <textarea
+                className="w-full min-h-[120px] resize-none rounded-[var(--radius-md)] border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] transition-colors focus:border-[var(--primary)] focus:outline-none"
+                value={edited?.description ?? ''}
+                onChange={(event) =>
+                  setEdited((prev) => (prev ? { ...prev, description: event.target.value } : prev))
+                }
+                onBlur={(event) =>
+                  handleSave({ description: event.target.value.trim() || undefined })
+                }
+                placeholder="More details about this task"
+              />
+            </div>
+
+            <div className="h-px bg-[color:var(--border-subtle)]" />
+
+            {/* Subtasks */}
+            <div className="space-y-[var(--space-3)]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[length:var(--text-sm)] font-semibold text-[color:var(--text-secondary)]">Subtasks</h2>
+                {subCount > 0 && (
+                  <span className="px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-full)] bg-[color:var(--chip-label-bg)] text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
+                    {doneCount} of {subCount}
+                  </span>
                 )}
-              </Row>
-            </Section>
+              </div>
+              <div className="flex flex-col gap-[var(--space-1)]">
+                {(edited.subtasks ?? []).map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-[var(--space-3)] px-[var(--space-2)] py-[var(--space-2)] rounded-[var(--radius-sm)] hover:bg-[color:var(--hover-bg)]"
+                  >
+                    <button
+                      type="button"
+                      className="flex-shrink-0 grid size-[32px] place-items-center text-[color:var(--text-tertiary)]"
+                      aria-label="Reorder subtask"
+                    >
+                      <GripVertical className="size-[var(--icon-sm)]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = (edited.subtasks ?? []).map((st) =>
+                          st.id === s.id ? { ...st, isCompleted: !st.isCompleted } : st,
+                        );
+                        handleSave({ subtasks: next });
+                      }}
+                      className="flex-shrink-0 grid size-[var(--check-size)] place-items-center rounded-[var(--radius-sm)] border-2"
+                      style={{
+                        backgroundColor: s.isCompleted ? 'var(--check-active-bg)' : 'var(--check-idle-bg)',
+                        borderColor: s.isCompleted ? 'var(--check-active-bg)' : 'var(--check-ring)',
+                        color: s.isCompleted ? 'var(--check-active-check)' : 'var(--check-idle-check)',
+                      }}
+                      aria-label={s.isCompleted ? `Mark ${s.title} as incomplete` : `Mark ${s.title} as complete`}
+                    >
+                      {s.isCompleted && <Check className="size-3" />}
+                    </button>
+                    <input
+                      className={cn(
+                        'flex-1 text-[length:var(--text-base)] bg-transparent border-none focus:outline-none',
+                        s.isCompleted ? 'line-through text-[color:var(--text-tertiary)]' : 'text-[color:var(--text-primary)]'
+                      )}
+                      value={s.title}
+                      onChange={(e) => {
+                        const next = (edited.subtasks ?? []).map((st) =>
+                          st.id === s.id ? { ...st, title: e.target.value } : st,
+                        );
+                        setEdited({ ...edited, subtasks: next });
+                      }}
+                      onBlur={() => handleSave({ subtasks: edited.subtasks })}
+                      placeholder="Add task details"
+                    />
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-[var(--space-2)] self-start px-[var(--space-2)] py-[var(--space-1)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
+                  onClick={() => {
+                    const next: Subtask = {
+                      id: `sub-${Date.now()}`,
+                      title: '',
+                      isCompleted: false,
+                      dueDate: undefined,
+                    };
+                    const list = [...(edited.subtasks ?? []), next];
+                    setEdited({ ...edited, subtasks: list });
+                  }}
+                >
+                  <Plus className="size-[var(--icon-sm)]" />
+                  <span>Add subtask</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Sticky footer */}
-        <footer className="sticky bottom-0 mt-[var(--space-6)] bg-[var(--bg-panel)] py-[var(--space-3)] flex items-center justify-between">
-          <Button variant="link" className="text-[color:var(--danger)]" onClick={() => onDeleteTask(task.id)}>
+        <footer className="sticky bottom-0 bg-[var(--bg-panel)] py-[var(--space-4)] px-[var(--space-6)] border-t border-[color:var(--border-subtle)] flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[color:var(--danger)] hover:bg-[color:var(--accent-coral-tint-10)]"
+            onClick={() => onDeleteTask(task.id)}
+          >
             Delete task
           </Button>
-          <div className="flex items-center gap-[var(--space-2)]">
-            <Button variant="ghost" onClick={() => onClose()}>Close</Button>
-            {isCompleted ? (
-              <Button onClick={() => handleSave({ isCompleted: false })}>Reopen</Button>
-            ) : (
-              <Button onClick={() => handleSave({ isCompleted: true })}>Mark complete</Button>
-            )}
-          </div>
         </footer>
       </aside>
     </>
