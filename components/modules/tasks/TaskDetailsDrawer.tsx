@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Calendar, Check, Flag, GripVertical, Plus, Tag, X } from 'lucide-react';
+import { Calendar, Check, Flag, Tag, X } from 'lucide-react';
 import { addDays, format } from 'date-fns';
 
 import { Button } from '../../ui/button';
@@ -9,7 +9,7 @@ import { Badge, badgeVariants } from '../../ui/badge';
 import { Calendar as CalendarComponent } from '../../ui/calendar';
 import { Input } from '../../ui/input';
 import { cn } from '../../ui/utils';
-import type { Task, TaskLabel, Subtask } from './types';
+import type { Task, TaskLabel } from './types';
 import { useTaskStore } from './taskStore';
 
 type Props = {
@@ -224,9 +224,6 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
   const priority: Task['priority'] = edited.priority ?? 'none';
   const priorityLabel = priority !== 'none' ? priority[0].toUpperCase() + priority.slice(1) : '';
   const priorityTone = priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : priority === 'low' ? 'low' : undefined;
-  const subCount = edited.subtasks?.length ?? 0;
-  const doneCount = (edited.subtasks ?? []).filter((s) => s.isCompleted).length;
-
   const isOverdue = dueDate ? new Date(edited.dueDate!).getTime() < Date.now() && !isCompleted : false;
   const isToday = dueDate ? format(dueDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') : false;
   return (
@@ -537,81 +534,8 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
             <div className="h-px bg-[color:var(--border-subtle)]" />
 
             {/* Subtasks */}
-            <div className="space-y-[var(--space-3)]">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[length:var(--text-sm)] font-semibold text-[color:var(--text-secondary)]">Subtasks</h2>
-                {subCount > 0 && (
-                  <span className="px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-full)] bg-[color:var(--chip-label-bg)] text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
-                    {doneCount} of {subCount}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-col gap-[var(--space-1)]">
-                {(edited.subtasks ?? []).map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center gap-[var(--space-3)] px-[var(--space-2)] py-[var(--space-2)] rounded-[var(--radius-sm)] hover:bg-[color:var(--hover-bg)]"
-                  >
-                    <button
-                      type="button"
-                      className="flex-shrink-0 grid size-[32px] place-items-center text-[color:var(--text-tertiary)]"
-                      aria-label="Reorder subtask"
-                    >
-                      <GripVertical className="size-[var(--icon-sm)]" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = (edited.subtasks ?? []).map((st) =>
-                          st.id === s.id ? { ...st, isCompleted: !st.isCompleted } : st,
-                        );
-                        handleSave({ subtasks: next });
-                      }}
-                      className="flex-shrink-0 grid size-[var(--check-size)] place-items-center rounded-[var(--radius-sm)] border-2"
-                      style={{
-                        backgroundColor: s.isCompleted ? 'var(--check-active-bg)' : 'var(--check-idle-bg)',
-                        borderColor: s.isCompleted ? 'var(--check-active-bg)' : 'var(--check-ring)',
-                        color: s.isCompleted ? 'var(--check-active-check)' : 'var(--check-idle-check)',
-                      }}
-                      aria-label={s.isCompleted ? `Mark ${s.title} as incomplete` : `Mark ${s.title} as complete`}
-                    >
-                      {s.isCompleted && <Check className="size-3" />}
-                    </button>
-                    <input
-                      className={cn(
-                        'flex-1 text-[length:var(--text-base)] bg-transparent border-none focus:outline-none',
-                        s.isCompleted ? 'line-through text-[color:var(--text-tertiary)]' : 'text-[color:var(--text-primary)]'
-                      )}
-                      value={s.title}
-                      onChange={(e) => {
-                        const next = (edited.subtasks ?? []).map((st) =>
-                          st.id === s.id ? { ...st, title: e.target.value } : st,
-                        );
-                        setEdited({ ...edited, subtasks: next });
-                      }}
-                      onBlur={() => handleSave({ subtasks: edited.subtasks })}
-                      placeholder="Add task details"
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-[var(--space-2)] self-start px-[var(--space-2)] py-[var(--space-1)] text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)]"
-                  onClick={() => {
-                    const next: Subtask = {
-                      id: `sub-${Date.now()}`,
-                      title: '',
-                      isCompleted: false,
-                      dueDate: undefined,
-                    };
-                    const list = [...(edited.subtasks ?? []), next];
-                    setEdited({ ...edited, subtasks: list });
-                  }}
-                >
-                  <Plus className="size-[var(--icon-sm)]" />
-                  <span>Add subtask</span>
-                </button>
-              </div>
+            <div>
+              <h2 className="text-[length:var(--text-sm)] font-semibold text-[color:var(--text-secondary)]">Subtasks</h2>
             </div>
           </div>
         </div>
