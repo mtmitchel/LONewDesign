@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Calendar, Check, Flag, Tag, X } from 'lucide-react';
+import { Calendar, Check, CheckSquare, Copy, Edit, Flag, Plus, Tag, Trash, X } from 'lucide-react';
 import { addDays, format } from 'date-fns';
 
 import { Button } from '../../ui/button';
@@ -7,9 +7,8 @@ import { Popover, PopoverArrow, PopoverContent, PopoverTrigger } from '../../ui/
 import { Badge, badgeVariants } from '../../ui/badge';
 
 import { Calendar as CalendarComponent } from '../../ui/calendar';
-import { Input } from '../../ui/input';
 import { cn } from '../../ui/utils';
-import type { Task, TaskLabel } from './types';
+import type { Task, TaskLabel, Subtask } from './types';
 import { useTaskStore } from './taskStore';
 
 type Props = {
@@ -29,6 +28,14 @@ const QUICK_PICKS = [
 const GRID_TEMPLATE: React.CSSProperties = {
   gridTemplateColumns: 'max-content minmax(0, var(--task-drawer-field-max-w))',
   columnGap: 'var(--space-8)',
+};
+
+const SUBTASK_ROW_STYLE: React.CSSProperties = {
+  gridTemplateColumns: '32px minmax(0, 1fr) 160px',
+  columnGap: 'var(--list-row-gap)',
+  minHeight: 'var(--list-row-min-h)',
+  paddingLeft: 'var(--list-row-pad-x)',
+  paddingRight: 'var(--list-row-pad-x)',
 };
 
 const LABEL_CELL_CLASS = 'text-[length:var(--text-sm)] font-medium text-[color:var(--text-secondary)] leading-[var(--line-tight)] flex items-center';
@@ -60,7 +67,31 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
   const [labelsOpen, setLabelsOpen] = React.useState(false);
   const [priorityOpen, setPriorityOpen] = React.useState(false);
   const [labelInput, setLabelInput] = React.useState('');
+  const [isSubtaskComposerOpen, setIsSubtaskComposerOpen] = React.useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = React.useState('');
+  const [newSubtaskDueDate, setNewSubtaskDueDate] = React.useState<string | undefined>(undefined);
+  const [newSubtaskDateOpen, setNewSubtaskDateOpen] = React.useState(false);
+  const [activeSubtaskDatePicker, setActiveSubtaskDatePicker] = React.useState<string | null>(null);
+  const [subtaskMenu, setSubtaskMenu] = React.useState<{ id: string; x: number; y: number } | null>(null);
   const labelInputRef = React.useRef<HTMLInputElement | null>(null);
+  const newSubtaskInputRef = React.useRef<HTMLInputElement | null>(null);
+  const subtaskInputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
+  const subtaskMenuRef = React.useRef<HTMLDivElement | null>(null);
+
+  const closeSubtaskMenu = React.useCallback(() => {
+    setSubtaskMenu(null);
+  }, []);
+
+  const openSubtaskMenu = React.useCallback((subtaskId: string, event: React.MouseEvent) => {
+    event.preventDefault();
+    const menuWidth = 220;
+    const menuHeight = 184;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const nextX = Math.max(8, Math.min(event.clientX, viewportWidth - menuWidth - 8));
+    const nextY = Math.max(8, Math.min(event.clientY, viewportHeight - menuHeight - 8));
+    setSubtaskMenu({ id: subtaskId, x: nextX, y: nextY });
+  }, []);
 
   const overlayPadding = useOverlayGutter();
 
@@ -68,7 +99,40 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
 
   React.useEffect(() => {
     setEdited(task);
+    setIsSubtaskComposerOpen(false);
+    setNewSubtaskTitle('');
+    setNewSubtaskDueDate(undefined);
+    setNewSubtaskDateOpen(false);
+    setActiveSubtaskDatePicker(null);
+    subtaskInputRefs.current.clear();
   }, [task]);
+
+  React.useEffect(() => {
+    if (!subtaskMenu) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (subtaskMenuRef.current && subtaskMenuRef.current.contains(target)) {
+        return;
+      }
+      closeSubtaskMenu();
+    };
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeSubtaskMenu();
+      }
+    };
+
+    window.addEventListener('mousedown', handlePointerDown, true);
+    window.addEventListener('contextmenu', handlePointerDown, true);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown, true);
+      window.removeEventListener('contextmenu', handlePointerDown, true);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [subtaskMenu, closeSubtaskMenu]);
 
   const handleSave = React.useCallback((updates: Partial<Task>) => {
     setEdited((prev) => {
@@ -186,6 +250,147 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
     return () => cancelAnimationFrame(frame);
   }, [labelsOpen, focusLabelInput]);
 
+  const handleToggleSubtaskCompletion = React.useCallback(
+    (subtaskId: string, isCompleted: boolean) => {
+      if (!edited) return;
+      const next = (edited.subtasks ?? []).map((subtask) =>
+        subtask.id === subtaskId ? { ...subtask, isCompleted } : subtask,
+      );
+      handleSave({ subtasks: next });
+      closeSubtaskMenu();
+    },
+    [edited, handleSave, closeSubtaskMenu],
+  );
+
+  const handleUpdateSubtaskDueDate = React.useCallback(
+    (subtaskId: string, dueDate: string | undefined) => {
+      if (!edited) return;
+      const next = (edited.subtasks ?? []).map((subtask) =>
+        subtask.id === subtaskId ? { ...subtask, dueDate } : subtask,
+      );
+      handleSave({ subtasks: next });
+    },
+    [edited, handleSave],
+  );
+
+  const handleDeleteSubtask = React.useCallback(
+    (subtaskId: string) => {
+      if (!edited) return;
+      const next = (edited.subtasks ?? []).filter((subtask) => subtask.id !== subtaskId);
+      handleSave({ subtasks: next });
+      closeSubtaskMenu();
+    },
+    [edited, handleSave, closeSubtaskMenu],
+  );
+
+  const handleSubtaskTitleChange = React.useCallback((subtaskId: string, title: string) => {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        subtasks: (prev.subtasks ?? []).map((subtask) =>
+          subtask.id === subtaskId ? { ...subtask, title } : subtask,
+        ),
+      };
+    });
+  }, []);
+
+  const handleSubtaskTitleCommit = React.useCallback(() => {
+    if (!edited) return;
+    handleSave({ subtasks: edited.subtasks ?? [] });
+  }, [edited, handleSave]);
+
+  const handleAddSubtask = React.useCallback(() => {
+    if (!edited) return;
+    const trimmedTitle = newSubtaskTitle.trim();
+    if (!trimmedTitle) return;
+    const nextSubtask: Subtask = {
+      id: `subtask-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      title: trimmedTitle,
+      isCompleted: false,
+      dueDate: newSubtaskDueDate,
+    };
+    const current = edited.subtasks ?? [];
+    handleSave({ subtasks: [...current, nextSubtask] });
+    setNewSubtaskTitle('');
+    setNewSubtaskDueDate(undefined);
+    setNewSubtaskDateOpen(false);
+    setIsSubtaskComposerOpen(false);
+    setActiveSubtaskDatePicker(null);
+  }, [edited, handleSave, newSubtaskDueDate, newSubtaskTitle]);
+
+  const handleCancelNewSubtask = React.useCallback(() => {
+    setIsSubtaskComposerOpen(false);
+    setNewSubtaskTitle('');
+    setNewSubtaskDueDate(undefined);
+    setNewSubtaskDateOpen(false);
+  }, []);
+
+  const focusSubtaskInput = React.useCallback((subtaskId: string) => {
+    const target = subtaskInputRefs.current.get(subtaskId);
+    if (!target) return;
+    requestAnimationFrame(() => {
+      target.focus({ preventScroll: true });
+      target.select?.();
+    });
+  }, []);
+
+  const handleSubtaskDueDateSelection = React.useCallback(
+    (subtaskId: string, date: Date | undefined) => {
+      handleUpdateSubtaskDueDate(subtaskId, date ? format(date, 'yyyy-MM-dd') : undefined);
+      setActiveSubtaskDatePicker(null);
+    },
+    [handleUpdateSubtaskDueDate],
+  );
+
+  const handleClearSubtaskDueDate = React.useCallback(
+    (subtaskId: string) => {
+      handleUpdateSubtaskDueDate(subtaskId, undefined);
+      setActiveSubtaskDatePicker(null);
+    },
+    [handleUpdateSubtaskDueDate],
+  );
+
+  const handleNewSubtaskDateSelection = React.useCallback((date: Date | undefined) => {
+    if (date) {
+      setNewSubtaskDueDate(format(date, 'yyyy-MM-dd'));
+    } else {
+      setNewSubtaskDueDate(undefined);
+    }
+    setNewSubtaskDateOpen(false);
+  }, []);
+
+  const handleDuplicateSubtask = React.useCallback(
+    (subtaskId: string) => {
+      if (!edited) return;
+      const current = edited.subtasks ?? [];
+      const index = current.findIndex((item) => item.id === subtaskId);
+      if (index === -1) return;
+      const source = current[index];
+      const duplicate: Subtask = {
+        ...source,
+        id: `subtask-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        isCompleted: false,
+      };
+      const next = [...current];
+      next.splice(index + 1, 0, duplicate);
+      handleSave({ subtasks: next });
+      requestAnimationFrame(() => {
+        focusSubtaskInput(duplicate.id);
+      });
+      closeSubtaskMenu();
+    },
+    [edited, handleSave, focusSubtaskInput, closeSubtaskMenu],
+  );
+
+  React.useLayoutEffect(() => {
+    if (!isSubtaskComposerOpen) return;
+    const frame = requestAnimationFrame(() => {
+      newSubtaskInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isSubtaskComposerOpen]);
+
   const renderPriorityChip = React.useCallback((value: Task['priority']) => {
     if (value === 'none') return null;
     const tone = value === 'high' ? 'high' : value === 'medium' ? 'medium' : 'low';
@@ -214,6 +419,19 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
       return () => clearTimeout(timer);
     }
   }, [task]);
+
+  const subtasks = edited?.subtasks ?? [];
+  const newSubtaskSelectedDate = newSubtaskDueDate ? new Date(newSubtaskDueDate) : undefined;
+  const activeSubtask = React.useMemo(() => {
+    if (!subtaskMenu) return undefined;
+    return subtasks.find((item) => item.id === subtaskMenu.id);
+  }, [subtasks, subtaskMenu]);
+
+  React.useEffect(() => {
+    if (subtaskMenu && !activeSubtask) {
+      closeSubtaskMenu();
+    }
+  }, [subtaskMenu, activeSubtask, closeSubtaskMenu]);
 
   if (!task || !edited) return null;
 
@@ -507,9 +725,6 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                     </div>
                   </PopoverContent>
                 </Popover>
-                {selectedLabels.length === 0 ? (
-                  <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">No labels</span>
-                ) : null}
               </div>
             </div>
 
@@ -534,16 +749,332 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
             <div className="h-px bg-[color:var(--border-subtle)]" />
 
             {/* Subtasks */}
-            <div>
-              <h2 className="text-[length:var(--text-sm)] font-semibold text-[color:var(--text-secondary)]">Subtasks</h2>
+            <div className="flex flex-col gap-[var(--space-3)]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[length:var(--text-sm)] font-semibold text-[color:var(--text-secondary)]">Subtasks</h2>
+                {subtasks.length > 0 ? (
+                  <span className="text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
+                    {subtasks.length} {subtasks.length === 1 ? 'item' : 'items'}
+                  </span>
+                ) : null}
+              </div>
+              <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+                <div className="divide-y divide-[var(--border-divider)]">
+                  {subtasks.map((subtask) => {
+                    const parsedDueDate = subtask.dueDate ? new Date(subtask.dueDate) : undefined;
+                    const dueDateLabel =
+                      parsedDueDate && !Number.isNaN(parsedDueDate.getTime())
+                        ? format(parsedDueDate, 'MMM d')
+                        : subtask.dueDate ?? '—';
+                    return (
+                      <div
+                        key={subtask.id}
+                        className="grid items-center hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)]"
+                        style={SUBTASK_ROW_STYLE}
+                        onContextMenu={(event) => openSubtaskMenu(subtask.id, event)}
+                      >
+                        <div className="flex items-center justify-center py-[var(--list-row-pad-y)]">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              handleToggleSubtaskCompletion(subtask.id, !subtask.isCompleted);
+                            }}
+                            className="grid place-items-center shrink-0 size-[var(--check-size)] rounded-[var(--radius-full)] border border-[var(--check-ring)] bg-[var(--check-idle-bg)] motion-safe:transition-[background-color,border-color] duration-[var(--duration-base)] hover:border-[var(--check-hover-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
+                            aria-pressed={subtask.isCompleted}
+                            aria-label={subtask.isCompleted ? 'Mark subtask incomplete' : 'Mark subtask complete'}
+                          >
+                            <svg viewBox="0 0 20 20" className="size-[calc(var(--check-size)-4px)]" aria-hidden="true">
+                              <circle
+                                cx="10"
+                                cy="10"
+                                r="10"
+                                className={`motion-safe:transition-opacity duration-[var(--duration-base)] ${subtask.isCompleted ? 'opacity-100 fill-[var(--check-active-bg)]' : 'opacity-0 fill-[var(--check-active-bg)]'}`}
+                              />
+                              <path
+                                d="M5 10.5l3 3 7-7"
+                                fill="none"
+                                strokeWidth="2"
+                                className={`motion-safe:transition-[stroke,opacity] duration-[var(--duration-base)] ${subtask.isCompleted ? 'stroke-[var(--check-active-check)] opacity-100' : 'stroke-[var(--check-idle-check)] opacity-80'}`}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="py-[var(--list-row-pad-y)] pr-[var(--space-3)]">
+                          <input
+                            ref={(element) => {
+                              if (element) {
+                                subtaskInputRefs.current.set(subtask.id, element);
+                              } else {
+                                subtaskInputRefs.current.delete(subtask.id);
+                              }
+                            }}
+                            type="text"
+                            value={subtask.title}
+                            onChange={(event) => handleSubtaskTitleChange(subtask.id, event.target.value)}
+                            onBlur={handleSubtaskTitleCommit}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault();
+                                (event.currentTarget as HTMLInputElement).blur();
+                              }
+                              if (event.key === 'Escape') {
+                                event.preventDefault();
+                                event.currentTarget.blur();
+                              }
+                            }}
+                            placeholder="Untitled subtask"
+                            className={cn(
+                              'w-full border-0 bg-transparent text-[length:var(--list-row-font)] text-[color:var(--text-primary)] focus:outline-none focus:ring-0',
+                              subtask.isCompleted && 'line-through text-[color:var(--text-tertiary)] opacity-60',
+                            )}
+                          />
+                        </div>
+                        <div className="flex items-center border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
+                          <Popover
+                            open={activeSubtaskDatePicker === subtask.id}
+                            onOpenChange={(open) => setActiveSubtaskDatePicker(open ? subtask.id : null)}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex items-center rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-[length:var(--text-sm)] text-[color:var(--text-secondary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-primary)]"
+                                aria-label="Set subtask due date"
+                              >
+                                {dueDateLabel}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <CalendarComponent
+                                mode="single"
+                                selected={subtask.dueDate ? new Date(subtask.dueDate) : undefined}
+                                onSelect={(date) => handleSubtaskDueDateSelection(subtask.id, date)}
+                                initialFocus
+                              />
+                              {subtask.dueDate ? (
+                                <div className="border-t border-[var(--border-subtle)]">
+                                  <button
+                                    type="button"
+                                    className="w-full px-[var(--space-3)] py-[var(--space-2)] text-left text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]"
+                                    onClick={() => handleClearSubtaskDueDate(subtask.id)}
+                                  >
+                                    Clear due date
+                                  </button>
+                                </div>
+                              ) : null}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {subtaskMenu ? (
+                  <div
+                    ref={subtaskMenuRef}
+                    className="fixed z-[var(--z-popover)] min-w-[200px] rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)] p-[var(--space-1)] shadow-[var(--elevation-lg)]"
+                    style={{ left: subtaskMenu.x, top: subtaskMenu.y }}
+                  >
+                    <button
+                      type="button"
+                      disabled={!activeSubtask}
+                      onClick={() => {
+                        if (!activeSubtask) return;
+                        handleToggleSubtaskCompletion(activeSubtask.id, !activeSubtask.isCompleted);
+                        closeSubtaskMenu();
+                      }}
+                      className="flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] text-[color:var(--text-primary)] hover:bg-[var(--hover-bg)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <CheckSquare className="size-4" />
+                      {activeSubtask?.isCompleted ? 'Mark as not completed' : 'Mark completed'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!activeSubtask}
+                      onClick={() => {
+                        if (!activeSubtask) return;
+                        focusSubtaskInput(activeSubtask.id);
+                        closeSubtaskMenu();
+                      }}
+                      className="flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] text-[color:var(--text-primary)] hover:bg-[var(--hover-bg)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Edit className="size-4" />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!activeSubtask}
+                      onClick={() => {
+                        if (!activeSubtask) return;
+                        handleDuplicateSubtask(activeSubtask.id);
+                        closeSubtaskMenu();
+                      }}
+                      className="flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] text-[color:var(--text-primary)] hover:bg-[var(--hover-bg)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Copy className="size-4" />
+                      Duplicate
+                    </button>
+                    <div className="my-[var(--space-1)] h-px bg-[var(--border-subtle)]" />
+                    <button
+                      type="button"
+                      disabled={!activeSubtask}
+                      onClick={() => {
+                        if (!activeSubtask) return;
+                        handleDeleteSubtask(activeSubtask.id);
+                        closeSubtaskMenu();
+                      }}
+                      className="flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-left text-[length:var(--text-sm)] text-[color:var(--danger)] hover:bg-[color-mix(in_oklab,var(--danger)_12%,transparent)] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Trash className="size-4" />
+                      Delete
+                    </button>
+                  </div>
+                ) : null}
+                <div className="border-t border-[var(--border-divider)]">
+                  {isSubtaskComposerOpen ? (
+                    <div className="flex flex-col gap-[var(--space-2)] px-[var(--list-row-pad-x)] py-[var(--space-3)]">
+                      <div className="flex items-center gap-[var(--space-2)]">
+                        <div
+                          className="grid size-[var(--check-size)] place-items-center rounded-[var(--radius-full)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]"
+                          aria-hidden
+                        />
+                        <input
+                          ref={newSubtaskInputRef}
+                          type="text"
+                          value={newSubtaskTitle}
+                          onChange={(event) => setNewSubtaskTitle(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              handleAddSubtask();
+                            } else if (event.key === 'Escape') {
+                              event.preventDefault();
+                              handleCancelNewSubtask();
+                            }
+                          }}
+                          placeholder="Write a task name"
+                          className="flex-1 border-0 bg-transparent text-[length:var(--text-sm)] text-[color:var(--text-primary)] placeholder:text-[color:var(--text-tertiary)] focus:outline-none"
+                          aria-label="New subtask name"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-[var(--space-2)]">
+                        <div className="flex items-center gap-[var(--space-2)]">
+                          <Popover open={newSubtaskDateOpen} onOpenChange={setNewSubtaskDateOpen}>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className={cn(
+                                  'grid size-8 place-items-center rounded-[var(--radius-sm)] transition-colors',
+                                  newSubtaskDueDate
+                                    ? 'bg-[var(--bg-surface-elevated)] text-[color:var(--text-primary)]'
+                                    : 'text-[color:var(--text-tertiary)] hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-secondary)]',
+                                )}
+                                aria-label={
+                                  newSubtaskDueDate
+                                    ? `Change due date (${newSubtaskDueDate})`
+                                    : 'Set subtask due date'
+                                }
+                              >
+                                <Calendar className="size-4" aria-hidden />
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                              <CalendarComponent
+                                mode="single"
+                                selected={newSubtaskSelectedDate}
+                                onSelect={handleNewSubtaskDateSelection}
+                                initialFocus
+                              />
+                              {newSubtaskDueDate ? (
+                                <div className="border-t border-[var(--border-subtle)]">
+                                  <button
+                                    type="button"
+                                    className="w-full px-[var(--space-3)] py-[var(--space-2)] text-left text-[length:var(--text-xs)] text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)]"
+                                    onClick={() => {
+                                      setNewSubtaskDueDate(undefined);
+                                      setNewSubtaskDateOpen(false);
+                                    }}
+                                  >
+                                    Clear due date
+                                  </button>
+                                </div>
+                              ) : null}
+                            </PopoverContent>
+                          </Popover>
+                          {newSubtaskDueDate ? (
+                            <span className="inline-flex items-center gap-[var(--space-1)] rounded-[var(--radius-sm)] bg-[var(--bg-surface-elevated)] px-[var(--space-2)] py-[var(--space-1_5)] text-[length:var(--text-xs)] text-[color:var(--text-secondary)]">
+                              <Calendar className="size-3" aria-hidden />
+                              {format(newSubtaskSelectedDate ?? new Date(newSubtaskDueDate), 'MMM d')}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="flex items-center gap-[var(--space-2)]">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleCancelNewSubtask}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleAddSubtask}
+                            disabled={!newSubtaskTitle.trim()}
+                          >
+                            Add subtask
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-[var(--space-2)] px-[var(--list-row-pad-x)] py-[var(--space-3)] text-left text-[length:var(--text-sm)] text-[color:var(--text-tertiary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[color:var(--text-primary)]"
+                      onClick={() => setIsSubtaskComposerOpen(true)}
+                    >
+                      <Plus className="size-4" aria-hidden />
+                      Add subtask...
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Sticky footer */}
         <footer className="sticky bottom-0 bg-[var(--bg-panel)] py-[var(--space-4)] px-[var(--space-6)] border-t border-[color:var(--border-subtle)] flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Close
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setEdited((prev) => {
+                if (!prev) return prev;
+                const cleared: Task = {
+                  ...prev,
+                  description: undefined,
+                  dueDate: undefined,
+                  priority: 'none',
+                  labels: [],
+                  subtasks: [],
+                };
+                onUpdateTask(cleared);
+                return cleared;
+              });
+
+              setIsSubtaskComposerOpen(false);
+              setNewSubtaskTitle('');
+              setNewSubtaskDueDate(undefined);
+              setNewSubtaskDateOpen(false);
+              setActiveSubtaskDatePicker(null);
+              setLabelInput('');
+            }}
+          >
+            Clear fields
           </Button>
           <Button
             variant="ghost"

@@ -7,6 +7,15 @@
 - Rust + Cargo (stable)
 - Tauri CLI (via devDependency)
 
+## Environment
+Create a `.env` file in the project root with your Google OAuth desktop credentials:
+```
+VITE_GOOGLE_OAUTH_CLIENT_ID=your_client_id.apps.googleusercontent.com
+VITE_GOOGLE_OAUTH_CLIENT_SECRET=your_client_secret   # leave blank if none
+VITE_GOOGLE_OAUTH_REDIRECT_URI=http://127.0.0.1:52315/oauth2callback
+```
+Restart the dev server after updating these values so Tauri picks them up.
+
 ## Dev
 - npm install
 - npm run dev (web only)
