@@ -386,7 +386,7 @@ function TaskSidePanel({
                         type="button"
                         data-due-state={dueState}
                         className={cn(DUE_PILL_BASE_CLASS, DUE_TONE_CLASSES[dueState])}
-                        aria-label={dueDisplayLabel ? `Change due date (${dueDisplayLabel})` : 'Change due date'}
+                        aria-label={dueDisplayLabel ? `Choose date (${dueDisplayLabel})` : 'Choose date'}
                       >
                         <Calendar
                           className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
@@ -398,7 +398,7 @@ function TaskSidePanel({
                     ) : (
                       <button
                         type="button"
-                        aria-label="Set due date"
+                        aria-label="Choose date"
                         className={EMPTY_META_BUTTON_CLASS}
                       >
                         <Calendar
@@ -440,7 +440,7 @@ function TaskSidePanel({
                   {currentPriority === 'none' ? (
                     <button
                       type="button"
-                      aria-label="Set priority"
+                      aria-label="Choose priority"
                       className={EMPTY_META_BUTTON_CLASS}
                     >
                       <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
@@ -448,7 +448,7 @@ function TaskSidePanel({
                   ) : (
                     <button
                       type="button"
-                      aria-label={`Change priority (${getPriorityLabel(currentPriority)})`}
+                      aria-label={`Choose priority (${getPriorityLabel(currentPriority)})`}
                       className={cn(
                         badgeVariants({
                           variant: 'soft',
@@ -497,7 +497,7 @@ function TaskSidePanel({
                     </button>
                   </div>
                 </PopoverContent>
-              </Popover>
+                </Popover>
             </div>
 
             <div className="flex items-center justify-between rounded-[var(--radius-md)] border border-transparent px-[var(--space-3)] py-[var(--space-2_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--hover-bg)]">
@@ -517,7 +517,7 @@ function TaskSidePanel({
                   <PopoverTrigger asChild>
                     <button
                       className={EMPTY_META_BUTTON_CLASS}
-                      aria-label="Add labels"
+                      aria-label="Choose labels"
                     >
                       <Tag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
                     </button>
@@ -585,7 +585,7 @@ function TaskSidePanel({
                     </div>
                   </PopoverContent>
                 </Popover>
-                {selectedLabels.length > 0 ? (
+                {selectedLabels.length > 0 && (
                   <div className="flex min-w-0 flex-wrap items-center justify-end gap-[var(--space-1)]">
                     {selectedLabels.map((label) => (
                       <Badge
@@ -599,8 +599,6 @@ function TaskSidePanel({
                       </Badge>
                     ))}
                   </div>
-                ) : (
-                  <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">No labels</span>
                 )}
               </div>
             </div>
@@ -637,7 +635,7 @@ function TaskSidePanel({
                       <button
                         type="button"
                         className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-secondary)]"
-                        aria-label="Set subtask due date"
+                        aria-label="Choose subtask due date"
                       >
                         <Calendar className="size-4" aria-hidden />
                       </button>
@@ -686,7 +684,7 @@ function TaskSidePanel({
                     <button
                       type="button"
                       className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-secondary)]"
-                      aria-label="Set new subtask due date"
+                      aria-label="Choose subtask due date"
                     >
                       <Calendar className="size-4" aria-hidden />
                     </button>

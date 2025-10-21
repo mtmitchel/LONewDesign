@@ -595,7 +595,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                     {dueState === 'none' ? (
                       <button
                         type="button"
-                        aria-label="Set due date"
+                        aria-label="Choose date"
                         className={EMPTY_META_BUTTON_CLASS}
                       >
                         <Calendar
@@ -614,7 +614,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                           DUE_TONE_CLASSES[dueState],
                           dateOpen && 'ring-1 ring-[color:var(--border-strong)]'
                         )}
-                        aria-label={dueDisplayLabel ? `Change due date (${dueDisplayLabel})` : 'Change due date'}
+                        aria-label={dueDisplayLabel ? `Choose date (${dueDisplayLabel})` : 'Choose date'}
                       >
                         <Calendar
                           className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
@@ -652,7 +652,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                     {priority === 'none' || !priorityTone ? (
                       <button
                         type="button"
-                        aria-label="Set priority"
+                        aria-label="Choose priority"
                         className={EMPTY_META_BUTTON_CLASS}
                       >
                         <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
@@ -660,7 +660,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                     ) : (
                       <button
                         type="button"
-                        aria-label={`Change priority (${priorityLabel})`}
+                        aria-label={`Choose priority (${priorityLabel})`}
                         className={cn(
                           badgeVariants({ variant: 'soft', tone: priorityTone, size: 'sm' }),
                           CHIP_CLASS,
@@ -765,7 +765,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                       <button
                         type="button"
                         className={EMPTY_META_BUTTON_CLASS}
-                        aria-label="Add labels"
+                        aria-label="Choose labels"
                       >
                         <Tag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
                       </button>
@@ -899,7 +899,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
 
                     const dueButtonLabel =
                       dueChipState === 'none'
-                        ? 'Set subtask due date'
+                        ? 'Choose subtask due date'
                         : `Change subtask due date (${dueChipLabel})`;
                     const dueButtonClass = cn(
                       CHIP_CLASS,
@@ -1118,7 +1118,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                                 aria-label={
                                   newSubtaskDueDate
                                     ? `Change due date (${newSubtaskDueDate})`
-                                    : 'Set subtask due date'
+                                    : 'Choose subtask due date'
                                 }
                               >
                                 <Calendar className="size-4" aria-hidden />

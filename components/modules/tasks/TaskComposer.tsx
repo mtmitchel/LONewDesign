@@ -270,7 +270,7 @@ export function TaskComposer({ onAddTask, onCancel, availableLabels }: TaskCompo
                       ? 'text-[color:var(--text-primary)] bg-[var(--bg-surface-elevated)]'
                       : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
                   }`}
-                  aria-label="Set priority"
+                  aria-label="Choose priority"
                 >
                   <Flag className="w-4 h-4" />
                 </button>

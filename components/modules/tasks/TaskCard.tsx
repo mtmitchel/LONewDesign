@@ -20,7 +20,6 @@ import {
   AlertTriangle,
   Flag,
   Calendar,
-  Tag,
   ListChecks,
 } from 'lucide-react';
 
@@ -137,20 +136,18 @@ export function TaskCard({
   const showSubtasksIndicator = totalSubtasks > 0;
 
   const dueToneClass = DUE_TONE_CLASSES[dueMeta.state];
-  const dueContent = dueMeta.label ? (
-    <span data-due-state={dueMeta.state} className={cn(DUE_PILL_BASE_CLASS, dueToneClass)}>
-      <Calendar
-        className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
-        strokeWidth={1.25}
-        aria-hidden
-      />
-      <span>{dueMeta.label}</span>
-    </span>
-  ) : (
-    <button type="button" aria-label="Set due date" className={EMPTY_META_BUTTON_CLASS}>
-      <Calendar className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
-    </button>
-  );
+  const dueContent = dueMeta.label
+    ? (
+        <span data-due-state={dueMeta.state} className={cn(DUE_PILL_BASE_CLASS, dueToneClass)}>
+          <Calendar
+            className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
+            strokeWidth={1.25}
+            aria-hidden
+          />
+          <span>{dueMeta.label}</span>
+        </span>
+      )
+    : null;
 
   const priorityContent = priority !== 'none'
     ? (
@@ -168,11 +165,7 @@ export function TaskCard({
           <span>{priority[0].toUpperCase() + priority.slice(1)}</span>
         </span>
       )
-    : (
-        <button type="button" aria-label="Set priority" className={EMPTY_META_BUTTON_CLASS}>
-          <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
-        </button>
-      );
+    : null;
 
   const labelContent = hasLabels
     ? labels.map((label, idx) => {
@@ -190,16 +183,7 @@ export function TaskCard({
           </Badge>
         );
       })
-    : [
-        <button
-          key="labels-button"
-          type="button"
-          aria-label="Add labels"
-          className={EMPTY_META_BUTTON_CLASS}
-        >
-          <Tag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
-        </button>,
-      ];
+    : [];
 
   return (
     <ContextMenu>
@@ -246,17 +230,19 @@ export function TaskCard({
                       {hasConflict && <AlertTriangle className="h-4 w-4 text-yellow-500 inline-block mr-2" />}
                       {taskTitle}
                     </h4>
-                    <div className="mt-[var(--space-1)] flex flex-wrap items-center gap-[var(--chip-gap)]">
-                      {dueContent}
-                      {priorityContent}
-                      {labelContent}
-                      {showSubtasksIndicator && (
-                        <span className="inline-flex items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
-                          <ListChecks className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
-                          {formatSubtaskLabel(completedSubtasks, totalSubtasks)}
-                        </span>
-                      )}
-                    </div>
+                    {(dueContent || priorityContent || hasLabels || showSubtasksIndicator) && (
+                      <div className="mt-[var(--space-1)] flex flex-wrap items-center gap-[var(--chip-gap)]">
+                        {dueContent}
+                        {priorityContent}
+                        {labelContent}
+                        {showSubtasksIndicator && (
+                          <span className="inline-flex items-center gap-[var(--space-1)] text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
+                            <ListChecks className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
+                            {formatSubtaskLabel(completedSubtasks, totalSubtasks)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
