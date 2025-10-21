@@ -22,6 +22,10 @@ pub async fn get_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 pub async fn init_database(app: &tauri::AppHandle) -> Result<SqlitePool, String> {
+    if let Some(pool) = database_pool() {
+        return Ok(pool);
+    }
+
     let db_path = get_db_path(app).await?;
     let db_path_string = db_path.to_string_lossy().to_string();
     let db_url = format!("sqlite://{}?mode=rwc", db_path_string);
@@ -77,6 +81,14 @@ pub async fn init_database(app: &tauri::AppHandle) -> Result<SqlitePool, String>
         .clone();
 
     Ok(pool)
+}
+
+pub fn database_pool() -> Option<SqlitePool> {
+    POOL.get().cloned()
+}
+
+pub fn is_initialized() -> bool {
+    POOL.get().is_some()
 }
 
 pub async fn acquire_write_lock() -> MutexGuard<'static, ()> {

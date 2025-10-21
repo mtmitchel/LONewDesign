@@ -98,6 +98,11 @@ async fn process_queue_entry(
 ) -> Result<(), String> {
     let _write_guard = db::acquire_write_lock().await;
 
+    println!(
+        "[subtask_sync] processing queue entry {} op={} task={}",
+        entry.id, entry.operation, entry.task_id
+    );
+
     match entry.operation.as_str() {
         "create" => process_create_operation(db_pool, http_client, access_token, entry).await,
         "update" => process_update_operation(db_pool, http_client, access_token, entry).await,
@@ -371,6 +376,11 @@ async fn process_subtask_create_operation(
         return Ok(());
     };
 
+    println!(
+        "[subtask_sync] create op for subtask {} (task={}, parent_google_id={:?})",
+        payload.subtask_id, entry.task_id, payload.parent_google_id
+    );
+
     let parent_google_id = match payload
         .parent_google_id
         .clone()
@@ -402,6 +412,11 @@ async fn process_subtask_create_operation(
     )
     .await?;
 
+    println!(
+        "[subtask_sync] google created subtask {} => {}",
+        payload.subtask_id, google_id
+    );
+
     let mut metadata = record_to_metadata(&record);
     metadata.google_id = Some(google_id);
     metadata.parent_google_id = Some(parent_google_id);
@@ -422,6 +437,11 @@ async fn process_subtask_update_operation(
         cleanup_queue_entry(db_pool, &entry.id).await?;
         return Ok(());
     };
+
+    println!(
+        "[subtask_sync] update op for subtask {} (task={}, google_id={:?})",
+        payload.subtask_id, entry.task_id, payload.google_id
+    );
 
     let parent_google_id = match payload
         .parent_google_id
@@ -465,6 +485,11 @@ async fn process_subtask_update_operation(
     )
     .await?;
 
+    println!(
+        "[subtask_sync] google updated subtask {}",
+        payload.subtask_id
+    );
+
     let mut metadata = record_to_metadata(&record);
     metadata.google_id = Some(google_id);
     metadata.parent_google_id = Some(parent_google_id);
@@ -483,6 +508,10 @@ async fn process_subtask_delete_operation(
 
     if let Some(record) = fetch_subtask_record(db_pool, &payload.subtask_id).await? {
         if let Some(google_id) = payload.google_id.clone().or(record.google_id.clone()) {
+            println!(
+                "[subtask_sync] delete op for subtask {} (google_id={})",
+                payload.subtask_id, google_id
+            );
             google_client::delete_google_subtask(
                 http_client,
                 access_token,
@@ -576,7 +605,14 @@ async fn persist_subtask_sync_success(
 
     tx.commit()
         .await
-        .map_err(|e| format!("Failed to commit subtask sync for {}: {}", normalized.id, e))
+        .map_err(|e| format!("Failed to commit subtask sync for {}: {}", normalized.id, e))?;
+
+    println!(
+        "[subtask_sync] subtask {} sync success (google_id={:?})",
+        normalized.id, normalized.google_id
+    );
+
+    Ok(())
 }
 
 async fn finalize_subtask_delete(
@@ -803,10 +839,20 @@ async fn enqueue_waiting_subtasks_for_parent(
         tx.commit()
             .await
             .map_err(|e| format!("Failed to commit no-op subtask transaction: {}", e))?;
+        println!(
+            "[subtask_sync] no pending subtasks for parent {} (google_id={})",
+            parent_task.id, parent_google_id
+        );
         return Ok(());
     }
 
     let now = chrono::Utc::now().timestamp();
+
+    println!(
+        "[subtask_sync] releasing {} pending subtasks for parent {}",
+        waiting.len(),
+        parent_task.id
+    );
 
     for row in waiting {
         sqlx::query(
@@ -856,11 +902,21 @@ async fn enqueue_waiting_subtasks_for_parent(
         .execute(&mut *tx)
         .await
         .map_err(|e| format!("Failed to enqueue waiting subtask {}: {}", row.id, e))?;
+
+        println!(
+            "[subtask_sync] enqueued waiting subtask {} (queue_id={})",
+            row.id, sync_queue_id
+        );
     }
 
     tx.commit()
         .await
         .map_err(|e| format!("Failed to commit waiting subtask enqueue: {}", e))?;
+
+    println!(
+        "[subtask_sync] committed enqueue for pending subtasks of parent {}",
+        parent_task.id
+    );
 
     Ok(())
 }

@@ -122,8 +122,22 @@ async fn enqueue_subtask_operations(
     diff: &SubtaskDiff,
     now: i64,
 ) -> Result<(), String> {
+    if diff.has_changes() {
+        println!(
+            "[subtask_sync] enqueue diff for task {} (created={}, updated={}, deleted={})",
+            task_id,
+            diff.created.len(),
+            diff.updated.len(),
+            diff.deleted.len()
+        );
+    }
+
     for metadata in &diff.created {
         if metadata.parent_google_id.is_none() {
+            println!(
+                "[subtask_sync] deferring create for subtask {} (missing parent google id)",
+                metadata.id
+            );
             mark_subtask_waiting(tx, &metadata.id, now).await?;
             continue;
         }
@@ -137,11 +151,19 @@ async fn enqueue_subtask_operations(
             "google_payload": metadata.to_google_payload(),
         });
 
+        println!(
+            "[subtask_sync] enqueue subtask_create for {} under parent {:?}",
+            metadata.id, metadata.parent_google_id
+        );
         enqueue_subtask_queue_entry(tx, task_id, "subtask_create", payload, now).await?;
     }
 
     for metadata in &diff.updated {
         if metadata.parent_google_id.is_none() {
+            println!(
+                "[subtask_sync] deferring update for subtask {} (missing parent google id)",
+                metadata.id
+            );
             mark_subtask_waiting(tx, &metadata.id, now).await?;
             continue;
         }
@@ -155,6 +177,10 @@ async fn enqueue_subtask_operations(
             "google_payload": metadata.to_google_payload(),
         });
 
+        println!(
+            "[subtask_sync] enqueue subtask_update for {} (google_id={:?})",
+            metadata.id, metadata.google_id
+        );
         enqueue_subtask_queue_entry(tx, task_id, "subtask_update", payload, now).await?;
     }
 
@@ -167,6 +193,10 @@ async fn enqueue_subtask_operations(
                 "google_id": google_id,
             });
 
+            println!(
+                "[subtask_sync] enqueue subtask_delete for {} (google_id={})",
+                row.id, google_id
+            );
             enqueue_subtask_queue_entry(tx, task_id, "subtask_delete", payload, now).await?;
         }
     }
@@ -207,6 +237,10 @@ async fn mark_subtask_waiting(
     subtask_id: &str,
     now: i64,
 ) -> Result<(), String> {
+    println!(
+        "[subtask_sync] marking subtask {} as pending parent google id",
+        subtask_id
+    );
     sqlx::query(
         "UPDATE task_subtasks SET sync_state = 'pending_parent', updated_at = ? WHERE id = ?",
     )
@@ -549,7 +583,9 @@ pub async fn update_task_command(
     let sync_queue_id = Uuid::new_v4().to_string();
     let sync_payload = serde_json::to_string(&normalized_metadata.serialize_for_google()).unwrap();
 
-    sqlx::query("DELETE FROM sync_queue WHERE task_id = ?")
+    sqlx::query(
+        "DELETE FROM sync_queue WHERE task_id = ? AND operation IN ('create', 'update', 'delete', 'move')",
+    )
         .bind(&task_id)
         .execute(&mut *tx)
         .await
@@ -935,6 +971,14 @@ async fn replace_subtasks(
             .clone()
             .or_else(|| parent_google_id_global.clone());
 
+        println!(
+            "[subtask_sync] evaluating subtask {} (existing={}, parent_google_id={:?}, google_id={:?})",
+            subtask_id,
+            existing_map.contains_key(&subtask_id),
+            parent_google_id,
+            google_id
+        );
+
         if let Some(existing) = existing_map.get(&subtask_id) {
             seen_ids.insert(subtask_id.clone());
 
@@ -997,6 +1041,10 @@ async fn replace_subtasks(
             .map_err(|e| format!("Failed updating subtask {}: {}", subtask_id, e))?;
 
             if sync_state == "pending" {
+                println!(
+                    "[subtask_sync] subtask {} marked for update with dirty fields {:?}",
+                    subtask_id, dirty_fields
+                );
                 diff.updated.push(task_metadata::SubtaskMetadata {
                     google_id,
                     parent_google_id,
@@ -1022,9 +1070,13 @@ async fn replace_subtasks(
                 .bind(now)
                 .bind(now)
                 .execute(tx.as_mut())
-                .await
-                .map_err(|e| format!("Failed inserting subtask for {}: {}", task_id, e))?;
+            .await
+            .map_err(|e| format!("Failed inserting subtask for {}: {}", task_id, e))?;
 
+            println!(
+                "[subtask_sync] subtask {} recorded as new (parent_google_id={:?})",
+                subtask_id, parent_google_id
+            );
             diff.created.push(task_metadata::SubtaskMetadata {
                 google_id: normalized.google_id.clone(),
                 parent_google_id: parent_google_id.clone(),
@@ -1039,9 +1091,13 @@ async fn replace_subtasks(
                 .bind(now)
                 .bind(&subtask_id)
                 .execute(tx.as_mut())
-                .await
-                .map_err(|e| format!("Failed marking subtask {} for deletion: {}", subtask_id, e))?;
+            .await
+            .map_err(|e| format!("Failed marking subtask {} for deletion: {}", subtask_id, e))?;
             diff.deleted.push(row);
+            println!(
+                "[subtask_sync] subtask {} flagged for deletion (no longer present)",
+                subtask_id
+            );
         }
     }
 

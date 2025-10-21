@@ -106,6 +106,10 @@ pub async fn create_google_subtask(
     payload: serde_json::Value,
 ) -> Result<String, String> {
     let url = format!("{}/lists/{}/tasks", GOOGLE_TASKS_BASE_URL, list_id);
+    println!(
+        "[subtask_sync][http] POST {} parent={} payload={}",
+        url, parent_google_id, payload
+    );
     let response = http_client
         .post(&url)
         .bearer_auth(access_token)
@@ -115,11 +119,20 @@ pub async fn create_google_subtask(
         .await
         .map_err(|e| format!("Failed to create Google subtask: {}", e))?;
 
-    if !response.status().is_success() {
-        let status = response.status();
+    let status = response.status();
+    if !status.is_success() {
         let text = response.text().await.unwrap_or_default();
+        println!(
+            "[subtask_sync][http] subtask create failed status={} body={}",
+            status, text
+        );
         return Err(format!("Google API error {}: {}", status, text));
     }
+
+    println!(
+        "[subtask_sync][http] subtask create succeeded status={}",
+        status
+    );
 
     let json: serde_json::Value = response
         .json()
@@ -144,6 +157,7 @@ pub async fn update_google_subtask(
         "{}/lists/{}/tasks/{}",
         GOOGLE_TASKS_BASE_URL, list_id, google_id
     );
+    println!("[subtask_sync][http] PATCH {} payload={}", url, payload);
 
     let response = http_client
         .patch(&url)
@@ -153,11 +167,20 @@ pub async fn update_google_subtask(
         .await
         .map_err(|e| format!("Failed to update Google subtask: {}", e))?;
 
-    if !response.status().is_success() {
-        let status = response.status();
+    let status = response.status();
+    if !status.is_success() {
         let text = response.text().await.unwrap_or_default();
+        println!(
+            "[subtask_sync][http] subtask update failed status={} body={}",
+            status, text
+        );
         return Err(format!("Google API error {}: {}", status, text));
     }
+
+    println!(
+        "[subtask_sync][http] subtask update succeeded status={}",
+        status
+    );
 
     Ok(())
 }
@@ -173,6 +196,7 @@ pub async fn delete_google_subtask(
         "{}/lists/{}/tasks/{}",
         GOOGLE_TASKS_BASE_URL, list_id, google_id
     );
+    println!("[subtask_sync][http] DELETE {}", url);
 
     let response = http_client
         .delete(&url)
@@ -181,11 +205,19 @@ pub async fn delete_google_subtask(
         .await
         .map_err(|e| format!("Failed to delete Google subtask: {}", e))?;
 
-    if response.status().is_success() || response.status() == StatusCode::NOT_FOUND {
+    let status = response.status();
+    if status.is_success() || status == StatusCode::NOT_FOUND {
+        println!(
+            "[subtask_sync][http] subtask delete succeeded status={}",
+            status
+        );
         Ok(())
     } else {
-        let status = response.status();
         let text = response.text().await.unwrap_or_default();
+        println!(
+            "[subtask_sync][http] subtask delete failed status={} body={}",
+            status, text
+        );
         Err(format!("Google API delete error {}: {}", status, text))
     }
 }

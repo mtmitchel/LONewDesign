@@ -135,6 +135,10 @@ fn main() {
                     .await
                     .expect("Failed to initialize database");
                 println!("[main] Database initialized, creating sync service");
+                println!(
+                    "[main] Using shared DB pool (already_initialized={})",
+                    db::is_initialized()
+                );
                 let http_client = reqwest::Client::builder()
                     .connect_timeout(std::time::Duration::from_secs(15))
                     .timeout(std::time::Duration::from_secs(120))
