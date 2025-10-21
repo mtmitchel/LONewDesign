@@ -53,6 +53,23 @@ const CHIP_CLASS =
 const LABEL_CHIP_BASE_CLASS =
   'bg-[color:var(--chip-label-bg)] text-[color:var(--chip-label-fg)] shadow-[var(--chip-inset-shadow)] hover:bg-[color:color-mix(in_oklab,var(--chip-label-bg)_calc(100%+var(--chip-hover-bg-boost)),transparent)]';
 
+type DueState = 'none' | 'scheduled' | 'today' | 'overdue';
+
+const EMPTY_META_BUTTON_CLASS =
+  'h-8 w-8 rounded-[var(--radius-md)] grid place-items-center text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)] hover:bg-[color:var(--caret-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--bg-panel)] transition-colors';
+
+const DUE_PILL_BASE_CLASS =
+  'inline-flex items-center gap-[var(--space-1)] h-[var(--chip-height)] rounded-[var(--radius-md)] px-[var(--space-2)] text-[length:var(--text-sm)] font-medium shadow-[inset_0_0_0_1px_var(--border-subtle)] transition-colors';
+
+const DUE_TONE_CLASSES: Record<DueState, string> = {
+  none: 'bg-transparent text-[color:var(--text-tertiary)]',
+  scheduled: 'bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)]',
+  today:
+    'bg-[color-mix(in_oklab,var(--due-today)_12%,transparent)] text-[color:color-mix(in_oklab,var(--due-today)_60%,var(--text-secondary))] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--due-today)_35%,transparent)]',
+  overdue:
+    'bg-[color-mix(in_oklab,var(--due-overdue)_12%,transparent)] text-[color:color-mix(in_oklab,var(--due-overdue)_60%,var(--text-secondary))] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--due-overdue)_35%,transparent)]',
+};
+
 const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
 const LABEL_HUES = new Set(['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']);
 const getLabelHue = (color: string | undefined) => {
@@ -508,8 +525,15 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
   const priority: Task['priority'] = edited.priority ?? 'none';
   const priorityLabel = priority !== 'none' ? priority[0].toUpperCase() + priority.slice(1) : '';
   const priorityTone = priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : priority === 'low' ? 'low' : undefined;
-  const isOverdue = dueDate ? new Date(edited.dueDate!).getTime() < Date.now() && !isCompleted : false;
-  const isToday = dueDate ? format(dueDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') : false;
+  const dueState: DueState = (() => {
+    if (!dueDate) return 'none';
+    const todayKey = format(new Date(), 'yyyy-MM-dd');
+    const targetKey = format(dueDate, 'yyyy-MM-dd');
+    if (targetKey === todayKey) return 'today';
+    if (!isCompleted && dueDate.getTime() < Date.now()) return 'overdue';
+    return 'scheduled';
+  })();
+  const dueDisplayLabel = dueDate ? format(dueDate, 'EEE, MMM d') : undefined;
   return (
     <>
       {/* overlay */}
@@ -568,25 +592,38 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
               <div className={VALUE_CELL_CLASS}>
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
                   <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      data-due-state={
-                        dueDate ? (isOverdue ? 'overdue' : isToday ? 'today' : 'scheduled') : 'none'
-                      }
-                      className={cn(
-                        CHIP_CLASS,
-                        'justify-center bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)] hover:bg-[var(--hover-bg)] focus-visible:ring-offset-[var(--bg-panel)]',
-                        !dueDate && 'px-[var(--space-1_5)]',
-                        dateOpen && 'border-[color:var(--border-strong)]'
-                      )}
-                      aria-label={dueDate ? `Change due date (${format(dueDate, 'EEE, MMM d')})` : 'Add due date'}
-                    >
-                      {dueDate ? (
-                        format(dueDate, 'EEE, MMM d')
-                      ) : (
-                        <Calendar className="size-[var(--icon-md)]" aria-hidden />
-                      )}
-                    </button>
+                    {dueState === 'none' ? (
+                      <button
+                        type="button"
+                        aria-label="Set due date"
+                        className={EMPTY_META_BUTTON_CLASS}
+                      >
+                        <Calendar
+                          className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
+                          strokeWidth={1.25}
+                          aria-hidden
+                        />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        data-due-state={dueState}
+                        className={cn(
+                          DUE_PILL_BASE_CLASS,
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--bg-panel)]',
+                          DUE_TONE_CLASSES[dueState],
+                          dateOpen && 'ring-1 ring-[color:var(--border-strong)]'
+                        )}
+                        aria-label={dueDisplayLabel ? `Change due date (${dueDisplayLabel})` : 'Change due date'}
+                      >
+                        <Calendar
+                          className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
+                          strokeWidth={1.25}
+                          aria-hidden
+                        />
+                        <span>{dueDisplayLabel}</span>
+                      </button>
+                    )}
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
@@ -615,13 +652,10 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                     {priority === 'none' || !priorityTone ? (
                       <button
                         type="button"
-                        className={cn(
-                          CHIP_CLASS,
-                          'justify-center bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] hover:bg-[var(--hover-bg)] focus-visible:ring-offset-[var(--bg-panel)]'
-                        )}
                         aria-label="Set priority"
+                        className={EMPTY_META_BUTTON_CLASS}
                       >
-                        <Flag className="size-[var(--icon-md)]" aria-hidden />
+                        <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
                       </button>
                     ) : (
                       <button
@@ -634,7 +668,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                           priorityOpen && 'border-[color:var(--border-strong)]'
                         )}
                       >
-                        <Flag className="size-[var(--icon-md)]" aria-hidden />
+                        <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
                         <span>{priorityLabel}</span>
                       </button>
                     )}
@@ -730,14 +764,10 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                     ) : (
                       <button
                         type="button"
-                        className={cn(
-                          CHIP_CLASS,
-                          'justify-center bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] hover:bg-[var(--hover-bg)] focus-visible:ring-offset-[var(--bg-panel)]',
-                          labelsOpen && 'border-[color:var(--border-strong)] text-[color:var(--text-primary)]',
-                        )}
+                        className={EMPTY_META_BUTTON_CLASS}
                         aria-label="Add labels"
                       >
-                        <Tag className="size-[var(--icon-md)]" aria-hidden />
+                        <Tag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
                       </button>
                     )}
                   </PopoverTrigger>

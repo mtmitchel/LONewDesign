@@ -1,11 +1,11 @@
 import * as React from 'react';
-import { Calendar, Check, ChevronDown, Flag, Plus, Tag, Trash2, X } from 'lucide-react';
+import { Calendar, Check, Flag, Plus, Tag, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Checkbox } from '../../ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Calendar as CalendarComponent } from '../../ui/calendar';
-import { Badge } from '../../ui/badge';
+import { Badge, badgeVariants } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { cn } from '../../ui/utils';
 import { PaneHeader } from '../../layout/PaneHeader';
@@ -22,6 +22,23 @@ const chipStyle = (color: string) => ({
   color: `color-mix(in oklab, ${color} 85%, var(--text-primary))`,
   boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${color} 35%, transparent)`,
 });
+
+type DueState = 'none' | 'scheduled' | 'today' | 'overdue';
+
+const EMPTY_META_BUTTON_CLASS =
+  'h-8 w-8 rounded-[var(--radius-md)] grid place-items-center text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)] hover:bg-[color:var(--caret-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--quick-panel-bg)] transition-colors';
+
+const DUE_PILL_BASE_CLASS =
+  'inline-flex items-center gap-[var(--space-1)] h-[var(--chip-height)] rounded-[var(--radius-md)] px-[var(--space-2)] text-[length:var(--text-sm)] font-medium shadow-[inset_0_0_0_1px_var(--border-subtle)] transition-colors';
+
+const DUE_TONE_CLASSES: Record<DueState, string> = {
+  none: 'bg-transparent text-[color:var(--text-tertiary)]',
+  scheduled: 'bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)]',
+  today:
+    'bg-[color-mix(in_oklab,var(--due-today)_12%,transparent)] text-[color:color-mix(in_oklab,var(--due-today)_60%,var(--text-secondary))] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--due-today)_35%,transparent)]',
+  overdue:
+    'bg-[color-mix(in_oklab,var(--due-overdue)_12%,transparent)] text-[color:color-mix(in_oklab,var(--due-overdue)_60%,var(--text-secondary))] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--due-overdue)_35%,transparent)]',
+};
 
 const getTaskLabelName = (label: TaskLabel) => (typeof label === 'string' ? label : label.name);
 const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
@@ -292,8 +309,16 @@ function TaskSidePanel({
   }
 
   const dueDateValue = editedTask.dueDate ? parseDisplayDate(editedTask.dueDate) : undefined;
-  const hasDueDate = Boolean(dueDateValue);
-  const dueDateLabel = hasDueDate && dueDateValue ? format(dueDateValue, 'MMM d') : 'No due date';
+  const dueState: DueState = React.useMemo(() => {
+    if (!dueDateValue) return 'none';
+    const today = new Date();
+    const todayKey = format(today, 'yyyy-MM-dd');
+    const targetKey = format(dueDateValue, 'yyyy-MM-dd');
+    if (targetKey === todayKey) return 'today';
+    return dueDateValue.getTime() < today.getTime() ? 'overdue' : 'scheduled';
+  }, [dueDateValue]);
+  const dueDisplayLabel = dueDateValue ? format(dueDateValue, 'EEE, MMM d') : undefined;
+  const hasDueDate = dueState !== 'none';
   const currentPriority: Task['priority'] = editedTask.priority ?? 'none';
 
   const getPriorityLabel = (value: Task['priority']) =>
@@ -312,7 +337,7 @@ function TaskSidePanel({
         size="sm"
         className="flex items-center gap-[var(--space-1)]"
       >
-        <Flag className="h-3 w-3" aria-hidden />
+        <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
         <span>{getPriorityLabel(value)}</span>
       </Badge>
     );
@@ -356,22 +381,33 @@ function TaskSidePanel({
               <div className="flex items-center gap-[var(--space-2)]">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2_5)] py-[var(--space-1_5)] text-left transition-colors hover:bg-[var(--bg-surface-elevated)]"
-                    >
-                      <Calendar className="size-4 text-[color:var(--text-secondary)]" aria-hidden />
-                      <span
-                        className={cn(
-                          'text-[length:var(--text-sm)]',
-                          hasDueDate
-                            ? 'font-medium text-[color:var(--text-primary)]'
-                            : 'text-[color:var(--text-tertiary)]',
-                        )}
+                    {hasDueDate ? (
+                      <button
+                        type="button"
+                        data-due-state={dueState}
+                        className={cn(DUE_PILL_BASE_CLASS, DUE_TONE_CLASSES[dueState])}
+                        aria-label={dueDisplayLabel ? `Change due date (${dueDisplayLabel})` : 'Change due date'}
                       >
-                        {dueDateLabel}
-                      </span>
-                    </button>
+                        <Calendar
+                          className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
+                          strokeWidth={1.25}
+                          aria-hidden
+                        />
+                        <span>{dueDisplayLabel}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label="Set due date"
+                        className={EMPTY_META_BUTTON_CLASS}
+                      >
+                        <Calendar
+                          className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
+                          strokeWidth={1.25}
+                          aria-hidden
+                        />
+                      </button>
+                    )}
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <CalendarComponent
@@ -401,18 +437,31 @@ function TaskSidePanel({
               <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Priority</span>
               <Popover open={priorityPopoverOpen} onOpenChange={setPriorityPopoverOpen}>
                 <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="group inline-flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2_5)] py-[var(--space-1_5)] text-left transition-colors hover:bg-[var(--bg-surface-elevated)]"
-                    aria-label="Change priority"
-                  >
-                    {renderPriorityChip(currentPriority) ?? (
-                      <span className="text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">
-                        {getPriorityLabel(currentPriority)}
-                      </span>
-                    )}
-                    <ChevronDown className="size-4 text-[color:var(--text-tertiary)]" aria-hidden />
-                  </button>
+                  {currentPriority === 'none' ? (
+                    <button
+                      type="button"
+                      aria-label="Set priority"
+                      className={EMPTY_META_BUTTON_CLASS}
+                    >
+                      <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label={`Change priority (${getPriorityLabel(currentPriority)})`}
+                      className={cn(
+                        badgeVariants({
+                          variant: 'soft',
+                          tone: currentPriority === 'high' ? 'high' : currentPriority === 'medium' ? 'medium' : 'low',
+                          size: 'sm',
+                        }),
+                        'inline-flex h-[var(--chip-height)] items-center gap-[var(--space-1)] rounded-[var(--chip-radius)] px-[var(--chip-pad-x)] py-[var(--chip-pad-y)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-panel)]',
+                      )}
+                    >
+                      <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
+                      <span>{getPriorityLabel(currentPriority)}</span>
+                    </button>
+                  )}
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-56 p-2">
                   <div className="flex flex-col gap-[var(--space-1)]">
@@ -467,14 +516,10 @@ function TaskSidePanel({
                 >
                   <PopoverTrigger asChild>
                     <button
-                      className={`flex size-8 items-center justify-center rounded-[var(--radius-sm)] motion-safe:transition-colors duration-[var(--duration-fast)] ${
-                        selectedLabels.length
-                          ? 'text-[color:var(--text-primary)] bg-[var(--bg-surface-elevated)]'
-                          : 'text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] hover:bg-[var(--bg-surface-elevated)]'
-                      }`}
+                      className={EMPTY_META_BUTTON_CLASS}
                       aria-label="Add labels"
                     >
-                      <Tag className="w-4 h-4" />
+                      <Tag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent

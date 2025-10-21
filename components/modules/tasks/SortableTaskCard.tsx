@@ -45,6 +45,8 @@ export function SortableTaskCard({
         labels={task.labels ?? []}
         isCompleted={Boolean(task.isCompleted)}
         hasConflict={task.hasConflict}
+        subtaskCount={task.subtasks?.length ?? 0}
+        completedSubtaskCount={task.subtasks?.filter((subtask) => subtask.isCompleted).length ?? 0}
         onToggleCompletion={onToggleCompletion}
         onClick={onClick}
         onEdit={onEdit}
