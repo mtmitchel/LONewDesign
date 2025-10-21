@@ -1313,6 +1313,114 @@
   z-index: var(--z-overlay);
 }
 
+[data-label-color="blue"] {
+  background-color: color-mix(in oklab, var(--label-blue) 14%, transparent);
+  color: color-mix(in oklab, var(--label-blue) 60%, var(--text-secondary));
+}
+
+[data-label-color="blue"]:hover {
+  background-color: color-mix(in oklab, var(--label-blue) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-label-color="purple"] {
+  background-color: color-mix(in oklab, var(--label-purple) 14%, transparent);
+  color: color-mix(in oklab, var(--label-purple) 60%, var(--text-secondary));
+}
+
+[data-label-color="purple"]:hover {
+  background-color: color-mix(in oklab, var(--label-purple) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-label-color="pink"] {
+  background-color: color-mix(in oklab, var(--label-pink) 14%, transparent);
+  color: color-mix(in oklab, var(--label-pink) 60%, var(--text-secondary));
+}
+
+[data-label-color="pink"]:hover {
+  background-color: color-mix(in oklab, var(--label-pink) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-label-color="red"] {
+  background-color: color-mix(in oklab, var(--label-red) 14%, transparent);
+  color: color-mix(in oklab, var(--label-red) 60%, var(--text-secondary));
+}
+
+[data-label-color="red"]:hover {
+  background-color: color-mix(in oklab, var(--label-red) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-label-color="orange"] {
+  background-color: color-mix(in oklab, var(--label-orange) 14%, transparent);
+  color: color-mix(in oklab, var(--label-orange) 60%, var(--text-secondary));
+}
+
+[data-label-color="orange"]:hover {
+  background-color: color-mix(in oklab, var(--label-orange) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-label-color="yellow"] {
+  background-color: color-mix(in oklab, var(--label-yellow) 14%, transparent);
+  color: color-mix(in oklab, var(--label-yellow) 60%, var(--text-secondary));
+}
+
+[data-label-color="yellow"]:hover {
+  background-color: color-mix(in oklab, var(--label-yellow) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-label-color="green"] {
+  background-color: color-mix(in oklab, var(--label-green) 14%, transparent);
+  color: color-mix(in oklab, var(--label-green) 60%, var(--text-secondary));
+}
+
+[data-label-color="green"]:hover {
+  background-color: color-mix(in oklab, var(--label-green) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-label-color="teal"] {
+  background-color: color-mix(in oklab, var(--label-teal) 14%, transparent);
+  color: color-mix(in oklab, var(--label-teal) 60%, var(--text-secondary));
+}
+
+[data-label-color="teal"]:hover {
+  background-color: color-mix(in oklab, var(--label-teal) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-label-color="gray"] {
+  background-color: color-mix(in oklab, var(--label-gray) 14%, transparent);
+  color: color-mix(in oklab, var(--label-gray) 60%, var(--text-secondary));
+}
+
+[data-label-color="gray"]:hover {
+  background-color: color-mix(in oklab, var(--label-gray) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-due-state="none"],
+[data-due-state="scheduled"] {
+  background-color: var(--chip-neutral-bg);
+  color: var(--text-secondary);
+  border-color: var(--chip-border);
+}
+
+[data-due-state="today"] {
+  background-color: color-mix(in oklab, var(--due-today) 14%, transparent);
+  color: color-mix(in oklab, var(--due-today) 60%, var(--text-secondary));
+  border-color: color-mix(in oklab, var(--due-today) 35%, transparent);
+}
+
+[data-due-state="today"]:hover {
+  background-color: color-mix(in oklab, var(--due-today) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
+[data-due-state="overdue"] {
+  background-color: color-mix(in oklab, var(--due-overdue) 14%, transparent);
+  color: color-mix(in oklab, var(--due-overdue) 60%, var(--text-secondary));
+  border-color: color-mix(in oklab, var(--due-overdue) 35%, transparent);
+}
+
+[data-due-state="overdue"]:hover {
+  background-color: color-mix(in oklab, var(--due-overdue) calc(14% + var(--chip-hover-bg-boost)), transparent) !important;
+}
+
 html {
   font-size: var(--font-size);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

@@ -2,7 +2,8 @@ import React from 'react';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent } from '../../ui/card';
 import { Checkbox } from '../../ui/checkbox';
-import { Badge } from '../../ui/badge';
+import { Badge, badgeVariants } from '../../ui/badge';
+import { cn } from '../../ui/utils';
 import {
     ContextMenu,
     ContextMenuContent,
@@ -10,7 +11,7 @@ import {
     ContextMenuTrigger,
     ContextMenuSeparator,
 } from '../../ui/context-menu';
-import { Edit, Trash, Copy, CheckSquare, Check, AlertTriangle, Flag } from 'lucide-react';
+import { Edit, Trash, Copy, CheckSquare, Check, AlertTriangle, Flag, Calendar } from 'lucide-react';
 
 type TaskLabel = string | { name: string; color: string };
 
@@ -31,6 +32,22 @@ interface TaskCardProps {
 const getTaskLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
 const getTaskLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
 
+const CHIP_CLASS =
+  'inline-flex h-[var(--chip-height)] items-center justify-start gap-[var(--chip-gap)] rounded-[var(--chip-radius)] px-[var(--chip-pad-x)] py-[var(--chip-pad-y)] text-[length:var(--text-sm)] font-medium border border-transparent transition-colors duration-[var(--duration-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]';
+const LABEL_CHIP_BASE_CLASS =
+  'bg-[color:var(--chip-label-bg)] text-[color:var(--chip-label-fg)] shadow-[var(--chip-inset-shadow)] hover:bg-[color:color-mix(in_oklab,var(--chip-label-bg)_calc(100%+var(--chip-hover-bg-boost)),transparent)]';
+const LABEL_HUES = new Set(['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']);
+const getLabelHue = (color: string | undefined) => {
+  if (!color) return undefined;
+  const match = color.match(/--label-([a-z]+)/i);
+  if (match) {
+    const hue = match[1].toLowerCase();
+    return LABEL_HUES.has(hue) ? hue : undefined;
+  }
+  const normalized = color.trim().toLowerCase();
+  return LABEL_HUES.has(normalized) ? normalized : undefined;
+};
+
 export function TaskCard({ 
     taskTitle, 
     dueDate,
@@ -46,29 +63,48 @@ export function TaskCard({
 }: TaskCardProps) {
   const labels = Array.isArray(rawLabels) ? rawLabels : [];
 
-  const formattedDueDate = React.useMemo(() => {
-    if (!dueDate) return undefined;
+  const dueMeta = React.useMemo(() => {
+    const trimmed = dueDate?.trim();
+    if (!trimmed) {
+      return { label: 'Set', state: 'none' as const };
+    }
 
-    const trimmed = dueDate.trim();
-    if (!trimmed) return undefined;
-
-    let parsed: Date | undefined;
+    let parsed: Date | null = null;
 
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
       parsed = parseISO(trimmed);
     } else {
       const candidate = new Date(trimmed);
-      parsed = Number.isNaN(candidate.getTime()) ? undefined : candidate;
+      parsed = Number.isNaN(candidate.getTime()) ? null : candidate;
     }
 
     if (!parsed || Number.isNaN(parsed.getTime())) {
-      return trimmed;
+      return {
+        label: trimmed,
+        state: 'scheduled' as const,
+      };
     }
 
-    return format(parsed, 'MMM d');
+    const label = format(parsed, 'MMM d');
+    const todayKey = format(new Date(), 'yyyy-MM-dd');
+    const parsedKey = format(parsed, 'yyyy-MM-dd');
+    const isToday = parsedKey === todayKey;
+    const isOverdue = parsed.getTime() < Date.now() && !isToday;
+
+    return {
+      label,
+      state: isOverdue ? ('overdue' as const) : isToday ? ('today' as const) : ('scheduled' as const),
+    };
   }, [dueDate]);
 
-  const hasMetaChips = priority !== 'none' || labels.length > 0;
+  const hasMetaChips = priority !== 'none' || labels.length > 0 || Boolean(dueMeta);
+  const showDueIcon = dueMeta.state === 'none';
+  const dueChipClass = cn(
+    CHIP_CLASS,
+    'justify-center transition-colors',
+    (dueMeta.state === 'none' || dueMeta.state === 'scheduled') &&
+      'bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)] border-[color:var(--chip-border)]',
+  );
 
   return (
     <ContextMenu>
@@ -116,42 +152,41 @@ export function TaskCard({
                       {taskTitle}
                     </h4>
                     {hasMetaChips && (
-                      <div className="mt-[var(--space-1)] flex flex-wrap items-center gap-x-[var(--task-meta-gap-x)] gap-y-[var(--space-2)]">
+                      <div className="mt-[var(--space-1)] flex flex-wrap items-center gap-[var(--chip-gap)]">
+                        <span data-due-state={dueMeta.state} className={dueChipClass}>
+                          {showDueIcon ? <Calendar className="size-[var(--icon-md)]" aria-hidden /> : null}
+                          <span>{dueMeta.label}</span>
+                        </span>
                         {priority !== 'none' && (
-                          <Badge
-                            variant="soft"
-                            tone={priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : 'low'}
-                            size="sm"
-                            className="flex items-center gap-[var(--space-1)]"
+                          <span
+                            className={cn(
+                              badgeVariants({
+                                variant: 'soft',
+                                tone: priority === 'high' ? 'high' : priority === 'medium' ? 'medium' : 'low',
+                                size: 'sm',
+                              }),
+                              CHIP_CLASS,
+                            )}
                           >
-                            <Flag className="h-3 w-3" aria-hidden />
+                            <Flag className="size-[var(--icon-md)]" aria-hidden />
                             <span>{priority[0].toUpperCase() + priority.slice(1)}</span>
-                          </Badge>
+                          </span>
                         )}
-                        {labels.length > 0 ? (
-                          <div className="flex items-center gap-[var(--task-chip-gap-x)]">
-                            {labels.map((label, idx) => (
-                              <Badge
-                                key={`${getTaskLabelName(label)}-${idx}`}
-                                variant="soft"
-                                size="sm"
-                                className="relative"
-                                style={{
-                                  backgroundColor: `color-mix(in oklab, ${getTaskLabelColor(label)} 18%, transparent)`,
-                                  color: `color-mix(in oklab, ${getTaskLabelColor(label)} 85%, var(--text-primary))`,
-                                  boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${getTaskLabelColor(label)} 35%, transparent)`,
-                                }}
-                              >
-                                {getTaskLabelName(label)}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                    {formattedDueDate && (
-                      <div className={`text-[length:var(--task-meta-size)] font-[var(--font-weight-normal)] text-[color:var(--text-tertiary)] ${hasMetaChips ? 'mt-[var(--space-1)]' : 'mt-[var(--space-2)]'}`}>
-                        {formattedDueDate}
+                        {labels.map((label, idx) => {
+                          const labelColor = getTaskLabelColor(label);
+                          const labelHue = getLabelHue(labelColor);
+                          return (
+                            <Badge
+                              key={`${getTaskLabelName(label)}-${idx}`}
+                              variant="soft"
+                              size="sm"
+                              data-label-color={labelHue}
+                              className={cn(CHIP_CLASS, LABEL_CHIP_BASE_CLASS)}
+                            >
+                              {getTaskLabelName(label)}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

@@ -5,6 +5,17 @@ import { addDays, format } from 'date-fns';
 import { Button } from '../../ui/button';
 import { Popover, PopoverArrow, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Badge, badgeVariants } from '../../ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../../ui/alert-dialog';
 
 import { Calendar as CalendarComponent } from '../../ui/calendar';
 import { cn } from '../../ui/utils';
@@ -25,29 +36,35 @@ const QUICK_PICKS = [
   { label: 'Next week', resolver: () => addDays(new Date(), 7) },
 ];
 
-const GRID_TEMPLATE: React.CSSProperties = {
-  gridTemplateColumns: 'max-content minmax(0, var(--task-drawer-field-max-w))',
-  columnGap: 'var(--space-8)',
-};
-
 const SUBTASK_ROW_STYLE: React.CSSProperties = {
-  gridTemplateColumns: '32px minmax(0, 1fr) 160px',
+  gridTemplateColumns: 'auto minmax(0, 1fr) auto',
   columnGap: 'var(--list-row-gap)',
   minHeight: 'var(--list-row-min-h)',
   paddingLeft: 'var(--list-row-pad-x)',
   paddingRight: 'var(--list-row-pad-x)',
 };
 
-const LABEL_CELL_CLASS = 'text-[length:var(--text-sm)] font-medium text-[color:var(--text-secondary)] leading-[var(--line-tight)] flex items-center';
-const VALUE_CELL_CLASS = 'flex items-center min-h-[var(--row-min-h)] w-full';
-const CHIP_CLASS = 'inline-flex items-center gap-[var(--chip-gap)] h-[var(--chip-height)] px-[var(--chip-px)] py-[var(--chip-py)] rounded-[var(--chip-radius)] text-[length:var(--text-xs)] font-medium border transition-colors duration-[var(--duration-fast)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]';
+const LABEL_CELL_CLASS =
+  'text-[length:var(--text-sm)] font-medium text-[color:var(--text-secondary)] leading-[var(--line-tight)] flex items-center';
+const VALUE_CELL_CLASS =
+  'flex items-center min-h-[var(--row-min-h)] w-full text-[color:var(--text-primary)] gap-[var(--chip-gap)]';
+const CHIP_CLASS =
+  'inline-flex h-[var(--chip-height)] items-center justify-start gap-[var(--chip-gap)] rounded-[var(--chip-radius)] px-[var(--chip-pad-x)] py-[var(--chip-pad-y)] text-[length:var(--text-sm)] font-medium border border-transparent transition-colors duration-[var(--duration-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]';
+const LABEL_CHIP_BASE_CLASS =
+  'bg-[color:var(--chip-label-bg)] text-[color:var(--chip-label-fg)] shadow-[var(--chip-inset-shadow)] hover:bg-[color:color-mix(in_oklab,var(--chip-label-bg)_calc(100%+var(--chip-hover-bg-boost)),transparent)]';
 
 const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
-const chipStyle = (color: string) => ({
-  backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
-  color: `color-mix(in oklab, ${color} 85%, var(--text-primary))`,
-  boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${color} 35%, transparent)`,
-});
+const LABEL_HUES = new Set(['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']);
+const getLabelHue = (color: string | undefined) => {
+  if (!color) return undefined;
+  const match = color.match(/--label-([a-z]+)/i);
+  if (match) {
+    const hue = match[1].toLowerCase();
+    return LABEL_HUES.has(hue) ? hue : undefined;
+  }
+  const normalized = color.trim().toLowerCase();
+  return LABEL_HUES.has(normalized) ? normalized : undefined;
+};
 
 const useOverlayGutter = () => {
   const [value, setValue] = React.useState<number>(16);
@@ -73,6 +90,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
   const [newSubtaskDateOpen, setNewSubtaskDateOpen] = React.useState(false);
   const [activeSubtaskDatePicker, setActiveSubtaskDatePicker] = React.useState<string | null>(null);
   const [subtaskMenu, setSubtaskMenu] = React.useState<{ id: string; x: number; y: number } | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const labelInputRef = React.useRef<HTMLInputElement | null>(null);
   const newSubtaskInputRef = React.useRef<HTMLInputElement | null>(null);
   const subtaskInputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
@@ -82,16 +100,54 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
     setSubtaskMenu(null);
   }, []);
 
-  const openSubtaskMenu = React.useCallback((subtaskId: string, event: React.MouseEvent) => {
-    event.preventDefault();
+  const openSubtaskMenu = React.useCallback((subtaskId: string, anchor: React.MouseEvent | DOMRect) => {
     const menuWidth = 220;
     const menuHeight = 184;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const nextX = Math.max(8, Math.min(event.clientX, viewportWidth - menuWidth - 8));
-    const nextY = Math.max(8, Math.min(event.clientY, viewportHeight - menuHeight - 8));
-    setSubtaskMenu({ id: subtaskId, x: nextX, y: nextY });
+    let anchorX: number;
+    let anchorY: number;
+
+    if ('clientX' in anchor) {
+      anchor.preventDefault();
+      anchorX = anchor.clientX;
+      anchorY = anchor.clientY;
+    } else {
+      anchorX = anchor.right + 8;
+      anchorY = anchor.top + anchor.height / 2;
+    }
+
+    const x = Math.max(8, Math.min(anchorX, viewportWidth - menuWidth - 8));
+    const y =
+      'clientX' in anchor
+      ? Math.max(8, Math.min(anchorY, viewportHeight - menuHeight - 8))
+      : Math.max(8, Math.min(anchorY - menuHeight / 2, viewportHeight - menuHeight - 8));
+
+    setSubtaskMenu({ id: subtaskId, x, y });
   }, []);
+
+  const handleClearFields = React.useCallback(() => {
+    setEdited((prev) => {
+      if (!prev) return prev;
+      const cleared: Task = {
+        ...prev,
+        description: undefined,
+        dueDate: undefined,
+        priority: 'none',
+        labels: [],
+        subtasks: [],
+      };
+      onUpdateTask(cleared);
+      return cleared;
+    });
+
+    setIsSubtaskComposerOpen(false);
+    setNewSubtaskTitle('');
+    setNewSubtaskDueDate(undefined);
+    setNewSubtaskDateOpen(false);
+    setActiveSubtaskDatePicker(null);
+    setLabelInput('');
+  }, [onUpdateTask]);
 
   const overlayPadding = useOverlayGutter();
 
@@ -398,10 +454,10 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
       <span
         className={cn(
           badgeVariants({ variant: 'soft', tone, size: 'sm' }),
-          'inline-flex items-center gap-[var(--space-1)]',
+          CHIP_CLASS,
         )}
       >
-        <Flag className="size-[var(--icon-2xs)]" aria-hidden />
+        <Flag className="size-[var(--icon-md)]" aria-hidden />
         <span>{value[0].toUpperCase() + value.slice(1)}</span>
       </span>
     );
@@ -419,6 +475,16 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
       return () => clearTimeout(timer);
     }
   }, [task]);
+
+  const canClearFields = React.useMemo(() => {
+    if (!edited) return false;
+    const hasDescription = Boolean((edited.description ?? '').trim());
+    const hasDueDate = Boolean(edited.dueDate);
+    const hasPriority = Boolean(edited.priority && edited.priority !== 'none');
+    const labels = Array.isArray(edited.labels) ? edited.labels : [];
+    const subtasksList = Array.isArray(edited.subtasks) ? edited.subtasks : [];
+    return hasDescription || hasDueDate || hasPriority || labels.length > 0 || subtasksList.length > 0;
+  }, [edited]);
 
   const subtasks = edited?.subtasks ?? [];
   const newSubtaskSelectedDate = newSubtaskDueDate ? new Date(newSubtaskDueDate) : undefined;
@@ -454,7 +520,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
       />
 
       <aside
-        className="fixed right-0 bottom-0 top-[var(--pane-header-h)] z-[70] flex flex-col bg-[var(--bg-panel)] shadow-[var(--elevation-xl)] motion-safe:transition-transform duration-[var(--duration-sm)] ease-[var(--ease-emphasized)] px-[var(--panel-pad-x)] pb-[var(--panel-pad-y)]"
+        className="fixed right-0 bottom-0 top-[var(--pane-header-h)] z-[70] flex flex-col bg-[var(--bg-panel)] shadow-[var(--elevation-xl)] motion-safe:transition-transform duration-[var(--duration-sm)] ease-[var(--ease-emphasized)] px-[var(--panel-pad-x)] pb-0"
         style={{
           width: 'var(--task-drawer-w)',
           maxWidth: 'calc(100vw - 2 * var(--task-drawer-edge))',
@@ -465,54 +531,64 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
         aria-modal
       >
         {/* Sticky header */}
-        <header className="sticky top-0 bg-[var(--bg-panel)]">
-          <div className="flex items-center justify-between gap-[var(--space-4)] px-[var(--space-4)] py-[12px] border-b border-[color:var(--border-subtle)]">
+        <header className="sticky top-0 z-[var(--z-overlay)] bg-[color:var(--bg-surface)] px-[var(--space-4)] py-[var(--space-4)] border-b border-[color:var(--border-divider)]">
+          <div className="flex items-center justify-between gap-[var(--space-3)]">
             <Button
               variant={isCompleted ? 'outline' : 'default'}
-              size="sm"
+              className="h-[var(--btn-sm-height,36px)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]"
               onClick={() => handleSave({ isCompleted: !isCompleted })}
             >
               {isCompleted ? 'Reopen' : 'Mark complete'}
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-[var(--btn-sm-height,36px)] w-[var(--btn-sm-height,36px)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]"
+              onClick={onClose}
+            >
               <X className="size-[var(--icon-sm)]" />
             </Button>
           </div>
-          <div className="px-[var(--space-4)] py-[var(--space-3)]">
-            <h1 className="text-[length:var(--text-2xl)] font-semibold text-[color:var(--text-primary)] leading-tight">
-              {task.title}
-            </h1>
-          </div>
-          <div aria-live="polite" className="sr-only">{savedHint ?? ''}</div>
         </header>
+
+        <section className="px-[var(--space-4)] pt-[var(--space-4)] pb-[var(--space-4)]">
+          <h1 className="m-0 text-[length:var(--text-2xl)] font-semibold text-[color:var(--text-primary)] leading-tight">
+            {task.title}
+          </h1>
+          <div aria-live="polite" className="sr-only">{savedHint ?? ''}</div>
+        </section>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-[var(--space-6)] px-[var(--space-6)] py-[var(--space-5)]">
+          <div className="flex flex-col gap-[var(--space-6)] px-[var(--space-4)] py-[var(--space-5)]">
 
             {/* Metadata */}
-            <div className="grid gap-y-[var(--space-4)]" style={GRID_TEMPLATE}>
+            <div className="grid grid-cols-[var(--task-drawer-label-col)_1fr] gap-x-[var(--space-8)] gap-y-[var(--space-3)]">
               <span className={LABEL_CELL_CLASS}>Due date</span>
-              <div className={cn(VALUE_CELL_CLASS, 'gap-[var(--space-2)]')}>
+              <div className={VALUE_CELL_CLASS}>
                 <Popover open={dateOpen} onOpenChange={setDateOpen}>
                   <PopoverTrigger asChild>
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size={dueDate ? 'sm' : 'icon'}
+                      data-due-state={
+                        dueDate ? (isOverdue ? 'overdue' : isToday ? 'today' : 'scheduled') : 'none'
+                      }
                       className={cn(
-                        'rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] transition-colors hover:border-[color:var(--border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0 focus-visible:border-[color:var(--border-strong)]',
-                        dueDate
-                          ? 'h-[34px] px-[var(--space-3)] text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)] hover:text-[color:var(--text-primary)]'
-                          : 'size-[34px] text-[color:var(--text-tertiary)] hover:text-[color:var(--text-primary)]',
-                        dueDate && isOverdue && 'text-[color:var(--due-overdue)]',
-                        dueDate && !isOverdue && isToday && 'text-[color:var(--due-today)]',
+                        CHIP_CLASS,
+                        'justify-center bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)] hover:bg-[var(--hover-bg)] focus-visible:ring-offset-[var(--bg-panel)]',
                         dateOpen && 'border-[color:var(--border-strong)]'
                       )}
                       aria-label={dueDate ? `Change due date (${format(dueDate, 'EEE, MMM d')})` : 'Add due date'}
                     >
-                      {dueDate ? format(dueDate, 'EEE, MMM d') : <Calendar className="size-[var(--icon-sm)]" />}
-                    </Button>
+                      {dueDate ? (
+                        format(dueDate, 'EEE, MMM d')
+                      ) : (
+                        <>
+                          <Calendar className="size-[var(--icon-md)]" aria-hidden />
+                          <span>Set</span>
+                        </>
+                      )}
+                    </button>
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
@@ -535,29 +611,32 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
               </div>
 
               <span className={LABEL_CELL_CLASS}>Priority</span>
-              <div className={cn(VALUE_CELL_CLASS, 'gap-[var(--space-2)]')}>
+              <div className={VALUE_CELL_CLASS}>
                 <Popover open={priorityOpen} onOpenChange={setPriorityOpen}>
                   <PopoverTrigger asChild>
                     {priority === 'none' || !priorityTone ? (
-                      <Button
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-[34px] rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] transition-colors hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-primary)]"
+                        className={cn(
+                          CHIP_CLASS,
+                          'justify-center bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] hover:bg-[var(--hover-bg)] focus-visible:ring-offset-[var(--bg-panel)]'
+                        )}
                         aria-label="Set priority"
                       >
-                        <Flag className="size-[var(--icon-sm)]" aria-hidden />
-                      </Button>
+                        <Flag className="size-[var(--icon-md)]" aria-hidden />
+                      </button>
                     ) : (
                       <button
                         type="button"
                         aria-label={`Change priority (${priorityLabel})`}
                         className={cn(
                           badgeVariants({ variant: 'soft', tone: priorityTone, size: 'sm' }),
-                          'inline-flex items-center gap-[var(--space-1)] border border-[color:var(--border-subtle)] hover:border-[color:var(--border-strong)] focus-visible:border-[color:var(--border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0',
+                          CHIP_CLASS,
+                          'hover:border-[color:var(--border-strong)] focus-visible:border-[color:var(--border-strong)] focus-visible:ring-offset-[var(--bg-panel)]',
+                          priorityOpen && 'border-[color:var(--border-strong)]'
                         )}
                       >
-                        <Flag className="size-[var(--icon-2xs)]" aria-hidden />
+                        <Flag className="size-[var(--icon-md)]" aria-hidden />
                         <span>{priorityLabel}</span>
                       </button>
                     )}
@@ -609,7 +688,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
               </div>
 
               <span className={LABEL_CELL_CLASS}>Labels</span>
-              <div className={cn(VALUE_CELL_CLASS, 'gap-[var(--space-2)]')}>
+              <div className={VALUE_CELL_CLASS}>
                 <Popover
                   open={labelsOpen}
                   onOpenChange={(open) => {
@@ -626,40 +705,42 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                       <button
                         type="button"
                         aria-label={`Edit labels (${selectedLabels.map((label) => label.name).join(', ')})`}
-                        className={cn(
-                          'group flex min-h-[34px] max-w-full flex-wrap items-center gap-[var(--space-1)] rounded-full bg-transparent px-[var(--space-1)] py-[var(--space-1)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0',
-                        )}
+                        className="group flex min-h-[34px] max-w-full flex-wrap items-center gap-[var(--chip-gap)] rounded-full bg-transparent px-[var(--space-1)] py-[var(--space-1)] text-[length:var(--text-sm)] text-[color:var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-panel)]"
                       >
-                        {selectedLabels.map((label) => (
-                          <Badge
-                            key={`trigger-${label.name}`}
-                            variant="soft"
-                            size="sm"
-                            className={cn(
-                              'flex items-center gap-[var(--space-1)] border border-[color:var(--border-subtle)] group-hover:border-[color:var(--border-strong)] group-focus-visible:border-[color:var(--border-strong)]',
-                              labelsOpen && 'border-[color:var(--border-strong)]',
-                            )}
-                            style={chipStyle(label.color ?? DEFAULT_LABEL_COLOR)}
-                          >
-                            <span className="max-w-[100px] truncate" title={label.name}>
-                              {label.name}
-                            </span>
-                          </Badge>
-                        ))}
+                        {selectedLabels.map((label) => {
+                          const labelHue = getLabelHue(label.color ?? DEFAULT_LABEL_COLOR);
+                          return (
+                            <Badge
+                              key={`trigger-${label.name}`}
+                              variant="soft"
+                              size="sm"
+                              data-label-color={labelHue}
+                              className={cn(
+                                CHIP_CLASS,
+                                LABEL_CHIP_BASE_CLASS,
+                                'group-hover:border-[color:var(--border-strong)] group-focus-visible:border-[color:var(--border-strong)]',
+                                labelsOpen && 'border-[color:var(--border-strong)]',
+                              )}
+                            >
+                              <span className="max-w-[100px] truncate" title={label.name}>
+                                {label.name}
+                              </span>
+                            </Badge>
+                          );
+                        })}
                       </button>
                     ) : (
-                      <Button
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="icon"
                         className={cn(
-                          'size-[34px] rounded-full border border-[color:var(--border-subtle)] bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] transition-colors hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0 focus-visible:border-[color:var(--border-strong)]',
+                          CHIP_CLASS,
+                          'justify-center bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] hover:bg-[var(--hover-bg)] focus-visible:ring-offset-[var(--bg-panel)]',
                           labelsOpen && 'border-[color:var(--border-strong)] text-[color:var(--text-primary)]',
                         )}
                         aria-label="Add labels"
                       >
-                        <Tag className="size-[var(--icon-sm)]" aria-hidden />
-                      </Button>
+                        <Tag className="size-[var(--icon-md)]" aria-hidden />
+                      </button>
                     )}
                   </PopoverTrigger>
                   <PopoverContent
@@ -677,24 +758,28 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                     }}
                   >
                     <div className="flex flex-col gap-[var(--space-2)]">
-                      <div className="flex flex-wrap gap-[var(--space-2)]">
+                      <div className="flex flex-wrap gap-[var(--chip-gap)]">
                         {mergedLabelOptions.map((label) => {
                           const isSelected = selectedLabels.some((item) => item.name === label.name);
+                          const labelHue = getLabelHue(label.color ?? DEFAULT_LABEL_COLOR);
                           return (
                             <button
                               key={label.name}
                               type="button"
                               onClick={() => toggleLabel(label)}
                               className={cn(
-                                'rounded-[var(--chip-radius)] border border-transparent transition-shadow hover:border-[color:var(--border-strong)] focus-visible:border-[color:var(--border-strong)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] focus-visible:outline-offset-0 focus-visible:ring-0',
+                                'rounded-[var(--chip-radius)] border border-transparent transition-shadow hover:border-[color:var(--border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)] focus-visible:border-[color:var(--border-strong)]',
                                 isSelected && 'border-[color:var(--border-strong)]',
                               )}
                             >
                               <Badge
                                 variant="soft"
                                 size="sm"
-                                className="flex items-center gap-[var(--space-1)]"
-                                style={chipStyle(label.color ?? DEFAULT_LABEL_COLOR)}
+                                className={cn(
+                                  CHIP_CLASS,
+                                  LABEL_CHIP_BASE_CLASS,
+                                )}
+                                data-label-color={labelHue}
                               >
                                 <span>{label.name}</span>
                                 {isSelected ? <Check className="size-3" aria-hidden /> : null}
@@ -753,23 +838,49 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
               <div className="flex items-center justify-between">
                 <h2 className="text-[length:var(--text-sm)] font-semibold text-[color:var(--text-secondary)]">Subtasks</h2>
                 {subtasks.length > 0 ? (
-                  <span className="text-[length:var(--text-xs)] text-[color:var(--text-tertiary)]">
+                  <span className="text-[length:var(--text-xs)] font-normal text-[color:var(--text-tertiary)]">
                     {subtasks.length} {subtasks.length === 1 ? 'item' : 'items'}
                   </span>
                 ) : null}
               </div>
-              <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+              <div className="density-compact overflow-hidden rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
                 <div className="divide-y divide-[var(--border-divider)]">
                   {subtasks.map((subtask) => {
-                    const parsedDueDate = subtask.dueDate ? new Date(subtask.dueDate) : undefined;
-                    const dueDateLabel =
-                      parsedDueDate && !Number.isNaN(parsedDueDate.getTime())
-                        ? format(parsedDueDate, 'MMM d')
-                        : subtask.dueDate ?? '—';
+                    const rawDue = (subtask.dueDate ?? '').trim();
+                    const parsedDueDate = rawDue ? new Date(rawDue) : null;
+                    const hasValidDue = parsedDueDate && !Number.isNaN(parsedDueDate.getTime());
+                    const isDueToday =
+                      hasValidDue && format(parsedDueDate as Date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                    const isDueOverdue = hasValidDue && (parsedDueDate as Date).getTime() < Date.now() && !isDueToday;
+
+                    let dueChipState: 'none' | 'scheduled' | 'today' | 'overdue';
+                    let dueChipLabel: string;
+                    let showDueIcon = false;
+
+                    if (hasValidDue) {
+                      dueChipState = isDueOverdue ? 'overdue' : isDueToday ? 'today' : 'scheduled';
+                      dueChipLabel = format(parsedDueDate as Date, 'MMM d');
+                    } else if (rawDue) {
+                      dueChipState = 'scheduled';
+                      dueChipLabel = rawDue;
+                    } else {
+                      dueChipState = 'none';
+                      dueChipLabel = 'Set';
+                      showDueIcon = true;
+                    }
+
+                    const dueButtonLabel =
+                      dueChipState === 'none' ? 'Set subtask due date' : `Change subtask due date (${dueChipLabel})`;
+                    const dueButtonClass = cn(
+                      CHIP_CLASS,
+                      'justify-center focus-visible:ring-offset-[var(--bg-surface)] transition-colors',
+                      (dueChipState === 'none' || dueChipState === 'scheduled') &&
+                        'bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)] hover:bg-[var(--hover-bg)] border-[color:var(--chip-border)]',
+                    );
                     return (
                       <div
                         key={subtask.id}
-                        className="grid items-center hover:bg-[var(--bg-surface-elevated)] motion-safe:transition-colors duration-[var(--duration-fast)]"
+                        className="group grid items-center hover:bg-[var(--hover-bg)] motion-safe:transition-colors duration-[var(--duration-fast)]"
                         style={SUBTASK_ROW_STYLE}
                         onContextMenu={(event) => openSubtaskMenu(subtask.id, event)}
                       >
@@ -832,7 +943,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                             )}
                           />
                         </div>
-                        <div className="flex items-center border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
+                        <div className="flex items-center justify-end py-[var(--list-row-pad-y)]">
                           <Popover
                             open={activeSubtaskDatePicker === subtask.id}
                             onOpenChange={(open) => setActiveSubtaskDatePicker(open ? subtask.id : null)}
@@ -840,10 +951,12 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
-                                className="inline-flex items-center rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1_5)] text-[length:var(--text-sm)] text-[color:var(--text-secondary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-primary)]"
-                                aria-label="Set subtask due date"
+                                data-due-state={dueChipState}
+                                className={dueButtonClass}
+                                aria-label={dueButtonLabel}
                               >
-                                {dueDateLabel}
+                                {showDueIcon ? <Calendar className="size-[var(--icon-md)]" aria-hidden /> : null}
+                                <span>{dueChipLabel}</span>
                               </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0">
@@ -1033,7 +1146,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                   ) : (
                     <button
                       type="button"
-                      className="flex w-full items-center gap-[var(--space-2)] px-[var(--list-row-pad-x)] py-[var(--space-3)] text-left text-[length:var(--text-sm)] text-[color:var(--text-tertiary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[color:var(--text-primary)]"
+                      className="flex w-full items-center gap-[var(--space-2)] px-[var(--list-row-pad-x)] py-[var(--space-3)] text-left text-[length:var(--text-sm)] text-[color:var(--text-tertiary)] hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-primary)]"
                       onClick={() => setIsSubtaskComposerOpen(true)}
                     >
                       <Plus className="size-4" aria-hidden />
@@ -1047,43 +1160,57 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
         </div>
 
         {/* Sticky footer */}
-        <footer className="sticky bottom-0 bg-[var(--bg-panel)] py-[var(--space-4)] px-[var(--space-6)] border-t border-[color:var(--border-subtle)] flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setEdited((prev) => {
-                if (!prev) return prev;
-                const cleared: Task = {
-                  ...prev,
-                  description: undefined,
-                  dueDate: undefined,
-                  priority: 'none',
-                  labels: [],
-                  subtasks: [],
-                };
-                onUpdateTask(cleared);
-                return cleared;
-              });
+        <footer
+          className="sticky bottom-0 mt-0 bg-[color:var(--bg-surface)] border-t border-[color:var(--border-divider)] px-[var(--space-4)] py-[var(--space-4)]"
+          style={{ paddingBottom: 'calc(var(--space-4) + env(safe-area-inset-bottom, 0px))' }}
+        >
+          <div className="flex items-center justify-between gap-[var(--space-3)]">
+            <Button
+              type="button"
+              variant="ghost"
+              className={cn(
+                'm-0 h-[var(--btn-sm-height,36px)] px-3 border border-[color:var(--border-subtle)] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-surface-elevated)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]',
+                !canClearFields && 'opacity-60',
+              )}
+              onClick={handleClearFields}
+              disabled={!canClearFields}
+              aria-disabled={!canClearFields}
+            >
+              Clear fields
+            </Button>
 
-              setIsSubtaskComposerOpen(false);
-              setNewSubtaskTitle('');
-              setNewSubtaskDueDate(undefined);
-              setNewSubtaskDateOpen(false);
-              setActiveSubtaskDatePicker(null);
-              setLabelInput('');
-            }}
-          >
-            Clear fields
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-[color:var(--danger)] hover:bg-[color:var(--accent-coral-tint-10)]"
-            onClick={() => onDeleteTask(task.id)}
-          >
-            Delete task
-          </Button>
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="m-0 h-[var(--btn-sm-height,36px)] px-3 border border-[color:var(--accent-coral-tint-10)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]"
+                >
+                  Delete task
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-sm border-[color:var(--border-subtle)] bg-[var(--bg-surface)] shadow-[var(--elevation-lg)]">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action permanently removes &ldquo;{task.title}&rdquo; and its subtasks. You can’t undo this.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-[var(--danger)] text-white hover:bg-[var(--danger)]/90"
+                    onClick={() => {
+                      onDeleteTask(task.id);
+                      setDeleteDialogOpen(false);
+                    }}
+                  >
+                    Delete task
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </footer>
       </aside>
     </>

@@ -19,6 +19,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         // Define default duration for all toasts
         duration: 3000,
+        style: {
+          maxWidth: "360px",
+          width: "min(360px, calc(100vw - 48px))",
+        },
       }}
       style={
         {
