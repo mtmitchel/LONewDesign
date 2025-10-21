@@ -62,9 +62,6 @@ const LABEL_CHIP_BASE_CLASS =
 
 type DueState = 'none' | 'scheduled' | 'today' | 'overdue';
 
-const EMPTY_META_BUTTON_CLASS =
-  'h-8 w-8 rounded-[var(--radius-md)] grid place-items-center text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)] hover:bg-[color:var(--caret-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--bg-panel)] transition-colors';
-
 const DUE_PILL_BASE_CLASS =
   'inline-flex items-center gap-[var(--space-1)] h-[var(--chip-height)] rounded-[var(--radius-md)] px-[var(--space-2)] text-[length:var(--text-sm)] font-medium shadow-[inset_0_0_0_1px_var(--border-subtle)] transition-colors';
 
@@ -76,6 +73,9 @@ const DUE_TONE_CLASSES: Record<DueState, string> = {
   overdue:
     'bg-[color-mix(in_oklab,var(--due-overdue)_12%,transparent)] text-[color:color-mix(in_oklab,var(--due-overdue)_60%,var(--text-secondary))] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--due-overdue)_35%,transparent)]',
 };
+
+const EMPTY_TILE_BUTTON_CLASS =
+  'h-8 w-8 rounded-[var(--radius-md)] flex items-center justify-center bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[color:color-mix(in_oklab,var(--bg-surface-elevated)_92%,transparent)] hover:text-[color:var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--bg-panel)]';
 
 const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
 const LABEL_HUES = new Set(['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']);
@@ -530,10 +530,10 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                       <button
                         type="button"
                         aria-label="Choose date"
-                        className={EMPTY_META_BUTTON_CLASS}
+                        className={EMPTY_TILE_BUTTON_CLASS}
                       >
                         <Calendar
-                          className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
+                          className="h-[var(--icon-md)] w-[var(--icon-md)]"
                           strokeWidth={1.25}
                           aria-hidden
                         />
@@ -587,9 +587,9 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                       <button
                         type="button"
                         aria-label="Choose priority"
-                        className={EMPTY_META_BUTTON_CLASS}
+                        className={EMPTY_TILE_BUTTON_CLASS}
                       >
-                        <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
+                        <Flag className="h-[var(--icon-md)] w-[var(--icon-md)]" strokeWidth={1.25} aria-hidden />
                       </button>
                     ) : (
                       <button
@@ -698,10 +698,10 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                     ) : (
                       <button
                         type="button"
-                        className={EMPTY_META_BUTTON_CLASS}
+                        className={EMPTY_TILE_BUTTON_CLASS}
                         aria-label="Choose labels"
                       >
-                        <Tag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
+                        <Tag className="h-[var(--icon-md)] w-[var(--icon-md)]" strokeWidth={1.25} aria-hidden />
                       </button>
                     )}
                   </PopoverTrigger>
@@ -849,7 +849,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                             className="group grid items-center hover:bg-[var(--hover-bg)] motion-safe:transition-colors duration-[var(--duration-fast)]"
                             style={SUBTASK_ROW_STYLE}
                           >
-                        <div className="flex items-center justify-center py-[var(--list-row-pad-y)]">
+                            <div className="flex items-center justify-center py-[var(--list-row-pad-y)]">
                           <button
                             type="button"
                             onClick={(event) => {
@@ -877,8 +877,8 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                               />
                             </svg>
                           </button>
-                        </div>
-                        <div className="py-[var(--list-row-pad-y)] pr-[var(--space-3)]">
+                            </div>
+                            <div className="py-[var(--list-row-pad-y)] pr-[var(--space-3)]">
                           <input
                             ref={(element) => {
                               if (element) {
@@ -907,8 +907,8 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                               subtask.isCompleted && 'line-through text-[color:var(--text-tertiary)] opacity-60',
                             )}
                           />
-                        </div>
-                        <div className="flex items-center justify-end py-[var(--list-row-pad-y)]">
+                            </div>
+                            <div className="flex items-center justify-end py-[var(--list-row-pad-y)]">
                           <Popover
                             open={activeSubtaskDatePicker === subtask.id}
                             onOpenChange={(open) => setActiveSubtaskDatePicker(open ? subtask.id : null)}
@@ -920,7 +920,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                                 className={dueButtonClass}
                                 aria-label={dueButtonLabel}
                               >
-                                {showDueIcon ? <Calendar className="size-[var(--icon-md)]" aria-hidden /> : null}
+                                {showDueIcon ? <Calendar className="size-[var(--icon-sm)]" aria-hidden /> : null}
                                 {dueChipLabel ? <span>{dueChipLabel}</span> : null}
                               </button>
                             </PopoverTrigger>
@@ -945,7 +945,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                             </PopoverContent>
                           </Popover>
                         </div>
-                          </div>
+                      </div>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="min-w-[220px]">
                           <ContextMenuItem

@@ -26,7 +26,7 @@ const chipStyle = (color: string) => ({
 type DueState = 'none' | 'scheduled' | 'today' | 'overdue';
 
 const EMPTY_META_BUTTON_CLASS =
-  'h-8 w-8 rounded-[var(--radius-md)] grid place-items-center text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)] hover:bg-[color:var(--caret-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--quick-panel-bg)] transition-colors';
+  'h-8 w-8 rounded-[var(--radius-md)] flex items-center justify-center bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[color:color-mix(in_oklab,var(--bg-surface-elevated)_92%,transparent)] hover:text-[color:var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--quick-panel-bg)]';
 
 const DUE_PILL_BASE_CLASS =
   'inline-flex items-center gap-[var(--space-1)] h-[var(--chip-height)] rounded-[var(--radius-md)] px-[var(--space-2)] text-[length:var(--text-sm)] font-medium shadow-[inset_0_0_0_1px_var(--border-subtle)] transition-colors';
@@ -389,7 +389,7 @@ function TaskSidePanel({
                         aria-label={dueDisplayLabel ? `Choose date (${dueDisplayLabel})` : 'Choose date'}
                       >
                         <Calendar
-                          className="h-[var(--icon-sm)] w-[var(--icon-sm)]"
+                          className="h-[var(--icon-md)] w-[var(--icon-md)]"
                           strokeWidth={1.25}
                           aria-hidden
                         />
@@ -443,7 +443,7 @@ function TaskSidePanel({
                       aria-label="Choose priority"
                       className={EMPTY_META_BUTTON_CLASS}
                     >
-                      <Flag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
+                      <Flag className="h-[var(--icon-md)] w-[var(--icon-md)]" strokeWidth={1.25} aria-hidden />
                     </button>
                   ) : (
                     <button
@@ -519,7 +519,7 @@ function TaskSidePanel({
                       className={EMPTY_META_BUTTON_CLASS}
                       aria-label="Choose labels"
                     >
-                      <Tag className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
+                      <Tag className="h-[var(--icon-md)] w-[var(--icon-md)]" strokeWidth={1.25} aria-hidden />
                     </button>
                   </PopoverTrigger>
                   <PopoverContent
