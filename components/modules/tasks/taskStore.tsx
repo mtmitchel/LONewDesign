@@ -227,8 +227,28 @@ function deserializeSubtasks(raw: unknown): Task['subtasks'] {
         return index;
       })();
 
+      const googleIdValue = (() => {
+        const maybeGoogleId = (value as { google_id?: unknown; googleId?: unknown }).google_id
+          ?? (value as { googleId?: unknown }).googleId;
+        if (typeof maybeGoogleId === 'string' && maybeGoogleId.trim().length > 0) {
+          return maybeGoogleId;
+        }
+        return undefined;
+      })();
+
+      const parentGoogleIdValue = (() => {
+        const maybeParentGoogleId = (value as { parent_google_id?: unknown; parentGoogleId?: unknown }).parent_google_id
+          ?? (value as { parentGoogleId?: unknown }).parentGoogleId;
+        if (typeof maybeParentGoogleId === 'string' && maybeParentGoogleId.trim().length > 0) {
+          return maybeParentGoogleId;
+        }
+        return undefined;
+      })();
+
       return {
         id: idValue,
+        googleId: googleIdValue,
+        parentGoogleId: parentGoogleIdValue,
         title: titleValue,
         isCompleted: completedValue,
         dueDate: dueDateValue,
@@ -258,6 +278,14 @@ function serializeSubtasksForBackend(subtasks: Task['subtasks'] | undefined) {
 
       if (subtask.id) {
         payload.id = subtask.id;
+      }
+
+      if (subtask.googleId) {
+        payload.google_id = subtask.googleId;
+      }
+
+      if (subtask.parentGoogleId) {
+        payload.parent_google_id = subtask.parentGoogleId;
       }
 
       if (subtask.dueDate) {

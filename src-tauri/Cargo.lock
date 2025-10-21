@@ -2489,6 +2489,7 @@ dependencies = [
  "dotenvy",
  "futures-util",
  "keyring",
+ "once_cell",
  "proptest",
  "reqwest",
  "serde",

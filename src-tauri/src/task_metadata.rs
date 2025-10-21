@@ -363,3 +363,72 @@ pub struct GoogleTaskPayload {
     pub due: Option<String>,
     pub status: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubtaskMetadata {
+    pub id: String,
+    pub task_id: String,
+    pub google_id: Option<String>,
+    pub parent_google_id: Option<String>,
+    pub title: String,
+    pub is_completed: bool,
+    pub due_date: Option<String>,
+    pub position: i64,
+}
+
+impl SubtaskMetadata {
+    pub fn normalize(&self) -> Self {
+        let title = self.title.trim().to_string();
+        let due_date = self
+            .due_date
+            .as_ref()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+
+        Self {
+            id: self.id.clone(),
+            task_id: self.task_id.clone(),
+            google_id: self.google_id.clone(),
+            parent_google_id: self.parent_google_id.clone(),
+            title,
+            is_completed: self.is_completed,
+            due_date,
+            position: self.position,
+        }
+    }
+
+    pub fn compute_hash(&self) -> String {
+        let normalized = self.normalize();
+        let json = serde_json::json!({
+            "title": normalized.title,
+            "is_completed": normalized.is_completed,
+            "due_date": normalized.due_date,
+            "position": normalized.position,
+        });
+
+        let mut hasher = Sha256::new();
+        hasher.update(json.to_string().as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+
+    pub fn to_google_payload(&self) -> serde_json::Value {
+        let mut payload = serde_json::json!({
+            "title": self.title,
+            "status": if self.is_completed { "completed" } else { "needsAction" },
+        });
+
+        payload["due"] = match &self.due_date {
+            Some(date) if !date.is_empty() => {
+                let formatted = if date.contains('T') {
+                    date.clone()
+                } else {
+                    format!("{}T00:00:00.000Z", date)
+                };
+                serde_json::Value::String(formatted)
+            }
+            _ => serde_json::Value::Null,
+        };
+
+        payload
+    }
+}

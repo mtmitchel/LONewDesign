@@ -8,9 +8,9 @@ use crate::task_metadata;
 use chrono::Utc;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
 use serde_json::{Number, Value};
-use std::collections::HashSet;
+use sqlx::SqlitePool;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
@@ -80,8 +80,7 @@ impl SyncService {
         let mut snapshot: Value = serde_json::from_str(&tokens_str)
             .map_err(|e| format!("Failed to parse stored Google credentials: {}", e))?;
 
-        let (mut access_token, refresh_token, expires_at) =
-            extract_token_fields(&snapshot)?;
+        let (mut access_token, refresh_token, expires_at) = extract_token_fields(&snapshot)?;
 
         let now_ms = Utc::now().timestamp_millis();
         let needs_refresh = force_refresh
@@ -107,7 +106,10 @@ impl SyncService {
         access_token.ok_or_else(|| "Google access token unavailable".to_string())
     }
 
-    async fn refresh_access_token(&self, refresh_token: &str) -> Result<GoogleTokenResponse, String> {
+    async fn refresh_access_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<GoogleTokenResponse, String> {
         let client_id = Self::google_oauth_client_id().ok_or_else(|| {
             "Google OAuth client id not configured (set VITE_GOOGLE_OAUTH_CLIENT_ID)".to_string()
         })?;
@@ -138,7 +140,10 @@ impl SyncService {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(format!("Google token endpoint returned {}: {}", status, body));
+            return Err(format!(
+                "Google token endpoint returned {}: {}",
+                status, body
+            ));
         }
 
         let mut tokens = response
@@ -202,7 +207,8 @@ impl SyncService {
                 &self.http_client,
                 &access_token,
             )
-            .await? {
+            .await?
+            {
                 QueueExecutionResult::Completed => return Ok(()),
                 QueueExecutionResult::RequiresTokenRefresh => {
                     if attempt == 0 {
@@ -211,7 +217,8 @@ impl SyncService {
                     }
 
                     return Err(
-                        "Google access token refresh did not resolve authorization errors".to_string(),
+                        "Google access token refresh did not resolve authorization errors"
+                            .to_string(),
                     );
                 }
             }
@@ -514,6 +521,8 @@ impl SyncService {
 
             let tasks_url = format!("{}/lists/{}/tasks", GOOGLE_TASKS_BASE_URL, list_id);
             let mut remote_google_ids: HashSet<String> = HashSet::new();
+            let mut remote_subtask_google_ids: HashSet<String> = HashSet::new();
+            let mut remote_subtasks: Vec<Value> = Vec::new();
             let mut total_fetched = 0_usize;
             let mut page_token: Option<String> = None;
             let mut encountered_error = false;
@@ -524,7 +533,11 @@ impl SyncService {
                     .http_client
                     .get(&tasks_url)
                     .bearer_auth(access_token)
-                    .query(&[("showHidden", "true"), ("showCompleted", "true"), ("maxResults", "100")]);
+                    .query(&[
+                        ("showHidden", "true"),
+                        ("showCompleted", "true"),
+                        ("maxResults", "100"),
+                    ]);
 
                 if let Some(ref token) = current_token {
                     request = request.query(&[("pageToken", token.as_str())]);
@@ -584,6 +597,14 @@ impl SyncService {
                             remote_google_ids.insert(id_str);
                         }
 
+                        if task.get("parent").and_then(|v| v.as_str()).is_some() {
+                            if let Some(subtask_id) = task.get("id").and_then(|v| v.as_str()) {
+                                remote_subtask_google_ids.insert(subtask_id.to_string());
+                            }
+                            remote_subtasks.push(task.clone());
+                            continue;
+                        }
+
                         if let Err(e) = self.reconcile_task(list_id, task).await {
                             eprintln!("[sync_service] Failed to reconcile task: {}", e);
                         }
@@ -608,8 +629,7 @@ impl SyncService {
 
             println!(
                 "[sync_service] Found {} tasks in list {}",
-                total_fetched,
-                list_id
+                total_fetched, list_id
             );
 
             if let Err(e) = self
@@ -618,6 +638,23 @@ impl SyncService {
             {
                 eprintln!(
                     "[sync_service] Failed pruning missing remote tasks for list {}: {}",
+                    list_id, e
+                );
+            }
+
+            if let Err(e) = self.reconcile_subtasks(list_id, remote_subtasks).await {
+                eprintln!(
+                    "[sync_service] Failed to reconcile subtasks for list {}: {}",
+                    list_id, e
+                );
+            }
+
+            if let Err(e) = self
+                .prune_missing_remote_subtasks(list_id, &remote_subtask_google_ids)
+                .await
+            {
+                eprintln!(
+                    "[sync_service] Failed pruning missing subtasks for list {}: {}",
                     list_id, e
                 );
             }
@@ -760,12 +797,13 @@ impl SyncService {
             metadata_hash: Option<String>,
         }
 
-        let existing: Option<ExistingTask> =
-            sqlx::query_as("SELECT id, sync_state, metadata_hash FROM tasks_metadata WHERE google_id = ?")
-                .bind(google_id)
-                .fetch_optional(&self.pool)
-                .await
-                .map_err(|e| format!("Failed to check existing task: {}", e))?;
+        let existing: Option<ExistingTask> = sqlx::query_as(
+            "SELECT id, sync_state, metadata_hash FROM tasks_metadata WHERE google_id = ?",
+        )
+        .bind(google_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to check existing task: {}", e))?;
 
         eprintln!(
             "[sync_service] Existing task check for {}: {:?}",
@@ -935,6 +973,240 @@ impl SyncService {
         Ok(())
     }
 
+    async fn reconcile_subtasks(&self, list_id: &str, subtasks: Vec<Value>) -> Result<(), String> {
+        if subtasks.is_empty() {
+            return Ok(());
+        }
+
+        let mut grouped: HashMap<String, Vec<Value>> = HashMap::new();
+        for subtask in subtasks {
+            if let Some(parent_id) = subtask.get("parent").and_then(|v| v.as_str()) {
+                grouped
+                    .entry(parent_id.to_string())
+                    .or_default()
+                    .push(subtask);
+            }
+        }
+
+        let now = chrono::Utc::now().timestamp();
+
+        for (parent_google_id, mut items) in grouped {
+            // Ensure deterministic ordering based on Google's lexicographical position string
+            items.sort_by(|a, b| {
+                let pos_a = a.get("position").and_then(|v| v.as_str()).unwrap_or("");
+                let pos_b = b.get("position").and_then(|v| v.as_str()).unwrap_or("");
+                pos_a.cmp(pos_b)
+            });
+
+            let parent_local_id: Option<String> =
+                sqlx::query_scalar("SELECT id FROM tasks_metadata WHERE google_id = ? LIMIT 1")
+                    .bind(&parent_google_id)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(|e| {
+                        format!(
+                            "Failed to resolve parent task {} for remote subtasks: {}",
+                            parent_google_id, e
+                        )
+                    })?;
+
+            let Some(parent_local_id) = parent_local_id else {
+                eprintln!(
+                    "[sync_service] Skipping subtasks for parent {} in list {} because local task not found",
+                    parent_google_id, list_id
+                );
+                continue;
+            };
+
+            for (index, item) in items.into_iter().enumerate() {
+                let task: GoogleTask = serde_json::from_value(item.clone())
+                    .map_err(|e| format!("Failed to parse Google subtask payload: {}", e))?;
+
+                let google_id = task.id.clone();
+                let status = task
+                    .status
+                    .clone()
+                    .unwrap_or_else(|| "needsAction".to_string());
+
+                let remote_payload = task_metadata::GoogleTaskPayload {
+                    title: task.title.clone(),
+                    notes: task.notes.clone(),
+                    due: task.due.clone(),
+                    status: status.clone(),
+                };
+                let remote_metadata =
+                    task_metadata::TaskMetadata::deserialize_from_google(&remote_payload)
+                        .normalize();
+
+                let subtask_metadata = task_metadata::SubtaskMetadata {
+                    id: String::new(),
+                    task_id: parent_local_id.clone(),
+                    google_id: Some(google_id.clone()),
+                    parent_google_id: Some(parent_google_id.clone()),
+                    title: remote_metadata.title.clone(),
+                    is_completed: status == "completed",
+                    due_date: remote_metadata.due_date.clone(),
+                    position: index as i64,
+                };
+
+                let normalized = subtask_metadata.normalize();
+                let metadata_hash = normalized.compute_hash();
+
+                #[derive(sqlx::FromRow)]
+                struct ExistingSubtask {
+                    id: String,
+                }
+
+                let existing: Option<ExistingSubtask> = sqlx::query_as(
+                    "SELECT id, metadata_hash, sync_state FROM task_subtasks WHERE google_id = ?",
+                )
+                .bind(&google_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| format!("Failed to check existing subtask {}: {}", google_id, e))?;
+
+                if let Some(existing_subtask) = existing {
+                    let mut normalized = normalized;
+                    normalized.id = existing_subtask.id.clone();
+
+                    sqlx::query(
+                        "UPDATE task_subtasks SET task_id = ?, google_id = ?, parent_google_id = ?, title = ?, is_completed = ?, position = ?, due_date = ?, metadata_hash = ?, dirty_fields = '[]', sync_state = 'synced', sync_error = NULL, last_synced_at = ?, updated_at = ? WHERE id = ?",
+                    )
+                    .bind(&parent_local_id)
+                    .bind(normalized.google_id.as_ref())
+                    .bind(normalized.parent_google_id.as_ref())
+                    .bind(&normalized.title)
+                    .bind(if normalized.is_completed { 1 } else { 0 })
+                    .bind(normalized.position)
+                    .bind(&normalized.due_date)
+                    .bind(&metadata_hash)
+                    .bind(now)
+                    .bind(now)
+                    .bind(&existing_subtask.id)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| format!("Failed to update subtask {}: {}", existing_subtask.id, e))?;
+
+                    continue;
+                }
+
+                let existing_by_hash: Option<String> = sqlx::query_scalar(
+                    "SELECT id FROM task_subtasks WHERE task_id = ? AND metadata_hash = ? AND google_id IS NULL LIMIT 1",
+                )
+                .bind(&parent_local_id)
+                .bind(&metadata_hash)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| format!("Failed to check existing subtask by hash: {}", e))?;
+
+                let mut normalized = normalized;
+
+                if let Some(existing_id) = existing_by_hash {
+                    normalized.id = existing_id.clone();
+
+                    sqlx::query(
+                        "UPDATE task_subtasks SET task_id = ?, google_id = ?, parent_google_id = ?, title = ?, is_completed = ?, position = ?, due_date = ?, metadata_hash = ?, dirty_fields = '[]', sync_state = 'synced', sync_error = NULL, last_synced_at = ?, updated_at = ? WHERE id = ?",
+                    )
+                    .bind(&parent_local_id)
+                    .bind(normalized.google_id.as_ref())
+                    .bind(normalized.parent_google_id.as_ref())
+                    .bind(&normalized.title)
+                    .bind(if normalized.is_completed { 1 } else { 0 })
+                    .bind(normalized.position)
+                    .bind(&normalized.due_date)
+                    .bind(&metadata_hash)
+                    .bind(now)
+                    .bind(now)
+                    .bind(&existing_id)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(|e| format!("Failed to link subtask {} by hash: {}", existing_id, e))?;
+
+                    continue;
+                }
+
+                let new_id = format!("google-subtask-{}", google_id);
+                normalized.id = new_id.clone();
+
+                sqlx::query(
+                    "INSERT INTO task_subtasks (id, task_id, google_id, parent_google_id, title, is_completed, position, due_date, metadata_hash, dirty_fields, sync_state, sync_error, last_synced_at, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', 'synced', NULL, ?, ?, ?)",
+                )
+                .bind(&normalized.id)
+                .bind(&parent_local_id)
+                .bind(normalized.google_id.as_ref())
+                .bind(normalized.parent_google_id.as_ref())
+                .bind(&normalized.title)
+                .bind(if normalized.is_completed { 1 } else { 0 })
+                .bind(normalized.position)
+                .bind(&normalized.due_date)
+                .bind(&metadata_hash)
+                .bind(now)
+                .bind(now)
+                .bind(now)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| format!("Failed to insert remote subtask {}: {}", google_id, e))?;
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn prune_missing_remote_subtasks(
+        &self,
+        list_id: &str,
+        remote_google_ids: &HashSet<String>,
+    ) -> Result<(), String> {
+        #[derive(sqlx::FromRow)]
+        struct LocalSubtask {
+            id: String,
+            google_id: String,
+        }
+
+        let local_subtasks: Vec<LocalSubtask> = sqlx::query_as(
+            "SELECT ts.id, ts.google_id
+             FROM task_subtasks ts
+             JOIN tasks_metadata tm ON tm.id = ts.task_id
+             WHERE tm.list_id = ? AND ts.google_id IS NOT NULL",
+        )
+        .bind(list_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| format!("Failed to load local subtasks for pruning: {}", e))?;
+
+        if local_subtasks.is_empty() {
+            return Ok(());
+        }
+
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| format!("Failed to begin subtask pruning transaction: {}", e))?;
+
+        for subtask in local_subtasks {
+            if remote_google_ids.contains(&subtask.google_id) {
+                continue;
+            }
+
+            sqlx::query("DELETE FROM task_subtasks WHERE id = ?")
+                .bind(&subtask.id)
+                .execute(&mut *tx)
+                .await
+                .map_err(|e| format!("Failed to prune stale subtask {}: {}", subtask.id, e))?;
+
+            println!(
+                "[sync_service] Pruned subtask {} missing from Google list {}",
+                subtask.id, list_id
+            );
+        }
+
+        tx.commit()
+            .await
+            .map_err(|e| format!("Failed to commit subtask pruning transaction: {}", e))
+    }
+
     fn emit_sync_event(&self, status: SyncEventStatus, error: Option<String>) {
         let payload = SyncEventPayload {
             status,
@@ -942,7 +1214,7 @@ impl SyncService {
             timestamp_ms: Utc::now().timestamp_millis(),
         };
 
-    if let Err(err) = self.app_handle.emit("tasks:sync:complete", payload) {
+        if let Err(err) = self.app_handle.emit("tasks:sync:complete", payload) {
             eprintln!(
                 "[sync_service] Failed to emit tasks:sync:complete event: {}",
                 err
@@ -966,7 +1238,9 @@ struct SyncEventPayload {
     timestamp_ms: i64,
 }
 
-fn extract_token_fields(snapshot: &Value) -> Result<(Option<String>, Option<String>, Option<i64>), String> {
+fn extract_token_fields(
+    snapshot: &Value,
+) -> Result<(Option<String>, Option<String>, Option<i64>), String> {
     let account = snapshot
         .get("account")
         .and_then(|v| v.as_object())
@@ -1040,10 +1314,7 @@ fn update_snapshot_with_token(
         .get_mut("syncStatus")
         .and_then(|v| v.as_object_mut())
     {
-        if let Some(tasks_status) = sync_status
-            .get_mut("tasks")
-            .and_then(|v| v.as_object_mut())
-        {
+        if let Some(tasks_status) = sync_status.get_mut("tasks").and_then(|v| v.as_object_mut()) {
             tasks_status.insert("lastErrorAt".to_string(), Value::Null);
             tasks_status.insert("lastError".to_string(), Value::Null);
         }
@@ -1056,8 +1327,7 @@ fn persist_workspace_snapshot(snapshot: &Value) -> Result<(), String> {
     let serialised = serde_json::to_string(snapshot)
         .map_err(|e| format!("Failed to serialise Google workspace snapshot: {}", e))?;
 
-    google_workspace_store_set(GoogleWorkspaceStoreSetInput { value: serialised })
-        .map(|_| ())
+    google_workspace_store_set(GoogleWorkspaceStoreSetInput { value: serialised }).map(|_| ())
 }
 
 fn value_to_i64(value: &Value) -> Option<i64> {

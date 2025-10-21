@@ -4,6 +4,8 @@ export type TaskLabel = string | { name: string; color: string };
 
 export interface Subtask {
   id: string;
+  googleId?: string;
+  parentGoogleId?: string;
   title: string;
   isCompleted: boolean;
   dueDate?: string;

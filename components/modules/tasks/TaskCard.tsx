@@ -66,7 +66,7 @@ export function TaskCard({
   const dueMeta = React.useMemo(() => {
     const trimmed = dueDate?.trim();
     if (!trimmed) {
-      return { label: 'Set', state: 'none' as const };
+      return { label: '', state: 'none' as const };
     }
 
     let parsed: Date | null = null;
@@ -104,6 +104,7 @@ export function TaskCard({
     'justify-center transition-colors',
     (dueMeta.state === 'none' || dueMeta.state === 'scheduled') &&
       'bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)] border-[color:var(--chip-border)]',
+    !dueMeta.label && 'px-[var(--space-1_5)]',
   );
 
   return (
@@ -155,7 +156,7 @@ export function TaskCard({
                       <div className="mt-[var(--space-1)] flex flex-wrap items-center gap-[var(--chip-gap)]">
                         <span data-due-state={dueMeta.state} className={dueChipClass}>
                           {showDueIcon ? <Calendar className="size-[var(--icon-md)]" aria-hidden /> : null}
-                          <span>{dueMeta.label}</span>
+                          {dueMeta.label ? <span>{dueMeta.label}</span> : null}
                         </span>
                         {priority !== 'none' && (
                           <span

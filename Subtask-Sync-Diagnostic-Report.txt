@@ -1,0 +1,113 @@
+The ∴ Desktop Application: Architecture, Task Module Internals, and Subtask Sync Diagnostic Report
+
+1. Executive Summary
+The ∴ (Therefore) desktop application combines a Vite/React front end with a Tauri-hosted Rust backend to deliver a unified workspace across tasks, projects, chat, calendar, and notes. A local-first philosophy ensures edits persist immediately in SQLite while a sync service reconciles with Google’s ecosystem. Recent development has focused on modernizing the Task module, extracting subtasks into a dedicated table, and enabling deterministic conflict handling. Despite these investments, subtasks created locally are not propagating to Google Tasks. This report documents the architecture, methodological approach, observed behaviour, investigative steps, and the outstanding information a senior engineer would require to close the gap. The intent is to deliver a 360° view so another engineer could parachute in, reproduce the issue, and continue the forensic process without repeating groundwork.
+
+2. System Architecture Overview
+2.1 Desktop Shell and Process Model
+The Tauri shell embeds a TypeScript bundle inside a Rust binary. React renders the UI, Zustand manages client state, and Tailwind provides design tokens. The Rust side exposes Tauri commands that the front end calls via invoke(), returning JSON-serializable payloads. Both halves run in the same OS process but communicate across an asynchronous boundary. This hybrid approach delivers native window chrome and system-level integration while preserving web tooling velocity. Because the runtime is single-process, any SQLite contention is entirely intra-process, meaning we can eliminate races by careful locking rather than coordinating across multiple executables.
+
+2.2 Backend Responsibilities
+The Rust backend owns database access, OAuth token storage, the Google sync loop, and auxiliary services (AI providers, file access, etc.). Database access happens through sqlx, with queries either authored inline or via macros. The backend orchestrates a queue worker that drains sync_queue, Google client helpers that call REST endpoints, and event emitters that notify the front end when state changes. Since the app operates in offline-friendly mode, every mutation is written locally first, flagged dirty, and later replayed to Google. This strategy was derived from previous design documents (Task Metadata CRUD plan, Sync Refactor plan) and implemented across multiple phases.
+
+3. Task Module Backend Internals
+3.1 Schema Design
+• tasks_metadata: Each row represents a task. Columns include google_id (unique when known), list_id, title, notes, due_date, priority, labels (JSON array), status, time_block, metadata_hash, dirty_fields (JSON array of changed fields), sync_state, sync_attempts, sync_error, conflict flags, and timestamps.
+• task_subtasks: Each row represents a child under a parent. Columns include id, task_id, title, is_completed, position, due_date, google_id, parent_google_id, metadata_hash, dirty_fields, sync_state, sync_error, created_at, updated_at, last_synced_at, last_remote_hash. Indices exist on (task_id, position), parent_google_id, and google_id.
+• sync_queue: Holds pending operations. Each entry stores operation (create/update/delete/move/subtask_create/subtask_update/subtask_delete), task_id, payload JSON, scheduled_at, status, attempts, and timestamps.
+3.2 Command Workflow
+create_task normalizes the incoming metadata, writes to tasks_metadata within a transaction, calls replace_subtasks if subtasks are provided, enqueues a “create” sync entry, logs mutation history, commits, reloads the task with subtasks, and emits a tasks::created event. update_task_command follows a similar pattern but fetches the current metadata first, computes diffs, rewrites subtasks, enqueues updates, and emits tasks::updated. delete_task marks the row pending_delete and enqueues a delete operation. Since today’s lock diagnostics revealed contention, each command now acquires a global async mutex (acquire_write_lock()) before opening the transaction, guaranteeing single-writer semantics.
+3.3 Subtask Diffing Logic
+replace_subtasks loads existing rows, organizes them into a map, and iterates through the incoming array. For each subtask it computes normalized metadata (trimmed title, sanitized due date, deterministic hash). It then classifies the row as created, updated, or deleted. When parent_google_id is missing, the diff marks the row pending but does not emit a sync entry. Instead, enqueue_waiting_subtasks_for_parent runs after the parent receives a google_id and pushes real subtask_create entries with parentGoogleId populated.
+
+4. Frontend Behaviour
+4.1 State Management
+The tasks Zustand store hydrates from the Rust backend on launch, normalizing tasks and subtasks into maps keyed by id. Actions such as addTask, updateTask, duplicateTask, and moveTask invoke backend commands and optimistically update local state. Subtasks maintain googleId and parentGoogleId fields to inform the UI whether a child is synced. After successful mutations, the store reconciles with the authoritative response from Rust to eliminate drift.
+4.2 UI Composition
+Key components include TasksModule (board layout), TaskCard (on-board tile), TaskDetailsDrawer (expanded editor), and TaskSidePanel (sidebar inspector). Subtasks appear inside the drawer as editable rows with checkboxes, inline text inputs, due-date popovers, and overflow menus. The recent “calendar icon only” adjustment removed the word “Set” from chips so the design matches spacing guidance.
+
+5. Google Integration Flow
+5.1 Mutation Pipeline
+1. UI action calls create_task or update_task_command.
+2. Rust writes to the database and enqueues sync_queue entries.
+3. Sync service runs execute_pending_mutations. For each entry it claims the row, dispatches to process_*_operation functions, and uses google_client helpers to call the Google Tasks REST API.
+4. On success, finalize_task_sync (or persist_subtask_sync_success) updates metadata_hash, clears dirty_fields, inserts google_id if new, and deletes the queue entry. If the task just obtained a google_id, enqueue_waiting_subtasks_for_parent queues any pending children.
+5. Polling cycle reconcile_task pulls remote state, recomputes metadata, and updates local rows, surfacing conflicts when hashes diverge.
+5.2 API Details
+• create task: POST /lists/{tasklist}/tasks with JSON payload (title, notes containing encoded metadata, due, status).
+• update task: PATCH /lists/{tasklist}/tasks/{task}.
+• create subtask: POST /lists/{tasklist}/tasks?parent={taskId}.
+• update subtask: PATCH /lists/{tasklist}/tasks/{task}.
+• delete: DELETE endpoints. All requests use bearer tokens stored in GoogleWorkspace state, refreshed when 401 occurs.
+
+6. Current Failure Analysis
+6.1 Symptoms Recap
+The UI can create parent tasks and see them mirrored in Google. Adding subtasks locally persists rows in task_subtasks, but those children never appear in Google Tasks. Logs show the sync worker handling parent operations repeatedly yet not mentioning subtask_create entries. Additionally, the UI console still reports sqlite errors—“database is locked” or “no column due_date”—even after serializing writes. The sync service occasionally reports conflicts, suggesting remote state differs from local expectations.
+6.2 Potential Failure Points
+• Subtask queue entries never created. Replace_subtasks may miss new rows or mark them pending without re-enqueue.
+• Entries created but never processed. execute_pending_mutations might not include subtask_* operations or may fail to parse payloads.
+• Google calls returning errors. If google_client encounters HTTP 400/403/429 and we swallow the error, the queue entry may be retried indefinitely without logging remote feedback.
+• Parent ID mismatch. If parent_google_id is blank or wrong, Google rejects the subtask creation silently.
+• Database locking still present. Despite the write mutex, repeated migrations suggest multiple init_database calls, meaning some contexts still open their own pools and race for locks.
+
+7. Forensic Timeline of Mitigations
+• Initial architecture: tasks_metadata stored everything, subtasks were embedded JSON. Phase 3 introduced task_subtasks table with deterministic hashing.
+• Sync refactor: extracted queue worker, Google client modules; planned but not fully implemented read-only store.
+• Recent optimizations: added WAL mode, busy_timeout, shared SqlitePoolOptions, and new OnceCell-based pool reuse. Added global write mutex and queue worker guarding to eliminate cross-task contention.
+• Latest patch: ensure pool is initialized via tokio::sync::OnceCell with asynchronous closure, store write mutex in OnceCell, and acquire the lock in both UI commands and queue worker before any transaction.
+• Observed effect: parent tasks sync reliably; subtask behaviour unchanged; “database is locked” errors persist sporadically.
+
+8. Known Facts and Evidence
+• sqlite3 queries show task_subtasks schema includes due_date, google_id, and metadata columns; the earlier missing-column error was transient or tied to a stale struct.
+• sync_queue dumps observed later in runs show only parent operations. We have not yet captured entries with operation='subtask_create', implying pending-parent path may not re-trigger after parent sync.
+• Logs show repeated “[db] Running migrations” messages, indicating multiple contexts still re-run init_database despite the global OnceCell. Each time this occurs, migrations obtain exclusive locks, blocking UI updates and causing the “database is locked” console errors.
+• google_client has no logging around subtask calls, so we currently cannot confirm whether requests ever leave the process.
+• Conflict logs (“CONFLICT DETECTED”) demonstrate remote payloads differ from local metadata hashes, likely because local changes never reached Google while Google web UI remained unchanged.
+
+9. Unknowns and Instrumentation Targets
+• Does enqueue_waiting_subtasks_for_parent execute? Add logs printing number of pending records processed.
+• What payloads enter sync_queue for subtasks? Dump the JSON to confirm parentGoogleId, listId, and subtaskId values.
+• Are there unguarded write paths? Search for direct pool.execute() calls in other modules that might run outside the mutex.
+• Which runtime reinitializes the pool? Determine whether plugins or background tasks call init_database before OnceCell is primed. Possibly move the pool into tauri::State to ensure uniqueness.
+• Are API errors being swallowed? Wrap google_client HTTP calls with logging of status code and body.
+
+10. Bounded Recommendations
+10.1 Logging Enhancements
+Add structured logging for subtask enqueue decisions, queue worker subtask handlers, and HTTP responses. Without this, we cannot tell whether the system even attempts remote subtask creation.
+10.2 Pool Lifecycle Hardening
+Instantiate the pool during app startup and store it in a tauri::State managed struct. All commands should borrow from that state. Remove redundant init_database calls to eliminate repeated migrations.
+10.3 UI Action Debounce
+Throttle updateTask calls when the user rapidly edits subtasks. Every keystroke currently triggers an update_task_command; batching would minimize concurrent writers.
+10.4 Manual Queue Inspection Procedure
+Document a script combining sqlite3 queries that snapshot sync_queue, tasks_metadata, and task_subtasks after each reproducer step. Share these snapshots when escalating to senior engineers.
+10.5 End-to-End Test Harness
+Write integration tests that create a task, add two subtasks, mock Google responses, and assert that google_client functions were called with expected payloads. This verifies the pipeline in isolation.
+
+11. Information a Senior Engineer Will Request
+• Precise reproduction script with timestamps (create task, wait for parent sync, add subtask, inspect queue, poll logs, refresh Google web UI).
+• Database snapshots (sensitive fields redacted) showing rows in tasks_metadata and task_subtasks, including google_id and sync_state.
+• sync_queue contents annotated with interpretation of payload JSON.
+• Verbose logs from queue worker when it iterates through subtask operations, including any SQL errors.
+• Google API response logs (status codes, error bodies, rate-limit headers).
+• Confirmation whether the Google Tasks web UI manipulates the data concurrently, to rule out remote deletions.
+• Clarification on multi-window behaviour in Tauri; if multiple windows call init_database independently we must coordinate pool reuse differently.
+
+12. Appendix: Attempted Fixes and Outcomes
+• WAL + busy_timeout: Reduced some lock contention but not all, because repeated migrations still hold exclusive locks.
+• Global write mutex: Prevents UI-vs-sync worker collisions but not reinvocations of migrations or foreign commands outside the guarded sections.
+• Parent Google ID gating: Ensures subtasks wait for parent, but without logs we cannot confirm the release path runs.
+• Frontend chips: Cosmetic change, confirmed not to influence sync behaviour.
+• OnceCell pool: Step in the right direction; needs to be combined with single init site to prevent repeated migrations.
+
+13. Closing Statement
+The Therefore desktop application is architecturally sound, yet the subtask synchronization pipeline still has blind spots. The most probable culprits are: (1) subtasks never enter sync_queue because parent IDs remain None or because diff.has_changes() short-circuits; (2) enqueue_waiting_subtasks_for_parent silently fails; (3) the queue worker never reaches subtask handlers due to locking or scheduling issues; or (4) Google rejects the requests and we do not observe the errors. The database locking symptoms also indicate the pool lifecycle is not fully controlled. Addressing these unknowns requires deeper instrumentation and tighter control over database initialization. Once we gather the proposed data (queue snapshots, HTTP logs, lifecycle audit), a senior engineer should have enough evidence to pinpoint the break in the chain and repair subtask synchronization end-to-end.
+
+14. Proposed Instrumentation Blueprint
+To accelerate the next debugging session, we should prepare a repeatable observation framework:
+• Database watchers: write a small Rust helper or SQL script that, after each UI action, prints the contents of tasks_metadata (id, google_id, sync_state), task_subtasks (id, task_id, google_id, parent_google_id, sync_state), and sync_queue (operation, payload). Automate this so engineers can see state transitions frame-by-frame.
+• Structured logging middleware: introduce a macro like log_subtask_event!("enqueue", { fields }) so the queue worker, diff logic, and Google client consistently report what they are doing. Logs should include correlation IDs (task id, subtask id) for cross-referencing.
+• Google API wrapper diagnostics: wrap reqwest calls with instrumentation that logs URL, method, status, and truncated response body. For privacy, gate this behind a debug feature flag, but make it easy to switch on when diagnosing sync.
+• Frontend event tracing: add temporary console.groupCollapsed sections inside taskStore.updateTask and TaskDetailsDrawer subtask handlers to show when each command fires, payload shape, and resulting diff. Capture the call stack to detect duplicate invocations.
+• Latency and contention probes: measure how long each database lock is held (start before acquire_write_lock, stop after release). If write sections take hundreds of milliseconds, the queue could back up and trigger timeouts. With metrics we can prioritize refactoring the heaviest operations.
+• Regression harness: build a CLI scenario (possibly using Tauri’s invoke via WRY or a headless driver) that programmatically creates a task, waits for parent sync, adds two subtasks, triggers manual sync, and validates remote state via Google API. This would serve both as a repro and as a future guardrail once the fix lands.
+Implementing this blueprint will arm the engineering team with the visibility necessary to move from speculation to certainty. With disciplined logging and reproducible scripts, even a fresh-onboarding senior engineer could isolate the failure, propose a focused fix, and prove it in automated fashion before release.

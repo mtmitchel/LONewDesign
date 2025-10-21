@@ -576,6 +576,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                       className={cn(
                         CHIP_CLASS,
                         'justify-center bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)] hover:bg-[var(--hover-bg)] focus-visible:ring-offset-[var(--bg-panel)]',
+                        !dueDate && 'px-[var(--space-1_5)]',
                         dateOpen && 'border-[color:var(--border-strong)]'
                       )}
                       aria-label={dueDate ? `Change due date (${format(dueDate, 'EEE, MMM d')})` : 'Add due date'}
@@ -583,10 +584,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                       {dueDate ? (
                         format(dueDate, 'EEE, MMM d')
                       ) : (
-                        <>
-                          <Calendar className="size-[var(--icon-md)]" aria-hidden />
-                          <span>Set</span>
-                        </>
+                        <Calendar className="size-[var(--icon-md)]" aria-hidden />
                       )}
                     </button>
                   </PopoverTrigger>
@@ -865,17 +863,20 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                       dueChipLabel = rawDue;
                     } else {
                       dueChipState = 'none';
-                      dueChipLabel = 'Set';
+                      dueChipLabel = '';
                       showDueIcon = true;
                     }
 
                     const dueButtonLabel =
-                      dueChipState === 'none' ? 'Set subtask due date' : `Change subtask due date (${dueChipLabel})`;
+                      dueChipState === 'none'
+                        ? 'Set subtask due date'
+                        : `Change subtask due date (${dueChipLabel})`;
                     const dueButtonClass = cn(
                       CHIP_CLASS,
                       'justify-center focus-visible:ring-offset-[var(--bg-surface)] transition-colors',
                       (dueChipState === 'none' || dueChipState === 'scheduled') &&
                         'bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)] hover:bg-[var(--hover-bg)] border-[color:var(--chip-border)]',
+                      dueChipState === 'none' && 'px-[var(--space-1_5)]',
                     );
                     return (
                       <div
@@ -956,7 +957,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask }:
                                 aria-label={dueButtonLabel}
                               >
                                 {showDueIcon ? <Calendar className="size-[var(--icon-md)]" aria-hidden /> : null}
-                                <span>{dueChipLabel}</span>
+                                {dueChipLabel ? <span>{dueChipLabel}</span> : null}
                               </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0">

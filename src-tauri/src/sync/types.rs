@@ -80,3 +80,15 @@ pub struct TaskMetadataRecord {
     pub last_remote_hash: Option<String>,
     pub sync_error: Option<String>,
 }
+
+#[derive(sqlx::FromRow, Debug, Clone)]
+pub struct TaskSubtaskRecord {
+    pub id: String,
+    pub task_id: String,
+    pub google_id: Option<String>,
+    pub parent_google_id: Option<String>,
+    pub title: String,
+    pub is_completed: i64,
+    pub position: i64,
+    pub due_date: Option<String>,
+}

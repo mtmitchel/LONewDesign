@@ -1,10 +1,14 @@
 //! Sync queue processing for task mutations
 
 use reqwest::Client;
+use serde::Deserialize;
+use serde_json::Value;
 use sqlx::SqlitePool;
+use uuid::Uuid;
 
+use crate::db;
 use crate::sync::google_client;
-use crate::sync::types::{SyncQueueEntry, TaskMetadataRecord};
+use crate::sync::types::{SyncQueueEntry, TaskMetadataRecord, TaskSubtaskRecord};
 use crate::task_metadata;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -92,11 +96,22 @@ async fn process_queue_entry(
     access_token: &str,
     entry: &SyncQueueEntry,
 ) -> Result<(), String> {
+    let _write_guard = db::acquire_write_lock().await;
+
     match entry.operation.as_str() {
         "create" => process_create_operation(db_pool, http_client, access_token, entry).await,
         "update" => process_update_operation(db_pool, http_client, access_token, entry).await,
         "delete" => process_delete_operation(db_pool, http_client, access_token, entry).await,
         "move" => process_move_operation(db_pool, http_client, access_token, entry).await,
+        "subtask_create" => {
+            process_subtask_create_operation(db_pool, http_client, access_token, entry).await
+        }
+        "subtask_update" => {
+            process_subtask_update_operation(db_pool, http_client, access_token, entry).await
+        }
+        "subtask_delete" => {
+            process_subtask_delete_operation(db_pool, http_client, access_token, entry).await
+        }
         other => Err(format!("Unsupported sync operation '{}'", other)),
     }
 }
@@ -302,13 +317,9 @@ async fn process_move_operation(
         task.pending_move_from.as_ref(),
         task.pending_delete_google_id.as_ref(),
     ) {
-        if let Err(err) = google_client::delete_google_task(
-            http_client,
-            access_token,
-            source_list,
-            old_google_id,
-        )
-        .await
+        if let Err(err) =
+            google_client::delete_google_task(http_client, access_token, source_list, old_google_id)
+                .await
         {
             eprintln!(
                 "[sync_service] Failed to delete old task {} during move: {}",
@@ -332,6 +343,279 @@ async fn process_move_operation(
     .map_err(|e| format!("Failed to finalize move for task {}: {}", task.id, e))?;
 
     cleanup_queue_entry(db_pool, &entry.id).await
+}
+
+#[derive(Debug, Deserialize)]
+struct SubtaskQueuePayload {
+    list_id: String,
+    subtask_id: String,
+    #[serde(default)]
+    google_id: Option<String>,
+    #[serde(default)]
+    parent_google_id: Option<String>,
+    #[serde(default)]
+    google_payload: Option<Value>,
+}
+
+async fn process_subtask_create_operation(
+    db_pool: &SqlitePool,
+    http_client: &Client,
+    access_token: &str,
+    entry: &SyncQueueEntry,
+) -> Result<(), String> {
+    let payload: SubtaskQueuePayload = serde_json::from_str(&entry.payload)
+        .map_err(|e| format!("Invalid subtask create payload {}: {}", entry.id, e))?;
+
+    let Some(record) = fetch_subtask_record(db_pool, &payload.subtask_id).await? else {
+        cleanup_queue_entry(db_pool, &entry.id).await?;
+        return Ok(());
+    };
+
+    let parent_google_id = match payload
+        .parent_google_id
+        .clone()
+        .or(record.parent_google_id.clone())
+        .or(fetch_parent_google_id(db_pool, &entry.task_id).await?)
+    {
+        Some(value) => value,
+        None => {
+            return Err(format!(
+                "Parent task {} missing google_id; cannot create subtask",
+                entry.task_id
+            ))
+        }
+    };
+
+    let google_payload = payload.google_payload.clone().ok_or_else(|| {
+        format!(
+            "Subtask queue entry {} missing google_payload for create",
+            entry.id
+        )
+    })?;
+
+    let google_id = google_client::create_google_subtask(
+        http_client,
+        access_token,
+        &payload.list_id,
+        &parent_google_id,
+        google_payload,
+    )
+    .await?;
+
+    let mut metadata = record_to_metadata(&record);
+    metadata.google_id = Some(google_id);
+    metadata.parent_google_id = Some(parent_google_id);
+
+    persist_subtask_sync_success(db_pool, &entry.id, metadata).await
+}
+
+async fn process_subtask_update_operation(
+    db_pool: &SqlitePool,
+    http_client: &Client,
+    access_token: &str,
+    entry: &SyncQueueEntry,
+) -> Result<(), String> {
+    let payload: SubtaskQueuePayload = serde_json::from_str(&entry.payload)
+        .map_err(|e| format!("Invalid subtask update payload {}: {}", entry.id, e))?;
+
+    let Some(record) = fetch_subtask_record(db_pool, &payload.subtask_id).await? else {
+        cleanup_queue_entry(db_pool, &entry.id).await?;
+        return Ok(());
+    };
+
+    let parent_google_id = match payload
+        .parent_google_id
+        .clone()
+        .or(record.parent_google_id.clone())
+        .or(fetch_parent_google_id(db_pool, &entry.task_id).await?)
+    {
+        Some(value) => value,
+        None => {
+            return Err(format!(
+                "Parent task {} missing google_id; cannot update subtask",
+                entry.task_id
+            ))
+        }
+    };
+
+    let google_payload = payload.google_payload.clone().ok_or_else(|| {
+        format!(
+            "Subtask queue entry {} missing google_payload for update",
+            entry.id
+        )
+    })?;
+
+    let google_id = payload
+        .google_id
+        .clone()
+        .or(record.google_id.clone())
+        .ok_or_else(|| {
+            format!(
+                "Subtask {} missing google_id; cannot perform update",
+                payload.subtask_id
+            )
+        })?;
+
+    google_client::update_google_subtask(
+        http_client,
+        access_token,
+        &payload.list_id,
+        &google_id,
+        google_payload,
+    )
+    .await?;
+
+    let mut metadata = record_to_metadata(&record);
+    metadata.google_id = Some(google_id);
+    metadata.parent_google_id = Some(parent_google_id);
+
+    persist_subtask_sync_success(db_pool, &entry.id, metadata).await
+}
+
+async fn process_subtask_delete_operation(
+    db_pool: &SqlitePool,
+    http_client: &Client,
+    access_token: &str,
+    entry: &SyncQueueEntry,
+) -> Result<(), String> {
+    let payload: SubtaskQueuePayload = serde_json::from_str(&entry.payload)
+        .map_err(|e| format!("Invalid subtask delete payload {}: {}", entry.id, e))?;
+
+    if let Some(record) = fetch_subtask_record(db_pool, &payload.subtask_id).await? {
+        if let Some(google_id) = payload.google_id.clone().or(record.google_id.clone()) {
+            google_client::delete_google_subtask(
+                http_client,
+                access_token,
+                &payload.list_id,
+                &google_id,
+            )
+            .await?;
+        }
+
+        finalize_subtask_delete(db_pool, &entry.id, &record.id).await
+    } else {
+        cleanup_queue_entry(db_pool, &entry.id).await
+    }
+}
+
+async fn fetch_subtask_record(
+    db_pool: &SqlitePool,
+    subtask_id: &str,
+) -> Result<Option<TaskSubtaskRecord>, String> {
+    sqlx::query_as(
+        "SELECT id, task_id, google_id, parent_google_id, title, is_completed, position, due_date FROM task_subtasks WHERE id = ?",
+    )
+    .bind(subtask_id)
+    .fetch_optional(db_pool)
+    .await
+    .map_err(|e| format!("Failed to fetch subtask {}: {}", subtask_id, e))
+}
+
+fn record_to_metadata(record: &TaskSubtaskRecord) -> task_metadata::SubtaskMetadata {
+    task_metadata::SubtaskMetadata {
+        id: record.id.clone(),
+        task_id: record.task_id.clone(),
+        google_id: record.google_id.clone(),
+        parent_google_id: record.parent_google_id.clone(),
+        title: record.title.clone(),
+        is_completed: record.is_completed != 0,
+        due_date: record.due_date.clone(),
+        position: record.position,
+    }
+}
+
+async fn fetch_parent_google_id(
+    db_pool: &SqlitePool,
+    task_id: &str,
+) -> Result<Option<String>, String> {
+    sqlx::query_scalar("SELECT google_id FROM tasks_metadata WHERE id = ?")
+        .bind(task_id)
+        .fetch_optional(db_pool)
+        .await
+        .map_err(|e| format!("Failed to fetch google_id for task {}: {}", task_id, e))
+}
+
+async fn persist_subtask_sync_success(
+    db_pool: &SqlitePool,
+    entry_id: &str,
+    metadata: task_metadata::SubtaskMetadata,
+) -> Result<(), String> {
+    let normalized = metadata.normalize();
+    let metadata_hash = normalized.compute_hash();
+    let now = chrono::Utc::now().timestamp();
+
+    let mut tx = db_pool
+        .begin()
+        .await
+        .map_err(|e| format!("Failed to begin transaction for subtask sync: {}", e))?;
+
+    sqlx::query(
+        "UPDATE task_subtasks \
+         SET google_id = ?, parent_google_id = ?, title = ?, is_completed = ?, position = ?, due_date = ?, metadata_hash = ?, dirty_fields = '[]', sync_state = 'synced', sync_error = NULL, last_synced_at = ?, updated_at = ? \
+         WHERE id = ?",
+    )
+    .bind(normalized.google_id.as_ref())
+    .bind(normalized.parent_google_id.as_ref())
+    .bind(&normalized.title)
+    .bind(if normalized.is_completed { 1 } else { 0 })
+    .bind(normalized.position)
+    .bind(&normalized.due_date)
+    .bind(&metadata_hash)
+    .bind(now)
+    .bind(now)
+    .bind(&normalized.id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to update subtask {} after sync: {}", normalized.id, e))?;
+
+    sqlx::query("DELETE FROM sync_queue WHERE id = ?")
+        .bind(entry_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to clear subtask queue entry {}: {}", entry_id, e))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("Failed to commit subtask sync for {}: {}", normalized.id, e))
+}
+
+async fn finalize_subtask_delete(
+    db_pool: &SqlitePool,
+    entry_id: &str,
+    subtask_id: &str,
+) -> Result<(), String> {
+    let mut tx = db_pool.begin().await.map_err(|e| {
+        format!(
+            "Failed to begin delete transaction for subtask {}: {}",
+            subtask_id, e
+        )
+    })?;
+
+    sqlx::query("DELETE FROM task_subtasks WHERE id = ?")
+        .bind(subtask_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            format!(
+                "Failed to remove subtask {} after delete: {}",
+                subtask_id, e
+            )
+        })?;
+
+    sqlx::query("DELETE FROM sync_queue WHERE id = ?")
+        .bind(entry_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            format!(
+                "Failed to clear subtask delete queue entry {}: {}",
+                entry_id, e
+            )
+        })?;
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("Failed to commit subtask delete for {}: {}", subtask_id, e))
 }
 
 async fn fetch_task_record(
@@ -372,7 +656,12 @@ async fn revert_queue_entry_claim(
     .bind(&entry.id)
     .execute(db_pool)
     .await
-    .map_err(|e| format!("Failed to revert queue entry {} after auth error: {}", entry.id, e))?;
+    .map_err(|e| {
+        format!(
+            "Failed to revert queue entry {} after auth error: {}",
+            entry.id, e
+        )
+    })?;
 
     Ok(())
 }
@@ -482,6 +771,96 @@ async fn finalize_task_sync(
     tx.commit()
         .await
         .map_err(|e| format!("Failed to commit sync finalization for {}: {}", entry.id, e))?;
+
+    if let Some(parent_google_id) = new_google_id {
+        enqueue_waiting_subtasks_for_parent(db_pool, task, parent_google_id).await?;
+    }
+
+    Ok(())
+}
+
+async fn enqueue_waiting_subtasks_for_parent(
+    db_pool: &SqlitePool,
+    parent_task: &TaskMetadataRecord,
+    parent_google_id: &str,
+) -> Result<(), String> {
+    let mut tx = db_pool
+        .begin()
+        .await
+        .map_err(|e| format!("Failed to open transaction for pending subtasks: {}", e))?;
+
+    let waiting: Vec<TaskSubtaskRecord> = sqlx::query_as(
+        "SELECT id, task_id, google_id, parent_google_id, title, is_completed, position, due_date \
+         FROM task_subtasks \
+         WHERE task_id = ? AND google_id IS NULL AND (parent_google_id IS NULL OR parent_google_id = '')",
+    )
+    .bind(&parent_task.id)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to load subtasks waiting for parent {}: {}", parent_task.id, e))?;
+
+    if waiting.is_empty() {
+        tx.commit()
+            .await
+            .map_err(|e| format!("Failed to commit no-op subtask transaction: {}", e))?;
+        return Ok(());
+    }
+
+    let now = chrono::Utc::now().timestamp();
+
+    for row in waiting {
+        sqlx::query(
+            "UPDATE task_subtasks SET parent_google_id = ?, sync_state = 'pending', updated_at = ? WHERE id = ?",
+        )
+        .bind(parent_google_id)
+        .bind(now)
+        .bind(&row.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to flag subtask {} for enqueue: {}", row.id, e))?;
+
+        let metadata = task_metadata::SubtaskMetadata {
+            id: row.id.clone(),
+            task_id: row.task_id.clone(),
+            google_id: None,
+            parent_google_id: Some(parent_google_id.to_string()),
+            title: row.title.clone(),
+            is_completed: row.is_completed != 0,
+            due_date: row.due_date.clone(),
+            position: row.position,
+        };
+
+        let payload = serde_json::json!({
+            "task_id": parent_task.id,
+            "list_id": parent_task.list_id,
+            "subtask_id": metadata.id,
+            "google_id": metadata.google_id,
+            "parent_google_id": metadata.parent_google_id,
+            "google_payload": metadata.to_google_payload(),
+        });
+
+        let payload_json = serde_json::to_string(&payload)
+            .map_err(|e| format!("Failed to serialize waiting subtask payload: {}", e))?;
+
+        let sync_queue_id = Uuid::new_v4().to_string();
+
+        sqlx::query(
+            "INSERT INTO sync_queue (id, task_id, operation, payload, scheduled_at, created_at, status, attempts) \
+             VALUES (?, ?, 'subtask_create', ?, ?, ?, 'pending', 0)",
+        )
+        .bind(&sync_queue_id)
+        .bind(&parent_task.id)
+        .bind(&payload_json)
+        .bind(now)
+        .bind(now)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to enqueue waiting subtask {}: {}", row.id, e))?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| format!("Failed to commit waiting subtask enqueue: {}", e))?;
 
     Ok(())
 }
