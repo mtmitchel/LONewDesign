@@ -220,7 +220,7 @@ export function startTasksAutoSync() {
 
 Conflict policy:
 
-Use updatedAt comparison; prefer newest; mark conflicted tasks with syncState:'conflict' and surface a small resolve UI.
+Use updatedAt comparison; prefer newest; mark conflicted tasks with syncState:'conflict' and (once the redesigned affordance ships) surface a resolve UI—current builds intentionally hide the badge until the new flow is ready.
 
 6) Server-State Option (TanStack Query)
 

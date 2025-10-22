@@ -82,7 +82,7 @@ React UI (read-only task views, conflict banners)
 * **Conflict surfacing (end-to-end complete, 2025-10-22)**:
   - Backend: `sync_service.rs` detects conflicts when local is dirty and hashes mismatch, marks `has_conflict=true`, sets `sync_state='conflict'`, blocks pending queue mutations via `mark_pending_queue_conflict`, and emits `tasks::conflict` events with local/remote snapshots plus dirty field diffs.
   - Backend: `commands/tasks.rs` clears conflict flags (`has_conflict = 0`) when authors re-edit a task, allowing next sync to resolve cleanly.
-  - Frontend: `taskStore.tsx` listens for the `tasks::conflict` Tauri event, hydrates the remote payload into state, sets `syncState='conflict'`, and preserves the `hasConflict` badge.
+	- Frontend: `taskStore.tsx` still hydrates conflict payloads, but UI surfaces are temporarily disabled while we redesign the badge experience (no `syncState` presentation in cards).
   - Frontend: `types.ts` includes `'conflict'` in the `TaskSyncState` enum and `hasConflict?: boolean` in the `Task` interface.
   - Sync service preserves `has_conflict` state and blocks conflicting queue entries until authors resolve.
 
