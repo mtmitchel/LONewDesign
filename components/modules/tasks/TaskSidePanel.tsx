@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Calendar, Check, Flag, Plus, Tag, Trash2, X } from 'lucide-react';
+import { Calendar, Check, CheckSquare, Copy, Edit, Flag, Plus, Tag, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Checkbox } from '../../ui/checkbox';
@@ -8,6 +8,13 @@ import { Calendar as CalendarComponent } from '../../ui/calendar';
 import { Badge, badgeVariants } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { cn } from '../../ui/utils';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '../../ui/context-menu';
 import { PaneHeader } from '../../layout/PaneHeader';
 import { useTaskStore } from './taskStore';
 import type { Task, TaskLabel, Subtask } from './types';
@@ -86,6 +93,7 @@ function TaskSidePanel({
   const [priorityPopoverOpen, setPriorityPopoverOpen] = React.useState(false);
   const titleFieldRef = React.useRef<HTMLTextAreaElement | null>(null);
   const labelNameInputRef = React.useRef<HTMLInputElement | null>(null);
+  const subtaskInputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
 
   const handleToggleLabel = React.useCallback((label: ComposerLabel) => {
     setEditedTask((prev) => {
@@ -274,6 +282,39 @@ function TaskSidePanel({
       };
     });
   }, []);
+
+  const focusSubtaskInput = React.useCallback((subtaskId: string) => {
+    requestAnimationFrame(() => {
+      subtaskInputRefs.current.get(subtaskId)?.focus();
+    });
+  }, []);
+
+  const handleDuplicateSubtask = React.useCallback(
+    (subtaskId: string) => {
+      let newId = '';
+      setEditedTask((prev) => {
+        if (!prev) return prev;
+        const current = prev.subtasks ?? [];
+        const index = current.findIndex((item) => item.id === subtaskId);
+        if (index === -1) return prev;
+        const source = current[index];
+        newId = `subtask-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const duplicate: Subtask = {
+          ...source,
+          id: newId,
+          isCompleted: false,
+        };
+        const next = [...current];
+        next.splice(index + 1, 0, duplicate);
+        return { ...prev, subtasks: next };
+      });
+
+      if (newId) {
+        focusSubtaskInput(newId);
+      }
+    },
+    [focusSubtaskInput],
+  );
 
   const handleSaveChanges = React.useCallback(() => {
     if (!editedTask) return;
@@ -609,58 +650,98 @@ function TaskSidePanel({
               <span className="text-[length:var(--text-sm)] font-medium text-[color:var(--text-primary)]">Subtasks</span>
             </header>
             <div className="flex flex-col gap-[var(--space-2)]">
-              {(editedTask.subtasks ?? []).map((subtask) => (
-                <div
-                  key={subtask.id}
-                  className="group flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-transparent px-[var(--space-2_5)] py-[var(--space-1_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--bg-surface-elevated)]"
-                >
-                  <Checkbox
-                    checked={subtask.isCompleted}
-                    onCheckedChange={(checked) => handleToggleSubtaskCompletion(subtask.id, Boolean(checked))}
-                    className="size-5"
-                    aria-label={subtask.isCompleted ? 'Mark subtask incomplete' : 'Mark subtask complete'}
-                  />
-                  <input
-                    type="text"
-                    value={subtask.title}
-                    onChange={(event) => handleUpdateSubtaskTitle(subtask.id, event.target.value)}
-                    className={cn(
-                      'flex-1 rounded-[var(--radius-md)] border border-transparent bg-transparent px-[var(--space-2)] py-[var(--space-1)] text-sm text-[color:var(--text-primary)] focus:border-[var(--border-default)] focus:outline-none focus:ring-0',
-                      subtask.isCompleted && 'line-through text-[color:var(--text-tertiary)]',
-                    )}
-                    placeholder="Untitled subtask"
-                  />
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-secondary)]"
-                        aria-label="Choose subtask due date"
+              {(editedTask.subtasks ?? []).map((subtask) => {
+                const parsedDue = subtask.dueDate ? new Date(subtask.dueDate) : undefined;
+                const dueLabel = parsedDue ? format(parsedDue, 'MMM d') : undefined;
+
+                return (
+                  <ContextMenu key={subtask.id}>
+                    <ContextMenuTrigger asChild>
+                      <div
+                        className="group flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-transparent px-[var(--space-2_5)] py-[var(--space-1_5)] transition-colors hover:border-[var(--border-default)] hover:bg-[var(--bg-surface-elevated)]"
                       >
-                        <Calendar className="size-4" aria-hidden />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent
-                        mode="single"
-                        selected={subtask.dueDate ? new Date(subtask.dueDate) : undefined}
-                        onSelect={(date) =>
-                          handleUpdateSubtaskDueDate(subtask.id, date ? format(date, 'yyyy-MM-dd') : undefined)
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSubtask(subtask.id)}
-                    className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] opacity-0 transition-opacity duration-200 hover:text-[color:var(--text-secondary)] group-hover:opacity-100"
-                    aria-label="Delete subtask"
-                  >
-                    <Trash2 className="size-4" aria-hidden />
-                  </button>
-                </div>
-              ))}
+                        <Checkbox
+                          checked={subtask.isCompleted}
+                          onCheckedChange={(checked) => handleToggleSubtaskCompletion(subtask.id, Boolean(checked))}
+                          className="size-5"
+                          aria-label={subtask.isCompleted ? 'Mark subtask incomplete' : 'Mark subtask complete'}
+                          onContextMenu={(event) => event.preventDefault()}
+                        />
+                        <input
+                          ref={(element) => {
+                            if (element) {
+                              subtaskInputRefs.current.set(subtask.id, element);
+                            } else {
+                              subtaskInputRefs.current.delete(subtask.id);
+                            }
+                          }}
+                          type="text"
+                          value={subtask.title}
+                          onChange={(event) => handleUpdateSubtaskTitle(subtask.id, event.target.value)}
+                          className={cn(
+                            'flex-1 rounded-[var(--radius-md)] border border-transparent bg-transparent px-[var(--space-2)] py-[var(--space-1)] text-sm text-[color:var(--text-primary)] focus:border-[var(--border-default)] focus:outline-none focus:ring-0',
+                            subtask.isCompleted && 'line-through text-[color:var(--text-tertiary)]',
+                          )}
+                          placeholder="Untitled subtask"
+                          onContextMenu={(event) => event.preventDefault()}
+                        />
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-secondary)]"
+                              aria-label={dueLabel ? `Change subtask due date (${dueLabel})` : 'Choose subtask due date'}
+                              onContextMenu={(event) => event.preventDefault()}
+                            >
+                              <Calendar className="size-4" aria-hidden />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                            <CalendarComponent
+                              mode="single"
+                              selected={parsedDue}
+                              onSelect={(date) =>
+                                handleUpdateSubtaskDueDate(subtask.id, date ? format(date, 'yyyy-MM-dd') : undefined)
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteSubtask(subtask.id)}
+                          className="grid size-8 place-items-center rounded-[var(--radius-sm)] text-[color:var(--text-tertiary)] opacity-0 transition-opacity duration-200 hover:text-[color:var(--text-secondary)] group-hover:opacity-100"
+                          aria-label="Delete subtask"
+                          onContextMenu={(event) => event.preventDefault()}
+                        >
+                          <Trash2 className="size-4" aria-hidden />
+                        </button>
+                      </div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="min-w-[200px]">
+                      <ContextMenuItem
+                        onSelect={() => handleToggleSubtaskCompletion(subtask.id, !subtask.isCompleted)}
+                      >
+                        <CheckSquare className="size-4" />
+                        {subtask.isCompleted ? 'Mark as not completed' : 'Mark completed'}
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={() => focusSubtaskInput(subtask.id)}>
+                        <Edit className="size-4" />
+                        Edit
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={() => handleDuplicateSubtask(subtask.id)}>
+                        <Copy className="size-4" />
+                        Duplicate
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem variant="destructive" onSelect={() => handleDeleteSubtask(subtask.id)}>
+                        <Trash2 className="size-4" />
+                        Delete
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                );
+              })}
               <div className="flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-dashed border-[var(--border-subtle)] px-[var(--space-2_5)] py-[var(--space-2)]">
                 <Plus className="size-4 text-[color:var(--text-tertiary)]" aria-hidden />
                 <input
