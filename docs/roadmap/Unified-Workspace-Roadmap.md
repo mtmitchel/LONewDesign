@@ -1,5 +1,7 @@
 # Unified workspace roadmap (v2)
 
+> **Last comprehensive audit: 2025-10-22** — Phase completion percentages, status markers, and implementation notes updated to reflect current codebase state. All outdated January 2025 status snapshots replaced with October 2025 snapshot. Major updates: P1-P3 now complete, saga orchestration shipped, conflict surfacing end-to-end operational, completed-count parity fix landed.
+
 > **This is the single authoritative source** for what's being built, what's in progress, and what's complete. All engineers should reference this roadmap when planning work. For coding conventions and setup, see `../guidelines/Guidelines.md`.
 
 > Formerly `Unified-UI-Redesign.md`; this living roadmap now covers the unified UI redesign and the Google Workspace (Mail · Calendar · Tasks) integration workstreams.
@@ -51,13 +53,13 @@ Provide a bulletproof, local-first, conflict-aware Google Tasks synchronization 
 
 | Phase | Scope | Status | Complete | Notes |
 |-------|-------|--------|----------|-------|
-| P1 | Database Infrastructure | 🟢 Mostly Complete | 4/5 | Cross‑platform path validation pending |
-| P2 | Command Module Extraction | ✅ Complete | 11/11 | `main.rs` slimmed to ~170 LOC |
-| P3 | Metadata CRUD Enhancements | 🟡 In Progress | 6/11 | Conflict hashing & move helpers outstanding |
-| P4 | Sync Engine Overhaul | 🟡 In Progress | 4/8 | Queue worker wired into service; reconciler + durable conflict surfacing pending |
-| P5 | Frontend Read‑Only + Testing | 🟡 Pending | 0/8 | Store still optimistic; property/integration tests TODO |
+| P1 | Database Infrastructure | ✅ Complete | 6/6 | All migrations landed (001–006); saga tables operational |
+| P2 | Command Module Extraction | ✅ Complete | 11/11 | `main.rs` slimmed to ~170 LOC; all commands modularized |
+| P3 | Metadata CRUD Enhancements | ✅ Complete | 11/11 | Metadata normalizer, hashing, move saga, conflict detection shipped |
+| P4 | Sync Engine Overhaul | 🟡 In Progress | 7/8 | Queue worker operational; conflict surfacing complete; reconciler module extraction pending |
+| P5 | Frontend Read‑Only + Testing | 🟡 In Progress | 2/8 | Store partially optimistic; conflict events wired; property/integration tests pending |
 
-**Next Critical Action:** Finish the read-only task store migration so UI hydration depends solely on backend events and fetches.
+**Next Critical Action:** Extract reconciler module from `sync_service.rs` (currently ~1,500 LOC); complete read-only task store migration; add Rust property tests for normalization/CRUD/conflict paths.
 
 #### 🧱 Architecture Layers
 ```
@@ -71,20 +73,24 @@ React UI (read-only task views, conflict banners)
 ```
 
 #### ✅ Implemented Highlights
-* Enhanced schema with `metadata_hash`, `dirty_fields`, soft deletes, mutation log, sync queue.
-* Task metadata normalizer + deterministic SHA‑256 hashing + Google notes metadata packing.
-* Create / update / delete (soft) commands populate queue + mutation log.
-* Background polling + manual `sync_tasks_now` trigger operational.
+* **Enhanced schema (migrations 001–006)**: `metadata_hash`, `dirty_fields`, soft deletes, mutation log, sync queue, conflict tracking, subtask tables, saga orchestration tables (saga_logs, operation_idempotency, task_backups, operation_locks, saga_subtask_progress).
+* **Task metadata normalizer** + deterministic SHA‑256 hashing + Google notes metadata packing (label color preservation end-to-end).
+* **CRUD commands**: `create_task`, `update_task_command`, `delete_task`, `queue_move_task`, `get_tasks` populate queue + mutation log; all exported via `commands/tasks.rs`.
+* **Background polling** + manual `sync_tasks_now` trigger operational (60s cadence).
+* **Saga-based task moves (2025-10-22)**: Production-ready saga state machine with distributed transactions, idempotency (24h window), distributed locking, backup-before-delete, resumable operations, and progress tracking. Replaces direct API calls to prevent data loss and ensure consistency. Subtasks now survive list-to-list moves in both web app and desktop app.
+* **Tasks board completed summary (2025-10-22)**: Now mirrors Google Tasks counts, showing only completed parent tasks instead of summing subtasks (`Completed (n)` parity fix).
 * **Conflict surfacing (end-to-end complete, 2025-10-22)**:
   - Backend: `sync_service.rs` detects conflicts when local is dirty and hashes mismatch, marks `has_conflict=true`, sets `sync_state='conflict'`, blocks pending queue mutations via `mark_pending_queue_conflict`, and emits `tasks::conflict` events with local/remote snapshots plus dirty field diffs.
   - Backend: `commands/tasks.rs` clears conflict flags (`has_conflict = 0`) when authors re-edit a task, allowing next sync to resolve cleanly.
   - Frontend: `taskStore.tsx` listens for the `tasks::conflict` Tauri event, hydrates the remote payload into state, sets `syncState='conflict'`, and preserves the `hasConflict` badge.
   - Frontend: `types.ts` includes `'conflict'` in the `TaskSyncState` enum and `hasConflict?: boolean` in the `Task` interface.
-  - Reconciler preserves `has_conflict` state and blocks conflicting queue entries until authors resolve.
+  - Sync service preserves `has_conflict` state and blocks conflicting queue entries until authors resolve.
 
 #### 🔄 Outstanding (High Priority)
-1. Read‑only taskStore refactor: shift from optimistic updates to event-only hydration.
-2. Property + integration tests (Rust) for normalization, CRUD, conflict paths, queue idempotency.
+1. **Reconciler module extraction**: `sync_service.rs` currently ~1,500 LOC; extract polling + reconciliation logic into `sync/reconciler.rs` module.
+2. **Read‑only taskStore refactor**: Shift from optimistic updates to event-only hydration for all task mutations (partial: create/delete still optimistic; update now backend-first).
+3. **Property + integration tests (Rust)**: Normalization determinism, CRUD idempotency, conflict detection paths, queue worker retry/backoff, saga move scenarios.
+4. **Frontend store tests**: Event application, conflict UI flows, no direct writes validation.
 
 #### 🧪 Testing Strategy (Snapshot)
 | Layer | Tests (Planned) | Status |
@@ -168,29 +174,35 @@ The full historical narrative (rationale, step-by-step task list) now lives in `
 - Testing & instrumentation
 - Cleanup & follow-ups
 
-#### Status – 2025-01-13 (ARCHITECTURE PIVOT)
+#### Status – 2025-10-22 (Current State)
 
 > **See also:**  
 > - Executable tasks: `docs/implementation/backend-sync-refactor-tasks.json`  
 > - Memory graph: Search "Backend-Heavy Architecture Pattern" in Factory AI  
 > - Breaking changes: Update `CHANGELOG.md` when shipping
 
-**Completed (Pre-Pivot)**
+**Completed (Core Architecture)**
 - ✅ Google Workspace provider card & shared settings store scaffolded (Settings → Accounts)
 - ✅ OAuth PKCE flow working on desktop (loopback listener + token exchange)
 - ✅ Calendar tasks rail consuming shared task list selector
 - ✅ Task store with Zustand + normalized entities
+- ✅ **Phase 1: SQLite Foundation** - sqlx + database initialization landed, migrations seeded (001–006 complete)
+- ✅ **Phase 2: Tasks Backend Refactor** - Sync service owns polling/mutations; saga-based moves; conflict surfacing end-to-end
+- ✅ **Queue worker**: `sync/queue_worker.rs` extracted and operational with retry logic, idempotency checks, conflict marking
+- ✅ **Saga orchestration**: `sync/saga.rs` + `sync/saga_move.rs` provide distributed transaction pattern with resumable operations
+- ✅ **Task list lifecycle**: Create/delete task lists with SQLite reconciliation; orphan cleanup; 60s polling cadence
 
 **Deprecated (Frontend-Heavy Approach)**
 - ❌ Frontend mutation queue with Immer → **ABANDONED** due to proxy revocation issues
-- ❌ `googleTasksSyncService.ts` → **WILL BE REMOVED** in Phase 2
-- ❌ Complex frontend sync state management → **MOVING TO RUST BACKEND**
+- ❌ `googleTasksSyncService.ts` → **REMOVED** in Phase 2
+- ❌ Complex frontend sync state management → **MOVED TO RUST BACKEND**
 
-**Current Focus (Backend-Heavy Pivot)**
-- ✅ **Phase 1: SQLite Foundation** - sqlx + database initialization landed, migrations seeded
-- 🔄 **Phase 2: Tasks Backend Refactor** - Sync service owns polling/mutations; frontend wiring in progress
+**Current Focus (Remaining Refactor Work)**
+- 🔄 **Reconciler extraction**: Move polling/reconciliation logic from `sync_service.rs` (~1,500 LOC) into `sync/reconciler.rs` module
+- 🔄 **Read-only store migration**: Remove remaining optimistic updates from `taskStore.tsx` (create/delete still optimistic; update already backend-first)
 - ⏳ **Phase 3: Projects Persistence** - SQLite storage for projects/phases/milestones
 - ⏳ **Phase 4: Notes & Chats** - Local-first persistence
+- ⏳ **Testing**: Property tests (Rust) for normalization, CRUD, conflict paths; integration tests for queue worker, saga moves
 
 #### Status – 2025-01-14
 
@@ -248,9 +260,10 @@ See detailed executable tasks document for complete implementation plan.
 
 * ✅ `QuickAssistantProvider` lives in `components/assistant/QuickAssistantProvider.tsx`, centralizing slash capture and wiring the quick modals across the app shell.
 * ✅ Global hotkeys (`⌘/Ctrl+K`, `T`, `N`, `E`) are live; provider emits `assistant.opened|submitted|error` and `assistant.command_selected` events.
-* ✅ Selection-aware dialog + writing tools now execute via providers and apply Replace/Insert inline.
+* ✅ Selection-aware dialog + writing tools (`WritingToolsGrid.tsx`) now execute via providers and apply Replace/Insert inline.
 * ✅ Floating launcher FAB (sidebar) ships with tooltip + selection badge handoff.
-* 🔄 Ask AI fallback + history still in backlog; track in `docs/assistant/Advanced-Assistant-Roadmap.md`.
+* ⏳ **Ask AI fallback** + history still in backlog; track in `docs/assistant/Advanced-Assistant-Roadmap.md`.
+* ⏳ **Natural-language intent router** (§11) and **deterministic tool registry** (§12) remain planned but not yet implemented.
 
 ---
 
@@ -602,6 +615,13 @@ function SkeletonRows() {
 
 * Bind to `⌘/Ctrl+K` when Assistant is closed; avoid conflicts; respect current scopes.
 
+#### Status – 2025-10-22
+
+* ✅ **Command palette component exists** at `components/extended/command-palette.tsx` with modal overlay and keyboard navigation primitives.
+* ⏳ **Adapters pending**: Cross-entity search adapters for Notes/Tasks/Emails/Events/Projects/Chats/Files not yet wired.
+* ⏳ **NL router integration**: Handoff to Assistant creation flows planned but not implemented.
+* ⏳ **Global binding**: `⌘/Ctrl+K` conflict resolution with Assistant not yet implemented.
+
 ---
 
 ## 6. Tasks ↔ calendar tight coupling
@@ -621,9 +641,16 @@ function SkeletonRows() {
 
 * Audit Task/Calendar providers for shared selectors and mutation hooks; handle all-day, recurring, timezone shifts.
 
+#### Status – 2025-10-22
+
+* ⏳ **Planned feature**: Tasks ↔ calendar integration not yet implemented.
+* ⏳ **Calendar rendering of tasks**: Not yet wired.
+* ⏳ **Drag-and-drop**: Task/event mutations not yet implemented.
+* ⏳ **Follow-up task CTA**: Not yet present in event details.
+
 ---
 
-## 7. Notes “Keep” view + web clipper
+## 7. Notes "Keep" view + web clipper
 
 ### Objectives
 
@@ -637,6 +664,10 @@ function SkeletonRows() {
 ### Integration notes
 
 * Reuse existing note model, pinning logic, and card primitives; prep extension handoff with simple clipping endpoints/IPC.
+
+#### Status – 2025-10-22
+
+* ⏳ **Planned feature**: Notes grid/Keep view and web clipper not yet implemented.
 
 ---
 
@@ -656,6 +687,10 @@ function SkeletonRows() {
 
 * Minimal shared linking service for create/lookup/hydration; handle unresolved links gracefully.
 
+#### Status – 2025-10-22
+
+* ⏳ **Planned feature**: Bi-directional linking and backlinks not yet implemented.
+
 ---
 
 ## 9. Starter automations (recipes + slash-commands)
@@ -673,6 +708,11 @@ function SkeletonRows() {
 ### Integration notes
 
 * Automations call the same creation handlers as the Assistant; provide logging/activity entries for generated artifacts.
+
+#### Status – 2025-10-22
+
+* ⏳ **Planned feature**: Automation watchers, rule UI, and slash-commands in chat not yet implemented.
+* 📝 **Note**: QuickAssistantProvider supports slash-commands (`/task`, `/note`, `/event`) but chat-specific commands pending.
 
 ---
 
@@ -692,6 +732,13 @@ function SkeletonRows() {
 ### Integration notes
 
 * Pair with accessibility QA: contrast, focus order, keyboard navigation.
+
+#### Status – 2025-10-22
+
+* ✅ **Token enforcement complete**: `globals.css` defines comprehensive design tokens (spacing, color, radius, typography); applied across Dashboard, Settings, Mail, Notes, Tasks, Projects modules.
+* ✅ **Shared primitives**: UI kit components (buttons, tabs, toggles, cards, lists) reused consistently; ad-hoc styles mostly eliminated.
+* ✅ **Motion-safe transitions**: All animations gated behind `motion-safe:` Tailwind variant.
+* 🔄 **Documentation**: Token reference at `docs/technical/design-tokens-reference.md` exists; component MDX snippets partially updated.
 
 ---
 
@@ -714,8 +761,13 @@ Turn arbitrary text into a **strict, validated intent** that deterministic code 
 * **LLM classification** (local 7–8B by default). Output **strict JSON only**.
 * **Validation** via Zod; **enrichers** normalize dates (chrono/luxon), language codes, bullet counts; apply timezone.
 * **Confidence gate** (<0.6 prompts a compact disambiguation UI); selection-required intents block with a clear inline message.
-* **Provider routing**: classification local; heavy summarize/translate may use the user’s configured cloud provider; show a tiny "Using OpenAI • Change" label when cloud is used.
+* **Provider routing**: classification local; heavy summarize/translate may use the user's configured cloud provider; show a tiny "Using OpenAI • Change" label when cloud is used.
 * **Instrumentation** as listed in §1.
+
+#### Status – 2025-10-22
+
+* ⏳ **Planned feature**: Natural-language intent classification, validation, and enrichment pipeline not yet implemented.
+* 📝 **Current approach**: QuickAssistantProvider uses simple regex-based slash-command parsing; no LLM classification.
 
 ---
 
@@ -728,8 +780,14 @@ Turn arbitrary text into a **strict, validated intent** that deterministic code 
 ### Behavior
 
 * Assistant shows a **tools grid** when a selection exists and input is empty.
-* NL like “make this friendlier”, “translate to German (informal)”, “extract key points” routes to the corresponding tool; unmatched → **Ask AI** with the selection as context.
+* NL like "make this friendlier", "translate to German (informal)", "extract key points" routes to the corresponding tool; unmatched → **Ask AI** with the selection as context.
 * Results render in a **draft pane** with Replace/Insert/Copy actions; dismissing restores focus.
+
+#### Status – 2025-10-22
+
+* ✅ **Writing tools grid implemented**: `WritingToolsGrid.tsx` component exists and is integrated into QuickAssistantProvider.
+* ⏳ **NL routing to tools**: Natural-language routing (e.g., "make this friendlier" → Professional tone tool) not yet implemented; users must select tools manually from grid.
+* ⏳ **Ask AI fallback**: Unmatched requests don't yet fall back to open-ended AI; planned for future release.
 
 ---
 
