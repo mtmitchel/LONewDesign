@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixes
+- **Subtask context menu z-index fix (2025-10-22)**: Fixed subtask right-click context menu not appearing in TaskDetailsDrawer by removing the `asChild` prop from ContextMenuTrigger (matching the working TaskCard implementation) and adding `z-[100]` to ContextMenuContent to ensure it renders above the drawer's `z-[70]` overlay.
 - Hardened duplicate-task cleanup so freshly created tasks waiting to sync are no longer mistaken for orphan records and removed during a manual sync cycle.
 - **Label color persistence (2025-10-15)**: Label color changes now persist across app refreshes. Extended Rust backend (`task_metadata.rs`, `commands/tasks.rs`) to store labels as `{name,color}` JSON objects instead of name-only strings, updated frontend (`taskStore.tsx`) to send structured payloads, and modified Google Tasks serialization to preserve color metadata through sync round-trips. Test suite and mocks updated to validate color preservation end-to-end.
 - **Subtask sync instrumentation (2025-10-16)**: Added detailed logging across task diffing, queue worker dispatch, and Google client HTTP calls to trace subtask propagation; ensured the SQLite pool is initialized once per process; prevented task update logic from deleting queued subtask operations; and removed the stray root `test.db` artifact.

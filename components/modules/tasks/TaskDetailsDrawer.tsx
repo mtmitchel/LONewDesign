@@ -828,7 +828,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                   );
                   return (
                       <ContextMenu key={subtask.id}>
-                        <ContextMenuTrigger asChild>
+                        <ContextMenuTrigger>
                           <div
                             className="group grid items-center hover:bg-[var(--hover-bg)] motion-safe:transition-colors duration-[var(--duration-fast)]"
                             style={SUBTASK_ROW_STYLE}
@@ -850,7 +850,6 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                               className="grid place-items-center shrink-0 size-[var(--check-size)] rounded-[var(--radius-full)] border border-[var(--check-ring)] bg-[var(--check-idle-bg)] motion-safe:transition-[background-color,border-color] duration-[var(--duration-base)] hover:border-[var(--check-hover-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2"
                               aria-pressed={subtask.isCompleted}
                               aria-label={subtask.isCompleted ? 'Mark subtask incomplete' : 'Mark subtask complete'}
-                              onContextMenu={(event) => event.preventDefault()}
                             >
                               <svg viewBox="0 0 20 20" className="size-[calc(var(--check-size)-4px)]" aria-hidden="true">
                                 <circle
@@ -898,7 +897,6 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                                 'w-full border-0 bg-transparent text-[length:var(--list-row-font)] text-[color:var(--text-primary)] focus:outline-none focus:ring-0',
                                 subtask.isCompleted && 'line-through text-[color:var(--text-tertiary)] opacity-60',
                               )}
-                              onContextMenu={(event) => event.preventDefault()}
                             />
                           </div>
                           <div className="flex items-center justify-end py-[var(--list-row-pad-y)]">
@@ -912,7 +910,6 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                                   data-due-state={dueChipState}
                                   className={dueButtonClass}
                                   aria-label={dueButtonLabel}
-                                  onContextMenu={(event) => event.preventDefault()}
                                 >
                                   {showDueIcon ? <Calendar className="size-[var(--icon-sm)]" aria-hidden /> : null}
                                   {dueChipLabel ? <span>{dueChipLabel}</span> : null}
@@ -941,7 +938,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                           </div>
                         </div>
                       </ContextMenuTrigger>
-                      <ContextMenuContent className="min-w-[220px]">
+                      <ContextMenuContent className="min-w-[220px] z-[100]">
                         <ContextMenuItem
                           onSelect={() => handleToggleSubtaskCompletion(subtask.id, !subtask.isCompleted)}
                         >
