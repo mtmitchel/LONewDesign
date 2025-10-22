@@ -54,10 +54,10 @@ Provide a bulletproof, local-first, conflict-aware Google Tasks synchronization 
 | P1 | Database Infrastructure | 🟢 Mostly Complete | 4/5 | Cross‑platform path validation pending |
 | P2 | Command Module Extraction | ✅ Complete | 11/11 | `main.rs` slimmed to ~170 LOC |
 | P3 | Metadata CRUD Enhancements | 🟡 In Progress | 6/11 | Conflict hashing & move helpers outstanding |
-| P4 | Sync Engine Overhaul | 🟡 In Progress | 3/8 | Queue worker extracted, not fully wired; reconciler pending |
+| P4 | Sync Engine Overhaul | 🟡 In Progress | 4/8 | Queue worker wired into service; reconciler + durable conflict surfacing pending |
 | P5 | Frontend Read‑Only + Testing | 🟡 Pending | 0/8 | Store still optimistic; property/integration tests TODO |
 
-**Next Critical Action:** Wire `sync/queue_worker.rs` into live `SyncService` and replace placeholder payload hashing (unblocks conflict detection + idempotency).
+**Next Critical Action:** Complete reconciler wiring and surface durable conflict events so UI can detect `has_conflict` states.
 
 #### 🧱 Architecture Layers
 ```
@@ -77,11 +77,10 @@ React UI (read-only task views, conflict banners)
 * Background polling + manual `sync_tasks_now` trigger operational.
 
 #### 🔄 Outstanding (High Priority)
-1. Queue worker orchestration: ensure single source of truth (remove duplicated logic in `sync_service.rs`).
-2. Real payload + metadata hashing inside queue worker (remove placeholder `payload_metadata_hash`).
-3. Conflict detection: field‑level merge & event emission (`tasks::conflict`).
-4. Read‑only taskStore refactor: shift from optimistic updates to event-only hydration.
-5. Property + integration tests (Rust) for normalization, CRUD, conflict paths, queue idempotency.
+1. Conflict detection: field‑level merge & event emission (`tasks::conflict`).
+2. Ensure conflict markers persist (avoid resetting `has_conflict` during reconciliation).
+3. Read‑only taskStore refactor: shift from optimistic updates to event-only hydration.
+4. Property + integration tests (Rust) for normalization, CRUD, conflict paths, queue idempotency.
 
 #### 🧪 Testing Strategy (Snapshot)
 | Layer | Tests (Planned) | Status |
@@ -195,7 +194,7 @@ The full historical narrative (rationale, step-by-step task list) now lives in `
 * ✅ Backend reconciliation removes orphaned lists and reassigns or prunes tasks when Google deletes a list.
 * ✅ Store-level wiring landed for `create_task_list`, `delete_task_list`, and `sync_tasks_now` in `taskStore` with optimistic updates.
 * 🔄 UI still needs to call these store methods from `TasksModule` and `CalendarTasksRail` and surface errors.
-* 🔄 Manual “Sync now” affordance and cadence telemetry still need to be added to the React shell.
+* ✅ Manual “Sync now” affordance ships in the Tasks toolbar; cadence telemetry still pending.
 
 **Immediate Next Steps**
 
@@ -278,7 +277,7 @@ See detailed executable tasks document for complete implementation plan.
 
 * ✅ `components/modules/ProjectsModule.tsx` ships the tri-pane scaffold with router-backed tabs; the Events tab is present with a placeholder copy block.
 * ✅ Overview/Tasks tabs integrate with quick assistant scope handoff and task board interactions using mock data.
-* 🔄 Right pane still renders `ProjectContextPanel` (Context | Settings) and continues to surface "Upcoming events"—needs the Insights tab swap and dedupe.
+* ✅ Right pane now renders the `ProjectInsightsPanel` (“Insights | Settings”) with the spec’d layout; data remains mock-driven.
 * 🔄 Data adapters remain mock-driven; milestone and artifact hydration awaits real stores.
 
 ---
@@ -518,9 +517,9 @@ function SkeletonRows() {
 
 #### Status – 2025-10-09
 
-* ❌ Insights tab not yet wired; `ProjectContextPanel.tsx` still defines Context | Settings with upcoming events list.
-* ❌ `ProjectInsightsPanel` component is not present in the codebase; needs implementation per snippet above.
-* 🔄 Tokens (`--panel-*`, `--hover-bg`, `--tripane-border`) already exist in `styles/globals.css`, so styling groundwork is ready once the component lands.
+* ✅ `ProjectContextPanel.tsx` now mounts the Insights | Settings tabs and drops the duplicate Upcoming events list.
+* ✅ `ProjectInsightsPanel` component ships in `components/modules/projects/ProjectInsightsPanel.tsx` with the annotated sections.
+* 🔄 Insights content remains mock data; hook up real signals/backlinks and add persistence for section collapse + timestamps.
 
 ---
 
@@ -578,8 +577,8 @@ function SkeletonRows() {
 * ✅ Mail, Notes, and Projects panes already rely on shared tokens (`--panel-pad-x`, `--panel-pad-y`, `--panel-radius`).
 * ✅ Shared `ContextPanel` primitives now live in `components/modules/context/ContextPanel.tsx`, exporting `ContextPanel`, `ContextSection`, `ContextQuickActions`, and `ContextListItem` via the module barrel.
 * ✅ `MailRightPane` renders the shared panel with Context/Settings tabs plus assistant tips and related items sections.
-* 🔄 Chat, Tasks, Notes, and Projects panes still need to migrate from bespoke panels to the shared abstraction.
-* ❌ Projects pane still shows upcoming events; Insights tab from §2A must replace it and align the tab labels.
+* 🔄 Notes pane still uses bespoke markup; Tasks/Projects variants need to adopt shared primitives fully.
+* ✅ Projects pane now swaps in the Insights variant from §2A (no duplicate Upcoming events).
 
 ---
 

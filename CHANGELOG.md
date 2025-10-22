@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+- Noted current sync-engine progress, manual sync affordance, and Projects Insights implementation in `docs/roadmap/Unified-Workspace-Roadmap.md` (2025-10-23).
+
 ### Fixes
 - **Subtask context menu z-index fix (2025-10-22)**: Fixed subtask right-click context menu not appearing in TaskDetailsDrawer by removing the `asChild` prop from ContextMenuTrigger (matching the working TaskCard implementation) and adding `z-[100]` to ContextMenuContent to ensure it renders above the drawer's `z-[70]` overlay.
 - Hardened duplicate-task cleanup so freshly created tasks waiting to sync are no longer mistaken for orphan records and removed during a manual sync cycle.
