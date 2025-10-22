@@ -11,7 +11,7 @@ import { ProjectContextPanel } from "./projects/ProjectContextPanel";
 import { CreateProjectModal } from "./projects/CreateProjectModal";
 import { TasksBoard } from "./tasks/TasksBoard";
 import type { ComposerLabel } from "./tasks/TaskComposer";
-import { TaskSidePanel } from "./tasks/TaskSidePanel";
+import TaskDetailsDrawer from "./tasks/TaskDetailsDrawer";
 import type { Task as BoardTask } from "./tasks/types";
 import { Plus } from "lucide-react";
 import {
@@ -583,7 +583,7 @@ export function ProjectsModule() {
         right={
           rightPaneVisible ? (
             showInlineTaskPanel && selectedBoardTask ? (
-              <TaskSidePanel
+              <TaskDetailsDrawer
                 task={selectedBoardTask}
                 onClose={handleCloseTaskDetails}
                 onUpdateTask={handleUpdateProjectTask}
@@ -614,7 +614,7 @@ export function ProjectsModule() {
             overlayClassName="fixed inset-0 z-[var(--z-overlay)] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)]"
             className="fixed inset-0 z-[var(--z-overlay)] m-0 h-full w-full max-w-none translate-x-0 translate-y-0 rounded-none border-0 bg-[var(--quick-panel-bg)] shadow-[var(--modal-elevation)]"
           >
-            <TaskSidePanel
+            <TaskDetailsDrawer
               task={selectedBoardTask}
               onClose={handleCloseTaskDetails}
               onUpdateTask={handleUpdateProjectTask}
