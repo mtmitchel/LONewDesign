@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from '@testing-library/react';
 import { taskStoreApi, selectTasks, selectSyncStatus } from '../taskStore';
-import type { Task } from '../types';
+import type { Task, Subtask } from '../types';
 import { invoke } from '@tauri-apps/api/core';
 
 // Mock @tauri-apps/api/core
@@ -360,6 +360,55 @@ describe('taskStore - Backend-Heavy Architecture', () => {
         { name: 'Design', color: 'var(--label-green)' },
         { name: 'Review', color: 'var(--label-purple)' },
       ]);
+    });
+
+    it('should trigger immediate sync when toggling completion', async () => {
+      const task = await act(async () => {
+        return taskStoreApi.getState().addTask({
+          title: 'Complete me',
+          listId: 'default',
+        });
+      });
+
+      mockInvoke.mockClear();
+
+      await act(async () => {
+        await taskStoreApi.getState().updateTask(task.id, {
+          isCompleted: true,
+        });
+      });
+
+      const commands = mockInvoke.mock.calls.map(([command]) => command);
+      expect(commands).toContain('sync_tasks_now');
+    });
+
+    it('should trigger immediate sync when updating subtasks', async () => {
+      const task = await act(async () => {
+        return taskStoreApi.getState().addTask({
+          title: 'Parent task',
+          listId: 'default',
+        });
+      });
+
+      const subtasks: Subtask[] = [
+        {
+          id: 'sub-1',
+          title: 'Child task',
+          isCompleted: false,
+          position: 0,
+        },
+      ];
+
+      mockInvoke.mockClear();
+
+      await act(async () => {
+        await taskStoreApi.getState().updateTask(task.id, {
+          subtasks,
+        });
+      });
+
+      const commands = mockInvoke.mock.calls.map(([command]) => command);
+      expect(commands).toContain('sync_tasks_now');
     });
   });
 

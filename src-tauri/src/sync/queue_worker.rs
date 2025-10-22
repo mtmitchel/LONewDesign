@@ -276,77 +276,30 @@ async fn process_move_operation(
         return Ok(());
     }
 
-    #[derive(sqlx::FromRow)]
-    struct MovePayload {
-        title: String,
-        notes: Option<String>,
-        due_date: Option<String>,
-        priority: String,
-        labels: String,
-        status: String,
-        time_block: Option<String>,
-    }
+    // Get from_list_id from pending_move_from or current list_id
+    let from_list_id = task.pending_move_from
+        .as_ref()
+        .unwrap_or(&task.list_id)
+        .to_string();
 
-    let clone_payload: MovePayload = sqlx::query_as(
-        "SELECT title, notes, due_date, priority, labels, status, time_block FROM tasks_metadata WHERE id = ?",
-    )
-    .bind(&task.id)
-    .fetch_one(db_pool)
-    .await
-    .map_err(|e| format!("Failed to load move payload for {}: {}", task.id, e))?;
+    println!(
+        "[queue_worker] Delegating move operation to saga: task={} from={} to={}",
+        task.id, from_list_id, to_list_id
+    );
 
-    let metadata = task_metadata::TaskMetadata {
-        title: clone_payload.title,
-        notes: clone_payload.notes,
-        due_date: clone_payload.due_date,
-        priority: clone_payload.priority,
-        labels: clone_payload.labels,
-        status: clone_payload.status,
-        time_block: clone_payload.time_block,
-    };
-
-    let normalized = metadata.normalize();
-    let google_payload_value = serde_json::to_value(normalized.serialize_for_google())
-        .map_err(|e| format!("Failed to serialize move payload: {}", e))?;
-    let payload_hash = payload_metadata_hash(&google_payload_value)?;
-
-    let new_google_id = google_client::create_google_task_with_payload(
+    // Delegate to saga orchestration system
+    use crate::sync::saga_move;
+    saga_move::execute_move_saga(
+        db_pool,
         http_client,
         access_token,
+        &task.id,
+        &from_list_id,
         &to_list_id,
-        google_payload_value,
     )
     .await?;
 
-    if let (Some(source_list), Some(old_google_id)) = (
-        task.pending_move_from.as_ref(),
-        task.pending_delete_google_id.as_ref(),
-    ) {
-        if let Err(err) =
-            google_client::delete_google_task(http_client, access_token, source_list, old_google_id)
-                .await
-        {
-            eprintln!(
-                "[sync_service] Failed to delete old task {} during move: {}",
-                old_google_id, err
-            );
-        }
-    }
-
-    let now = chrono::Utc::now().timestamp();
-    sqlx::query(
-        "UPDATE tasks_metadata SET list_id = ?, google_id = ?, updated_at = ?, sync_state = 'synced', dirty_fields = '[]', sync_attempts = 0, last_synced_at = ?, sync_error = NULL, pending_move_from = NULL, pending_delete_google_id = NULL, last_remote_hash = ? WHERE id = ?",
-    )
-    .bind(&to_list_id)
-    .bind(&new_google_id)
-    .bind(now)
-    .bind(now)
-    .bind(&payload_hash)
-    .bind(&task.id)
-    .execute(db_pool)
-    .await
-    .map_err(|e| format!("Failed to finalize move for task {}: {}", task.id, e))?;
-
+    // Cleanup queue entry after successful saga completion
     cleanup_queue_entry(db_pool, &entry.id).await
 }
 

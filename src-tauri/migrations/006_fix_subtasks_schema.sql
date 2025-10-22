@@ -1,0 +1,5 @@
+-- Migration 006 intentionally left blank.
+-- Earlier drafts attempted to add columns already present from Migration 004,
+-- which caused "duplicate column" failures on app startup. The saga executor
+-- now works with the existing schema (tasks_metadata.status, task_subtasks.is_completed),
+-- so this migration is a no-op placeholder to keep numbering consistent.

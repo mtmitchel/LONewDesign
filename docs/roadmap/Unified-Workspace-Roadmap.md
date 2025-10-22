@@ -75,8 +75,12 @@ React UI (read-only task views, conflict banners)
 * Task metadata normalizer + deterministic SHA‑256 hashing + Google notes metadata packing.
 * Create / update / delete (soft) commands populate queue + mutation log.
 * Background polling + manual `sync_tasks_now` trigger operational.
-* Durable conflict detection + `tasks::conflict` event emission with local diff payloads.
-* Reconciler preserves `has_conflict` state and blocks conflicting queue entries until authors resolve.
+* **Conflict surfacing (end-to-end complete, 2025-10-22)**:
+  - Backend: `sync_service.rs` detects conflicts when local is dirty and hashes mismatch, marks `has_conflict=true`, sets `sync_state='conflict'`, blocks pending queue mutations via `mark_pending_queue_conflict`, and emits `tasks::conflict` events with local/remote snapshots plus dirty field diffs.
+  - Backend: `commands/tasks.rs` clears conflict flags (`has_conflict = 0`) when authors re-edit a task, allowing next sync to resolve cleanly.
+  - Frontend: `taskStore.tsx` listens for the `tasks::conflict` Tauri event, hydrates the remote payload into state, sets `syncState='conflict'`, and preserves the `hasConflict` badge.
+  - Frontend: `types.ts` includes `'conflict'` in the `TaskSyncState` enum and `hasConflict?: boolean` in the `Task` interface.
+  - Reconciler preserves `has_conflict` state and blocks conflicting queue entries until authors resolve.
 
 #### 🔄 Outstanding (High Priority)
 1. Read‑only taskStore refactor: shift from optimistic updates to event-only hydration.

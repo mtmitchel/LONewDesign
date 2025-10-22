@@ -392,7 +392,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           id,
           title: title || 'Untitled',
           description: undefined,
-          status: listId as Task['status'],
+          status: metadata.status,
           priority: metadata.priority as Task['priority'],
           dueDate: metadata.due_date ?? undefined,
           createdAt: createdAtIso,
@@ -441,11 +441,16 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           const isCompleted = rustTask.status === 'completed';
           const subtasks = deserializeSubtasks(rustTask.subtasks);
 
+          const canonicalStatus =
+            typeof rustTask.status === 'string' && rustTask.status.trim().length > 0
+              ? rustTask.status
+              : 'needsAction';
+
           const task: Task = {
             id: rustTask.id,
             title: rustTask.title || 'Untitled',
             description: undefined,
-            status: rustTask.list_id,
+            status: canonicalStatus,
             priority: rustTask.priority as Task['priority'],
             dueDate: rustTask.due_date ?? undefined,
             createdAt: new Date(rustTask.created_at * 1000).toISOString(),
@@ -511,7 +516,6 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           if (draft) {
             draft.listId = toListId;
             draft.boardListId = toListId;
-            draft.status = toListId as any;
           }
         });
 
@@ -552,6 +556,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         // Persist to Rust backend
         try {
             const payload: Record<string, unknown> = {};
+            let shouldTriggerImmediateSync = false;
             let normalizedLabelsForStore: Array<{ name: string; color: string }> | undefined;
             let existingLabelColorMap: Map<string, string> | undefined;
 
@@ -600,83 +605,108 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
               payload.due_date = normalizeMetadataDueDate(updates.dueDate ?? null);
             }
 
+            if (typeof updates.status === 'string') {
+              const trimmedStatus = updates.status.trim();
+              if (trimmedStatus.length > 0) {
+                payload.status = trimmedStatus;
+                shouldTriggerImmediateSync = true;
+              }
+            }
+
             if (typeof updates.isCompleted !== 'undefined') {
               payload.status = updates.isCompleted ? 'completed' : 'needsAction';
+              shouldTriggerImmediateSync = true;
             }
 
             if (typeof updates.subtasks !== 'undefined') {
               payload.subtasks = serializeSubtasksForBackend(updates.subtasks);
+              shouldTriggerImmediateSync = true;
             }
 
             if (Object.keys(payload).length > 0) {
-  const rustTask = await invoke<any>('update_task_command', {
-                    taskId: id,
-                    updates: payload,
+              const rustTask = await invoke<any>('update_task_command', {
+                taskId: id,
+                updates: payload,
+              });
+
+              const isCompleted = rustTask.status === 'completed';
+              const subtasks = deserializeSubtasks(rustTask.subtasks);
+
+              let labels = deserializeLabels(rustTask.labels);
+
+              if (!normalizedLabelsForStore && existingTask && !existingLabelColorMap) {
+                existingLabelColorMap = buildLabelColorMapFromLabels(existingTask.labels);
+              }
+
+              const labelColorSource = normalizedLabelsForStore
+                ? new Map(normalizedLabelsForStore.map((label) => [label.name.toLowerCase(), label.color]))
+                : existingLabelColorMap;
+
+              if (labelColorSource && labelColorSource.size > 0) {
+                labels = labels.map((label) => {
+                  if (typeof label === 'string') {
+                    const normalizedName = label.trim().toLowerCase();
+                    const color = labelColorSource?.get(normalizedName) ?? DEFAULT_LABEL_COLOR;
+                    return { name: label, color };
+                  }
+
+                  const normalizedName = label.name.trim().toLowerCase();
+                  const color = labelColorSource?.get(normalizedName) ?? label.color ?? DEFAULT_LABEL_COLOR;
+                  return { ...label, color };
                 });
+              }
 
-                const isCompleted = rustTask.status === 'completed';
-                const subtasks = deserializeSubtasks(rustTask.subtasks);
+              const canonicalStatus =
+                typeof rustTask.status === 'string' && rustTask.status.trim().length > 0
+                  ? rustTask.status
+                  : 'needsAction';
 
-                let labels = deserializeLabels(rustTask.labels);
+              const task: Task = {
+                id: rustTask.id,
+                title: rustTask.title || 'Untitled',
+                description: undefined,
+                status: canonicalStatus,
+                priority: rustTask.priority as Task['priority'],
+                dueDate: rustTask.due_date ?? undefined,
+                createdAt: new Date(rustTask.created_at * 1000).toISOString(),
+                dateCreated: new Date(rustTask.created_at * 1000).toISOString(),
+                updatedAt: new Date(rustTask.updated_at * 1000).toISOString(),
+                assignee: undefined,
+                labels,
+                listId: rustTask.list_id,
+                boardListId: rustTask.list_id,
+                notes: rustTask.notes ?? undefined,
+                isCompleted,
+                completedAt: isCompleted
+                  ? new Date(rustTask.updated_at * 1000).toISOString()
+                  : null,
+                subtasks,
+                externalId: rustTask.google_id,
+                pendingSync: ['pending', 'pending_move'].includes(rustTask.sync_state),
+                syncState: rustTask.sync_state,
+                lastSyncedAt: rustTask.last_synced_at
+                  ? rustTask.last_synced_at * 1000
+                  : undefined,
+                syncError: rustTask.sync_error,
+                hasConflict: rustTask.has_conflict,
+              };
 
-                if (!normalizedLabelsForStore && existingTask && !existingLabelColorMap) {
-                  existingLabelColorMap = buildLabelColorMapFromLabels(existingTask.labels);
+              set((state) => {
+                state.tasksById[id] = task;
+              });
+
+              if (shouldTriggerImmediateSync) {
+                try {
+                  await get().syncNow();
+                } catch (syncError) {
+                  if (process.env.NODE_ENV !== 'production') {
+                    console.warn('[taskStore] Immediate sync after update failed', syncError);
+                  }
                 }
-
-                const labelColorSource = normalizedLabelsForStore
-                  ? new Map(normalizedLabelsForStore.map((label) => [label.name.toLowerCase(), label.color]))
-                  : existingLabelColorMap;
-
-                if (labelColorSource && labelColorSource.size > 0) {
-                  labels = labels.map((label) => {
-                    if (typeof label === 'string') {
-                      const normalizedName = label.trim().toLowerCase();
-                      const color = labelColorSource?.get(normalizedName) ?? DEFAULT_LABEL_COLOR;
-                      return { name: label, color };
-                    }
-
-                    const normalizedName = label.name.trim().toLowerCase();
-                    const color = labelColorSource?.get(normalizedName) ?? label.color ?? DEFAULT_LABEL_COLOR;
-                    return { ...label, color };
-                  });
-                }
-
-                const task: Task = {
-                    id: rustTask.id,
-                    title: rustTask.title || 'Untitled',
-                    description: undefined,
-                    status: rustTask.list_id,
-                    priority: rustTask.priority as Task['priority'],
-                    dueDate: rustTask.due_date ?? undefined,
-                    createdAt: new Date(rustTask.created_at * 1000).toISOString(),
-                    dateCreated: new Date(rustTask.created_at * 1000).toISOString(),
-                    updatedAt: new Date(rustTask.updated_at * 1000).toISOString(),
-                    assignee: undefined,
-                    labels,
-                    listId: rustTask.list_id,
-                    boardListId: rustTask.list_id,
-                    notes: rustTask.notes ?? undefined,
-                    isCompleted,
-                    completedAt: isCompleted
-                      ? new Date(rustTask.updated_at * 1000).toISOString()
-                      : null,
-                    subtasks,
-                    externalId: rustTask.google_id,
-                    pendingSync: ['pending', 'pending_move'].includes(rustTask.sync_state),
-                    syncState: rustTask.sync_state,
-                    lastSyncedAt: rustTask.last_synced_at
-                    ? rustTask.last_synced_at * 1000
-                    : undefined,
-                    syncError: rustTask.sync_error,
-                    hasConflict: rustTask.has_conflict,
-                };
-
-                set((state) => {
-                    state.tasksById[id] = task;
-                });
+              }
             }
         } catch (error) {
-            console.error('[taskStore] Failed to update task in Rust:', error);
+          console.error('[taskStore] Failed to update task in Rust:', error);
         }
       },
       deleteTask: async (id) => {
@@ -708,6 +738,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           if (!draft) return;
           draft.isCompleted = nextCompleted;
           draft.completedAt = completedAt;
+          draft.status = nextCompleted ? 'completed' : 'needsAction';
           draft.pendingSync = true;
           draft.syncState = 'pending';
           draft.syncError = null;
@@ -760,7 +791,6 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           task.updatedAt = new Date(payload.timestamp_ms).toISOString();
           task.listId = payload.list_id;
           task.boardListId = payload.list_id;
-          task.status = payload.list_id;
           if (payload.google_id) {
             task.externalId = payload.google_id;
           }
@@ -815,6 +845,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
             task.completedAt = isCompleted
               ? new Date(payload.timestamp_ms).toISOString()
               : null;
+            task.status = remote.status ?? task.status ?? 'needsAction';
           }
         });
 
@@ -856,12 +887,16 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
             for (const rustTask of rustTasks) {
               const isCompleted = rustTask.status === 'completed';
               const subtasks = deserializeSubtasks(rustTask.subtasks);
+              const canonicalStatus =
+                typeof rustTask.status === 'string' && rustTask.status.trim().length > 0
+                  ? rustTask.status
+                  : 'needsAction';
 
               const task: Task = {
                 id: rustTask.id,
                 title: rustTask.title || 'Untitled',
                 description: undefined,
-                status: rustTask.list_id,
+                status: canonicalStatus,
                 priority: rustTask.priority as Task['priority'],
                 dueDate: rustTask.due_date ?? undefined,
                 createdAt: new Date(rustTask.created_at * 1000).toISOString(),
