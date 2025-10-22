@@ -57,7 +57,7 @@ Provide a bulletproof, local-first, conflict-aware Google Tasks synchronization 
 | P4 | Sync Engine Overhaul | 🟡 In Progress | 4/8 | Queue worker wired into service; reconciler + durable conflict surfacing pending |
 | P5 | Frontend Read‑Only + Testing | 🟡 Pending | 0/8 | Store still optimistic; property/integration tests TODO |
 
-**Next Critical Action:** Complete reconciler wiring and surface durable conflict events so UI can detect `has_conflict` states.
+**Next Critical Action:** Finish the read-only task store migration so UI hydration depends solely on backend events and fetches.
 
 #### 🧱 Architecture Layers
 ```
@@ -75,12 +75,12 @@ React UI (read-only task views, conflict banners)
 * Task metadata normalizer + deterministic SHA‑256 hashing + Google notes metadata packing.
 * Create / update / delete (soft) commands populate queue + mutation log.
 * Background polling + manual `sync_tasks_now` trigger operational.
+* Durable conflict detection + `tasks::conflict` event emission with local diff payloads.
+* Reconciler preserves `has_conflict` state and blocks conflicting queue entries until authors resolve.
 
 #### 🔄 Outstanding (High Priority)
-1. Conflict detection: field‑level merge & event emission (`tasks::conflict`).
-2. Ensure conflict markers persist (avoid resetting `has_conflict` during reconciliation).
-3. Read‑only taskStore refactor: shift from optimistic updates to event-only hydration.
-4. Property + integration tests (Rust) for normalization, CRUD, conflict paths, queue idempotency.
+1. Read‑only taskStore refactor: shift from optimistic updates to event-only hydration.
+2. Property + integration tests (Rust) for normalization, CRUD, conflict paths, queue idempotency.
 
 #### 🧪 Testing Strategy (Snapshot)
 | Layer | Tests (Planned) | Status |

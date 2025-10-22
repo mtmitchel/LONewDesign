@@ -12,7 +12,17 @@ export interface Subtask {
   position?: number;
 }
 
-export type TaskSyncState = 'idle' | 'pending' | 'pending_move' | 'syncing' | 'error';
+export type TaskSyncState =
+  | 'idle'
+  | 'pending'
+  | 'pending_move'
+  | 'pending_delete'
+  | 'pending_parent'
+  | 'processing'
+  | 'syncing'
+  | 'synced'
+  | 'conflict'
+  | 'error';
 
 export interface Task {
   id: string;

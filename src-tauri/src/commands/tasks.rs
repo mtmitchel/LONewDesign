@@ -536,7 +536,7 @@ pub async fn update_task_command(
     let dirty_fields = serde_json::to_string(&diff).unwrap();
 
     sqlx::query(
-        "UPDATE tasks_metadata SET title = ?, notes = ?, due_date = ?, priority = ?, labels = ?, status = ?, time_block = ?, metadata_hash = ?, dirty_fields = ?, updated_at = ?, sync_state = 'pending', sync_attempts = 0 WHERE id = ?",
+        "UPDATE tasks_metadata SET title = ?, notes = ?, due_date = ?, priority = ?, labels = ?, status = ?, time_block = ?, metadata_hash = ?, dirty_fields = ?, updated_at = ?, sync_state = 'pending', sync_attempts = 0, has_conflict = 0, sync_error = NULL WHERE id = ?",
     )
     .bind(&normalized_metadata.title)
     .bind(&normalized_metadata.notes)

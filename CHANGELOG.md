@@ -19,12 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known Issues
 - Sync service modularization is still in progress: `src-tauri/src/sync_service.rs` remains about 1,100 lines long and the planned helper modules (`sync/oauth.rs`, `sync/reconciler.rs`) have not been created. The extracted queue worker lives in `sync/queue_worker.rs` but is not wired into the running service yet.
-- Conflict detection is incomplete because `sync/queue_worker.rs` still uses a placeholder metadata hash (`payload_metadata_hash`) when reconciling remote payloads.
+- Task store remains partially optimistic; a follow-up will finish the read-only hydration path and add regression tests before turning on stricter conflict toasts.
 
 ### Enhancements
 - Unified inline task composer popovers (date, priority, labels) with consistent widths while allowing the calendar to size naturally, refreshed the priority menu with low-ink rounded chips and an em dash “none” option, and introduced persistent label selection using the design-system palette across TasksBoard, TasksModule, and ProjectsModule.
 - Standardized task label chips across the composer, preview pill stack, and rendered cards by reusing the shared `Badge` component and adopting the same default color token end-to-end, eliminating the blue-to-gray jump after saving.
 - Calmed task metadata UI: empty due/priority/label states now use square icon buttons, due pills use hairline rings with smaller icons, and task cards show a quiet subtask count indicator.
+- Surfaced durable Google Tasks conflicts: the reconciler now preserves `has_conflict`, emits `tasks::conflict` events with field diffs, blocks pending queue entries, and the task store listens for the event to update in-memory tasks with remote data and conflict badges until users resolve them.
 
 ### Google Tasks Sync Backend Refinements (2025-10-15)
 - Implemented "Resume on Startup" for the sync service to ensure immediate data synchronization on application launch.
