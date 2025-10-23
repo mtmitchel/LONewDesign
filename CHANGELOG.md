@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Refactoring
+- **Assistant module modularization — COMPLETE (2025-10-23)**: Successfully modularized AssistantCaptureDialog and QuickAssistantProvider:
+  - **AssistantCaptureDialog**: Refactored from 945 lines to 21 lines using modular `capture/` components
+  - **Components**: `CaptureDialog.tsx`, `WritingToolsGrid.tsx`, `CaptureHeader.tsx`, `CaptureInput.tsx`, `CaptureFooter.tsx`, `WritingToolsSection.tsx`
+  - **Hooks**: `useCaptureState.ts` for state management
+  - **Utilities**: `commandUtils.ts`, `types.ts` for shared logic
+  - **QuickAssistantProvider**: Modularized into `quick/` structure with commands, state, and feature modules
+  - **Result**: 39 files changed, 5200 insertions(+), 1626 deletions(-) - significant complexity reduction
+  - All functionality preserved, TypeScript checks pass, builds successfully ✅
+
+- **Settings module modularization — COMPLETE (2025-10-23)**: Refactored settings components:
+  - **SettingsAccount**: Reduced from 420+ lines to 9 lines using `AccountProvider` component
+  - **SettingsProviders**: Refactored to use `SettingsBridge` for Tauri command abstraction
+  - **Bridge layer**: Added `lib/bridge/` for Tauri command abstraction (account-bridge.ts, settings-bridge.ts)
+  - **Chat tri-pane**: Added modular components for chat module
+  - All functionality preserved, build verified ✅
+
 - **Notes module left-pane modularization — COMPLETE (2025-10-23)**: Successfully modularized NotesLeftPane with left-pane components:
   - **Stage 5**: Replaced inline FolderTreeItem component (500+ LOC) with modular `left-pane/` structure
   - **Components**: `NotebookList.tsx` (folder tree & notes), `Filters.tsx` (search), `FolderTreeItem.tsx` (individual folder rendering)
