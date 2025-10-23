@@ -55,7 +55,8 @@ export function createListActions(set: any, get: any) {
       // optimistic remove
       let backup: TaskList | undefined;
       set((state: TaskStoreState) => {
-        backup = state.listsById[id];
+        const existing = state.listsById[id];
+        backup = existing ? { ...existing } : undefined;
         delete state.listsById[id];
         state.listOrder = state.listOrder.filter((x) => x !== id);
         // also detach tasks in this list locally (they will be reconciled from backend)

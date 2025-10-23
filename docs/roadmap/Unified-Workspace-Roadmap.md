@@ -59,7 +59,7 @@ Provide a bulletproof, local-first, conflict-aware Google Tasks synchronization 
 | P4 | Sync Engine Overhaul | 🟡 In Progress | 7/8 | Queue worker operational; conflict surfacing complete; reconciler module extraction pending |
 | P5 | Frontend Read‑Only + Testing | 🟡 In Progress | 2/8 | Store partially optimistic; conflict events wired; property/integration tests pending |
 
-**Next Critical Action:** Follow `docs/implementation/tasks-modularization-plan.md` to extract the reconciler module from `sync_service.rs` (~1,500 LOC), complete the read-only task store migration, and add Rust property tests for normalization/CRUD/conflict paths.
+**Next Critical Action:** With `docs/implementation/tasks-modularization-plan.md` fully executed and verified (UI split, drawer hook tests, list/store coverage, docs updated), focus shifts to extracting the remaining reconciler logic from `sync/service.rs`, completing the read-only store migration, and adding Rust property tests for normalization/CRUD/conflict paths.
 
 #### 🧱 Architecture Layers
 ```

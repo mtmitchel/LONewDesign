@@ -74,6 +74,15 @@ After code is written and tested, complete these steps before marking task done:
 ## Project structure and module organization
 ∴ blends a Vite/React front end with a Tauri shell. Web entry points live in `main.tsx` and `App.tsx`; feature flows sit in `components/modules`, reusable primitives in `components/ui`, and reference demos/specs under `components/extended` and `components/figma`. Global styling and tokens stay in `styles/globals.css` and `tailwind.config.ts`. Tauri-native code resides in `src-tauri/src/main.rs` with configuration in `src-tauri/tauri.conf.json`. Archived experiments remain in `archive/` for inspiration only.
 
+### Tasks module layout (2025-10)
+The Tasks experience was split out of the former monoliths. Relevant entry points:
+- `components/modules/tasks/view/` — board/list shells, header, dialogs, and shared context provider.
+- `components/modules/tasks/details/` — task drawer shell, header/panels, subtasks, activity feed, and `useTaskDetails` hook.
+- `components/modules/tasks/store/` — Zustand store sliced into `core`, `actions/`, `helpers`, `selectors`, and colocated tests.
+- `components/modules/calendar/tasks-rail/` — calendar rail views reuse the shared task card primitives.
+
+Update these subpackages instead of reintroducing monolithic files. New features should add leaf components inside the appropriate folder and extend store actions via the existing module entry points.
+
 ## Roadmap and planning
 - The active roadmap lives at `docs/roadmap/Unified-Workspace-Roadmap.md` (formerly `Unified-UI-Redesign.md`). Update statuses there and link PRs to specific numbered phases or sections.
 - Assistant-specific planning continues in `docs/assistant/Advanced-Assistant-Roadmap.md`; keep both documents in sync when scope overlaps.

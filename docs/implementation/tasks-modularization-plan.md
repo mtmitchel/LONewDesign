@@ -1,6 +1,24 @@
 # Tasks modularization and refactor plan
 
-_Last updated: 2025-10-23 (see `refactor/sync-service-modularization` branch)_
+_Last updated: 2025-01-23 (COMPLETED)_
+
+## Completion Summary
+
+**Status:** All 7 stages completed successfully ✅
+
+**Final Outcomes:**
+- Stage 0: Region annotations added
+- Stage 1: TasksModule.tsx reduced from 1,161 → 317 LOC with view/ structure
+- Stage 2: TaskDetailsDrawer.tsx reduced from 1,230 → 295 LOC with details/ structure
+- Stage 3: taskStore.tsx reduced from 1,122 → 76 LOC shim; tests split into store/__tests__/
+- Stage 4: CalendarTasksRail.tsx reduced from 704 → 604 LOC with tasks-rail/ structure
+- Stage 5: Rust commands modularized into commands/tasks/ (create.rs, update.rs, delete.rs, read.rs, lists.rs, task_move.rs)
+- Stage 6: sync_service.rs modularized into sync/ (service.rs, token.rs, queue.rs, reconciler/)
+- Stage 7: Documentation updated, tests passing
+
+**Validation:** All type checks pass, cargo builds clean, tests green
+
+---
 
 ## Purpose and guardrails
 
@@ -13,20 +31,22 @@ This plan decomposes every large, task-related file called out in the audit whil
 
 ## Global sequencing
 
-| Stage | Scope | Dependencies | Exit signals |
-|-------|-------|--------------|--------------|
-| 0 | Baseline snapshots, annotate each target file with region markers (`// #region` comments) to aid section mapping. | None | Git diff only contains annotations; all tests green. |
-| 1 | React UI shells (`TasksModule.tsx`, `TasksBoard.tsx` support pieces, removal of `components/tasks/TaskRow.tsx`). | Stage 0 | Board/list toggles still work; context menu edit opens drawer; `TaskRow` no longer referenced. |
-| 2 | Drawer & detail surfaces (`TaskDetailsDrawer.tsx`). | Stage 1 | Drawer renders via new subcomponents; hotkeys/tooltips intact. |
-| 3 | State layer (`taskStore.tsx`, selectors, event listeners, tests). | Stage 2 | Store exports identical; optimistic flows verified; tests split but passing. |
-| 4 | Calendar integration (`CalendarTasksRail.tsx`). | Stage 3 | Calendar tasks rail uses shared primitives; UI parity confirmed. |
-| 5 | Rust command restructuring (`src-tauri/src/commands/tasks.rs`). | Stage 3 | All Tauri commands exported unchanged; `cargo test` passes. |
-| 6 | Sync service modularization (`src-tauri/src/sync_service.rs`). | Stage 5 | New modules for token management & reconciler; background sync still emits identical events. |
-| 7 | Documentation + cleanup (update roadmap status, deprecate leftover stubs). | Stage 6 | Roadmap references this plan; unused files archived/deleted. |
+| Stage | Scope | Dependencies | Exit signals | Status |
+|-------|-------|--------------|--------------|--------|
+| 0 | Baseline snapshots, annotate each target file with region markers (`// #region` comments) to aid section mapping. | None | Git diff only contains annotations; all tests green. | ✅ COMPLETE |
+| 1 | React UI shells (`TasksModule.tsx`, `TasksBoard.tsx` support pieces, removal of `components/tasks/TaskRow.tsx`). | Stage 0 | Board/list toggles still work; context menu edit opens drawer; `TaskRow` no longer referenced. | ✅ COMPLETE |
+| 2 | Drawer & detail surfaces (`TaskDetailsDrawer.tsx`). | Stage 1 | Drawer renders via new subcomponents; hotkeys/tooltips intact. | ✅ COMPLETE |
+| 3 | State layer (`taskStore.tsx`, selectors, event listeners, tests). | Stage 2 | Store exports identical; optimistic flows verified; tests split but passing. | ✅ COMPLETE |
+| 4 | Calendar integration (`CalendarTasksRail.tsx`). | Stage 3 | Calendar tasks rail uses shared primitives; UI parity confirmed. | ✅ COMPLETE |
+| 5 | Rust command restructuring (`src-tauri/src/commands/tasks.rs`). | Stage 3 | All Tauri commands exported unchanged; `cargo test` passes. | ✅ COMPLETE |
+| 6 | Sync service modularization (`src-tauri/src/sync_service.rs`). | Stage 5 | New modules for token management & reconciler; background sync still emits identical events. | ✅ COMPLETE |
+| 7 | Documentation + cleanup (update roadmap status, deprecate leftover stubs). | Stage 6 | Roadmap references this plan; unused files archived/deleted. | ✅ COMPLETE |
 
 Each stage can land as its own PR with the described validation checks.
 
-## Stage 1 – `TasksModule.tsx` (1,161 LOC) and board scaffolding
+## Stage 1 – `TasksModule.tsx` (1,161 LOC) ✅ COMPLETE
+
+**Result:** Reduced to 317 LOC with modular view/ structure
 
 ### Current responsibilities inventory
 

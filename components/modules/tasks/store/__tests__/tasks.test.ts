@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act } from '@testing-library/react';
-import { taskStoreApi, selectTasks, selectSyncStatus } from '../taskStore';
-import type { Task, Subtask } from '../types';
+import { taskStoreApi, selectTasks } from '../index';
+import type { Subtask } from '../../types';
 import { invoke } from '@tauri-apps/api/core';
 
 // Mock @tauri-apps/api/core
@@ -12,7 +12,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 const mockInvoke = vi.mocked(invoke);
 const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
 
-describe('taskStore - Backend-Heavy Architecture', () => {
+describe('taskStore - Task Operations', () => {
   let backendTasks: any[];
   let backendLists: any[];
 
@@ -98,7 +98,7 @@ describe('taskStore - Backend-Heavy Architecture', () => {
           backendTasks = backendTasks.filter((t) => t.id !== record.id).concat(record);
           return record;
         }
-  case 'update_task_command': {
+        case 'update_task_command': {
           const { taskId, updates } = payload;
           const record = backendTasks.find((t) => t.id === taskId);
           if (!record) return undefined;
@@ -155,9 +155,6 @@ describe('taskStore - Backend-Heavy Architecture', () => {
         case 'get_tasks': {
           return backendTasks.slice();
         }
-        case 'get_task_lists': {
-          return backendLists.slice();
-        }
         case 'process_sync_queue_only': {
           const now = Math.floor(Date.now() / 1000);
           backendTasks = backendTasks.map((task) => ({
@@ -166,57 +163,6 @@ describe('taskStore - Backend-Heavy Architecture', () => {
             last_synced_at: now,
           }));
           return 'ok';
-        }
-        case 'sync_tasks_now': {
-          const now = Math.floor(Date.now() / 1000);
-          backendTasks = backendTasks.map((task) => ({
-            ...task,
-            sync_state: 'synced',
-            last_synced_at: now,
-          }));
-          return 'ok';
-        }
-        case 'create_task_list': {
-          const id = `list_${Math.random().toString(36).slice(2, 10)}`;
-          const now = Math.floor(Date.now() / 1000);
-          const record = {
-            id,
-            title: payload.input.title,
-            updated: null,
-            created_at: now,
-            updated_at: now,
-            sync_state: 'pending',
-          };
-          backendLists.push(record);
-          return record;
-        }
-        case 'delete_task_list': {
-          const { input } = payload;
-          backendLists = backendLists.filter((list) => list.id !== input.id);
-          backendTasks = backendTasks.map((task) =>
-            task.list_id === input.id
-              ? { ...task, list_id: input.reassign_to ?? task.list_id }
-              : task,
-          );
-          return input.id;
-        }
-        case 'queue_move_task': {
-          const { input } = payload;
-          backendTasks = backendTasks.map((task) =>
-            task.id === input.task_id
-              ? { ...task, list_id: input.to_list_id, sync_state: 'pending_move' }
-              : task,
-          );
-          return input.task_id;
-        }
-        case 'move_task_across_lists': {
-          const { input } = payload;
-          backendTasks = backendTasks.map((task) =>
-            task.id === input.task_id
-              ? { ...task, list_id: input.to_list_id, sync_state: 'synced' }
-              : task,
-          );
-          return input.task_id;
         }
         default:
           return undefined;
@@ -336,7 +282,7 @@ describe('taskStore - Backend-Heavy Architecture', () => {
         });
       });
 
-  expect(mockInvoke).toHaveBeenCalledWith('update_task_command', {
+      expect(mockInvoke).toHaveBeenCalledWith('update_task_command', {
         taskId: task.id,
         updates: expect.objectContaining({
           priority: 'low',
@@ -680,17 +626,6 @@ describe('taskStore - Backend-Heavy Architecture', () => {
       expect(tasks).toHaveLength(2);
       expect(tasks[0].title).toBe('Task 2');
       expect(tasks[1].title).toBe('Task 1');
-    });
-
-    it('selectSyncStatus should return sync state', () => {
-      act(() => {
-        taskStoreApi.getState().setSyncStatus('syncing', null);
-      });
-
-      const syncStatus = selectSyncStatus(taskStoreApi.getState());
-
-      expect(syncStatus.status).toBe('syncing');
-      expect(syncStatus.error).toBeNull();
     });
   });
 

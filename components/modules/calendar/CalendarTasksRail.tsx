@@ -2,11 +2,6 @@
 
 import React, { useCallback, useEffect, useMemo } from 'react';
 import {
-  endOfWeek,
-  format,
-  isAfter,
-  isBefore,
-  isSameDay,
   startOfDay
 } from 'date-fns';
 import {
@@ -41,15 +36,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialo
 import { cn } from '../../ui/utils';
 import { useTaskStore } from '../tasks/taskStore';
 import type { Task } from '../tasks/types';
-import { TaskCard } from '../tasks/TaskCard';
 
 // Modular imports
 import { useMediaQuery } from './hooks/useMediaQuery';
 import { useTaskRailState } from './hooks/useTaskRailState';
-import { DueChip } from './components/DueChip';
 import { BASE_FILTER_OPTIONS, ChipHigh, ChipMedium, ChipLow } from './constants';
-import { parseDueDate, formatHumanDate, emitAnalytics } from './utils';
+import { emitAnalytics } from './utils';
 import type { TaskFilterKey, CalendarTasksRailProps } from './types';
+import { useFilteredTasks } from './tasks-rail/hooks';
+import { EmptyState } from './tasks-rail/EmptyState';
+import { TaskRailSection } from './tasks-rail/TaskRailSection';
 // #endregion Imports and constants
 
 // Chip utility classes for soft priority badges
@@ -155,7 +151,6 @@ export function CalendarTasksRail({
 
   // #region Derived data
   const now = useMemo(() => startOfDay(new Date()), []);
-  const weekEnd = useMemo(() => endOfWeek(now, { weekStartsOn: 0 }), [now]);
 
   // Generate dynamic filter options including lists from tasks
   const filterOptions = useMemo(() => {
@@ -167,73 +162,7 @@ export function CalendarTasksRail({
     return [...BASE_FILTER_OPTIONS, ...listOptions];
   }, [availableLists]);
 
-  const filteredTasks = useMemo(() => {
-    const filtered = tasks.filter((task) => {
-      // Handle list-based filtering
-      if (filter.startsWith('list:')) {
-        const listId = filter.replace('list:', '');
-        return task.listId === listId;
-      }
-      
-      if (filter === 'completed') {
-        return task.isCompleted;
-      }
-
-      if (filter === 'today' || filter === 'this-week') {
-        const due = parseDueDate(task.dueDate);
-        if (!due) return false;
-        if (filter === 'today') {
-          return isSameDay(due, now);
-        }
-        return isAfter(due, now) && isBefore(due, weekEnd);
-      }
-
-      return true;
-    });
-    
-    // Apply sorting: completed tasks always sink to bottom
-    return filtered.sort((a, b) => {
-      // 1) Bucket by completion status: incomplete first, completed last
-      const bucketA = a.isCompleted ? 1 : 0;
-      const bucketB = b.isCompleted ? 1 : 0;
-      if (bucketA !== bucketB) return bucketA - bucketB;
-
-      // 2) Within each bucket, apply the selected sort mode
-      let inner = 0;
-      switch (sortBy) {
-        case 'due-date': {
-          const dateA = parseDueDate(a.dueDate);
-          const dateB = parseDueDate(b.dueDate);
-          if (!dateA && !dateB) inner = 0;
-          else if (!dateA) inner = 1;
-          else if (!dateB) inner = -1;
-          else inner = dateA.getTime() - dateB.getTime();
-          break;
-        }
-        case 'title':
-          inner = a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
-          break;
-        case 'priority': {
-          const priorityOrder = { high: 0, medium: 1, low: 2, none: 3 };
-          const orderA = priorityOrder[a.priority] ?? 3;
-          const orderB = priorityOrder[b.priority] ?? 3;
-          inner = orderA - orderB;
-          break;
-        }
-        case 'date-created':
-        default: {
-          const dateA = new Date(a.createdAt || a.dateCreated || 0);
-          const dateB = new Date(b.createdAt || b.dateCreated || 0);
-          inner = dateB.getTime() - dateA.getTime(); // Newest first
-          break;
-        }
-      }
-      if (inner !== 0) return inner;
-
-      // 3) Stable tie-breaker by ID
-      return a.id.localeCompare(b.id);
-    });
-  }, [tasks, filter, sortBy, now, weekEnd]);
+  const filteredTasks = useFilteredTasks(tasks, filter, sortBy);
 
   const selectedListId = useMemo(
     () => (filter.startsWith('list:') ? filter.replace('list:', '') : null),
@@ -313,18 +242,6 @@ export function CalendarTasksRail({
       handleDelete(task.id);
     }
   };
-
-  const renderEmptyState = () => (
-    <div className="flex flex-col items-center justify-center gap-[var(--space-4)] py-[var(--space-8)] text-center">
-      <div className="rounded-full bg-[var(--bg-muted)] p-[var(--space-4)]">
-        <Plus className="h-6 w-6 text-[color:var(--text-muted)]" aria-hidden="true" />
-      </div>
-      <div className="space-y-[var(--space-1)]">
-        <p className="text-[length:var(--text-sm)] font-[var(--font-weight-medium)] text-[color:var(--text-primary)]">No tasks</p>
-        <p className="text-[length:var(--text-sm)] text-[color:var(--text-secondary)]">Add a task to get started.</p>
-      </div>
-    </div>
-  );
 
   const renderSkeleton = () => (
     <ul className="flex flex-col divide-y divide-[var(--border-subtle)]" role="list" aria-hidden="true">
@@ -457,31 +374,14 @@ export function CalendarTasksRail({
             {loading ? (
               renderSkeleton()
             ) : filteredTasks.length === 0 ? (
-              renderEmptyState()
+              <EmptyState />
             ) : (
-              <ul
-                role="list"
-                className="flex flex-col gap-2"
-              >
-              {filteredTasks.map((task, index) => {
-                const dueDate = task.dueDate ? format(parseDueDate(task.dueDate) ?? new Date(), 'MMM d') : undefined;
-                return (
-                  <TaskCard
-                    key={task.id}
-                    taskTitle={task.title}
-                    dueDate={dueDate}
-                    priority={task.priority}
-                    labels={task.labels}
-                    isCompleted={task.isCompleted}
-                    onToggleCompletion={() => handleToggleCompletion(task)}
-                    onClick={() => console.log('Open task:', task.id)}
-                    onEdit={() => console.log('Edit task:', task.id)}
-                    onDuplicate={() => handleDuplicate(task.id)}
-                    onDelete={() => handleDelete(task.id)}
-                  />
-                );
-              })}
-            </ul>
+              <TaskRailSection
+                tasks={filteredTasks}
+                onToggleCompletion={handleToggleCompletion}
+                onDuplicate={handleDuplicate}
+                onDelete={handleDelete}
+              />
           )}
           </div>
           

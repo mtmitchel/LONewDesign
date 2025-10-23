@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refactoring
+- **Tasks module modularization — COMPLETE (2025-01-23)**: Finished all 7 stages of the modularization plan:
+  - **Stage 6** (2025-10-23): Modularized `sync_service.rs` into `sync/` structure with `service.rs`, `token.rs`, `queue.rs`, `reconciler/` (poll.rs, dedupe.rs, prune.rs, mod.rs), `events.rs`, `snapshot.rs`
+  - **Stage 5** (2025-10-23): Extracted Rust task command handlers from monolithic `commands.rs` (570 LOC) into dedicated modules: `create.rs`, `update.rs`, `delete.rs`, `read.rs`, `lists.rs`, `task_move.rs`
+  - **Stage 4** (2025-01-23): Modularized `CalendarTasksRail.tsx` from 704 → 604 LOC with `tasks-rail/` structure: `hooks.ts` (filtering/sorting logic), `EmptyState.tsx`, `TaskRailSection.tsx`
+  - **Stage 3** (2025-10-23): Refactored `taskStore.tsx` from 1067 → 76 LOC shim with modular `store/` structure and split tests from 723 LOC monolith → `store/__tests__/tasks.test.ts` + `store/__tests__/sync.test.ts`
+  - **Stage 2** (2025-10-23): Split `TaskDetailsDrawer.tsx` (1230 LOC) into modular `details/` components with shared `useTaskDetails.ts` hook
+  - **Stage 1** (2025-10-23): Refactored `TasksModule.tsx` from 1,161 → 317 LOC with `view/` structure
+  - **Stage 0** (2025-10-23): Added region annotations and baseline validation
+  - All type checks pass, cargo builds clean, tests green ✅
+
 ### Documentation
 - Noted current sync-engine progress, manual sync affordance, and Projects Insights implementation in `docs/roadmap/Unified-Workspace-Roadmap.md` (2025-10-23).
 - Documented end-to-end conflict surfacing completion in roadmap (2025-10-22): backend conflict detection, queue blocking, event emission, and frontend hydration fully operational.
@@ -26,7 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Task side panel priority picker (2025-10-16)**: Fixed non-responsive priority dropdown by converting to popover-based control with proper state management. Redesigned due date and priority rows in `TaskSidePanel.tsx` to display on single horizontal lines with badge icons and clear buttons. Updated completed tasks toggle in `TaskColumnHeader.tsx` to use sentence-case menu item. Refined completed-tasks expansion logic in `TasksBoard.tsx` to properly handle visibility and expansion states independently.
 
 ### Known Issues
-- Sync service modularization is still in progress: `src-tauri/src/sync_service.rs` remains about 1,100 lines long and the planned helper modules (`sync/oauth.rs`, `sync/reconciler.rs`) have not been created. The extracted queue worker lives in `sync/queue_worker.rs` but is not wired into the running service yet.
 - Task store remains partially optimistic; a follow-up will finish the read-only hydration path and add regression tests before turning on stricter conflict toasts.
 
 ### Enhancements
