@@ -302,7 +302,16 @@ export function TasksModule() {
     return [...tasksForList].sort(compareTasks);
   };
 
-  const handleEditTask = (task: Task) => console.log("Edit task", task);
+  const handleEditTask = React.useCallback(
+    (task: Task) => {
+      if (!task) {
+        return;
+      }
+      const latest = tasksById[task.id] ?? task;
+      setSelectedTask(latest);
+    },
+    [tasksById],
+  );
   
   const handleDuplicateTask = (task: Task) => {
     duplicateTask(task.id);
@@ -865,8 +874,8 @@ export function TasksModule() {
 
   return (
   <div className="h-full flex flex-col bg-[var(--bg-default)] text-[color:var(--text-primary)]">
-      <header className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
+      <header className="h-[var(--pane-header-h)] px-6 border-b border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center justify-between flex-shrink-0 motion-safe:transition-colors duration-[var(--duration-fast)]">
+        <div className="flex items-center gap-4 min-w-0">
           <SegmentedToggle
             id="tasks-view-toggle"
             ariaLabel="Switch task view"
@@ -891,24 +900,26 @@ export function TasksModule() {
             ]}
             dense
           />
-          <h1 className="text-lg font-semibold">Tasks</h1>
+          <h1 className="text-lg font-semibold truncate">Tasks</h1>
           {projectFilter ? (
             <Button
               variant="outline"
               size="sm"
-              className="h-8 whitespace-nowrap text-[color:var(--text-secondary)]"
+              className="h-8 whitespace-nowrap text-[color:var(--text-secondary)] min-w-0"
               onClick={() => setProjectFilter(null)}
             >
-              {activeProject?.name ?? "Filtered"}
-              <span aria-hidden className="ml-2 text-[color:var(--text-tertiary)]">×</span>
+              <span className="truncate">
+                {activeProject?.name ?? "Filtered"}
+              </span>
+              <span aria-hidden className="ml-2 text-[color:var(--text-tertiary)] flex-shrink-0">×</span>
               <span className="sr-only">Clear project filter</span>
             </Button>
           ) : null}
         </div>
 
-        <div className="flex-1 flex justify-center px-8">
-          <div className="relative w-[320px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-tertiary)]" />
+        <div className="flex-1 flex justify-center px-8 min-w-0">
+          <div className="relative w-[320px] max-w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[color:var(--text-tertiary)] pointer-events-none" />
             <input
               type="text"
               placeholder="Search tasks..."
@@ -923,9 +934,11 @@ export function TasksModule() {
             {viewMode === 'list' && (
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-9 text-[color:var(--text-secondary)]">
-                            {selectedList ? columns.find(c => c.id === selectedList)?.title : 'All lists'}
-                            <ChevronDown size={14} className="ml-2" />
+                        <Button variant="ghost" size="sm" className="h-9 text-[color:var(--text-secondary)] min-w-[120px] justify-between">
+                            <span className="truncate">
+                              {selectedList ? columns.find(c => c.id === selectedList)?.title : 'All lists'}
+                            </span>
+                            <ChevronDown size={14} className="ml-2 flex-shrink-0" />
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] p-1.5">
@@ -990,14 +1003,16 @@ export function TasksModule() {
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-9 text-[color:var(--text-secondary)]">
-                  <Filter size={14} className="mr-2" />
-                  Filter
-                  {selectedLabels.length > 0 && (
-                    <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-[10px] font-semibold rounded-full bg-primary text-primary-foreground">
-                      {selectedLabels.length}
-                    </span>
-                  )}
+                <Button variant="ghost" size="sm" className="h-9 text-[color:var(--text-secondary)] min-w-[80px] justify-between">
+                  <span className="flex items-center">
+                    <Filter size={14} className="mr-2 flex-shrink-0" />
+                    <span>Filter</span>
+                    {selectedLabels.length > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center w-5 h-5 text-[10px] font-semibold rounded-full bg-primary text-primary-foreground flex-shrink-0">
+                        {selectedLabels.length}
+                      </span>
+                    )}
+                  </span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-[var(--radius-md)] shadow-[var(--elevation-lg)] p-1.5">

@@ -70,6 +70,37 @@ export function TasksBoard({
   const [showCompletedByColumn, setShowCompletedByColumn] = React.useState<Record<string, boolean>>({});
   const [expandedCompletedByColumn, setExpandedCompletedByColumn] = React.useState<Record<string, boolean>>({});
 
+  const columnIdSet = React.useMemo(() => new Set(columns.map((column) => column.id)), [columns]);
+
+  const tasksByColumn = React.useMemo(() => {
+    const grouped = new Map<string, Task[]>();
+    columns.forEach((column) => {
+      grouped.set(column.id, []);
+    });
+
+    for (const task of tasks) {
+      const resolved = resolveColumnId(task, columnIdSet);
+      if (resolved && grouped.has(resolved)) {
+        grouped.get(resolved)!.push(task);
+        continue;
+      }
+
+      const fallback = columns.find((column) => belongsToColumn(task, column.id));
+      if (fallback) {
+        grouped.get(fallback.id)!.push(task);
+      }
+    }
+
+    columns.forEach((column) => {
+      const sortBy = sortOption[column.id] ?? 'date-created';
+      const bucket = grouped.get(column.id) ?? [];
+      const sorted = sortTasks([...bucket], sortBy);
+      grouped.set(column.id, sorted);
+    });
+
+    return grouped;
+  }, [tasks, columns, columnIdSet, sortOption]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -101,12 +132,8 @@ export function TasksBoard({
   );
 
   const getTasksForColumn = React.useCallback(
-    (columnId: string) => {
-      const sortBy = sortOption[columnId] ?? 'date-created';
-      const items = tasks.filter((task) => belongsToColumn(task, columnId));
-      return sortTasks([...items], sortBy);
-    },
-    [sortOption, tasks],
+    (columnId: string) => tasksByColumn.get(columnId) ?? [],
+    [tasksByColumn],
   );
 
   const handleSortChange = React.useCallback((columnId: string, nextSort: string) => {
@@ -378,6 +405,26 @@ function belongsToColumn(task: Task, columnId: string) {
     if (task.listId === columnId) return true;
   }
   return task.status === columnId;
+}
+
+function resolveColumnId(task: Task, columnIds: Set<string>): string | null {
+  if (!task) {
+    return null;
+  }
+
+  const candidates: Array<unknown> = [
+    (task as any).listId,
+    (task as any).boardListId,
+    (task as any).status,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && columnIds.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
 }
 
 function sortTasks(tasks: Task[], sortBy: string) {
