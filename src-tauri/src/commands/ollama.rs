@@ -48,7 +48,7 @@ struct OllamaStreamChunk {
 #[derive(Debug, Deserialize)]
 struct OllamaMessage {
     #[serde(default)]
-    role: Option<String>,
+    _role: Option<String>,
     content: String,
 }
 

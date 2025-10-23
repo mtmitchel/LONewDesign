@@ -493,7 +493,7 @@ pub async fn google_oauth_loopback_listen(
     Ok(actual_port)
 }
 
-pub fn register(_app: &AppHandle) {}
+
 
 fn google_workspace_entry() -> Result<Entry, String> {
     Entry::new(GOOGLE_WORKSPACE_SERVICE, GOOGLE_WORKSPACE_ACCOUNT)

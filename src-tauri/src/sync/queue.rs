@@ -2,7 +2,6 @@ use crate::sync::events::{emit_queue_event, SyncEventStatus};
 use crate::sync::queue_worker::{self, QueueExecutionResult};
 use crate::sync::token;
 use sqlx::SqlitePool;
-use tauri::AppHandle;
 
 #[tauri::command]
 pub async fn process_sync_queue_only(app_handle: tauri::AppHandle, pool: tauri::State<'_, SqlitePool>, http_client: tauri::State<'_, reqwest::Client>, api_state: tauri::State<'_, crate::ApiState>) -> Result<(), String> {

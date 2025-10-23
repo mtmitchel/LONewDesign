@@ -1,5 +1,5 @@
 use crate::commands::google::{google_workspace_store_set, GoogleWorkspaceStoreSetInput};
-use serde_json::{Number, Value};
+use serde_json::Value;
 
 pub fn persist_workspace_snapshot(snapshot: &Value) -> Result<(), String> {
     let serialised = serde_json::to_string(snapshot)

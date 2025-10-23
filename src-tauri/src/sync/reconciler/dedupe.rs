@@ -54,8 +54,8 @@ pub async fn cleanup_duplicate_tasks(pool: &SqlitePool) -> Result<(), String> {
     #[derive(sqlx::FromRow)]
     struct SyncedDuplicate {
         id: String,
-        google_id: String,
-        list_id: String,
+        _google_id: String,
+        _list_id: String,
         sync_state: String,
     }
 

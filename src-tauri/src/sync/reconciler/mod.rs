@@ -101,19 +101,19 @@ async fn reconcile_task(
     #[derive(sqlx::FromRow)]
     struct ExistingTask {
         id: String,
-        google_id: Option<String>,
-        sync_state: String,
-        metadata_hash: Option<String>,
-        dirty_fields: String,
-        has_conflict: bool,
-        title: String,
-        notes: Option<String>,
-        due_date: Option<String>,
-        priority: String,
-        labels: String,
-        status: String,
-        time_block: Option<String>,
-        sync_error: Option<String>,
+        _google_id: Option<String>,
+        _sync_state: String,
+        _metadata_hash: Option<String>,
+        _dirty_fields: String,
+        _has_conflict: bool,
+        _title: String,
+        _notes: Option<String>,
+        _due_date: Option<String>,
+        _priority: String,
+        _labels: String,
+        _status: String,
+        _time_block: Option<String>,
+        _sync_error: Option<String>,
     }
 
     let existing: Option<ExistingTask> = sqlx::query_as(
@@ -135,7 +135,7 @@ async fn reconcile_task(
             "[sync_service] Task exists, updating id={}",
             existing_task.id
         );
-        if existing_task.sync_state == "pending_move" {
+        if existing_task._sync_state == "pending_move" {
             println!(
                 "[sync_service] Skipping update for task {} because move is pending",
                 existing_task.id

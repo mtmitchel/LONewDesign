@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 
 // #region Subtask types
 #[derive(Debug, Serialize, Deserialize, Clone)]

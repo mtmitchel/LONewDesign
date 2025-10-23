@@ -1,6 +1,4 @@
 use crate::commands::tasks::types::{SubtaskDiff, TaskSubtask, TaskSubtaskRow};
-use crate::db;
-use chrono::Utc;
 use serde_json;
 use sqlx::{QueryBuilder, Sqlite, SqlitePool, Transaction};
 use std::collections::HashMap;
@@ -158,7 +156,7 @@ pub async fn replace_subtasks(
     subtasks: &[crate::commands::tasks::types::SubtaskInput],
     now: i64,
 ) -> Result<SubtaskDiff, String> {
-    use crate::commands::tasks::types::SubtaskInput;
+    
 
     let existing_rows: Vec<TaskSubtaskRow> = sqlx::query_as(
         "SELECT id, task_id, google_id, parent_google_id, title, is_completed, position, due_date, metadata_hash, dirty_fields, sync_state, sync_error, last_synced_at FROM task_subtasks WHERE task_id = ?",

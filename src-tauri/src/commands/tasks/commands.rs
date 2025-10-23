@@ -4,12 +4,10 @@ use crate::commands::tasks::helpers::*;
 use crate::commands::google::google_workspace_store_get;
 use crate::db;
 use crate::sync::types::GOOGLE_TASKS_BASE_URL;
-use crate::sync::service::SyncService;
 use crate::task_metadata;
 use chrono::Utc;
 use serde_json;
-use sqlx::{SqlitePool, Transaction};
-use std::sync::Arc;
+
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
@@ -572,12 +570,5 @@ pub async fn queue_move_task(app: AppHandle, input: QueueMoveTaskInput) -> Resul
 // #endregion Task Move Commands
 
 // #region Queue Processing Commands
-pub async fn process_sync_queue_only(
-    app: AppHandle,
-    pool: State<'_, SqlitePool>,
-    http_client: State<'_, reqwest::Client>,
-    api_state: State<'_, crate::ApiState>,
-) -> Result<(), String> {
-    crate::sync::queue::process_sync_queue_only(app, pool, http_client, api_state).await
-}
+
 // #endregion Queue Processing Commands
