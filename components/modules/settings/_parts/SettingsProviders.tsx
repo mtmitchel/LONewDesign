@@ -33,6 +33,7 @@ import {
   type ProviderStateView,
   type DisplayConnectionState,
 } from '../../../features/settings/providers';
+import { SettingsBridge, isTauriContext } from '../../../../lib/bridge/settings-bridge';
 
 interface SettingsProvidersProps {
   id: string;
@@ -43,16 +44,6 @@ type MistralTestResult = {
   ok: boolean;
   message?: string | null;
 };
-
-function isTauriContext(): boolean {
-  if (typeof window === 'undefined') return false;
-  const candidate = window as unknown as {
-    __TAURI_INTERNALS__?: unknown;
-    isTauri?: unknown;
-    __TAURI__?: unknown;
-  };
-  return Boolean(candidate.__TAURI_INTERNALS__ ?? candidate.isTauri ?? candidate.__TAURI__);
-}
 
 export function SettingsProviders({ id, filter, registerSection }: SettingsProvidersProps) {
   const { setFieldDirty } = useSettingsState();
@@ -229,10 +220,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
 
     try {
       const resolvedBase = baseUrl.trim() || providers.local.baseUrl || 'http://127.0.0.1:11434';
-      const { invoke } = await import('@tauri-apps/api/core');
-      const models = (await invoke('ollama_list_models', {
-        baseUrl: resolvedBase,
-      })) as Array<{ name: string }>;
+      const models = await SettingsBridge.listOllamaModels(resolvedBase);
 
       const modelIds = models.map((model) => model.name);
       const { providers: providerSnapshot } = useProviderSettings.getState();
@@ -317,11 +305,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     const baseUrl = resolveLocalBaseUrl();
 
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('ollama_pull_model', {
-        baseUrl,
-        model: modelName,
-      });
+      await SettingsBridge.pullOllamaModel(baseUrl, modelName);
       toast.success(`Pulled ${modelName}`);
       await syncLocalModels(baseUrl, { silent: true, manageBusy: false });
     } catch (error) {
@@ -344,11 +328,7 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     let success = false;
 
     try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('ollama_delete_model', {
-        baseUrl,
-        model: modelName,
-      });
+      await SettingsBridge.deleteOllamaModel(baseUrl, modelName);
       toast.success(`Removed ${modelName}`);
       await syncLocalModels(baseUrl, { silent: true, manageBusy: false });
       success = true;
@@ -432,18 +412,11 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
 
     try {
       if (providerId === 'mistral' && isTauriContext()) {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const result = (await invoke('test_mistral_credentials', {
-          apiKey: current.apiKey.trim(),
-          baseUrl,
-        })) as MistralTestResult;
+        const result = await SettingsBridge.testMistralCredentials(current.apiKey, baseUrl);
         success = Boolean(result?.ok);
         message = result?.message ?? null;
       } else if (providerId === 'local' && isTauriContext()) {
-        const { invoke } = await import('@tauri-apps/api/core');
-        const result = (await invoke('test_ollama_connection', {
-          baseUrl,
-        })) as { ok: boolean; message?: string | null };
+        const result = await SettingsBridge.testOllamaConnection(baseUrl);
         success = Boolean(result?.ok);
         message = result?.message ?? null;
       } else {
@@ -482,70 +455,63 @@ export function SettingsProviders({ id, filter, registerSection }: SettingsProvi
     if (success) {
       toast.success('Connection verified');
 
-      if (providerId === 'mistral') {
-        if (!isTauriContext()) {
-          console.warn('Not in Tauri context - cannot fetch models');
-          toast.error('Model fetching requires the desktop app');
-        } else {
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const models = (await invoke('fetch_mistral_models', {
-              apiKey: current.apiKey.trim(),
-              baseUrl,
-            })) as Array<{ id: string }>;
+        if (providerId === 'mistral') {
+          if (!isTauriContext()) {
+            console.warn('Not in Tauri context - cannot fetch models');
+            toast.error('Model fetching requires the desktop app');
+          } else {
+            try {
+              const models = await SettingsBridge.fetchMistralModels(current.apiKey, baseUrl);
 
-            const modelIds = models.map((m) => m.id);
-            const currentEnabled = providers[providerId].enabledModels;
+              const modelIds = models.map((m) => m.id);
+              const currentEnabled = providers[providerId].enabledModels;
 
-            updateProvider(providerId, {
-              availableModels: modelIds,
-              enabledModels: currentEnabled.length === 0 ? modelIds : currentEnabled,
-            });
+              updateProvider(providerId, {
+                availableModels: modelIds,
+                enabledModels: currentEnabled.length === 0 ? modelIds : currentEnabled,
+              });
 
-            console.debug('Fetched Mistral models:', modelIds);
-            if (modelIds.length > 0) {
-              toast.success(`Found ${modelIds.length} Mistral models`);
-            } else {
-              toast.warning('No Mistral models were returned');
+              console.debug('Fetched Mistral models:', modelIds);
+              if (modelIds.length > 0) {
+                toast.success(`Found ${modelIds.length} Mistral models`);
+              } else {
+                toast.warning('No Mistral models were returned');
+              }
+            } catch (error) {
+              console.error('Failed to fetch Mistral models:', error);
+              toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
             }
-          } catch (error) {
-            console.error('Failed to fetch Mistral models:', error);
-            toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
-      }
 
-      if (providerId === 'openrouter') {
-        if (!isTauriContext()) {
-          console.warn('Not in Tauri context - cannot fetch models');
-          toast.error('Model fetching requires the desktop app');
-        } else {
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const models = (await invoke('fetch_openrouter_models', {
-              apiKey: current.apiKey.trim(),
-            })) as Array<{ id: string }>;
+        if (providerId === 'openrouter') {
+          if (!isTauriContext()) {
+            console.warn('Not in Tauri context - cannot fetch models');
+            toast.error('Model fetching requires the desktop app');
+          } else {
+            try {
+              const models = await SettingsBridge.fetchOpenRouterModels(current.apiKey);
 
-            const modelIds = models.map((m) => m.id);
-            const currentEnabled = providers[providerId].enabledModels;
+              const modelIds = models.map((m) => m.id);
+              const currentEnabled = providers[providerId].enabledModels;
 
-            updateProvider(providerId, {
-              availableModels: modelIds,
-              enabledModels: currentEnabled.length > 0 ? currentEnabled : ['openrouter/auto'],
-            });
+              updateProvider(providerId, {
+                availableModels: modelIds,
+                enabledModels: currentEnabled.length > 0 ? currentEnabled : ['openrouter/auto'],
+              });
 
-            console.debug('Fetched OpenRouter models:', modelIds.length);
-            if (modelIds.length > 0) {
-              toast.success(`Found ${modelIds.length} OpenRouter models`);
-            } else {
-              toast.warning('No OpenRouter models were returned');
+              console.debug('Fetched OpenRouter models:', modelIds.length);
+              if (modelIds.length > 0) {
+                toast.success(`Found ${modelIds.length} OpenRouter models`);
+              } else {
+                toast.warning('No OpenRouter models were returned');
+              }
+            } catch (error) {
+              console.error('Failed to fetch OpenRouter models:', error);
+              toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
             }
-          } catch (error) {
-            console.error('Failed to fetch OpenRouter models:', error);
-            toast.error(`Failed to fetch models: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
-      }
 
       if (providerId === 'local') {
         await syncLocalModels(baseUrl, { silent: trigger === 'auto', manageBusy: false });

@@ -1,5 +1,9 @@
 "use client";
 
+// ============================================================================
+// REGION: IMPORTS
+// ============================================================================
+
 import React, {
   createContext,
   useCallback,
@@ -18,12 +22,20 @@ import { useTaskStore } from "../modules/tasks/taskStore";
 import { createProviderFromSettings } from "./services/openaiProvider";
 import { useProviderSettings } from "../modules/settings/state/providerSettings";
 
+// ============================================================================
+// REGION: UTILITIES
+// ============================================================================
+
 function generateId(prefix: string) {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
+
+// ============================================================================
+// REGION: CONSTANTS & TYPES
+// ============================================================================
 
 export const QUICK_ASSISTANT_EVENTS = {
   open: "quick-assistant:open",

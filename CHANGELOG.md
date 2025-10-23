@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Refactoring
+- **Notes module left-pane modularization — COMPLETE (2025-10-23)**: Successfully modularized NotesLeftPane with left-pane components:
+  - **Stage 5**: Replaced inline FolderTreeItem component (500+ LOC) with modular `left-pane/` structure
+  - **Components**: `NotebookList.tsx` (folder tree & notes), `Filters.tsx` (search), `FolderTreeItem.tsx` (individual folder rendering)
+  - **Hooks**: `useFolderTree.ts` (folder organization), `useDragDrop.ts` (drag-drop logic)
+  - **Cleanup**: Removed unused imports and constants, maintained all functionality (drag-drop, context menus, editing)
+  - **Result**: 919 insertions(+), 747 deletions(-) - net reduction in complexity while preserving features
+  - All TypeScript checks pass, builds successfully ✅
+
 - **Tasks module modularization — COMPLETE (2025-01-23)**: Finished all 7 stages of the modularization plan:
   - **Stage 6** (2025-10-23): Modularized `sync_service.rs` into `sync/` structure with `service.rs`, `token.rs`, `queue.rs`, `reconciler/` (poll.rs, dedupe.rs, prune.rs, mod.rs), `events.rs`, `snapshot.rs`
   - **Stage 5** (2025-10-23): Extracted Rust task command handlers from monolithic `commands.rs` (570 LOC) into dedicated modules: `create.rs`, `update.rs`, `delete.rs`, `read.rs`, `lists.rs`, `task_move.rs`
