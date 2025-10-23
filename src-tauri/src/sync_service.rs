@@ -36,8 +36,6 @@ pub struct SyncService {
 
 impl SyncService {
     const ACCESS_TOKEN_REFRESH_SKEW_MS: i64 = 60_000;
-    const CONFLICT_ERROR_MESSAGE: &'static str = "Remote change conflicted with local edits";
-
     pub fn new(
         pool: SqlitePool,
         http_client: Client,
@@ -824,7 +822,6 @@ impl SyncService {
         );
 
         if let Some(existing_task) = existing {
-            // Update existing task, handling conflict detection
             eprintln!(
                 "[sync_service] Task exists, updating id={}",
                 existing_task.id
@@ -837,99 +834,8 @@ impl SyncService {
                 return Ok(());
             }
 
-            let local_metadata = task_metadata::TaskMetadata {
-                title: existing_task.title.clone(),
-                notes: existing_task.notes.clone(),
-                due_date: existing_task.due_date.clone(),
-                priority: existing_task.priority.clone(),
-                labels: existing_task.labels.clone(),
-                status: existing_task.status.clone(),
-                time_block: existing_task.time_block.clone(),
-            }
-            .normalize();
-
-            let conflict_condition = existing_task.sync_state != "synced"
-                && existing_task
-                    .metadata_hash
-                    .as_ref()
-                    .map(|hash| hash != &remote_metadata_hash)
-                    .unwrap_or(true);
-
-            let mut dirty_fields_vec: Vec<String> =
-                serde_json::from_str(&existing_task.dirty_fields).unwrap_or_default();
-            if dirty_fields_vec.is_empty() {
-                dirty_fields_vec = Self::diff_metadata_fields(&local_metadata, &remote_metadata);
-            }
-            let dirty_fields_json_from_vec =
-                serde_json::to_string(&dirty_fields_vec).unwrap_or_else(|_| "[]".to_string());
-
-            let mut has_conflict_flag = existing_task.has_conflict;
-            let mut sync_error_value = existing_task.sync_error.clone();
-            let next_sync_state: String;
-            let mut dirty_fields_to_store = if existing_task.has_conflict {
-                if existing_task.dirty_fields.trim().is_empty() {
-                    dirty_fields_json_from_vec.clone()
-                } else {
-                    existing_task.dirty_fields.clone()
-                }
-            } else {
-                "[]".to_string()
-            };
-            let mut conflict_payload: Option<TaskConflictPayload> = None;
-
-            if conflict_condition {
-                has_conflict_flag = true;
-                next_sync_state = "conflict".to_string();
-                println!(
-                    "[sync_service] CONFLICT DETECTED for task {}. Local is dirty and hashes do not match. Remote wins.",
-                    existing_task.id
-                );
-                dirty_fields_to_store = if dirty_fields_json_from_vec.trim().is_empty() {
-                    if existing_task.dirty_fields.trim().is_empty() {
-                        "[]".to_string()
-                    } else {
-                        existing_task.dirty_fields.clone()
-                    }
-                } else {
-                    dirty_fields_json_from_vec.clone()
-                };
-                sync_error_value = Some(Self::CONFLICT_ERROR_MESSAGE.to_string());
-
-                self.mark_pending_queue_conflict(&existing_task.id, Self::CONFLICT_ERROR_MESSAGE)
-                    .await?;
-
-                conflict_payload = Some(TaskConflictPayload {
-                    task_id: existing_task.id.clone(),
-                    google_id: existing_task.google_id.clone(),
-                    list_id: list_id.to_string(),
-                    dirty_fields: dirty_fields_vec.clone(),
-                    local_metadata_hash: existing_task.metadata_hash.clone(),
-                    remote_metadata_hash: remote_metadata_hash.clone(),
-                    timestamp_ms: chrono::Utc::now().timestamp_millis(),
-                    message: Self::CONFLICT_ERROR_MESSAGE.to_string(),
-                    local: Some(Self::conflict_snapshot_from(&local_metadata)),
-                    remote: Self::conflict_snapshot_from(&remote_metadata),
-                });
-            } else if has_conflict_flag {
-                next_sync_state = "conflict".to_string();
-                if dirty_fields_to_store.trim().is_empty() {
-                    dirty_fields_to_store = if dirty_fields_json_from_vec.trim().is_empty() {
-                        "[]".to_string()
-                    } else {
-                        dirty_fields_json_from_vec.clone()
-                    };
-                }
-                if sync_error_value.is_none() {
-                    sync_error_value = Some(Self::CONFLICT_ERROR_MESSAGE.to_string());
-                }
-            } else {
-                next_sync_state = "synced".to_string();
-                dirty_fields_to_store = "[]".to_string();
-                sync_error_value = None;
-            }
-
             let result = sqlx::query(
-                "UPDATE tasks_metadata SET list_id = ?, title = ?, notes = ?, due_date = ?, priority = ?, labels = ?, status = ?, time_block = ?, updated_at = ?, sync_state = ?, last_synced_at = ?, metadata_hash = ?, dirty_fields = ?, has_conflict = ?, sync_attempts = 0, sync_error = ? WHERE id = ?"
+                "UPDATE tasks_metadata SET list_id = ?, title = ?, notes = ?, due_date = ?, priority = ?, labels = ?, status = ?, time_block = ?, updated_at = ?, sync_state = 'synced', last_synced_at = ?, metadata_hash = ?, dirty_fields = '[]', has_conflict = 0, sync_attempts = 0, sync_error = NULL WHERE id = ?"
             )
             .bind(list_id)
             .bind(&remote_metadata.title)
@@ -940,12 +846,8 @@ impl SyncService {
             .bind(&status_to_store)
             .bind(time_block_to_store.as_deref())
             .bind(now)
-            .bind(&next_sync_state)
             .bind(now)
             .bind(&remote_metadata_hash)
-            .bind(&dirty_fields_to_store)
-            .bind(has_conflict_flag)
-            .bind(sync_error_value.clone())
             .bind(&existing_task.id)
             .execute(&self.pool)
             .await
@@ -959,10 +861,6 @@ impl SyncService {
                 "[sync_service] Updated task {} (google_id: {})",
                 existing_task.id, google_id
             );
-
-            if let Some(payload) = conflict_payload {
-                self.emit_task_conflict_event(payload);
-            }
         } else {
             // Skip remote task if we're waiting to delete it as part of a pending move
             let pending_move_match: Option<String> = sqlx::query_scalar(
@@ -1304,89 +1202,6 @@ impl SyncService {
             .map_err(|e| format!("Failed to commit subtask pruning transaction: {}", e))
     }
 
-    async fn mark_pending_queue_conflict(
-        &self,
-        task_id: &str,
-        message: &str,
-    ) -> Result<(), String> {
-        sqlx::query(
-            "UPDATE sync_queue SET status = 'conflict', last_error = ? WHERE task_id = ? AND status = 'pending'",
-        )
-        .bind(message)
-        .bind(task_id)
-        .execute(&self.pool)
-        .await
-        .map_err(|e| {
-            format!(
-                "Failed to mark pending queue entries as conflict for task {}: {}",
-                task_id, e
-            )
-        })?;
-
-        Ok(())
-    }
-
-    fn emit_task_conflict_event(&self, payload: TaskConflictPayload) {
-        if let Err(err) = self.app_handle.emit("tasks::conflict", payload) {
-            eprintln!(
-                "[sync_service] Failed to emit tasks::conflict event: {}",
-                err
-            );
-        }
-    }
-
-    fn conflict_snapshot_from(metadata: &task_metadata::TaskMetadata) -> TaskConflictSnapshot {
-        let labels: Vec<task_metadata::TaskLabel> =
-            serde_json::from_str(&metadata.labels).unwrap_or_default();
-
-        TaskConflictSnapshot {
-            title: metadata.title.clone(),
-            notes: metadata.notes.clone(),
-            due_date: metadata.due_date.clone(),
-            priority: metadata.priority.clone(),
-            labels,
-            status: metadata.status.clone(),
-            time_block: metadata.time_block.clone(),
-        }
-    }
-
-    fn diff_metadata_fields(
-        local: &task_metadata::TaskMetadata,
-        remote: &task_metadata::TaskMetadata,
-    ) -> Vec<String> {
-        let mut fields = Vec::new();
-
-        if local.title != remote.title {
-            fields.push("title".to_string());
-        }
-        if local.notes != remote.notes {
-            fields.push("notes".to_string());
-        }
-        if local.due_date != remote.due_date {
-            fields.push("due_date".to_string());
-        }
-        if local.priority != remote.priority {
-            fields.push("priority".to_string());
-        }
-
-        let local_labels: Vec<task_metadata::TaskLabel> =
-            serde_json::from_str(&local.labels).unwrap_or_default();
-        let remote_labels: Vec<task_metadata::TaskLabel> =
-            serde_json::from_str(&remote.labels).unwrap_or_default();
-        if local_labels != remote_labels {
-            fields.push("labels".to_string());
-        }
-
-        if local.status != remote.status {
-            fields.push("status".to_string());
-        }
-        if local.time_block != remote.time_block {
-            fields.push("time_block".to_string());
-        }
-
-        fields
-    }
-
     fn emit_sync_event(&self, status: SyncEventStatus, error: Option<String>) {
         let payload = SyncEventPayload {
             status,
@@ -1401,39 +1216,6 @@ impl SyncService {
             );
         }
     }
-}
-
-#[derive(Clone, Serialize)]
-struct TaskConflictSnapshot {
-    title: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    notes: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    due_date: Option<String>,
-    priority: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    labels: Vec<task_metadata::TaskLabel>,
-    status: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    time_block: Option<String>,
-}
-
-#[derive(Clone, Serialize)]
-struct TaskConflictPayload {
-    task_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    google_id: Option<String>,
-    list_id: String,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    dirty_fields: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    local_metadata_hash: Option<String>,
-    remote_metadata_hash: String,
-    timestamp_ms: i64,
-    message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    local: Option<TaskConflictSnapshot>,
-    remote: TaskConflictSnapshot,
 }
 
 #[derive(Clone, Copy, Serialize)]

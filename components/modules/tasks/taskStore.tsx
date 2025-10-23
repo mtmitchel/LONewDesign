@@ -65,29 +65,6 @@ export type TaskUpdates = Partial<
   >
 >;
 
-type ConflictSnapshotPayload = {
-  title: string;
-  notes?: string | null;
-  due_date?: string | null;
-  priority: string;
-  labels?: { name: string; color: string }[];
-  status: string;
-  time_block?: string | null;
-};
-
-type TaskConflictEventPayload = {
-  task_id: string;
-  google_id?: string | null;
-  list_id: string;
-  dirty_fields?: string[];
-  local_metadata_hash?: string | null;
-  remote_metadata_hash: string;
-  timestamp_ms: number;
-  message?: string;
-  local?: ConflictSnapshotPayload | null;
-  remote: ConflictSnapshotPayload;
-};
-
 type TaskStoreState = {
   // Entities + status
   // Entities + status
@@ -96,6 +73,7 @@ type TaskStoreState = {
   taskOrder: string[];
   listsById: Record<string, TaskList>;
   listOrder: string[];
+  listViewPreferences: Record<string, { showCompleted: boolean }>;
   syncStatus: TaskSyncState;
   syncError?: string | null;
   lastSyncAt?: number;
@@ -107,8 +85,8 @@ type TaskStoreState = {
   duplicateTask: (id: string) => Promise<Task | null>;
   moveTask: (id: string, toListId: string) => Promise<void>;
   setTaskDueDate: (id: string, dueDate: string | undefined) => void;
-  markTaskConflict: (payload: TaskConflictEventPayload) => void;
   reconcileLists: (lists: TaskList[], opts?: { replace?: boolean }) => void;
+  toggleListCompletedVisibility: (listId: string, showCompleted: boolean) => void;
   // List lifecycle + manual sync
   createTaskList: (title: string) => Promise<TaskList>;
   deleteTaskList: (id: string, reassignTo?: string) => Promise<void>;
@@ -364,6 +342,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
       taskOrder: [],
       listsById: hydrateDefaultLists().listsById,
       listOrder: hydrateDefaultLists().listOrder,
+  listViewPreferences: {},
       syncStatus: 'idle',
       syncError: null,
       lastSyncAt: undefined,
@@ -776,82 +755,13 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         get().updateTask(id, { dueDate });
         emitTaskEvent('task_due_changed', { id, dueDate });
       },
-      markTaskConflict: (payload) => {
-        if (!payload || !payload.task_id) return;
-        const message = payload.message ?? 'Remote change conflicted with local edits';
+      toggleListCompletedVisibility: (listId, showCompleted) => {
         set((state) => {
-          const task = state.tasksById[payload.task_id];
-          if (!task) return;
-
-          task.hasConflict = true;
-          task.syncState = 'conflict';
-          task.pendingSync = false;
-          task.syncError = message;
-          task.lastSyncedAt = payload.timestamp_ms;
-          task.updatedAt = new Date(payload.timestamp_ms).toISOString();
-          task.listId = payload.list_id;
-          task.boardListId = payload.list_id;
-          if (payload.google_id) {
-            task.externalId = payload.google_id;
+          if (!state.listViewPreferences[listId]) {
+            state.listViewPreferences[listId] = { showCompleted };
+            return;
           }
-
-          const remote = payload.remote;
-          if (remote) {
-            if (typeof remote.title === 'string' && remote.title.trim().length > 0) {
-              task.title = remote.title;
-            }
-
-            const notesValue =
-              typeof remote.notes === 'string' && remote.notes.trim().length > 0
-                ? remote.notes
-                : undefined;
-            task.notes = notesValue;
-
-            const dueValue =
-              typeof remote.due_date === 'string' && remote.due_date.trim().length > 0
-                ? remote.due_date
-                : undefined;
-            task.dueDate = dueValue;
-
-            if (
-              remote.priority === 'low' ||
-              remote.priority === 'medium' ||
-              remote.priority === 'high' ||
-              remote.priority === 'none'
-            ) {
-              task.priority = remote.priority;
-            }
-
-            if (Array.isArray(remote.labels)) {
-              const normalizedLabels = remote.labels
-                .map((label) => {
-                  if (!label || typeof label.name !== 'string') return null;
-                  const name = label.name.trim();
-                  if (!name) return null;
-                  const color =
-                    typeof label.color === 'string' && label.color.trim().length > 0
-                      ? label.color
-                      : DEFAULT_LABEL_COLOR;
-                  return { name, color };
-                })
-                .filter(
-                  (entry): entry is { name: string; color: string } => entry !== null,
-                );
-              task.labels = normalizedLabels;
-            }
-
-            const isCompleted = remote.status === 'completed';
-            task.isCompleted = isCompleted;
-            task.completedAt = isCompleted
-              ? new Date(payload.timestamp_ms).toISOString()
-              : null;
-            task.status = remote.status ?? task.status ?? 'needsAction';
-          }
-        });
-
-        emitTaskEvent('task_conflict_detected', {
-          id: payload.task_id,
-          dirtyFields: payload.dirty_fields ?? [],
+          state.listViewPreferences[listId].showCompleted = showCompleted;
         });
       },
       reconcileLists: (lists, opts) => {
@@ -1045,6 +955,7 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         taskOrder: state.taskOrder,
         listsById: state.listsById,
         listOrder: state.listOrder,
+        listViewPreferences: state.listViewPreferences,
         lastSyncAt: state.lastSyncAt,
       }),
       version: 2, // v2: Backend-heavy architecture, tasks loaded from Rust
@@ -1101,14 +1012,6 @@ export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
       import('@tauri-apps/api/event')
         .then(({ listen }) => {
           void listen('tasks:sync:complete', () => onSyncComplete());
-          void listen<TaskConflictEventPayload>('tasks::conflict', (event) => {
-            const payload = event.payload as TaskConflictEventPayload | undefined;
-            if (!payload) return;
-            if (process.env.NODE_ENV !== 'production') {
-              console.warn('[TaskStoreProvider] Task conflict detected', payload);
-            }
-            useTaskStore.getState().markTaskConflict(payload);
-          });
         })
         .catch(() => {});
     }

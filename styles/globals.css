@@ -527,6 +527,10 @@
   --list-row-meta:  var(--list-row-meta--comfortable);
   --list-row-min-h: var(--list-row-min-h--comfortable);
   --list-row-gap: var(--space-3);     /* 12px column gap */
+  --group-indent: 24px;
+  --level-step: 16px;
+  --icon-size: 18px;
+  --gap: 8px;
 
   /* Chat module tokens */
   --chat-rail-w: 2px;
@@ -1445,4 +1449,71 @@ html {
 
 [role="switch"][data-state="checked"] {
   background-color: var(--primary) !important;
+}
+
+/* Tasks list view layout */
+.th--task-name {
+  padding-left: 0;
+}
+
+.tr--group .td--task-name {
+  padding-left: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.td--task-name {
+  padding-left: calc(var(--group-indent) + (var(--level, 0) * var(--level-step)));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-line {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  min-height: 32px;
+}
+
+.task-line .check {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  flex: 0 0 var(--icon-size);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.task-line .title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-row:hover,
+.task-row[aria-selected="true"] {
+  background: var(--row-hover, rgba(0, 0, 0, 0.04));
+}
+
+.task-row:hover .td--task-name,
+.task-row[aria-selected="true"] .td--task-name {
+  background: transparent;
+}
+
+/* Toast notifications */
+.toaster [data-sonner-toast][data-type="success"] {
+  background: color-mix(in oklab, var(--status-ok, #16a34a) 14%, transparent) !important;
+  color: color-mix(in oklab, var(--status-ok, #16a34a) 70%, var(--text-secondary)) !important;
+  border: 1px solid color-mix(in oklab, var(--status-ok, #16a34a) 22%, transparent) !important;
+  box-shadow: var(--elevation-sm);
+}
+
+.toaster [data-sonner-toast][data-type="success"] [data-sonner-icon] {
+  color: color-mix(in oklab, var(--status-ok, #16a34a) 60%, var(--text-secondary));
+}
+
+.toaster [data-sonner-toast][data-type="success"] [data-sonner-progress-bar] {
+  background: color-mix(in oklab, var(--status-ok, #16a34a) 40%, transparent);
 }

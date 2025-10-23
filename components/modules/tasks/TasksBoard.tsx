@@ -16,7 +16,7 @@ import { TaskColumnHeader } from './TaskColumnHeader';
 import { TaskAddButton } from './TaskAddButton';
 import { TaskCard } from './TaskCard';
 import { TaskComposer, type ComposerLabel } from './TaskComposer';
-import { SortableTaskCard } from './SortableTaskCard';
+import { SortableTaskCard, getSubtaskProgress } from './SortableTaskCard';
 import { DroppableColumn } from './DroppableColumn';
 
 type Column = {
@@ -212,10 +212,8 @@ export function TasksBoard({
           const activeTasks = columnTasks.filter((task) => !task.isCompleted);
           const completedTasks = columnTasks.filter((task) => task.isCompleted);
           const completedTaskCount = columnTasks.reduce((count, task) => {
-            const completedSubtasks = task.subtasks
-              ? task.subtasks.filter((subtask) => subtask.isCompleted).length
-              : 0;
-            return count + (task.isCompleted ? 1 : 0) + completedSubtasks;
+            const { completed } = getSubtaskProgress(task.subtasks);
+            return count + (task.isCompleted ? 1 : 0) + completed;
           }, 0);
           const hasCompletedTasks = completedTasks.length > 0;
                  const isCompletedExpanded = showCompleted && (expandedCompletedByColumn[columnId] ?? false);

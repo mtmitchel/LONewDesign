@@ -5,6 +5,7 @@ import { addDays, format } from 'date-fns';
 import { Button } from '../../ui/button';
 import { Popover, PopoverArrow, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Badge, badgeVariants } from '../../ui/badge';
+import { TASK_META_CHIP_CLASS, TASK_LABEL_CHIP_BASE_CLASS, getLabelHue } from './taskChipStyles';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +33,7 @@ import { useTaskStore } from './taskStore';
 type Props = {
   task: Task | null;
   onClose: () => void;
-  onUpdateTask: (task: Task) => void;
+  onUpdateTask: (task: Task, options?: { showToast?: boolean }) => void;
   onDeleteTask: (taskId: string) => void;
   presentation?: 'overlay' | 'inline';
   className?: string;
@@ -57,10 +58,6 @@ const LABEL_CELL_CLASS =
   'text-[length:var(--text-sm)] font-medium text-[color:var(--text-secondary)] leading-[var(--line-tight)] flex items-center';
 const VALUE_CELL_CLASS =
   'flex items-center min-h-[var(--row-min-h)] w-full text-[color:var(--text-primary)] gap-[var(--chip-gap)]';
-const CHIP_CLASS =
-  'inline-flex h-[var(--chip-height)] items-center justify-start gap-[var(--chip-gap)] rounded-[var(--chip-radius)] px-[var(--chip-pad-x)] py-[var(--chip-pad-y)] text-[length:var(--text-sm)] font-medium border border-transparent transition-colors duration-[var(--duration-fast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]';
-const LABEL_CHIP_BASE_CLASS =
-  'bg-[color:var(--chip-label-bg)] text-[color:var(--chip-label-fg)] shadow-[var(--chip-inset-shadow)] hover:bg-[color:color-mix(in_oklab,var(--chip-label-bg)_calc(100%+var(--chip-hover-bg-boost)),transparent)]';
 
 type DueState = 'none' | 'scheduled' | 'today' | 'overdue';
 
@@ -80,17 +77,6 @@ const EMPTY_TILE_BUTTON_CLASS =
   'h-8 w-8 rounded-[var(--radius-md)] flex items-center justify-center bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[color:color-mix(in_oklab,var(--bg-surface-elevated)_92%,transparent)] hover:text-[color:var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--bg-panel)]';
 
 const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
-const LABEL_HUES = new Set(['blue', 'purple', 'pink', 'red', 'orange', 'yellow', 'green', 'teal', 'gray']);
-const getLabelHue = (color: string | undefined) => {
-  if (!color) return undefined;
-  const match = color.match(/--label-([a-z]+)/i);
-  if (match) {
-    const hue = match[1].toLowerCase();
-    return LABEL_HUES.has(hue) ? hue : undefined;
-  }
-  const normalized = color.trim().toLowerCase();
-  return LABEL_HUES.has(normalized) ? normalized : undefined;
-};
 
 const useOverlayGutter = () => {
   const [value, setValue] = React.useState<number>(16);
@@ -119,6 +105,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
   const labelInputRef = React.useRef<HTMLInputElement | null>(null);
   const newSubtaskInputRef = React.useRef<HTMLInputElement | null>(null);
   const subtaskInputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
+  const lastTaskIdRef = React.useRef<string | null>(null);
 
   const handleClearFields = React.useCallback(() => {
     setEdited((prev) => {
@@ -131,7 +118,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
         labels: [],
         subtasks: [],
       };
-      onUpdateTask(cleared);
+  onUpdateTask(cleared, { showToast: false });
       return cleared;
     });
 
@@ -148,20 +135,40 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
   const tasksById = useTaskStore((s) => s.tasksById);
 
   React.useEffect(() => {
+    if (!task) {
+      setEdited(null);
+      setIsSubtaskComposerOpen(false);
+      setNewSubtaskTitle('');
+      setNewSubtaskDueDate(undefined);
+      setNewSubtaskDateOpen(false);
+      setActiveSubtaskDatePicker(null);
+      subtaskInputRefs.current.clear();
+      lastTaskIdRef.current = null;
+      return;
+    }
+
     setEdited(task);
-    setIsSubtaskComposerOpen(false);
-    setNewSubtaskTitle('');
-    setNewSubtaskDueDate(undefined);
-    setNewSubtaskDateOpen(false);
-    setActiveSubtaskDatePicker(null);
-    subtaskInputRefs.current.clear();
+
+    const previousId = lastTaskIdRef.current;
+    const isDifferentTask = previousId !== task.id;
+
+    if (isDifferentTask) {
+      setIsSubtaskComposerOpen(false);
+      setNewSubtaskTitle('');
+      setNewSubtaskDueDate(undefined);
+      setNewSubtaskDateOpen(false);
+      setActiveSubtaskDatePicker(null);
+      subtaskInputRefs.current.clear();
+    }
+
+    lastTaskIdRef.current = task.id;
   }, [task]);
 
   const handleSave = React.useCallback((updates: Partial<Task>) => {
     setEdited((prev) => {
       if (!prev) return prev;
-      const next = { ...prev, ...updates } as Task;
-      onUpdateTask(next);
+  const next = { ...prev, ...updates } as Task;
+  onUpdateTask(next, { showToast: false });
       setSavedHint('Saved');
       const t = setTimeout(() => setSavedHint(null), 1200);
       return next;
@@ -321,6 +328,19 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
     handleSave({ subtasks: edited.subtasks ?? [] });
   }, [edited, handleSave]);
 
+  const openSubtaskComposer = React.useCallback(() => {
+    setIsSubtaskComposerOpen(true);
+    setNewSubtaskTitle('');
+    setNewSubtaskDueDate(undefined);
+    setNewSubtaskDateOpen(false);
+    setActiveSubtaskDatePicker(null);
+    if (isSubtaskComposerOpen) {
+      requestAnimationFrame(() => {
+        newSubtaskInputRef.current?.focus();
+      });
+    }
+  }, [isSubtaskComposerOpen]);
+
   const handleAddSubtask = React.useCallback(() => {
     if (!edited) return;
     const trimmedTitle = newSubtaskTitle.trim();
@@ -333,12 +353,8 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
     };
     const current = edited.subtasks ?? [];
     handleSave({ subtasks: [...current, nextSubtask] });
-    setNewSubtaskTitle('');
-    setNewSubtaskDueDate(undefined);
-    setNewSubtaskDateOpen(false);
-    setIsSubtaskComposerOpen(false);
-    setActiveSubtaskDatePicker(null);
-  }, [edited, handleSave, newSubtaskDueDate, newSubtaskTitle]);
+    openSubtaskComposer();
+  }, [edited, handleSave, newSubtaskDueDate, newSubtaskTitle, openSubtaskComposer]);
 
   const handleCancelNewSubtask = React.useCallback(() => {
     setIsSubtaskComposerOpen(false);
@@ -418,7 +434,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
       <span
         className={cn(
           badgeVariants({ variant: 'soft', tone, size: 'sm' }),
-          CHIP_CLASS,
+          TASK_META_CHIP_CLASS,
         )}
       >
         <Flag className="size-[var(--icon-md)]" aria-hidden />
@@ -439,6 +455,20 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
       return () => clearTimeout(timer);
     }
   }, [task]);
+
+  const handleTitleChange = React.useCallback((value: string) => {
+    setEdited((prev) => (prev ? { ...prev, title: value } : prev));
+  }, []);
+
+  const handleTitleCommit = React.useCallback(
+    (rawValue: string) => {
+      if (!edited) return;
+      const trimmed = rawValue.trim();
+      const nextValue = trimmed.length > 0 ? trimmed : 'Untitled';
+      handleSave({ title: nextValue });
+    },
+    [edited, handleSave],
+  );
 
   const canClearFields = React.useMemo(() => {
     if (!edited) return false;
@@ -494,9 +524,21 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
       </header>
 
       <section className="px-[var(--space-4)] pt-[var(--space-4)] pb-[var(--space-4)]">
-        <h1 className="m-0 text-[length:var(--text-2xl)] font-semibold text-[color:var(--text-primary)] leading-tight">
-          {task.title}
-        </h1>
+        <input
+          ref={titleRef}
+          type="text"
+          value={edited?.title ?? ''}
+          onChange={(event) => handleTitleChange(event.target.value)}
+          onBlur={(event) => handleTitleCommit(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              handleTitleCommit((event.target as HTMLInputElement).value);
+            }
+          }}
+          placeholder="Task title"
+          className="w-full max-w-full border-none bg-transparent p-0 text-[length:var(--text-2xl)] font-semibold leading-tight text-[color:var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[var(--bg-surface)]"
+        />
         <div aria-live="polite" className="sr-only">{savedHint ?? ''}</div>
       </section>
 
@@ -581,7 +623,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                       aria-label={`Choose priority (${priorityLabel})`}
                       className={cn(
                         badgeVariants({ variant: 'soft', tone: priorityTone, size: 'sm' }),
-                        CHIP_CLASS,
+                        TASK_META_CHIP_CLASS,
                         'hover:border-[color:var(--border-strong)] focus-visible:border-[color:var(--border-strong)] focus-visible:ring-offset-[var(--bg-panel)]',
                         priorityOpen && 'border-[color:var(--border-strong)]'
                       )}
@@ -666,8 +708,8 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                             size="sm"
                             data-label-color={labelHue}
                             className={cn(
-                              CHIP_CLASS,
-                              LABEL_CHIP_BASE_CLASS,
+                              TASK_META_CHIP_CLASS,
+                              TASK_LABEL_CHIP_BASE_CLASS,
                               'group-hover:border-[color:var(--border-strong)] group-focus-visible:border-[color:var(--border-strong)]',
                               labelsOpen && 'border-[color:var(--border-strong)]',
                             )}
@@ -722,8 +764,8 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                               variant="soft"
                               size="sm"
                               className={cn(
-                                CHIP_CLASS,
-                                LABEL_CHIP_BASE_CLASS,
+                                TASK_META_CHIP_CLASS,
+                                TASK_LABEL_CHIP_BASE_CLASS,
                               )}
                               data-label-color={labelHue}
                             >
@@ -820,7 +862,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                       ? 'Choose subtask due date'
                       : `Change subtask due date (${dueChipLabel})`;
                   const dueButtonClass = cn(
-                    CHIP_CLASS,
+                    TASK_META_CHIP_CLASS,
                     'justify-center focus-visible:ring-offset-[var(--bg-surface)] transition-colors',
                     (dueChipState === 'none' || dueChipState === 'scheduled') &&
                       'bg-[color:var(--chip-neutral-bg)] text-[color:var(--text-secondary)] hover:bg-[var(--hover-bg)] border-[color:var(--chip-border)]',
@@ -883,9 +925,13 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                               onChange={(event) => handleSubtaskTitleChange(subtask.id, event.target.value)}
                               onBlur={handleSubtaskTitleCommit}
                               onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
+                                if (event.key === 'Enter' && !event.shiftKey) {
                                   event.preventDefault();
-                                  (event.currentTarget as HTMLInputElement).blur();
+                                  const inputEl = event.currentTarget as HTMLInputElement;
+                                  inputEl.blur();
+                                  requestAnimationFrame(() => {
+                                    openSubtaskComposer();
+                                  });
                                 }
                                 if (event.key === 'Escape') {
                                   event.preventDefault();
@@ -1070,7 +1116,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
                   <button
                     type="button"
                     className="flex w-full items-center gap-[var(--space-2)] px-[var(--list-row-pad-x)] py-[var(--space-3)] text-left text-[length:var(--text-sm)] text-[color:var(--text-tertiary)] hover:bg-[var(--hover-bg)] hover:text-[color:var(--text-primary)]"
-                    onClick={() => setIsSubtaskComposerOpen(true)}
+                    onClick={openSubtaskComposer}
                   >
                     <Plus className="size-4" aria-hidden />
                     Add subtask...
@@ -1157,7 +1203,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
       {/* overlay */}
       <button
         aria-hidden
-        className="fixed left-0 right-0 bottom-0 top-[var(--pane-header-h)] z-[69] bg-[var(--overlay-scrim)] backdrop-blur-[var(--overlay-blur)]"
+        className="fixed left-0 right-0 bottom-0 top-[var(--pane-header-h)] z-[69] bg-[var(--overlay-scrim)]"
         onClick={onClose}
       />
 

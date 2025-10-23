@@ -209,7 +209,7 @@ async fn process_update_operation(
         task.google_id
             .as_ref()
             .ok_or_else(|| "Missing google_id for update".to_string())?,
-        payload.clone(),
+        payload,
     )
     .await?;
 
@@ -277,7 +277,8 @@ async fn process_move_operation(
     }
 
     // Get from_list_id from pending_move_from or current list_id
-    let from_list_id = task.pending_move_from
+    let from_list_id = task
+        .pending_move_from
         .as_ref()
         .unwrap_or(&task.list_id)
         .to_string();
@@ -612,7 +613,7 @@ async fn fetch_task_record(
     task_id: &str,
 ) -> Result<Option<TaskMetadataRecord>, String> {
     sqlx::query_as(
-        "SELECT id, google_id, list_id, priority, labels, due_date, time_block, notes, status, \
+        "SELECT id, google_id, list_id, title, priority, labels, due_date, time_block, notes, status, \
             metadata_hash, dirty_fields, pending_move_from, pending_delete_google_id, deleted_at, \
             sync_state, sync_attempts, last_synced_at, last_remote_hash, sync_error \
          FROM tasks_metadata WHERE id = ?",
@@ -737,6 +738,7 @@ async fn finalize_task_sync(
              last_synced_at = ?, \
              sync_error = NULL, \
              last_remote_hash = ?, \
+             has_conflict = 0, \
              pending_move_from = NULL, \
              pending_delete_google_id = NULL \
          WHERE id = ?",

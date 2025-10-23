@@ -63,6 +63,7 @@ pub struct TaskMetadataRecord {
     pub id: String,
     pub google_id: Option<String>,
     pub list_id: String,
+    pub title: String,
     pub priority: String,
     pub labels: String,
     pub due_date: Option<String>,

@@ -667,7 +667,6 @@ export function CalendarTasksRail({
                     priority={task.priority}
                     labels={task.labels}
                     isCompleted={task.isCompleted}
-                    hasConflict={task.hasConflict}
                     onToggleCompletion={() => handleToggleCompletion(task)}
                     onClick={() => console.log('Open task:', task.id)}
                     onEdit={() => console.log('Edit task:', task.id)}

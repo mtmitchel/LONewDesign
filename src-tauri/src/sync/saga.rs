@@ -7,14 +7,19 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskBackup {
     pub id: String,
-    pub google_id: String,
+    pub google_id: Option<String>,
     pub list_id: String,
     pub title: String,
     pub notes: Option<String>,
     pub status: String,
     pub due_date: Option<String>,
-    pub position: Option<String>,
-    pub parent_google_id: Option<String>,
+    pub priority: String,
+    pub labels: String,
+    pub time_block: Option<String>,
+    #[serde(default)]
+    pub pending_move_from: Option<String>,
+    #[serde(default)]
+    pub pending_delete_google_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,7 +29,7 @@ pub struct SubtaskBackup {
     pub parent_google_id: String,
     pub title: String,
     pub is_completed: bool,
-    pub position: Option<String>,
+    pub position: i64,
     pub due_date: Option<String>,
 }
 
@@ -47,11 +52,12 @@ pub enum TaskMoveSaga {
         new_google_id: String,
     },
     SubtasksCreated {
-        subtask_mapping: HashMap<String, String>, // old_google_id -> new_google_id
+        new_google_id: String,
+        subtask_mapping: HashMap<String, String>, // old_subtask_id -> new_google_id
     },
     DatabaseUpdated,
     Completed,
-    
+
     // Compensating states
     Compensating {
         reason: String,
@@ -92,7 +98,7 @@ pub async fn load_or_initialize_saga(
     .fetch_optional(db_pool)
     .await
     .map_err(|e| format!("Failed to load saga: {}", e))?;
-    
+
     if let Some(saga) = existing {
         // Deserialize existing state
         serde_json::from_str(&saga.state)
@@ -102,14 +108,20 @@ pub async fn load_or_initialize_saga(
         let now = chrono::Utc::now().timestamp();
         let state_json = serde_json::to_string(&initial_state)
             .map_err(|e| format!("Failed to serialize initial state: {}", e))?;
-        
+
         let (task_id, from_list_id, to_list_id) = match &initial_state {
-            TaskMoveSaga::Initialized { task_id, from_list_id, to_list_id } => {
-                (task_id.clone(), Some(from_list_id.clone()), Some(to_list_id.clone()))
-            }
+            TaskMoveSaga::Initialized {
+                task_id,
+                from_list_id,
+                to_list_id,
+            } => (
+                task_id.clone(),
+                Some(from_list_id.clone()),
+                Some(to_list_id.clone()),
+            ),
             _ => return Err("Initial state must be Initialized variant".to_string()),
         };
-        
+
         sqlx::query(
             "INSERT INTO saga_logs (id, saga_type, state, task_id, from_list_id, to_list_id, created_at, updated_at) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -125,7 +137,7 @@ pub async fn load_or_initialize_saga(
         .execute(db_pool)
         .await
         .map_err(|e| format!("Failed to initialize saga: {}", e))?;
-        
+
         Ok(initial_state)
     }
 }
@@ -137,9 +149,9 @@ pub async fn persist_saga_state(
     state: &TaskMoveSaga,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().timestamp();
-    let state_json = serde_json::to_string(state)
-        .map_err(|e| format!("Failed to serialize state: {}", e))?;
-    
+    let state_json =
+        serde_json::to_string(state).map_err(|e| format!("Failed to serialize state: {}", e))?;
+
     // Update completed_at if in terminal state
     let completed_at = match state {
         TaskMoveSaga::Completed | TaskMoveSaga::Compensated | TaskMoveSaga::Failed { .. } => {
@@ -147,12 +159,12 @@ pub async fn persist_saga_state(
         }
         _ => None,
     };
-    
+
     let error = match state {
         TaskMoveSaga::Failed { error } => Some(error.clone()),
         _ => None,
     };
-    
+
     if let Some(completed) = completed_at {
         sqlx::query(
             "UPDATE saga_logs SET state = ?, updated_at = ?, completed_at = ?, error = ? WHERE id = ?"
@@ -166,17 +178,15 @@ pub async fn persist_saga_state(
         .await
         .map_err(|e| format!("Failed to update saga state: {}", e))?;
     } else {
-        sqlx::query(
-            "UPDATE saga_logs SET state = ?, updated_at = ? WHERE id = ?"
-        )
-        .bind(&state_json)
-        .bind(now)
-        .bind(saga_id)
-        .execute(db_pool)
-        .await
-        .map_err(|e| format!("Failed to update saga state: {}", e))?;
+        sqlx::query("UPDATE saga_logs SET state = ?, updated_at = ? WHERE id = ?")
+            .bind(&state_json)
+            .bind(now)
+            .bind(saga_id)
+            .execute(db_pool)
+            .await
+            .map_err(|e| format!("Failed to update saga state: {}", e))?;
     }
-    
+
     Ok(())
 }
 
@@ -188,19 +198,19 @@ pub async fn acquire_lock(
 ) -> Result<bool, String> {
     let now = chrono::Utc::now().timestamp();
     let expires_at = now + timeout_seconds;
-    
+
     // Clean up expired locks first
     sqlx::query("DELETE FROM operation_locks WHERE expires_at < ?")
         .bind(now)
         .execute(db_pool)
         .await
         .map_err(|e| format!("Failed to clean up locks: {}", e))?;
-    
+
     // Try to acquire lock
     let result = sqlx::query(
         "INSERT INTO operation_locks (lock_key, acquired_at, expires_at) 
          VALUES (?, ?, ?) 
-         ON CONFLICT(lock_key) DO NOTHING"
+         ON CONFLICT(lock_key) DO NOTHING",
     )
     .bind(lock_key)
     .bind(now)
@@ -208,7 +218,7 @@ pub async fn acquire_lock(
     .execute(db_pool)
     .await
     .map_err(|e| format!("Failed to acquire lock: {}", e))?;
-    
+
     Ok(result.rows_affected() > 0)
 }
 
@@ -219,7 +229,7 @@ pub async fn release_lock(db_pool: &SqlitePool, lock_key: &str) -> Result<(), St
         .execute(db_pool)
         .await
         .map_err(|e| format!("Failed to release lock: {}", e))?;
-    
+
     Ok(())
 }
 
@@ -232,23 +242,23 @@ pub async fn check_or_store_idempotent_operation(
 ) -> Result<Option<String>, String> {
     let now = chrono::Utc::now().timestamp();
     let expires_at = now + 86400; // 24 hours
-    
+
     // Clean up expired entries
     sqlx::query("DELETE FROM operation_idempotency WHERE expires_at < ?")
         .bind(now)
         .execute(db_pool)
         .await
         .map_err(|e| format!("Failed to clean up idempotency records: {}", e))?;
-    
+
     // Check if operation already exists
     let existing: Option<(String, String)> = sqlx::query_as(
-        "SELECT status, response_data FROM operation_idempotency WHERE idempotency_key = ?"
+        "SELECT status, response_data FROM operation_idempotency WHERE idempotency_key = ?",
     )
     .bind(idempotency_key)
     .fetch_optional(db_pool)
     .await
     .map_err(|e| format!("Failed to check idempotency: {}", e))?;
-    
+
     if let Some((status, response_data)) = existing {
         if status == "completed" {
             // Return cached response
@@ -258,7 +268,7 @@ pub async fn check_or_store_idempotent_operation(
         }
         // If failed, allow retry
     }
-    
+
     // Store new operation as pending
     sqlx::query(
         "INSERT INTO operation_idempotency (idempotency_key, operation_type, request_params, status, created_at, expires_at)
@@ -274,7 +284,7 @@ pub async fn check_or_store_idempotent_operation(
     .execute(db_pool)
     .await
     .map_err(|e| format!("Failed to store idempotent operation: {}", e))?;
-    
+
     Ok(None)
 }
 
@@ -285,7 +295,7 @@ pub async fn mark_idempotent_completed(
     response_data: &str,
 ) -> Result<(), String> {
     let now = chrono::Utc::now().timestamp();
-    
+
     sqlx::query(
         "UPDATE operation_idempotency SET status = 'completed', response_data = ?, completed_at = ? WHERE idempotency_key = ?"
     )
@@ -295,7 +305,7 @@ pub async fn mark_idempotent_completed(
     .execute(db_pool)
     .await
     .map_err(|e| format!("Failed to mark operation completed: {}", e))?;
-    
+
     Ok(())
 }
 
@@ -304,13 +314,11 @@ pub async fn mark_idempotent_failed(
     db_pool: &SqlitePool,
     idempotency_key: &str,
 ) -> Result<(), String> {
-    sqlx::query(
-        "UPDATE operation_idempotency SET status = 'failed' WHERE idempotency_key = ?"
-    )
-    .bind(idempotency_key)
-    .execute(db_pool)
-    .await
-    .map_err(|e| format!("Failed to mark operation failed: {}", e))?;
-    
+    sqlx::query("UPDATE operation_idempotency SET status = 'failed' WHERE idempotency_key = ?")
+        .bind(idempotency_key)
+        .execute(db_pool)
+        .await
+        .map_err(|e| format!("Failed to mark operation failed: {}", e))?;
+
     Ok(())
 }

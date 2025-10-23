@@ -43,7 +43,7 @@ const getTaskLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var
 const EMPTY_META_BUTTON_CLASS =
   'h-8 w-8 rounded-[var(--radius-md)] grid place-items-center text-[color:var(--text-tertiary)] hover:text-[color:var(--text-secondary)] hover:bg-[color:var(--caret-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--bg-surface)] transition-colors';
 
-const formatSubtaskLabel = (completed: number, total: number) => `${completed}/${total}`;
+const formatSubtaskLabel = (remaining: number, total: number) => `${remaining}/${total}`;
 
 export function TaskCard({ 
     taskTitle, 
@@ -66,6 +66,7 @@ export function TaskCard({
 
   const totalSubtasks = Math.max(0, subtaskCount);
   const completedSubtasks = Math.min(totalSubtasks, Math.max(0, completedSubtaskCount));
+  const remainingSubtasks = Math.max(0, totalSubtasks - completedSubtasks);
   const showSubtasksIndicator = totalSubtasks > 0;
 
   const priorityContent = priority !== 'none'
@@ -129,7 +130,7 @@ export function TaskCard({
     ? (
         <div className="ml-6 flex items-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[color:var(--text-tertiary)]">
           <ListChecks className="h-[var(--icon-sm)] w-[var(--icon-sm)]" strokeWidth={1.25} aria-hidden />
-          {formatSubtaskLabel(completedSubtasks, totalSubtasks)}
+          {formatSubtaskLabel(remainingSubtasks, totalSubtasks)}
         </div>
       )
     : null;
