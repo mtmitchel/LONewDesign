@@ -476,19 +476,19 @@ export function TasksModule() {
         <div className="max-w-[1400px] mx-auto">
           {/* Table header */}
           <div
-            className="grid items-center px-[var(--list-row-pad-x)] py-[var(--space-2)] border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
+            className="grid items-center px-[var(--list-row-pad-x)] py-[var(--space-3)] border-b border-[var(--border-subtle)] bg-[var(--bg-canvas)]"
             style={{ gridTemplateColumns: LIST_VIEW_GRID_TEMPLATE, columnGap: 'var(--list-row-gap)' }}
           >
-            <div className="th--task-name text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)]">
+            <div className="th--task-name text-[length:var(--text-base)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)]">
               Task name
             </div>
-            <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
+            <div className="text-[length:var(--text-base)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
               Due date
             </div>
-            <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
+            <div className="text-[length:var(--text-base)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
               Priority
             </div>
-            <div className="text-[length:var(--text-xs)] font-[var(--font-weight-semibold)] text-[color:var(--text-secondary)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
+            <div className="text-[length:var(--text-base)] font-[var(--font-weight-medium)] text-[color:var(--text-secondary)] border-l border-[var(--border-divider)] pl-[var(--list-row-gap)]">
               Labels
             </div>
           </div>
