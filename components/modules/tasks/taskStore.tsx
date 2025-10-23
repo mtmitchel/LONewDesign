@@ -1,5 +1,6 @@
 "use client";
 
+// #region Imports and shared types
 import React from 'react';
 import { createWithEqualityFn } from 'zustand/traditional';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -19,7 +20,9 @@ import {
   normalizeDueDate as normalizeMetadataDueDate,
   type TaskMetadata as SharedTaskMetadata,
 } from '../../../lib/metadata';
+// #endregion Imports and shared types
 
+// #region Type definitions
 type TaskSourceMeta = {
   source?: string;
 };
@@ -93,7 +96,9 @@ type TaskStoreState = {
   syncNow: () => Promise<void>;
   setSyncStatus: (status: TaskSyncState, error?: string | null) => void;
 };
+// #endregion Type definitions
 
+// #region Helper utilities
 function createId(prefix = 'task') {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -259,6 +264,7 @@ function deserializeSubtasks(raw: unknown): Task['subtasks'] {
     })
     .filter((entry): entry is SubtaskItem => entry !== null);
 }
+// #endregion Helper utilities
 
 function serializeSubtasksForBackend(subtasks: Task['subtasks'] | undefined) {
   if (!Array.isArray(subtasks)) {
@@ -332,6 +338,7 @@ function buildMetadataPayload(input: TaskInput, title: string): SharedTaskMetada
   };
 }
 
+// #region Store initialization
 const STORAGE_KEY = 'libreollama_task_store_v2'; // v2: removed hardcoded lists, using Google Tasks sync
 const DEFAULT_LIST_ID = DEFAULT_TASK_LISTS[0]?.id ?? 'todo';
 
@@ -986,7 +993,9 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
     },
   ),
 );
+// #endregion Store initialization
 
+// #region Telemetry helpers
 function emitTaskEvent(event: string, payload?: Record<string, unknown>) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
@@ -999,11 +1008,14 @@ function emitTaskEvent(event: string, payload?: Record<string, unknown>) {
     console.debug(`[task-event] ${event}`, payload ?? {});
   }
 }
+// #endregion Telemetry helpers
 
-export const taskStoreApi = useTaskStoreBase;
+// Use the new modular store
+import { useTaskStore, taskStoreApi } from './store';
 
-export const useTaskStore = useTaskStoreBase;
+export { useTaskStore, taskStoreApi };
 
+// #region Selectors and hooks
 export const selectTasks = (state: TaskStoreState): Task[] =>
   state.taskOrder.map((id) => state.tasksById[id]).filter(Boolean);
 
@@ -1022,71 +1034,19 @@ export function useTasks() {
 export function useTaskLists() {
   return useTaskStore(selectTaskLists, shallow);
 }
+// #endregion Selectors and hooks
 
+// #region Event wiring
 export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
-    function onSyncComplete() {
-      // Pull latest from backend after each cycle
-      void useTaskStore.getState().fetchTasks();
-    }
+    let disposed = false;
 
-    function onSyncQueueProcessed() {
-      // Queue processing complete - no need to fetch since we use optimistic updates
-      console.log('[TaskStoreProvider] Sync queue processed, skipping fetch to avoid UI flicker');
-    }
-
-    type TauriEventDetail = {
-      event?: string;
-    };
-
-    const windowListener = (event: Event) => {
-      const detail = (event as CustomEvent<TauriEventDetail>).detail;
-      if (detail?.event === 'tasks:sync:complete') {
-        onSyncComplete();
-      } else if (detail?.event === 'tasks:sync:queue-processed') {
-        onSyncQueueProcessed();
-      }
-    };
-
-    let isUnmounted = false;
-    const unlistenFns: Array<() => void> = [];
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('tauri://event', windowListener as EventListener);
-    }
-
-    import('@tauri-apps/api/event')
-      .then(async ({ listen }) => {
-        try {
-          const [unlistenComplete, unlistenQueue] = await Promise.all([
-            listen('tasks:sync:complete', onSyncComplete),
-            listen('tasks:sync:queue-processed', onSyncQueueProcessed),
-          ]);
-
-          if (isUnmounted) {
-            unlistenComplete();
-            unlistenQueue();
-          } else {
-            unlistenFns.push(unlistenComplete, unlistenQueue);
-          }
-        } catch (error) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn('[TaskStoreProvider] Failed to attach Tauri sync listeners', error);
-          }
-        }
-      })
-      .catch((error) => {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn('[TaskStoreProvider] Failed to import @tauri-apps/api/event', error);
-        }
-      });
-
-    async function initialize() {
+    const hydrateAndFetch = async () => {
       // Hydrate Google Workspace tokens
       const { useGoogleWorkspaceSettings } = await import('../settings/state/googleWorkspace');
       const hydrate = useGoogleWorkspaceSettings.getState().hydrate;
       await hydrate();
-      
+
       const account = useGoogleWorkspaceSettings.getState().account;
       if (process.env.NODE_ENV !== 'production') {
         console.log('[TaskStoreProvider] Google Workspace hydrated', {
@@ -1095,28 +1055,32 @@ export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
           email: account?.email,
         });
       }
-      
+
       // Load tasks from Rust backend
       // Background sync happens automatically in Rust every 60 seconds (cadence controlled by backend)
       await useTaskStore.getState().fetchTasks();
       console.log('[TaskStoreProvider] Tasks loaded from Rust backend');
-    }
+    };
 
-    void initialize();
+    const init = async () => {
+      const { setupEventListeners } = await import('./store/events');
+      if (disposed) return;
+      const cleanup = setupEventListeners(
+        (updater: any) => useTaskStore.setState(updater),
+        () => useTaskStore.getState(),
+      );
+      await hydrateAndFetch();
+      return cleanup;
+    };
+
+    const done = init();
 
     return () => {
-      isUnmounted = true;
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('tauri://event', windowListener as EventListener);
-      }
-      while (unlistenFns.length > 0) {
-        const unlisten = unlistenFns.pop();
-        if (unlisten) {
-          unlisten();
-        }
-      }
+      disposed = true;
+      done.then(fn => fn?.());
     };
   }, []);
 
   return <>{children}</>;
 }
+// #endregion Event wiring

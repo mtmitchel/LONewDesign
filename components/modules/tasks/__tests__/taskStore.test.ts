@@ -158,6 +158,15 @@ describe('taskStore - Backend-Heavy Architecture', () => {
         case 'get_task_lists': {
           return backendLists.slice();
         }
+        case 'process_sync_queue_only': {
+          const now = Math.floor(Date.now() / 1000);
+          backendTasks = backendTasks.map((task) => ({
+            ...task,
+            sync_state: 'synced',
+            last_synced_at: now,
+          }));
+          return 'ok';
+        }
         case 'sync_tasks_now': {
           const now = Math.floor(Date.now() / 1000);
           backendTasks = backendTasks.map((task) => ({
@@ -379,7 +388,7 @@ describe('taskStore - Backend-Heavy Architecture', () => {
       });
 
       const commands = mockInvoke.mock.calls.map(([command]) => command);
-      expect(commands).toContain('sync_tasks_now');
+      expect(commands).toContain('process_sync_queue_only');
     });
 
     it('should trigger immediate sync when updating subtasks', async () => {
@@ -408,7 +417,7 @@ describe('taskStore - Backend-Heavy Architecture', () => {
       });
 
       const commands = mockInvoke.mock.calls.map(([command]) => command);
-      expect(commands).toContain('sync_tasks_now');
+      expect(commands).toContain('process_sync_queue_only');
     });
   });
 
@@ -669,8 +678,8 @@ describe('taskStore - Backend-Heavy Architecture', () => {
       const tasks = selectTasks(taskStoreApi.getState());
 
       expect(tasks).toHaveLength(2);
-      expect(tasks[0].title).toBe('Task 1');
-      expect(tasks[1].title).toBe('Task 2');
+      expect(tasks[0].title).toBe('Task 2');
+      expect(tasks[1].title).toBe('Task 1');
     });
 
     it('selectSyncStatus should return sync state', () => {

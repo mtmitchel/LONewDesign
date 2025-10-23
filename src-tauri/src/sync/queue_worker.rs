@@ -705,7 +705,7 @@ fn is_unauthorized_error(error: &str) -> bool {
 }
 
 fn derive_post_sync_state(task: &TaskMetadataRecord, payload_hash: &str) -> (String, String) {
-    if task.metadata_hash == payload_hash {
+    if task.metadata_hash.as_deref() == Some(payload_hash) {
         ("synced".to_string(), "[]".to_string())
     } else {
         (task.sync_state.clone(), task.dirty_fields.clone())

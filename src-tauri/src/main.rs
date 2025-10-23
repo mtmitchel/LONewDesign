@@ -4,7 +4,6 @@
 mod commands;
 mod db;
 mod sync;
-mod sync_service;
 mod task_metadata;
 
 use std::time::Duration;
@@ -64,11 +63,11 @@ async fn init_database_command(app: AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 async fn sync_tasks_now(
-    sync_service: tauri::State<'_, std::sync::Arc<sync_service::SyncService>>,
+    sync_service: tauri::State<'_, std::sync::Arc<sync::service::SyncService>>,
 ) -> Result<String, String> {
     let service = sync_service.inner().clone();
     tokio::spawn(async move {
-        if let Err(e) = service.sync_cycle().await {
+        if let Err(e) = sync::service::sync_cycle(&service).await {
             eprintln!("[sync_tasks_now] Sync cycle error: {}", e);
         }
     });
@@ -145,7 +144,7 @@ fn main() {
                     .build()
                     .expect("Failed to build HTTP client for sync service");
                 let api_state = ApiState::new();
-                std::sync::Arc::new(sync_service::SyncService::new(
+                std::sync::Arc::new(sync::service::SyncService::new(
                     pool,
                     http_client,
                     app_handle_for_sync,
@@ -171,6 +170,7 @@ fn main() {
             commands::tasks::create_task_list,
             commands::tasks::delete_task_list,
             commands::tasks::queue_move_task,
+            sync::queue::process_sync_queue_only,
             sync_tasks_now,
             commands::mistral::test_mistral_credentials,
             commands::mistral::fetch_mistral_models,

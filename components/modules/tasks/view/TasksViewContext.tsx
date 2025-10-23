@@ -1,7 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { Task } from '../types';
+import type { Task, TaskLabel } from '../types';
+import { useTasks } from '../taskStore';
 import { projects } from '../../projects/data';
 import { openQuickAssistant } from '../../../assistant';
 
@@ -67,6 +68,30 @@ export function TasksViewProvider({ children }: { children: React.ReactNode }) {
   const [deleteListDialog, setDeleteListDialog] = useState<{ isOpen: boolean; listId: string; listTitle: string; taskCount: number } | null>(null);
   const [fallbackList, setFallbackList] = useState<string>('todo');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  const tasks = useTasks();
+  const getLabelName = (label: TaskLabel) => typeof label === 'string' ? label : label.name;
+  const getLabelColor = (label: TaskLabel) => typeof label === 'string' ? 'var(--label-gray)' : label.color;
+
+  // Get all unique labels from tasks with their colors
+  useEffect(() => {
+    const newMap = new Map<string, string>();
+    tasks.forEach(task => {
+      const taskLabels = Array.isArray(task.labels)
+        ? task.labels
+        : typeof task.labels === 'string'
+          ? (() => { try { const v = JSON.parse(task.labels as unknown as string); return Array.isArray(v) ? v : []; } catch { return []; } })()
+          : [];
+      taskLabels.forEach(label => {
+        const name = getLabelName(label);
+        const color = getLabelColor(label);
+        if (!newMap.has(name)) {
+          newMap.set(name, color);
+        }
+      });
+    });
+    setLabelsColorMap(newMap);
+  }, [tasks]);
 
   // Handle project scope events
   useEffect(() => {

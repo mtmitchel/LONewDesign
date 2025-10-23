@@ -1,3 +1,5 @@
+import type { Task } from '../tasks/types';
+
 export type EventId = string;
 
 export type EventCategory = 'work' | 'meeting' | 'personal' | 'travel';
@@ -23,3 +25,21 @@ export const EVENT_COLOR: Record<EventCategory, string> = {
   personal: 'var(--event-green)',
   travel: 'var(--event-orange)'
 };
+
+// #region CalendarTasksRail Types
+export type TaskFilterKey = 'all' | 'today' | 'this-week' | 'completed' | string;
+
+export type CalendarTasksRailProps = {
+  tasks?: Task[];
+  className?: string;
+  filter?: TaskFilterKey;
+  loading?: boolean;
+  onFilterChange?: (filter: TaskFilterKey) => void;
+  onAdd?: (task: Partial<Task>) => void;
+  onUpdate?: (id: string, updates: Partial<Task>) => void;
+  onDelete?: (id: string) => void;
+  onRefresh?: () => void;
+};
+
+export type DueState = 'default' | 'today' | 'overdue';
+// #endregion CalendarTasksRail Types

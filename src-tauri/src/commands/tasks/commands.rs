@@ -1,0 +1,583 @@
+use crate::commands::tasks::types::*;
+use crate::commands::tasks::subtasks::*;
+use crate::commands::tasks::helpers::*;
+use crate::commands::google::google_workspace_store_get;
+use crate::db;
+use crate::sync::types::GOOGLE_TASKS_BASE_URL;
+use crate::sync::service::SyncService;
+use crate::task_metadata;
+use chrono::Utc;
+use serde_json;
+use sqlx::{SqlitePool, Transaction};
+use std::sync::Arc;
+use tauri::{AppHandle, Emitter, State};
+use uuid::Uuid;
+
+// #region Task CRUD Commands
+#[tauri::command]
+pub async fn create_task(app: AppHandle, task: TaskInput) -> Result<TaskResponse, String> {
+    let pool = db::init_database(&app).await?;
+    let now = Utc::now().timestamp();
+    let _write_guard = db::acquire_write_lock().await;
+
+    let task_id = task.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+
+    let label_entries = convert_label_inputs(task.labels.clone());
+    let labels_json = serde_json::to_string(&label_entries).unwrap();
+
+    let metadata = task_metadata::TaskMetadata {
+        title: task.title,
+        notes: task.notes,
+        due_date: task.due_date,
+        priority: task.priority.unwrap_or_else(|| "none".to_string()),
+        labels: labels_json,
+        status: task.status.unwrap_or_else(|| "needsAction".to_string()),
+        time_block: task.time_block,
+    };
+
+    let normalized_metadata = metadata.normalize();
+    let metadata_hash = normalized_metadata.compute_hash();
+    let labels_json = serde_json::to_string(&normalized_metadata.labels).unwrap();
+
+    let mut dirty_fields_vec = vec![
+        "title".to_string(),
+        "priority".to_string(),
+        "labels".to_string(),
+        "due_date".to_string(),
+        "status".to_string(),
+        "notes".to_string(),
+    ];
+
+    if task
+        .subtasks
+        .as_ref()
+        .map(|subs| !subs.is_empty())
+        .unwrap_or(false)
+    {
+        dirty_fields_vec.push("subtasks".to_string());
+    }
+
+    let dirty_fields = serde_json::to_string(&dirty_fields_vec).unwrap();
+
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    sqlx::query(
+                "INSERT INTO tasks_metadata (id, list_id, title, priority, labels, due_date, status, notes, time_block, metadata_hash, dirty_fields, created_at, updated_at)          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    )
+    .bind(&task_id)
+    .bind(&task.list_id)
+    .bind(&normalized_metadata.title)
+    .bind(&normalized_metadata.priority)
+    .bind(&labels_json)
+    .bind(&normalized_metadata.due_date)
+    .bind(&normalized_metadata.status)
+    .bind(&normalized_metadata.notes)
+    .bind(&normalized_metadata.time_block)
+    .bind(&metadata_hash)
+    .bind(&dirty_fields)
+    .bind(now)
+    .bind(now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to create task: {}", e))?;
+
+    let subtask_diff = if let Some(subtasks) = &task.subtasks {
+        replace_subtasks(&mut tx, &task_id, subtasks, now).await?
+    } else {
+        SubtaskDiff::default()
+    };
+
+    if subtask_diff.has_changes() {
+        enqueue_subtask_operations(&mut tx, &task_id, &task.list_id, &subtask_diff, now).await?;
+    }
+
+    let mutation_id = Uuid::new_v4().to_string();
+    let task_payload = serde_json::to_string(&normalized_metadata).unwrap();
+
+    sqlx::query(
+                "INSERT INTO task_mutation_log (id, task_id, operation, payload, new_hash, actor, created_at)          VALUES (?, ?, 'create', ?, ?, 'user', ?)",
+    )
+    .bind(&mutation_id)
+    .bind(&task_id)
+    .bind(&task_payload)
+    .bind(&metadata_hash)
+    .bind(now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to log mutation: {}", e))?;
+
+    let sync_queue_id = Uuid::new_v4().to_string();
+    let sync_payload = serde_json::to_string(&normalized_metadata.serialize_for_google()).unwrap();
+
+    sqlx::query(
+                "INSERT INTO sync_queue (id, task_id, operation, payload, scheduled_at, created_at)          VALUES (?, ?, 'create', ?, ?, ?)",
+    )
+    .bind(&sync_queue_id)
+    .bind(&task_id)
+    .bind(&sync_payload)
+    .bind(now)
+    .bind(now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to enqueue sync operation: {}", e))?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    let created_task = load_task_with_subtasks(&pool, &task_id).await?;
+
+    app.emit("tasks::created", &task_id).unwrap();
+
+    Ok(created_task)
+}
+
+#[tauri::command(rename = "update_task")]
+pub async fn update_task_command(
+    app: AppHandle,
+    task_id: String,
+    updates: TaskUpdates,
+) -> Result<TaskResponse, String> {
+    let pool = db::init_database(&app).await?;
+    let now = Utc::now().timestamp();
+    let _write_guard = db::acquire_write_lock().await;
+
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    let current_task: task_metadata::TaskMetadata = sqlx::query_as(
+        "SELECT title, notes, due_date, priority, labels, status, time_block FROM tasks_metadata WHERE id = ?",
+    )
+    .bind(&task_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to fetch task for update: {}", e))?;
+
+    let labels_json = updates
+        .labels
+        .map(|labels| convert_label_inputs(Some(labels)))
+        .map(|labels| serde_json::to_string(&labels).unwrap());
+
+    let updated_metadata = task_metadata::TaskMetadata {
+        title: updates.title.unwrap_or_else(|| current_task.title.clone()),
+        notes: updates.notes,
+        due_date: updates.due_date,
+        priority: updates
+            .priority
+            .unwrap_or_else(|| current_task.priority.clone()),
+        labels: labels_json.unwrap_or_else(|| current_task.labels.clone()),
+        status: updates
+            .status
+            .unwrap_or_else(|| current_task.status.clone()),
+        time_block: updates.time_block,
+    };
+
+    let normalized_metadata = updated_metadata.normalize();
+    let mut diff = current_task.diff_fields(&normalized_metadata);
+
+    let mut subtask_diff = SubtaskDiff::default();
+    if let Some(subtasks) = &updates.subtasks {
+        subtask_diff = replace_subtasks(&mut tx, &task_id, subtasks, now).await?;
+        if subtask_diff.has_changes() {
+            diff.push("subtasks".to_string());
+        }
+    }
+
+    if diff.is_empty() {
+        let task: TaskMetadata = sqlx::query_as("SELECT id, google_id, list_id, title, priority, labels, time_block, notes, created_at, updated_at, sync_state, dirty_fields, last_synced_at, sync_error, has_conflict FROM tasks_metadata WHERE id = ?")
+            .bind(&task_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to fetch task: {}", e))?;
+        let subtasks = fetch_subtasks_for_tasks(&pool, &[task.id.clone()]).await?;
+
+        return Ok(TaskResponse {
+            metadata: task,
+            subtasks: subtasks.get(&task_id).cloned().unwrap_or_default(),
+        });
+    }
+
+    let metadata_hash = normalized_metadata.compute_hash();
+    let labels_json = serde_json::to_string(&normalized_metadata.labels).unwrap();
+    let dirty_fields = serde_json::to_string(&diff).unwrap();
+
+    sqlx::query(
+        "UPDATE tasks_metadata SET title = ?, notes = ?, due_date = ?, priority = ?, labels = ?, status = ?, time_block = ?, metadata_hash = ?, dirty_fields = ?, updated_at = ?, sync_state = 'pending', sync_attempts = 0, has_conflict = 0, sync_error = NULL WHERE id = ?",
+    )
+    .bind(&normalized_metadata.title)
+    .bind(&normalized_metadata.notes)
+    .bind(&normalized_metadata.due_date)
+    .bind(&normalized_metadata.priority)
+    .bind(&labels_json)
+    .bind(&normalized_metadata.status)
+    .bind(&normalized_metadata.time_block)
+    .bind(&metadata_hash)
+    .bind(&dirty_fields)
+    .bind(now)
+    .bind(&task_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to update task: {}", e))?;
+
+    if subtask_diff.has_changes() {
+        let list_id: String = sqlx::query_scalar("SELECT list_id FROM tasks_metadata WHERE id = ?")
+            .bind(&task_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to load list id for subtask enqueue: {}", e))?;
+
+        enqueue_subtask_operations(&mut tx, &task_id, &list_id, &subtask_diff, now).await?;
+    }
+
+    let mutation_id = Uuid::new_v4().to_string();
+    let task_payload = serde_json::to_string(&normalized_metadata).unwrap();
+    let previous_hash = current_task.compute_hash();
+
+    sqlx::query(
+                "INSERT INTO task_mutation_log (id, task_id, operation, payload, previous_hash, new_hash, actor, created_at)          VALUES (?, ?, 'update', ?, ?, ?, 'user', ?)",
+    )
+    .bind(&mutation_id)
+    .bind(&task_id)
+    .bind(&task_payload)
+    .bind(&previous_hash)
+    .bind(&metadata_hash)
+    .bind(now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to log mutation: {}", e))?;
+
+    let sync_queue_id = Uuid::new_v4().to_string();
+    let sync_payload = serde_json::to_string(&normalized_metadata.serialize_for_google()).unwrap();
+
+    sqlx::query(
+        "DELETE FROM sync_queue WHERE task_id = ? AND operation IN ('create', 'update', 'delete', 'move')",
+    )
+        .bind(&task_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to clear existing queue entries: {}", e))?;
+
+    sqlx::query(
+        "INSERT INTO sync_queue (id, task_id, operation, payload, scheduled_at, created_at, status, attempts) \
+         VALUES (?, ?, 'update', ?, ?, ?, 'pending', 0)"
+    )
+    .bind(&sync_queue_id)
+    .bind(&task_id)
+    .bind(&sync_payload)
+    .bind(now)
+    .bind(now)
+    .bind(now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to enqueue sync operation: {}", e))?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    let updated_task = load_task_with_subtasks(&pool, &task_id).await?;
+
+    app.emit("tasks::updated", &task_id).unwrap();
+
+    Ok(updated_task)
+}
+
+#[tauri::command]
+pub async fn delete_task(app: AppHandle, task_id: String) -> Result<(), String> {
+    let pool = db::init_database(&app).await?;
+    let now = Utc::now().timestamp();
+    let _write_guard = db::acquire_write_lock().await;
+
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    sqlx::query(
+        "UPDATE tasks_metadata SET deleted_at = ?, sync_state = 'pending_delete' WHERE id = ?",
+    )
+    .bind(now)
+    .bind(&task_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to delete task: {}", e))?;
+
+    let mutation_id = Uuid::new_v4().to_string();
+
+    sqlx::query(
+        "INSERT INTO task_mutation_log (id, task_id, operation, payload, actor, created_at) \
+         VALUES (?, ?, 'delete', '', 'user', ?)",
+    )
+    .bind(&mutation_id)
+    .bind(&task_id)
+    .bind(now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to log mutation: {}", e))?;
+
+    let sync_queue_id = Uuid::new_v4().to_string();
+
+    sqlx::query("DELETE FROM sync_queue WHERE task_id = ?")
+        .bind(&task_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to clear existing queue entries: {}", e))?;
+
+    sqlx::query(
+        "INSERT INTO sync_queue (id, task_id, operation, payload, scheduled_at, created_at, status, attempts) \
+         VALUES (?, ?, 'delete', '', ?, ?, 'pending', 0)"
+    )
+    .bind(&sync_queue_id)
+    .bind(&task_id)
+    .bind(now)
+    .bind(now)
+    .bind(now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to enqueue sync operation: {}", e))?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    app.emit("tasks::deleted", &task_id).unwrap();
+
+    Ok(())
+}
+// #endregion Task CRUD Commands
+
+// #region Task Query Commands
+#[tauri::command]
+pub async fn get_tasks(app: AppHandle) -> Result<Vec<TaskResponse>, String> {
+    let pool = db::init_database(&app).await?;
+
+    let tasks: Vec<TaskMetadata> = sqlx::query_as(
+        "SELECT id, google_id, list_id, title, priority, labels, due_date, status, time_block, notes, created_at, updated_at, sync_state, dirty_fields, last_synced_at, sync_error, has_conflict FROM tasks_metadata WHERE deleted_at IS NULL",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| format!("Failed to fetch tasks: {}", e))?;
+
+    let ids: Vec<String> = tasks.iter().map(|task| task.id.clone()).collect();
+    let subtasks_map = fetch_subtasks_for_tasks(&pool, &ids).await?;
+
+    let mut responses = Vec::with_capacity(tasks.len());
+    for metadata in tasks {
+        let subtasks = subtasks_map.get(&metadata.id).cloned().unwrap_or_default();
+        responses.push(TaskResponse { metadata, subtasks });
+    }
+
+    Ok(responses)
+}
+// #endregion Task Query Commands
+
+// #region List Management Commands
+#[tauri::command]
+pub async fn get_task_lists(app: AppHandle) -> Result<Vec<TaskList>, String> {
+    let pool = db::init_database(&app).await?;
+
+    let lists: Vec<TaskList> = sqlx::query_as("SELECT id, title FROM task_lists")
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| format!("Failed to fetch task lists: {}", e))?;
+
+    Ok(lists)
+}
+
+#[tauri::command]
+pub async fn create_task_list(
+    app: AppHandle,
+    state: State<'_, crate::ApiState>,
+    input: CreateTaskListInput,
+) -> Result<TaskList, String> {
+    let pool = db::init_database(&app).await?;
+    let title = input.title.trim().to_string();
+    if title.is_empty() {
+        return Err("Task list title cannot be empty".to_string());
+    }
+
+    let tokens = google_workspace_store_get()
+        .map_err(|e| format!("Failed to load Google credentials: {}", e))?
+        .ok_or_else(|| {
+            "Google account not connected. Please sign in before creating task lists.".to_string()
+        })?;
+
+    let auth: StoredGoogleAuth = serde_json::from_str(&tokens)
+        .map_err(|e| format!("Failed to parse Google auth tokens: {}", e))?;
+    let access_token = auth.account.token.access_token;
+
+    let response = state
+        .client()
+        .post(format!("{}/users/@me/lists", GOOGLE_TASKS_BASE_URL))
+        .bearer_auth(&access_token)
+        .json(&serde_json::json!({ "title": title }))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to create Google task list: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!("Google API error {}: {}", status, text));
+    }
+
+    let list_json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse Google task list response: {}", e))?;
+
+    let google_id = list_json
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Google API response missing list id".to_string())?
+        .to_string();
+
+    let resolved_title = list_json
+        .get("title")
+        .and_then(|v| v.as_str())
+        .unwrap_or_else(|| input.title.trim())
+        .to_string();
+
+    let now = Utc::now().timestamp();
+
+    sqlx::query(
+        "INSERT INTO task_lists (id, google_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(&google_id)
+    .bind(&google_id)
+    .bind(&resolved_title)
+    .bind(now)
+    .bind(now)
+    .execute(&pool)
+    .await
+    .map_err(|e| format!("Failed to persist task list locally: {}", e))?;
+
+    Ok(TaskList {
+        id: google_id,
+        title: resolved_title,
+    })
+}
+
+#[tauri::command]
+pub async fn delete_task_list(app: AppHandle, input: DeleteTaskListInput) -> Result<(), String> {
+    let pool = db::init_database(&app).await?;
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    let exists: Option<(String,)> = sqlx::query_as("SELECT id FROM task_lists WHERE id = ?")
+        .bind(&input.id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to load task list: {}", e))?;
+
+    if exists.is_none() {
+        return Err(format!("Task list {} not found", input.id));
+    }
+
+    if let Some(ref reassign_to) = input.reassign_to {
+        if reassign_to == &input.id {
+            return Err("Cannot reassign tasks to the list being deleted".to_string());
+        }
+
+        let reassignment_exists: Option<(String,)> =
+            sqlx::query_as("SELECT id FROM task_lists WHERE id = ?")
+            .bind(reassign_to)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to load reassignment list: {}", e))?;
+
+        if reassignment_exists.is_none() {
+            return Err(format!("Reassignment list {} not found", reassign_to));
+        }
+
+        let now = Utc::now().timestamp();
+        sqlx::query(
+            "UPDATE tasks_metadata SET list_id = ?, updated_at = ?, sync_state = CASE WHEN sync_state = 'pending_delete' THEN sync_state ELSE 'pending' END WHERE list_id = ?",
+        )
+        .bind(reassign_to)
+        .bind(now)
+        .bind(&input.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to reassign tasks: {}", e))?;
+    } else {
+        let task_count: i64 =
+            sqlx::query_scalar("SELECT COUNT(1) FROM tasks_metadata WHERE list_id = ?")
+                .bind(&input.id)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(|e| format!("Failed to count tasks for list {}: {}", input.id, e))?;
+
+        if task_count > 0 {
+            return Err(
+                "Cannot delete a task list that still contains tasks without reassigning them"
+                    .to_string(),
+            );
+        }
+    }
+
+    sqlx::query("DELETE FROM task_lists WHERE id = ?")
+        .bind(&input.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| format!("Failed to delete task list: {}", e))?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+// #endregion List Management Commands
+
+// #region Task Move Commands
+#[tauri::command]
+pub async fn queue_move_task(app: AppHandle, input: QueueMoveTaskInput) -> Result<(), String> {
+    let pool = db::init_database(&app).await?;
+    let now = Utc::now().timestamp();
+
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    #[derive(sqlx::FromRow)]
+    struct TaskSnapshot {
+        list_id: String,
+        google_id: Option<String>,
+    }
+
+    let snapshot: TaskSnapshot =
+        sqlx::query_as("SELECT list_id, google_id FROM tasks_metadata WHERE id = ?")
+            .bind(&input.task_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| format!("Failed to load task {} before move: {}", input.task_id, e))?;
+
+    sqlx::query(
+        "UPDATE tasks_metadata SET list_id = ?, pending_move_from = ?, pending_delete_google_id = ?, updated_at = ?, sync_state = 'pending_move' WHERE id = ?",
+    )
+    .bind(&input.to_list_id)
+    .bind(&snapshot.list_id)
+    .bind(&snapshot.google_id)
+    .bind(now)
+    .bind(&input.task_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to queue task move: {}", e))?;
+
+    let sync_queue_id = Uuid::new_v4().to_string();
+    let sync_payload = serde_json::to_string(&input.to_list_id).unwrap();
+
+    sqlx::query(
+        "INSERT INTO sync_queue (id, task_id, operation, payload, scheduled_at, created_at) \
+         VALUES (?, ?, 'move', ?, ?, ?)",
+    )
+    .bind(&sync_queue_id)
+    .bind(&input.task_id)
+    .bind(&sync_payload)
+    .bind(now)
+    .bind(now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| format!("Failed to enqueue sync operation: {}", e))?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+// #endregion Task Move Commands
+
+// #region Queue Processing Commands
+pub async fn process_sync_queue_only(
+    app: AppHandle,
+    pool: State<'_, SqlitePool>,
+    http_client: State<'_, reqwest::Client>,
+    api_state: State<'_, crate::ApiState>,
+) -> Result<(), String> {
+    crate::sync::queue::process_sync_queue_only(app, pool, http_client, api_state).await
+}
+// #endregion Queue Processing Commands

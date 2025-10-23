@@ -1,3 +1,4 @@
+// #region Imports and constants
 import * as React from 'react';
 import { Calendar, Check, CheckSquare, Copy, Edit, Flag, Plus, Tag, Trash, X } from 'lucide-react';
 import { addDays, format } from 'date-fns';
@@ -77,6 +78,7 @@ const EMPTY_TILE_BUTTON_CLASS =
   'h-8 w-8 rounded-[var(--radius-md)] flex items-center justify-center bg-[color:var(--bg-surface-elevated)] text-[color:var(--text-tertiary)] transition-colors hover:bg-[color:color-mix(in_oklab,var(--bg-surface-elevated)_92%,transparent)] hover:text-[color:var(--text-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-[var(--focus-offset)] focus-visible:ring-offset-[color:var(--bg-panel)]';
 
 const DEFAULT_LABEL_COLOR = 'var(--label-blue)';
+// #endregion Imports and constants
 
 const useOverlayGutter = () => {
   const [value, setValue] = React.useState<number>(16);
@@ -90,6 +92,7 @@ const useOverlayGutter = () => {
 };
 
 export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, presentation = 'overlay', className }: Props) {
+  // #region Local state and refs
   const [edited, setEdited] = React.useState<Task | null>(null);
   const [savedHint, setSavedHint] = React.useState<string | null>(null);
   const [dateOpen, setDateOpen] = React.useState(false);
@@ -106,7 +109,9 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
   const newSubtaskInputRef = React.useRef<HTMLInputElement | null>(null);
   const subtaskInputRefs = React.useRef<Map<string, HTMLInputElement>>(new Map());
   const lastTaskIdRef = React.useRef<string | null>(null);
+  // #endregion Local state and refs
 
+  // #region Internal helpers and lifecycle
   const handleClearFields = React.useCallback(() => {
     setEdited((prev) => {
       if (!prev) return prev;
@@ -195,9 +200,11 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [task, handleKeyDown]);
+  // #endregion Internal helpers and lifecycle
 
   // IMPORTANT: Keep all hooks above any conditional returns to preserve hook order across renders.
   // Build available labels from store on every render (memoized by tasksById).
+  // #region Derived data
   const availableLabels = React.useMemo(() => {
     const map = new Map<string, string>();
     Object.values(tasksById).forEach((t) => {
@@ -243,7 +250,9 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
     });
     return Array.from(map.values());
   }, [normalizedAvailableLabels, selectedLabels]);
+  // #endregion Derived data
 
+  // #region Label helpers
   const toggleLabel = React.useCallback(
     (label: { name: string; color: string }) => {
       const exists = currentLabels.some((item) => getLabelName(item) === label.name);
@@ -279,7 +288,9 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
     });
     return () => cancelAnimationFrame(frame);
   }, [labelsOpen, focusLabelInput]);
+  // #endregion Label helpers
 
+  // #region Subtask helpers
   const handleToggleSubtaskCompletion = React.useCallback(
     (subtaskId: string, isCompleted: boolean) => {
       if (!edited) return;
@@ -426,8 +437,11 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
     });
     return () => cancelAnimationFrame(frame);
   }, [isSubtaskComposerOpen]);
+  // #endregion Subtask helpers
 
+  // #region Rendering helpers
   const renderPriorityChip = React.useCallback((value: Task['priority']) => {
+  // #endregion Rendering helpers
     if (value === 'none') return null;
     const tone = value === 'high' ? 'high' : value === 'medium' ? 'medium' : 'low';
     return (
@@ -500,6 +514,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
     return 'scheduled';
   })();
   const dueDisplayLabel = dueDate ? format(dueDate, 'EEE, MMM d') : undefined;
+  // #region Render
   const panelBody = (
     <>
       {/* Sticky header */}
@@ -1225,6 +1240,7 @@ export function TaskDetailsDrawer({ task, onClose, onUpdateTask, onDeleteTask, p
       </aside>
     </>
   );
+  // #endregion Render
 }
 
 export default TaskDetailsDrawer;

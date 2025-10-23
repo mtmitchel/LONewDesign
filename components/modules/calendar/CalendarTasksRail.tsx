@@ -1,37 +1,26 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   endOfWeek,
   format,
   isAfter,
   isBefore,
   isSameDay,
-  isValid,
-  parseISO,
   startOfDay
 } from 'date-fns';
 import {
   ArrowUpDown,
-  CalendarDays,
   Calendar as CalendarIcon,
   Check,
-  CheckCircle2,
-  Copy,
-  EllipsisVertical,
   Flag,
   MoreHorizontal,
   PanelRight,
-  Pencil,
-  Pin,
-  Plus,
-  RefreshCw,
-  Trash2
+  Plus
 } from 'lucide-react';
 
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import { Checkbox } from '../../ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,121 +39,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../ui/popover';
 import { Calendar as DatePicker } from '../../ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { cn } from '../../ui/utils';
-import { useTaskStore, useTasks, useTaskLists, TaskInput } from '../tasks/taskStore';
+import { useTaskStore } from '../tasks/taskStore';
 import type { Task } from '../tasks/types';
 import { TaskCard } from '../tasks/TaskCard';
 
+// Modular imports
+import { useMediaQuery } from './hooks/useMediaQuery';
+import { useTaskRailState } from './hooks/useTaskRailState';
+import { DueChip } from './components/DueChip';
+import { BASE_FILTER_OPTIONS, ChipHigh, ChipMedium, ChipLow } from './constants';
+import { parseDueDate, formatHumanDate, emitAnalytics } from './utils';
+import type { TaskFilterKey, CalendarTasksRailProps } from './types';
+// #endregion Imports and constants
+
 // Chip utility classes for soft priority badges
-const chipBase =
-  "inline-flex items-center justify-center " +
-  "h-[var(--chip-height)] px-[var(--chip-pad-x)] " +
-  "rounded-[var(--chip-radius)] text-[length:var(--text-sm)] " +
-  "font-[var(--font-weight-medium)]";
 
-const ChipHigh = `${chipBase} bg-[var(--chip-high-bg)] text-[color:var(--chip-high-text)]`;
-const ChipMedium = `${chipBase} bg-[var(--chip-medium-bg)] text-[color:var(--chip-medium-text)]`;
-const ChipLow = `${chipBase} bg-[var(--chip-low-bg)] text-[color:var(--chip-low-text)]`;
-const ChipNeutral = `${chipBase} bg-[var(--chip-neutral-bg)] text-[color:var(--chip-neutral-text)]`;
-
-type TaskFilterKey = 'all' | 'today' | 'this-week' | 'completed' | string;
-
-type CalendarTasksRailProps = {
-  tasks?: Task[];
-  className?: string;
-  filter?: TaskFilterKey;
-  loading?: boolean;
-  onFilterChange?: (filter: TaskFilterKey) => void;
-  onAdd?: (task: Partial<Task>) => void;
-  onUpdate?: (id: string, updates: Partial<Task>) => void;
-  onDelete?: (id: string) => void;
-  onRefresh?: () => void;
-};
-
-// Base filter options - list-based filters will be added dynamically
-const BASE_FILTER_OPTIONS: { value: TaskFilterKey; label: string }[] = [
-  { value: 'all', label: 'All tasks' }
-];
-
-const BUFFER_ROWS = 4;
-
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    const handler = (event: MediaQueryListEvent) => setMatches(event.matches);
-    setMatches(mql.matches);
-    mql.addEventListener('change', handler);
-    return () => mql.removeEventListener('change', handler);
-  }, [query]);
-
-  return matches;
-}
-
-function parseDueDate(value?: string) {
-  if (!value) return undefined;
-  const parsed = parseISO(value);
-  if (isValid(parsed)) return parsed;
-  const fallback = new Date(value);
-  return isValid(fallback) ? fallback : undefined;
-}
-
-function formatHumanDate(date: Date) {
-  return format(date, 'EEE, MMM d');
-}
-
-function emitAnalytics(event: string, payload?: Record<string, unknown>) {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('task:instrument', { detail: { event, payload } }));
-  }
-  if (process.env.NODE_ENV !== 'production') {
-    console.debug(`[task-rail] ${event}`, payload ?? {});
-  }
-}
-
-// DueChip component - compact inline date display with state-based coloring
-type DueState = 'default' | 'today' | 'overdue';
-
-function computeDueState(dueDate: Date, isCompleted: boolean): { text: string; tone: DueState } {
-  const now = startOfDay(new Date());
-  const due = startOfDay(dueDate);
-  
-  if (isCompleted) {
-    return { text: format(due, 'MMM d'), tone: 'default' };
-  }
-  
-  if (isSameDay(due, now)) {
-    return { text: 'Today', tone: 'today' };
-  }
-  
-  if (isBefore(due, now)) {
-    return { text: format(due, 'MMM d'), tone: 'overdue' };
-  }
-  
-  return { text: format(due, 'MMM d'), tone: 'default' };
-}
-
-function DueChip({ isoDate, isCompleted }: { isoDate: string; isCompleted: boolean }) {
-  const date = parseDueDate(isoDate);
-  if (!date) return null;
-  
-  const { text, tone } = computeDueState(date, isCompleted);
-  
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-[var(--space-1)] text-xs leading-[var(--text-sm-line)]',
-        tone === 'overdue' && 'text-[color:var(--due-overdue)]',
-        tone === 'today' && 'text-[color:var(--due-today)]',
-        tone === 'default' && 'text-[color:var(--due-default)]'
-      )}
-      title={date.toDateString()}
-    >
-      <CalendarDays className="h-[var(--icon-sm)] w-[var(--icon-sm)]" aria-hidden="true" />
-      {text}
-    </span>
-  );
-}
 
 export function CalendarTasksRail({
   tasks: tasksProp,
@@ -177,34 +66,54 @@ export function CalendarTasksRail({
   onDelete,
   onRefresh
 }: CalendarTasksRailProps) {
-  const storeTasks = useTasks();
-  const lists = useTaskLists();
+  // #region Store selectors and local state
   const createTaskList = useTaskStore((s) => s.createTaskList);
   const deleteTaskList = useTaskStore((s) => s.deleteTaskList);
-  const addTask = useTaskStore((state) => state.addTask);
   const updateTask = useTaskStore((state) => state.updateTask);
-  const deleteTask = useTaskStore((state) => state.deleteTask);
-  const duplicateTask = useTaskStore((state) => state.duplicateTask);
-  const toggleTaskCompletion = useTaskStore((state) => state.toggleTaskCompletion);
-  const setTaskDueDate = useTaskStore((state) => state.setTaskDueDate);
+
+  // Use the modular hook for state management
+  const {
+    filter,
+    setFilter,
+    sortBy,
+    setSortBy,
+    composerActive,
+    setComposerActive,
+    draftTitle,
+    setDraftTitle,
+    draftDueDate,
+    setDraftDueDate,
+    draftPriority,
+    setDraftPriority,
+    showDatePicker,
+    setShowDatePicker,
+    showPriorityPicker,
+    setShowPriorityPicker,
+    liveMessage,
+    captureInputRef,
+    listViewportRef,
+    taskRefs,
+    storeTasks,
+    lists,
+    resetDraft,
+    registerTaskNode,
+    announce,
+    handleCreateTask,
+    handleToggleCompletion,
+    handleDelete,
+    handleDuplicate,
+    handleDueDateChange,
+    handleTitleCommit,
+  } = useTaskRailState(externalFilter);
 
   const tasks = tasksProp ?? storeTasks;
   const availableLists = lists;
-  const [filter, setFilter] = useState<TaskFilterKey>(externalFilter);
-  const [sortBy, setSortBy] = useState<'date-created' | 'due-date' | 'title' | 'priority'>('date-created');
-  const [composerActive, setComposerActive] = useState(false);
-  const [draftTitle, setDraftTitle] = useState('');
-  const [draftDueDate, setDraftDueDate] = useState<Date | undefined>(undefined);
-  const [draftPriority, setDraftPriority] = useState<'low' | 'medium' | 'high' | 'none'>('none');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
-  const [liveMessage, setLiveMessage] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [inlineOpen, setInlineOpen] = useState(true);
-  const captureInputRef = useRef<HTMLInputElement | null>(null);
-  const listViewportRef = useRef<HTMLDivElement | null>(null);
-  const taskRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [inlineOpen, setInlineOpen] = React.useState(true);
+  // #endregion Store selectors and local state
+
+  // #region Responsive state effects
   const isBelowLg = useMediaQuery('(max-width: 1279px)');
   const isBelowMd = useMediaQuery('(max-width: 1023px)');
 
@@ -222,11 +131,7 @@ export function CalendarTasksRail({
     setFilter(externalFilter);
   }, [externalFilter]);
 
-  useEffect(() => {
-    if (!liveMessage) return;
-    const timeout = window.setTimeout(() => setLiveMessage(null), 2000);
-    return () => window.clearTimeout(timeout);
-  }, [liveMessage]);
+
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -246,7 +151,9 @@ export function CalendarTasksRail({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+  // #endregion Responsive state effects
 
+  // #region Derived data
   const now = useMemo(() => startOfDay(new Date()), []);
   const weekEnd = useMemo(() => endOfWeek(now, { weekStartsOn: 0 }), [now]);
 
@@ -338,20 +245,13 @@ export function CalendarTasksRail({
   );
 
   const completedCount = useMemo(() => tasks.filter((task) => task.isCompleted).length, [tasks]);
+  // #endregion Derived data
 
+  // #region Helpers and handlers
   const setFilterValue = (value: TaskFilterKey) => {
     setFilter(value);
     onFilterChange?.(value);
     emitAnalytics('task_filter_changed', { source: 'calendar_rail', value });
-  };
-
-  const resetDraft = () => {
-    setDraftTitle('');
-    setDraftDueDate(undefined);
-    setDraftPriority('none');
-    setShowDatePicker(false);
-    setShowPriorityPicker(false);
-    setComposerActive(false);
   };
 
   const focusRow = (index: number) => {
@@ -361,96 +261,10 @@ export function CalendarTasksRail({
     node?.focus();
   };
 
-  const registerTaskNode = useCallback((taskId: string, node: HTMLDivElement | null) => {
-    if (!node) {
-      taskRefs.current.delete(taskId);
-    } else {
-      taskRefs.current.set(taskId, node);
-    }
-  }, []);
-
-  const announce = (message: string) => {
-    setLiveMessage(message);
-  };
-
   const handleRefresh = () => {
     onRefresh?.();
     emitAnalytics('task_list_refresh', { source: 'calendar_rail' });
     announce('Task list refreshed');
-  };
-
-  const handleCreateTask = () => {
-    if (!draftTitle.trim()) return;
-    const dueDate = draftDueDate ? format(draftDueDate, 'yyyy-MM-dd') : undefined;
-    const priority = draftPriority !== 'none' ? draftPriority : 'none';
-    const payload: Partial<Task> = {
-      title: draftTitle.trim(),
-      status: 'todo',
-      listId: 'todo',
-      priority,
-      dueDate,
-      isCompleted: false,
-      labels: []
-    };
-
-    const taskInput: TaskInput = {
-      title: draftTitle.trim(),
-      status: 'todo',
-      listId: 'todo',
-      priority,
-      dueDate,
-      labels: [],
-      isCompleted: false,
-      source: 'calendar_rail'
-    };
-
-    if (onAdd) {
-      onAdd(payload);
-    } else {
-      addTask(taskInput);
-    }
-
-    emitAnalytics('task_created', { source: 'calendar_rail' });
-    announce('Task created');
-    resetDraft();
-  };
-
-  const handleToggleCompletion = (task: Task) => {
-    toggleTaskCompletion(task.id);
-    const nextState = task.isCompleted ? 'task_reopened' : 'task_completed';
-    emitAnalytics(nextState, { source: 'calendar_rail', id: task.id });
-    announce(nextState === 'task_completed' ? 'Task completed' : 'Task reopened');
-  };
-
-  const handleDelete = (taskId: string) => {
-    if (onDelete) {
-      onDelete(taskId);
-    } else {
-      deleteTask(taskId);
-    }
-    emitAnalytics('task_deleted', { source: 'calendar_rail', id: taskId });
-    announce('Task deleted');
-  };
-
-  const handleDuplicate = async (taskId: string) => {
-    const duplicate = await duplicateTask(taskId);
-    if (duplicate) {
-      emitAnalytics('task_created', { source: 'calendar_rail', parentId: taskId, id: duplicate.id, reason: 'duplicate' });
-      announce('Task duplicated');
-    }
-  };
-
-  const handleDueDateChange = (task: Task, date: Date | undefined) => {
-    const previous = task.dueDate ? formatHumanDate(parseDueDate(task.dueDate) ?? new Date(task.dueDate)) : 'none';
-    const iso = date ? format(date, 'yyyy-MM-dd') : undefined;
-    if (onUpdate) {
-      onUpdate(task.id, { dueDate: iso });
-    } else {
-      setTaskDueDate(task.id, iso);
-    }
-    const nextLabel = iso ? formatHumanDate(date!) : 'none';
-    emitAnalytics('task_due_changed', { source: 'calendar_rail', id: task.id, previous, next: nextLabel });
-    announce(`Due date set to ${nextLabel}`);
   };
 
   const handlePinToggle = (task: Task) => {
@@ -462,16 +276,6 @@ export function CalendarTasksRail({
     }
     emitAnalytics('task_pin_toggled', { source: 'calendar_rail', id: task.id, pinned: next });
     announce(next ? 'Task pinned' : 'Task unpinned');
-  };
-
-  const handleTitleCommit = (task: Task, title: string) => {
-    const trimmed = title.trim();
-    if (!trimmed || trimmed === task.title) return;
-    if (onUpdate) {
-      onUpdate(task.id, { title: trimmed });
-    } else {
-      updateTask(task.id, { title: trimmed });
-    }
   };
 
   const handleTasksToggle = (open: boolean, surface: 'dialog' | 'inline') => {
@@ -531,7 +335,9 @@ export function CalendarTasksRail({
       ))}
     </ul>
   );
+  // #endregion Helpers and handlers
 
+  // #region Render
   const railCard = (
     <section
       role="region"
@@ -893,5 +699,6 @@ export function CalendarTasksRail({
     </div>
   );
 }
+// #endregion Render
 
 // TaskRow component removed - now using TaskCard from tasks module

@@ -122,25 +122,6 @@ function TasksModuleShell() {
     });
   }, [tasks, searchQuery, selectedLabels, selectedList, projectFilter]);
 
-  // Get all unique labels from tasks with their colors
-  React.useEffect(() => {
-    const newMap = new Map<string, string>();
-    tasks.forEach(task => {
-      const taskLabels = Array.isArray(task.labels)
-        ? task.labels
-        : typeof task.labels === 'string'
-          ? (() => { try { const v = JSON.parse(task.labels as unknown as string); return Array.isArray(v) ? v : []; } catch { return []; } })()
-          : [];
-      taskLabels.forEach(label => {
-        const name = getLabelName(label);
-        const color = getLabelColor(label);
-        if (!newMap.has(name)) {
-          newMap.set(name, color);
-        }
-      });
-    });
-  }, [tasks]);
-
   // Event handlers
   const handleAddTaskToColumn = React.useCallback((
     listId: string,
