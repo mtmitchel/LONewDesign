@@ -211,6 +211,12 @@ export function TasksBoard({
                  const showCompleted = showCompletedByColumn[columnId] ?? true;
           const activeTasks = columnTasks.filter((task) => !task.isCompleted);
           const completedTasks = columnTasks.filter((task) => task.isCompleted);
+          const completedTaskCount = columnTasks.reduce((count, task) => {
+            const completedSubtasks = task.subtasks
+              ? task.subtasks.filter((subtask) => subtask.isCompleted).length
+              : 0;
+            return count + (task.isCompleted ? 1 : 0) + completedSubtasks;
+          }, 0);
           const hasCompletedTasks = completedTasks.length > 0;
                  const isCompletedExpanded = showCompleted && (expandedCompletedByColumn[columnId] ?? false);
                  const showCompletedSection = showCompleted && hasCompletedTasks;
@@ -230,7 +236,7 @@ export function TasksBoard({
               <TaskColumnHeader
                 columnTitle={column.title}
                 taskCount={activeTasks.length}
-                completedCount={completedTasks.length}
+                completedCount={completedTaskCount}
                 showCompleted={showCompleted}
                 currentSort={sortOption[columnId] ?? 'date-created'}
                 onSort={(value) => handleSortChange(columnId, value)}
@@ -286,7 +292,7 @@ export function TasksBoard({
                         ) : (
                           <ChevronRight className="size-4" aria-hidden="true" />
                         )}
-                        <span className="truncate">Completed ({completedTasks.length})</span>
+                        <span className="truncate">Completed ({completedTaskCount})</span>
                       </button>
 
                              {isCompletedExpanded ? (
@@ -354,7 +360,6 @@ export function TasksBoard({
               priority={activeTask.priority ?? 'none'}
               labels={activeTask.labels ?? []}
               isCompleted={Boolean(activeTask.isCompleted)}
-              hasConflict={activeTask.hasConflict}
               onToggleCompletion={() => {}}
               onClick={() => {}}
               onEdit={() => {}}
