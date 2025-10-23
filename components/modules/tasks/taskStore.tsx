@@ -462,8 +462,17 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
           emitTaskEvent('task_created', { source: input.source ?? 'task_store', id: task.id });
 
           try {
-            await get().syncNow();
-          } catch {}
+            // Process only the sync queue to avoid UI flickering
+            await invoke('process_sync_queue_only');
+          } catch (syncError) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[taskStore] Immediate sync after create failed', syncError);
+            }
+            // Fallback to full sync if queue processing fails
+            try {
+              await get().syncNow();
+            } catch {}
+          }
 
           return task;
         } catch (error) {
@@ -603,83 +612,82 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
             }
 
             if (Object.keys(payload).length > 0) {
-              const rustTask = await invoke<any>('update_task_command', {
-                taskId: id,
-                updates: payload,
-              });
-
-              const isCompleted = rustTask.status === 'completed';
-              const subtasks = deserializeSubtasks(rustTask.subtasks);
-
-              let labels = deserializeLabels(rustTask.labels);
-
-              if (!normalizedLabelsForStore && existingTask && !existingLabelColorMap) {
-                existingLabelColorMap = buildLabelColorMapFromLabels(existingTask.labels);
-              }
-
-              const labelColorSource = normalizedLabelsForStore
-                ? new Map(normalizedLabelsForStore.map((label) => [label.name.toLowerCase(), label.color]))
-                : existingLabelColorMap;
-
-              if (labelColorSource && labelColorSource.size > 0) {
-                labels = labels.map((label) => {
-                  if (typeof label === 'string') {
-                    const normalizedName = label.trim().toLowerCase();
-                    const color = labelColorSource?.get(normalizedName) ?? DEFAULT_LABEL_COLOR;
-                    return { name: label, color };
-                  }
-
-                  const normalizedName = label.name.trim().toLowerCase();
-                  const color = labelColorSource?.get(normalizedName) ?? label.color ?? DEFAULT_LABEL_COLOR;
-                  return { ...label, color };
-                });
-              }
-
-              const canonicalStatus =
-                typeof rustTask.status === 'string' && rustTask.status.trim().length > 0
-                  ? rustTask.status
-                  : 'needsAction';
-
-              const task: Task = {
-                id: rustTask.id,
-                title: rustTask.title || 'Untitled',
-                description: undefined,
-                status: canonicalStatus,
-                priority: rustTask.priority as Task['priority'],
-                dueDate: rustTask.due_date ?? undefined,
-                createdAt: new Date(rustTask.created_at * 1000).toISOString(),
-                dateCreated: new Date(rustTask.created_at * 1000).toISOString(),
-                updatedAt: new Date(rustTask.updated_at * 1000).toISOString(),
-                assignee: undefined,
-                labels,
-                listId: rustTask.list_id,
-                boardListId: rustTask.list_id,
-                notes: rustTask.notes ?? undefined,
-                isCompleted,
-                completedAt: isCompleted
-                  ? new Date(rustTask.updated_at * 1000).toISOString()
-                  : null,
-                subtasks,
-                externalId: rustTask.google_id,
-                pendingSync: ['pending', 'pending_move'].includes(rustTask.sync_state),
-                syncState: rustTask.sync_state,
-                lastSyncedAt: rustTask.last_synced_at
-                  ? rustTask.last_synced_at * 1000
-                  : undefined,
-                syncError: rustTask.sync_error,
-                hasConflict: rustTask.has_conflict,
-              };
-
+              // Apply optimistic updates to store immediately
               set((state) => {
-                state.tasksById[id] = task;
+                const current = state.tasksById[id];
+                if (current) {
+                  // Apply the updates directly to current task
+                  if (typeof updates.title !== 'undefined') {
+                    current.title = updates.title;
+                  }
+                  if (typeof updates.status !== 'undefined') {
+                    current.status = updates.status;
+                    current.isCompleted = updates.status === 'completed';
+                  }
+                  if (typeof updates.isCompleted !== 'undefined') {
+                    current.isCompleted = updates.isCompleted;
+                    current.status = updates.isCompleted ? 'completed' : 'needsAction';
+                  }
+                  if (typeof updates.priority !== 'undefined') {
+                    current.priority = updates.priority;
+                  }
+                  if (typeof updates.dueDate !== 'undefined') {
+                    current.dueDate = updates.dueDate;
+                  }
+                  if (typeof updates.notes !== 'undefined') {
+                    current.notes = updates.notes;
+                  }
+                  if (typeof updates.subtasks !== 'undefined') {
+                    current.subtasks = updates.subtasks;
+                  }
+                  if (typeof updates.labels !== 'undefined') {
+                    current.labels = updates.labels;
+                  }
+                  
+                  // Mark as syncing
+                  current.updatedAt = new Date().toISOString();
+                  current.pendingSync = true;
+                  current.syncState = 'pending';
+                  current.syncError = null;
+                }
               });
+
+              // Process the update in background
+              try {
+                await invoke<any>('update_task_command', {
+                  taskId: id,
+                  updates: payload,
+                });
+              } catch (error) {
+                console.error('[taskStore] Failed to update task in Rust:', error);
+                // Mark as error but keep optimistic updates
+                set((state) => {
+                  const current = state.tasksById[id];
+                  if (current) {
+                    current.pendingSync = true;
+                    current.syncState = 'error';
+                    current.syncError = error instanceof Error ? error.message : String(error);
+                  }
+                });
+                return;
+              }
 
               if (shouldTriggerImmediateSync) {
                 try {
-                  await get().syncNow();
+                  // Process only the sync queue to avoid UI flickering
+                  // The optimistic updates are already in the store, no need to fetch
+                  await invoke('process_sync_queue_only');
                 } catch (syncError) {
                   if (process.env.NODE_ENV !== 'production') {
                     console.warn('[taskStore] Immediate sync after update failed', syncError);
+                  }
+                  // Fallback to full sync if queue processing fails
+                  try {
+                    await get().syncNow();
+                  } catch (fallbackError) {
+                    if (process.env.NODE_ENV !== 'production') {
+                      console.warn('[taskStore] Fallback sync also failed', fallbackError);
+                    }
                   }
                 }
               }
@@ -889,7 +897,15 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
             state.listOrder = state.listOrder.map((x) => (x === tempId ? real.id : x));
           });
           // Trigger immediate backend sync for fastest propagation
-          try { await get().syncNow(); } catch {}
+          try { 
+            await invoke('process_sync_queue_only');
+          } catch (syncError) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[taskStore] Immediate sync after create list failed', syncError);
+            }
+            // Fallback to full sync if queue processing fails
+            try { await get().syncNow(); } catch {}
+          }
           return real;
         } catch (e) {
           // rollback optimistic
@@ -918,7 +934,15 @@ const useTaskStoreBase = createWithEqualityFn<TaskStoreState>()(
         try {
           await invoke('delete_task_list', { input: { id, reassign_to: reassignTo } });
           // Trigger immediate backend sync for fastest propagation
-          try { await get().syncNow(); } catch {}
+          try { 
+            await invoke('process_sync_queue_only');
+          } catch (syncError) {
+            if (process.env.NODE_ENV !== 'production') {
+              console.warn('[taskStore] Immediate sync after delete list failed', syncError);
+            }
+            // Fallback to full sync if queue processing fails
+            try { await get().syncNow(); } catch {}
+          }
         } catch (e) {
           // rollback
           if (backup) {
@@ -1005,16 +1029,58 @@ export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
       // Pull latest from backend after each cycle
       void useTaskStore.getState().fetchTasks();
     }
-    const handler = (e: Event) => onSyncComplete();
-    if (typeof window !== 'undefined') {
-      window.addEventListener('tauri://event', handler as EventListener);
-      // Also listen for the custom event name if available via @tauri-apps/api/event
-      import('@tauri-apps/api/event')
-        .then(({ listen }) => {
-          void listen('tasks:sync:complete', () => onSyncComplete());
-        })
-        .catch(() => {});
+
+    function onSyncQueueProcessed() {
+      // Queue processing complete - no need to fetch since we use optimistic updates
+      console.log('[TaskStoreProvider] Sync queue processed, skipping fetch to avoid UI flicker');
     }
+
+    type TauriEventDetail = {
+      event?: string;
+    };
+
+    const windowListener = (event: Event) => {
+      const detail = (event as CustomEvent<TauriEventDetail>).detail;
+      if (detail?.event === 'tasks:sync:complete') {
+        onSyncComplete();
+      } else if (detail?.event === 'tasks:sync:queue-processed') {
+        onSyncQueueProcessed();
+      }
+    };
+
+    let isUnmounted = false;
+    const unlistenFns: Array<() => void> = [];
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('tauri://event', windowListener as EventListener);
+    }
+
+    import('@tauri-apps/api/event')
+      .then(async ({ listen }) => {
+        try {
+          const [unlistenComplete, unlistenQueue] = await Promise.all([
+            listen('tasks:sync:complete', onSyncComplete),
+            listen('tasks:sync:queue-processed', onSyncQueueProcessed),
+          ]);
+
+          if (isUnmounted) {
+            unlistenComplete();
+            unlistenQueue();
+          } else {
+            unlistenFns.push(unlistenComplete, unlistenQueue);
+          }
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[TaskStoreProvider] Failed to attach Tauri sync listeners', error);
+          }
+        }
+      })
+      .catch((error) => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[TaskStoreProvider] Failed to import @tauri-apps/api/event', error);
+        }
+      });
+
     async function initialize() {
       // Hydrate Google Workspace tokens
       const { useGoogleWorkspaceSettings } = await import('../settings/state/googleWorkspace');
@@ -1037,6 +1103,19 @@ export function TaskStoreProvider({ children }: { children: React.ReactNode }) {
     }
 
     void initialize();
+
+    return () => {
+      isUnmounted = true;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('tauri://event', windowListener as EventListener);
+      }
+      while (unlistenFns.length > 0) {
+        const unlisten = unlistenFns.pop();
+        if (unlisten) {
+          unlisten();
+        }
+      }
+    };
   }, []);
 
   return <>{children}</>;

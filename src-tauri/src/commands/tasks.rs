@@ -1,11 +1,13 @@
 use crate::commands::google::google_workspace_store_get;
 use crate::db;
 use crate::sync::types::GOOGLE_TASKS_BASE_URL;
+use crate::sync_service::SyncService;
 use crate::task_metadata::{self, TaskLabel, DEFAULT_LABEL_COLOR};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, Sqlite, SqlitePool, Transaction};
 use std::collections::HashMap;
+use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
@@ -1167,4 +1169,11 @@ async fn load_task_with_subtasks(pool: &SqlitePool, task_id: &str) -> Result<Tas
     let subtasks = subtasks_map.get(&metadata.id).cloned().unwrap_or_default();
 
     Ok(TaskResponse { metadata, subtasks })
+}
+
+#[tauri::command]
+pub async fn process_sync_queue_only(
+    sync_service: State<'_, Arc<SyncService>>,
+) -> Result<(), String> {
+    sync_service.process_queue_only().await
 }

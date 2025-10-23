@@ -35,7 +35,7 @@ pub struct SyncService {
 }
 
 impl SyncService {
-    const ACCESS_TOKEN_REFRESH_SKEW_MS: i64 = 60_000;
+    pub const ACCESS_TOKEN_REFRESH_SKEW_MS: i64 = 60_000;
     pub fn new(
         pool: SqlitePool,
         http_client: Client,
@@ -68,6 +68,19 @@ impl SyncService {
                 }
             }
         });
+    }
+
+    pub async fn process_queue_only(&self) -> Result<(), String> {
+        match self.process_sync_queue().await {
+            Ok(_) => {
+                self.emit_queue_event(SyncEventStatus::Success, None);
+                Ok(())
+            }
+            Err(err) => {
+                self.emit_queue_event(SyncEventStatus::Error, Some(err.clone()));
+                Err(err)
+            }
+        }
     }
 
     async fn ensure_access_token(&self, force_refresh: bool) -> Result<String, String> {
@@ -1212,6 +1225,21 @@ impl SyncService {
         if let Err(err) = self.app_handle.emit("tasks:sync:complete", payload) {
             eprintln!(
                 "[sync_service] Failed to emit tasks:sync:complete event: {}",
+                err
+            );
+        }
+    }
+
+    fn emit_queue_event(&self, status: SyncEventStatus, error: Option<String>) {
+        let payload = SyncEventPayload {
+            status,
+            error,
+            timestamp_ms: Utc::now().timestamp_millis(),
+        };
+
+        if let Err(err) = self.app_handle.emit("tasks:sync:queue-processed", payload) {
+            eprintln!(
+                "[sync_service] Failed to emit tasks:sync:queue-processed event: {}",
                 err
             );
         }
