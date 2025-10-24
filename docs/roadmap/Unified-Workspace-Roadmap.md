@@ -203,7 +203,65 @@ The full historical narrative (rationale, step-by-step task list) now lives in `
 - ⏳ **Phase 3: Projects Persistence** - SQLite storage for projects/phases/milestones
 - ⏳ **Phase 4: Notes & Chats** - Local-first persistence
 - ⏳ **Testing**: Property tests (Rust) for normalization, CRUD, conflict paths; integration tests for queue worker, saga moves
-- 🔄 **Canvas selection modularization**: Keyboard shortcuts now flow through `KeyboardHandler`; selection lifecycle centralized in `SelectionStateManager`. Next up: extract geometry helpers into `selection/geometry`, add shortcut regression tests, and evaluate state machine split.
+- 🔄 **Canvas stabilization plan**: Track 1 (canonical geometry) & Track 2 (reactive bounds) are complete; Track 3 modularisation, Track 4 spatial indexing, and Track 5 command-pattern history are staged below.
+
+#### Canvas Stabilization Plan · Progress Snapshot (2025-10-24)
+
+| Step | Scope | Status | Notes |
+|------|-------|--------|-------|
+| **1. Canonical geometry alignment** | Anchor connector groups at canonical centres, convert child points to group-local coordinates, update `ElementSynchronizer` to write only via canonical geometry, integration test for marquee drag | ✅ Complete | Landed with Track 1 work; confirmed via mixed-selection drag tests. Any new renderer must now derive from canonical geometry schema. |
+| **2. Reactive store & memoised bounds** | Expose `geometry.getElementBounds/getUnionBounds` selectors, remove renderer `selectBounds` caches, add metrics logging & throttle hooks | ✅ Complete | Implemented in Track 2; debugging hooks available at `window.__logGeometryMetrics()`. |
+| **3. Selection stack modularisation** | Extract subscription, transformer, connector, and mindmap managers from `SelectionModule`; finish keyboard + shortcut regression tests; decide on lightweight event bus | 🔄 In progress | Subscription, transformer, and connector orchestrators are merged; mindmap orchestrator landed (2025-10-24). Remaining: tests for new managers, optional event bus shim, final teardown of legacy paths. |
+| **4. Spatial indexing & offscreen culling** | Prototype quadtree/STR-tree, integrate with canonical bounds, defer reinserts until transform end, expose `queryVisible` API | ⏳ Pending | Dependent on completion of selection modularisation so index updates have a single entry point. |
+| **5. Command-pattern snapshots & history** | Define command interface, capture canonical snapshots per interaction, expand undo/redo coverage | ⏳ Pending | Must consume the same canonical geometry used in Steps 1–3; planning doc to follow once modularisation stabilises. |
+
+**Near-term canvas action items**
+1. Finish Step 3 by covering the new managers with unit tests and deciding on the minimal event bus interface before removing legacy SelectionModule branches.
+2. Draft the spatial index prototype (Step 4) using selector-driven bounds, ensuring drag/transform handlers defer reinserts until interaction end.
+3. Outline the command-pattern history work (Step 5) so snapshot semantics align with the canonical geometry already in place.
+
+##### Plan details & documentation links
+
+- **Step 1 – Canonical geometry alignment (✅)**
+	- **What shipped:** Connector groups now anchor to store-derived centres; endpoints render in group-local coordinates; `ElementSynchronizer` writes only via canonical geometry DTOs. Mixed marquee drag verified via test plan; automation `CanvasSelection.mixedMarqueeKeepsConnectorsInsideTransformer` scheduled for Track 3 test sweep.
+	- **Documentation:** `docs/guidelines/CanvasRefactorPlan.md` (Track 1 section) + `docs/guidelines/Geometry.md` schema reference. Update both when adding new element types.
+	- **Risks mitigated:** `Konva.Transformer` misalignment, connector drift, inaccurate `getClientRect()` during collab patches.
+
+- **Step 2 – Reactive store & memoised bounds (✅)**
+	- **What shipped:** Zustand selectors `geometry.getElementBounds` / `geometry.getUnionBounds` now expose memoised canonical bounds; renderers/selection flow no longer cache `selectBounds`; logging + throttle hooks (`geometryMetrics.log()`) available for heavy sync bursts.
+	- **Documentation:** `docs/guidelines/CanvasRefactorPlan.md` (Track 2) with usage examples; instrumentation notes captured in `docs/guidelines/Geometry.md`.
+	- **Guardrails:** Selectors are read-only; mutation paths remain isolated in synchronizers to avoid observer loops.
+
+- **Step 3 – Selection stack modularisation (🔄)**
+	- **Scope:** Finalise `ConnectorSelectionManager`, `SelectionSubscriptionManager`, `TransformerSelectionManager`, and `MindmapSelectionOrchestrator`; optional `SelectionEventBus` façade for inter-manager signals; retire legacy branches in `SelectionModule`.
+	- **Todo:**
+		1. Add **minimal** unit tests with fake store/stage fixtures per manager (cover keyboard shortcuts, connector drags, mindmap reroutes). Keep scope to high-risk flows so suite stays fast.
+		2. Decide on lightweight event bus contract (likely typed emitter) before unhooking remaining inline callbacks.
+		3. Update integration tests covering marquee multi-select, additive select, connector + node transforms.
+	- **Deliverables:** Updated `components/modules/Canvas/runtime/features/renderer/selection/managers/README.md`, refreshed `docs/guidelines/CanvasRefactorPlan.md` Track 3 notes, passing test suite.
+		- **Risks:** Temporary duplication between managers and legacy module—introduce feature flag `CANVAS_SELECTION_MANAGERS_V2` before removing legacy paths to control rollout.
+
+- **Step 4 – Spatial indexing & offscreen culling (⏳)**
+	- **Planning assumptions:** Canonical bounds available from Step 1+2; selection events centralised after Step 3.
+	- **Proposed tasks:**
+		* Prototype quadtree vs STR-tree with 5k element sample; baseline pan/zoom/drag metrics.
+		* Implement `SpatialIndexService` in data layer with APIs `queryVisible(bounds)` and `queryRadius(point, radius)`.
+		* Batch index updates until `dragend/transformend` events; rely on memoised bounds mid-interaction.
+		* Wire render culling in `layers.ts` and `CanvasModule` to skip offscreen nodes.
+		* Add stress tests + telemetry counters (`canvas.spatialIndex.rebuild_ms`).
+	- **Documentation work:** Draft `docs/technical/canvas/SpatialIndexing.md` with architecture choices + tuning knobs once prototype selected.
+	- **Risks:** High mutation cost during live transforms—mitigate with deferred reinserts and fallback to linear scan on threshold breach.
+
+- **Step 5 – Command-pattern snapshots & history (⏳)**
+	- **Objective:** Guarantee undo/redo correctness using canonical geometry snapshots shared with store + synchronizers.
+	- **Planned execution:**
+		1. Define command interfaces (`execute`, `undo`, optional `redo`) and history manager lifecycle (`push`, `coalesce`, `truncate`).
+		2. Implement command types: `TransformCommand`, `ConnectorEndpointCommand`, `CreateElementCommand`, `DeleteElementCommand`.
+		3. Snapshot canonical DTOs atomically; prefer structural sharing after correctness validated.
+		4. Hook managers (Step 3) to emit commands; ensure history honours collaboration patches and mindmap orchestrator flows.
+		5. Expand Jest + Playwright scenarios for complex sequences (drag, rotate, connector reroute, collab patch merge).
+	- **Documentation:** Initial spec to live in `docs/guidelines/CanvasRefactorPlan.md` (Track 5) with cross-link to new `docs/technical/canvas/HistoryCommands.md` once authored.
+	- **Risks:** Snapshot size growth—address via diff-based storage in follow-up milestone after baseline reliability proven.
 
 #### Status – 2025-01-14
 

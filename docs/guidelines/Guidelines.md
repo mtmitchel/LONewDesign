@@ -83,6 +83,14 @@ The Tasks experience was split out of the former monoliths. Relevant entry point
 
 Update these subpackages instead of reintroducing monolithic files. New features should add leaf components inside the appropriate folder and extend store actions via the existing module entry points.
 
+### Canvas module architecture (2025-10)
+The Canvas module (`components/modules/Canvas`) is undergoing a multi-track refactor to align Konva rendering with canonical store geometry and improve selection/transform reliability. Key resources:
+- **[CanvasRefactorPlan.md](./CanvasRefactorPlan.md)** — Five-track roadmap (geometry alignment, reactive selectors, modularisation, spatial indexing, command-based history).
+- **[Geometry.md](./Geometry.md)** — Canonical geometry conventions, connector positioning rules, selection bounds contracts.
+- **[Canvas-Audit-Report.txt](../../Canvas-Audit-Report.txt)** — Technical audit identifying coordinate mismatches and architecture debt.
+
+Active work lives on `refactor/sync-service-modularization`. Track 1 (canonical geometry) and Track 2 (reactive bounds selectors) are complete. When touching canvas code, ensure renderers consume geometry from store selectors rather than caching `selectBounds` on Konva nodes.
+
 ## Roadmap and planning
 - The active roadmap lives at `docs/roadmap/Unified-Workspace-Roadmap.md` (formerly `Unified-UI-Redesign.md`). Update statuses there and link PRs to specific numbered phases or sections.
 - Assistant-specific planning continues in `docs/assistant/Advanced-Assistant-Roadmap.md`; keep both documents in sync when scope overlaps.

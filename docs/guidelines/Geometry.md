@@ -1,5 +1,7 @@
 # Canvas Geometry Conventions
 
+> **Related documentation**: This file defines the canonical geometry model for the canvas module. For the overall refactor plan and implementation status, see [`CanvasRefactorPlan.md`](./CanvasRefactorPlan.md).
+
 ## Canonical Element Geometry
 All canvas elements share a canonical geometry definition provided by the unified canvas store:
 
@@ -21,15 +23,31 @@ The renderer layer must treat store geometry as the single source of truth. Konv
    ```
 2. Child shapes (arrow/line) use group-local coordinates by subtracting the centre from each endpoint.
 3. `ElementSynchronizer` reads the group position to update `element.x`/`element.y` and recomputes endpoints relative to the stored centre.
-4. Renderer-side caches (`selectBounds`, bespoke offsets) must not diverge from canonical geometry; use `getClientRect` when an explicit rectangle is required.
+4. Renderer-side caches (for example `selectBounds` attributes or bespoke offsets) are deprecated. When a renderer needs a rectangle it should compute it on demand from canonical geometry or `getClientRect` and avoid persisting the result on the Konva node.
 
 ## Selection & Bounds
 
-- Selection controllers request bounding boxes via computed selectors exposed by the store (Track 2). Store selectors memoise `getClientRect` output based on canonical geometry.
-- Renderers may provide `selectBounds` as a convenience hint, but values must originate from canonical data or fresh `getClientRect` calls.
+- Selection controllers request bounding boxes via memoised selectors exposed by the store. Selectors derive rects from canonical geometry, so no renderer-provided cache is required.
+- Renderers should treat selector output as authoritative and avoid storing long-lived `selectBounds` hints on nodes.
+- SelectionModule exposes `getSelectionBounds`; contextual tooling should call this accessor to stay in sync with store-derived geometry instead of reading from Konva nodes.
+
+### Performance Instrumentation
+The geometry selector system tracks:
+- Call frequency for `getElementBounds` and `getUnionBounds`
+- Cache hits/misses from the internal `computeBounds` memoization
+- Total compute time spent in selector functions
+
+**Dev Console Access**:
+```js
+window.__logGeometryMetrics()   // View current metrics
+window.__resetGeometryMetrics() // Reset all counters
+```
+
+Metrics are exposed via `store.getState().geometry.getMetrics()` for programmatic access. Use this data to identify expensive selection operations or sync-burst scenarios requiring optimization.
 
 ## Testing Checklist
 
 - Marquee-selecting a heterogeneous element set keeps connectors fully enclosed after translation.
 - Undo/redo restores connector endpoints and group centres without drift.
 - Remote sync updates that patch connector endpoints do not leave stale Konva positions.
+- Selector metrics show high cache hit rates (>80%) during steady-state interaction; cache misses should spike only during batch transforms or sync bursts.

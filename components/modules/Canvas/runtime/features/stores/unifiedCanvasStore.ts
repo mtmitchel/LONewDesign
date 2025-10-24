@@ -17,8 +17,15 @@ import type { HistoryModuleSlice } from "./modules/historyModule";
 import type { InteractionModuleSlice } from "./modules/interactionModule";
 
 // Types (keep imports narrow to avoid circular types)
-import type { CanvasElement, ElementId } from "../../../../types/index";
+import type { CanvasElement, ElementId, Bounds } from "../../../../types/index";
 import type { StoreHistoryOp } from "./modules/historyModule";
+import {
+  getElementBoundsFromElements,
+  getUnionBoundsFromElements,
+  getGeometryMetrics,
+  resetGeometryMetrics,
+} from "./selectors/geometrySelectors";
+import { installGeometryMetricsDebugger } from "./debug/geometryMetricsLogger";
 
 // Persistence types
 interface PersistedState {
@@ -146,10 +153,27 @@ export interface ConvenienceSlice {
   };
 }
 
+export interface GeometrySlice {
+  geometry: {
+    getElementBounds: (id: ElementId) => Bounds | null;
+    getUnionBounds: (ids: Iterable<ElementId>) => Bounds | null;
+    getMetrics: () => {
+      getElementBoundsCalls: number;
+      getUnionBoundsCalls: number;
+      cacheHits: number;
+      cacheMisses: number;
+      totalComputeTimeMs: number;
+      lastResetTime: number;
+    };
+    resetMetrics: () => void;
+  };
+}
+
 export type UnifiedCanvasStore = CoreModuleSlice &
   HistoryModuleSlice &
   InteractionModuleSlice &
-  ConvenienceSlice & {
+  ConvenienceSlice &
+  GeometrySlice & {
     panBy: (dx: number, dy: number) => void;
     // Compatibility history object for modules expecting nested history structure
     history: {
@@ -367,7 +391,6 @@ const createSafeStorage = (): StateStorage => {
   };
   return storage;
 };
-
 // Enable Map/Set support for Immer-based store slices
 enableMapSet();
 
@@ -388,6 +411,21 @@ export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
           ...historyModule,
           ...coreModule,
           ...interactionModule,
+
+          geometry: {
+            getElementBounds: (id: ElementId): Bounds | null => {
+              const elements = get().elements;
+              if (!elements) return null;
+              return getElementBoundsFromElements(elements, id);
+            },
+            getUnionBounds: (ids: Iterable<ElementId>): Bounds | null => {
+              const elements = get().elements;
+              if (!elements) return null;
+              return getUnionBoundsFromElements(elements, ids);
+            },
+            getMetrics: () => getGeometryMetrics(),
+            resetMetrics: () => resetGeometryMetrics(),
+          },
 
           panBy: (dx: number, dy: number) => {
             set(state => {
@@ -490,3 +528,8 @@ export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
     },
   ),
 );
+
+// Install dev debugger for geometry metrics in browser console
+if (typeof window !== "undefined") {
+  installGeometryMetricsDebugger(useUnifiedCanvasStore);
+}

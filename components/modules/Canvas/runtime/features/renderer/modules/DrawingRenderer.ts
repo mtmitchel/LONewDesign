@@ -116,8 +116,8 @@ export class DrawingRenderer implements RendererModule {
           continue;
         }
       }
-
-  const needsHighlighterGroup = drawing.subtype === "highlighter" || drawing.subtype === "marker";
+      const needsHighlighterGroup =
+        drawing.subtype === "highlighter" || drawing.subtype === "marker";
       let node = existingNode;
 
       if (!node) {
@@ -141,7 +141,6 @@ export class DrawingRenderer implements RendererModule {
         }
       }
 
-      this.updateSelectBounds(node);
     }
 
     // Remove deleted drawing elements
@@ -184,7 +183,6 @@ export class DrawingRenderer implements RendererModule {
     node.setAttr("nodeType", "drawing");
     node.setAttr("originX", originX);
     node.setAttr("originY", originY);
-    this.updateSelectBounds(node);
     return node;
   }
 
@@ -208,12 +206,6 @@ export class DrawingRenderer implements RendererModule {
     });
     node.setAttr("originX", originX);
     node.setAttr("originY", originY);
-    this.updateSelectBounds(node);
-  }
-
-  private updateSelectBounds(node: Konva.Line) {
-    const rect = node.getClientRect({ skipStroke: false, skipShadow: true });
-    node.setAttr("selectBounds", rect);
   }
 
   private normalizePoints(points: number[]): {

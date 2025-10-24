@@ -3,6 +3,13 @@ import type { TransformerManager } from "../../../../managers/TransformerManager
 
 type TransformSource = "drag" | "transform";
 
+export interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface TransformLifecycleEvents {
   onBegin: (nodes: Konva.Node[], source: TransformSource) => void;
   onProgress: (nodes: Konva.Node[], source: TransformSource) => void;
@@ -12,12 +19,21 @@ interface TransformLifecycleEvents {
 export class TransformLifecycleCoordinator {
   private readonly dragMonitoredNodes = new Set<Konva.Node>();
   private dragSessionActive = false;
+  private getSelectionBounds?: () => Bounds | null;
 
   constructor(
     private readonly transformerManager: TransformerManager,
     private readonly events: TransformLifecycleEvents,
     private readonly debug?: (message: string, data?: unknown) => void,
   ) {}
+
+  /**
+   * Provide a function that returns canonical selection bounds from the store.
+   * When set, getTransformerRect() will prefer these bounds over Konva's transformer client rect.
+   */
+  setSelectionBoundsProvider(provider: (() => Bounds | null) | undefined) {
+    this.getSelectionBounds = provider;
+  }
 
   attach(nodes: Konva.Node[]) {
     this.detachDragHandlers();
@@ -40,7 +56,13 @@ export class TransformLifecycleCoordinator {
     return this.transformerManager.getTransformer();
   }
 
-  getTransformerRect(): ReturnType<Konva.Transformer["getClientRect"]> | null {
+  getTransformerRect(): Bounds | null {
+    // Prefer canonical selector-based bounds when available
+    if (this.getSelectionBounds) {
+      const bounds = this.getSelectionBounds();
+      if (bounds) return bounds;
+    }
+    // Fallback to Konva transformer client rect
     const transformer = this.getTransformer();
     return transformer ? transformer.getClientRect() : null;
   }

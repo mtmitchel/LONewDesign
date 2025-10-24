@@ -1,7 +1,6 @@
 // features/canvas/renderer/modules/SelectionModule.ts
 import type Konva from "konva";
 import type { ModuleRendererCtx, RendererModule } from "../index";
-import { batchMindmapReroute } from "./mindmapWire";
 import { TransformerManager } from "../../managers/TransformerManager";
 import { ConnectorSelectionManager } from "../../managers/ConnectorSelectionManager";
 import {
@@ -15,15 +14,74 @@ import {
   transformStateManager,
   elementSynchronizer,
   connectorSelectionManager,
-  mindmapSelectionManager,
-  isMindmapRenderer,
+  SelectionSubscriptionManager,
+  TransformerSelectionManager,
+  ConnectorSelectionOrchestrator,
+  MindmapSelectionOrchestrator,
 } from "./selection/managers";
 import { TransformLifecycleCoordinator } from "./selection/controllers/TransformLifecycleCoordinator";
 import { MarqueeSelectionController } from "./selection/controllers/MarqueeSelectionController";
-import { SelectionDebouncer } from "./selection/utils/SelectionDebouncer";
 import { KeyboardHandler } from "./selection/utils/KeyboardHandler";
 import { SelectionStateManager } from "./selection/managers/SelectionStateManager";
 import { debug } from "../../../../utils/debug";
+
+const FEATURE_FLAG_SELECTION_MANAGERS_V2 = "CANVAS_SELECTION_MANAGERS_V2";
+
+type LegacySelectionMode = "schedule" | "refresh" | "immediate";
+
+declare global {
+  interface Window {
+    __featureFlags?: Record<string, unknown>;
+  }
+}
+
+function normaliseFlagValue(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalised = value.trim().toLowerCase();
+    if (["0", "false", "off", "no"].includes(normalised)) {
+      return false;
+    }
+    if (["1", "true", "on", "yes"].includes(normalised)) {
+      return true;
+    }
+  }
+
+  return undefined;
+}
+
+function readFeatureFlag(name: string): boolean | undefined {
+  if (typeof window !== "undefined") {
+    const value = window.__featureFlags?.[name];
+    const parsed = normaliseFlagValue(value);
+    if (typeof parsed === "boolean") {
+      return parsed;
+    }
+  }
+
+  const envValue =
+    (typeof process !== "undefined" && typeof process.env !== "undefined"
+      ? process.env[name]
+      : undefined) ??
+    (typeof import.meta !== "undefined" && (import.meta as unknown as { env?: Record<string, unknown> })?.env
+      ? ((import.meta as unknown as { env?: Record<string, unknown> }).env?.[name])
+      : undefined);
+
+  const parsedEnv = normaliseFlagValue(envValue);
+  if (typeof parsedEnv === "boolean") {
+    return parsedEnv;
+  }
+
+  return undefined;
+}
+
+function isSelectionManagersV2Enabled(): boolean {
+  const value = readFeatureFlag(FEATURE_FLAG_SELECTION_MANAGERS_V2);
+  return value ?? true;
+}
 
 const LOG_CATEGORY = "selection/module";
 
@@ -31,21 +89,22 @@ export class SelectionModule implements RendererModule {
   private transformerManager?: TransformerManager;
   private connectorSelectionManager?: ConnectorSelectionManager;
   private storeCtx?: ModuleRendererCtx;
-  private unsubscribe?: () => void;
-  private unsubscribeVersion?: () => void;
   private transformController?: TransformController;
   private marqueeSelectionController?: MarqueeSelectionController;
-  private readonly selectionDebouncer = new SelectionDebouncer();
   private transformLifecycle?: TransformLifecycleCoordinator;
   private connectorTransformFinalizer?: ConnectorTransformFinalizer;
-  private readonly mindmapDescendantInitialPositions = new Map<string, { x: number; y: number }>();
   private keyboardHandler?: KeyboardHandler;
   private selectionStateManager?: SelectionStateManager;
   private autoSelectTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
-  private updateSelectionTimer?: ReturnType<typeof setTimeout>;
+  private selectionSubscriptionManager?: SelectionSubscriptionManager;
+  private transformerSelectionManager?: TransformerSelectionManager;
+  private connectorSelectionOrchestrator?: ConnectorSelectionOrchestrator;
+  private mindmapSelectionOrchestrator?: MindmapSelectionOrchestrator;
+  private useSelectionManagersV2 = true;
 
   mount(ctx: ModuleRendererCtx): () => void {
     this.storeCtx = ctx;
+    this.useSelectionManagersV2 = isSelectionManagersV2Enabled();
 
     // Initialize SelectionStateManager
     this.selectionStateManager = new SelectionStateManager(ctx);
@@ -103,16 +162,27 @@ export class SelectionModule implements RendererModule {
       },
     });
 
+    this.connectorSelectionOrchestrator = new ConnectorSelectionOrchestrator({
+      getStoreContext: () => this.storeCtx,
+      getConnectorSelectionManager: () => this.connectorSelectionManager,
+      debug: (message, data) => this.debugLog(message, data),
+    });
+
+    this.mindmapSelectionOrchestrator = new MindmapSelectionOrchestrator({
+      getStoreContext: () => this.storeCtx,
+      debug: (message, data) => this.debugLog(message, data),
+    });
+
     this.transformController = new TransformController({
       getTransformer: () => this.transformLifecycle?.getTransformer() ?? null,
       applyAnchoredOverride: (id, from, to) => {
         connectorSelectionManager.updateElement(id, { from, to });
       },
-      setConnectorRoutingEnabled: (enabled) =>
+      setConnectorRoutingEnabled: (enabled: boolean) =>
         connectorSelectionManager.setLiveRoutingEnabled(enabled),
-      setMindmapRoutingEnabled: (enabled) =>
-        mindmapSelectionManager.setLiveRoutingEnabled(enabled),
-      updateConnectorElement: (id, changes) =>
+      setMindmapRoutingEnabled: (enabled: boolean) =>
+        this.mindmapSelectionOrchestrator?.setLiveRoutingEnabled(enabled),
+      updateConnectorElement: (id: string, changes) =>
         connectorSelectionManager.updateElement(id, changes),
       rerouteAllConnectors: () => {
         const connectorService =
@@ -125,20 +195,17 @@ export class SelectionModule implements RendererModule {
           // ignore reroute errors
         }
       },
-      rerouteMindmapNodes: (ids) => {
-        const renderer = mindmapSelectionManager.getRenderer();
-        if (!isMindmapRenderer(renderer)) return;
-        try {
-          this.debugLog("Triggering mindmap reroute after transform", {
-            category: "selection/transform",
-            data: { nodes: ids },
-          });
-          batchMindmapReroute(renderer, ids);
-        } catch {
-          // ignore reroute errors
+      rerouteMindmapNodes: (ids: string[]) => {
+        if (ids.length === 0) {
+          return;
         }
+        this.debugLog("Triggering mindmap reroute after transform", {
+          category: "selection/transform",
+          data: { nodes: ids },
+        });
+        this.mindmapSelectionOrchestrator?.rerouteMindmapNodes(ids);
       },
-      debug: (message, data) => this.debugLog(message, data),
+      debug: (message: string, data?: unknown) => this.debugLog(message, data),
     });
 
     // Create connector transform finalizer
@@ -165,14 +232,16 @@ export class SelectionModule implements RendererModule {
           selectedIds,
         );
       },
+      getElementBounds: (id) => {
+        const state = this.storeCtx?.store.getState();
+        return state?.geometry?.getElementBounds(id) ?? null;
+      },
       debug: (message, data) => this.debugLog(message, data),
     });
 
     if (typeof window !== "undefined") {
       window.marqueeSelectionController = this.marqueeSelectionController;
     }
-
-    // Initialize KeyboardHandler for selection shortcuts
     this.keyboardHandler = new KeyboardHandler({
       onEscape: () => this.clearSelection(),
       onDelete: (selectedIds) => this.handleDelete(selectedIds),
@@ -207,57 +276,44 @@ export class SelectionModule implements RendererModule {
       (message, data) => this.debugLog(message, data),
     );
 
-    // Subscribe to selection changes with proper fallbacks for different store structures
-    this.unsubscribe = ctx.store.subscribe(
-      // Selector: get selected element IDs
-      (state) => {
-        // Use the selectedElementIds from state
-        const selection = state.selectedElementIds || new Set<string>();
+    // Wire transformer to use selector-based bounds
+    this.transformLifecycle.setSelectionBoundsProvider(() => {
+      const state = this.storeCtx?.store.getState();
+      if (!state) return null;
+      const selectedIds = state.selectedElementIds || new Set<string>();
+      return this.getSelectionBounds(selectedIds);
+    });
 
-        // Return as Set
-        return selection instanceof Set ? selection : new Set<string>();
-      },
-      // Callback: update transformer
-      (selectedIds) => this.updateSelection(selectedIds),
-      // Fire immediately to handle initial selection
-      { fireImmediately: true },
-    );
+    this.transformerSelectionManager = new TransformerSelectionManager({
+      transformLifecycle: this.transformLifecycle,
+      getStage: () => this.getStage(),
+      getLayers: () => this.getLayers(),
+      debug: (message, data) => this.debugLog(message, data),
+    });
 
-    // Subscribe to selection version changes to refresh transformer when selected elements change dimensions
-    this.unsubscribeVersion = ctx.store.subscribe(
-      // Selector: get selection version
-      (state) => state.selectionVersion || 0,
-      // Callback: refresh transformer for current selection
-      (_version) => {
-        if (this.transformLifecycle && this.storeCtx) {
-          // Get current selection and refresh transformer
-          const currentState = this.storeCtx.store.getState();
-          const selectedIds =
-            currentState.selectedElementIds || new Set<string>();
-          if (selectedIds.size > 0) {
-            // Force refresh the transformer with current selection
-            this.refreshTransformerForSelection(selectedIds);
-          }
-        }
+    this.selectionSubscriptionManager = new SelectionSubscriptionManager(
+      { store: ctx.store },
+      {
+        onSelectionChange: (selectedIds) => this.updateSelection(selectedIds),
+        onSelectionVersionChange: (version) =>
+          this.handleSelectionVersionChange(version),
       },
-      // Don't fire immediately - only when version actually changes
-      { fireImmediately: false },
     );
+    this.selectionSubscriptionManager.start();
 
     return () => this.unmount();
   }
   private unmount() {
-    this.selectionDebouncer.cancel();
+    this.connectorSelectionOrchestrator?.cancelPending();
     this.transformLifecycle?.detach();
-
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = undefined;
-    }
-    if (this.unsubscribeVersion) {
-      this.unsubscribeVersion();
-      this.unsubscribeVersion = undefined;
-    }
+    this.selectionSubscriptionManager?.stop();
+    this.selectionSubscriptionManager = undefined;
+    this.transformerSelectionManager?.destroy();
+    this.transformerSelectionManager = undefined;
+    this.connectorSelectionOrchestrator?.destroy();
+    this.connectorSelectionOrchestrator = undefined;
+    this.mindmapSelectionOrchestrator?.destroy();
+    this.mindmapSelectionOrchestrator = undefined;
     if (this.transformerManager) {
       this.transformerManager.destroy();
       this.transformerManager = undefined;
@@ -277,6 +333,24 @@ export class SelectionModule implements RendererModule {
       delete window.marqueeSelectionController;
     }
   }
+
+  private handleSelectionVersionChange(_version: number): void {
+    if (!this.transformLifecycle || !this.storeCtx) {
+      return;
+    }
+
+    const currentState = this.storeCtx.store.getState();
+    const rawSelected = currentState.selectedElementIds;
+    const selectedIds =
+      rawSelected instanceof Set
+        ? new Set(rawSelected)
+        : new Set<string>(Array.isArray(rawSelected) ? rawSelected : []);
+
+    if (selectedIds.size > 0) {
+      this.refreshTransformerForSelection(selectedIds);
+    }
+  }
+
   private updateSelection(selectedIds: Set<string>) {
     if (!this.transformLifecycle || !this.storeCtx) {
       return;
@@ -286,10 +360,10 @@ export class SelectionModule implements RendererModule {
 
     this.selectionStateManager?.updateFromExternal(selectedIds);
     this.keyboardHandler?.updateSelectedIds(Array.from(selectedIds));
+    this.syncSelectionBounds(selectedIds);
 
     // CRITICAL FIX: Always clear both selection systems first to prevent conflicts
-    this.transformLifecycle?.setKeepRatio(false);
-    this.transformLifecycle?.detach();
+    this.transformerSelectionManager?.detach();
     this.connectorSelectionManager?.clearSelection();
 
     if (selectedIds.size === 0) {
@@ -297,14 +371,11 @@ export class SelectionModule implements RendererModule {
     }
 
     // Handle connector-only selection via debouncer
-    if (
-      this.selectionDebouncer.scheduleConnectorSelection(
-        selectedIds,
-        this.storeCtx,
-        this.connectorSelectionManager,
-        (message, data) => this.debugLog(message, data),
-      )
-    ) {
+    if (this.useSelectionManagersV2) {
+      if (this.connectorSelectionOrchestrator?.handleSelectionChange(selectedIds)) {
+        return;
+      }
+    } else if (this.handleLegacySelection(selectedIds, "schedule")) {
       return;
     }
 
@@ -323,58 +394,9 @@ export class SelectionModule implements RendererModule {
     // CRITICAL FIX: Handle mixed or non-connector selection
     const selectionSnapshot = new Set(nonConnectorIds);
 
-    // Cancel any pending updateSelection timer before scheduling a new one
-    if (this.updateSelectionTimer) {
-      clearTimeout(this.updateSelectionTimer);
-      this.updateSelectionTimer = undefined;
-    }
-
-    // Enhanced delay to ensure elements are fully rendered
-    this.updateSelectionTimer = setTimeout(() => {
-      this.updateSelectionTimer = undefined;
-      // Find Konva nodes for selected elements across all layers
-      const rawNodes = resolveElementsToNodes({
-        stage: this.getStage(),
-        layers: this.getLayers(),
-        elementIds: selectionSnapshot,
-      });
-      const nodes = filterTransformableNodes(rawNodes, (message, data) =>
-        this.debugLog(message, data),
-      );
-      this.debugLog("Resolved nodes for transformer", {
-        requestedIds: Array.from(selectionSnapshot),
-        raw: rawNodes.map((n) => ({
-          id: n.getAttr("elementId") || n.id(),
-          name: n.name(),
-          nodeType: n.getAttr("nodeType"),
-          elementType: n.getAttr("elementType"),
-        })),
-        filtered: nodes.map((n) => ({
-          id: n.getAttr("elementId") || n.id(),
-          name: n.name(),
-          nodeType: n.getAttr("nodeType"),
-          elementType: n.getAttr("elementType"),
-        })),
-      });
-
-      if (nodes.length > 0) {
-        this.transformLifecycle?.attach(nodes);
-        const lockAspect =
-          transformStateManager.shouldLockAspectRatio(selectionSnapshot);
-        this.transformLifecycle?.setKeepRatio(lockAspect);
-
-        // CRITICAL FIX: Ensure transformer is shown and force a batch draw
-        this.transformLifecycle?.show();
-
-        // Additional safety check: force visibility and batch draw
-        setTimeout(() => {
-          this.transformLifecycle?.ensureVisible();
-        }, 10);
-      } else {
-        this.transformLifecycle?.detach();
-        this.transformLifecycle?.setKeepRatio(false);
-      }
-    }, 75);
+    this.transformerSelectionManager?.scheduleAttach(selectionSnapshot, {
+      delay: 75,
+    });
   }
 
   private debugLog(message: string, data?: unknown) {
@@ -409,6 +431,53 @@ export class SelectionModule implements RendererModule {
       : [];
   }
 
+  private syncSelectionBounds(selectedIds: Set<string>) {
+    if (!this.storeCtx) {
+      return;
+    }
+
+    const store = this.storeCtx.store;
+    const state = store.getState();
+    const patchContextToolbar = state.patchContextToolbar;
+    const contextualToolbar = state.contextualToolbar;
+
+    if (typeof patchContextToolbar !== "function") {
+      return;
+    }
+
+    const bounds = this.getSelectionBounds(selectedIds);
+    const nextAnchor = bounds
+      ? {
+          x: bounds.x,
+          y: bounds.y,
+          width: bounds.width,
+          height: bounds.height,
+        }
+      : null;
+
+    const currentAnchor = contextualToolbar?.anchor ?? null;
+    const anchorUnchanged =
+      (nextAnchor === null && currentAnchor === null) ||
+      (nextAnchor !== null &&
+        currentAnchor !== null &&
+        nextAnchor.x === currentAnchor.x &&
+        nextAnchor.y === currentAnchor.y &&
+        nextAnchor.width === currentAnchor.width &&
+        nextAnchor.height === currentAnchor.height);
+
+    const nextVisible = Boolean(nextAnchor);
+    const currentVisible = Boolean(contextualToolbar?.visible);
+
+    if (anchorUnchanged && nextVisible === currentVisible) {
+      return;
+    }
+
+    patchContextToolbar({
+      anchor: nextAnchor,
+      visible: nextVisible,
+    });
+  }
+
   private beginSelectionTransform(
     nodes: Konva.Node[],
     source: "drag" | "transform",
@@ -428,34 +497,7 @@ export class SelectionModule implements RendererModule {
     // TransformStateManager handles snapshots internally
     this.transformController?.clearSnapshot();
 
-    // Store initial positions of mindmap descendants when dragging
-    if (source === "drag" && this.storeCtx) {
-      this.mindmapDescendantInitialPositions.clear();
-      const state = this.storeCtx.store.getState();
-      const renderer = mindmapSelectionManager.getRenderer();
-
-      if (renderer) {
-        nodes.forEach(node => {
-          const id = node.id();
-          const element = state.elements?.get(id);
-          
-          if (element?.type === 'mindmap-node') {
-            const descendants = renderer.getAllDescendants?.(id);
-            if (descendants) {
-              descendants.forEach((descendantId: string) => {
-                const descendantGroup = renderer.getNodeGroup?.(descendantId);
-                if (descendantGroup) {
-                  this.mindmapDescendantInitialPositions.set(descendantId, {
-                    x: descendantGroup.x(),
-                    y: descendantGroup.y(),
-                  });
-                }
-              });
-            }
-          }
-        });
-      }
-    }
+    this.mindmapSelectionOrchestrator?.handleTransformBegin(nodes, source);
   }
 
   private progressSelectionTransform(
@@ -489,27 +531,11 @@ export class SelectionModule implements RendererModule {
         },
       );
     }
-    mindmapSelectionManager.updateEdgeVisuals(delta);
-
-    // Move mindmap descendants when dragging mindmap nodes
-    if (source === "drag" && this.storeCtx) {
-      const state = this.storeCtx.store.getState();
-      const mindmapNodeIds = nodes
-        .filter(node => {
-          const id = node.id();
-          const element = state.elements?.get(id);
-          return element?.type === 'mindmap-node';
-        })
-        .map(node => node.id());
-      
-      if (mindmapNodeIds.length > 0) {
-        mindmapSelectionManager.moveMindmapDescendants(
-          mindmapNodeIds,
-          delta,
-          this.mindmapDescendantInitialPositions
-        );
-      }
-    }
+    this.mindmapSelectionOrchestrator?.handleTransformProgress(
+      nodes,
+      source,
+      delta,
+    );
   }
 
   private endSelectionTransform(
@@ -531,52 +557,14 @@ export class SelectionModule implements RendererModule {
 
     // Commit final positions and clean up visuals (excluding connectors)
     if (nonConnectorNodes.length > 0) {
-      // Handle mindmap descendants when dragging mindmap nodes
-      if (source === "drag" && this.storeCtx) {
-        const state = this.storeCtx.store.getState();
-        const mindmapNodes = nonConnectorNodes.filter(node => {
-          const id = node.id();
-          const element = state.elements?.get(id);
-          return element?.type === 'mindmap-node';
-        });
+      const handledByMindmap =
+        this.mindmapSelectionOrchestrator?.handleTransformEnd({
+          nodes,
+          nonConnectorNodes,
+          source,
+        }) ?? false;
 
-        if (mindmapNodes.length > 0) {
-          // Gather all nodes that need position updates (dragged nodes + descendants)
-          const allNodesToUpdate = new Set<Konva.Node>(nodes);
-          const renderer = mindmapSelectionManager.getRenderer();
-          
-          if (renderer) {
-            mindmapNodes.forEach(node => {
-              const descendants = renderer.getAllDescendants?.(node.id());
-              if (descendants) {
-                descendants.forEach((descendantId: string) => {
-                  const descendantGroup = renderer.getNodeGroup?.(descendantId);
-                  if (descendantGroup) {
-                    allNodesToUpdate.add(descendantGroup);
-                  }
-                });
-              }
-            });
-          }
-
-          // Update all nodes (dragged + descendants) in one transaction
-          elementSynchronizer.updateElementsFromNodes(
-            Array.from(allNodesToUpdate),
-            "transform",
-            {
-              pushHistory: true,
-              batchUpdates: true,
-            }
-          );
-        } else {
-          // No mindmap nodes, use normal update
-          elementSynchronizer.updateElementsFromNodes(nonConnectorNodes, "transform", {
-            pushHistory: true,
-            batchUpdates: true,
-          });
-        }
-      } else {
-        // Not a drag operation or no store context, use normal update
+      if (!handledByMindmap) {
         elementSynchronizer.updateElementsFromNodes(nonConnectorNodes, "transform", {
           pushHistory: true,
           batchUpdates: true,
@@ -687,82 +675,44 @@ export class SelectionModule implements RendererModule {
       this.transformController.release();
     }
 
-    if (this.updateSelectionTimer) {
-      clearTimeout(this.updateSelectionTimer);
-      this.updateSelectionTimer = undefined;
-    }
+    this.transformerSelectionManager?.cancelPending();
 
     this.cancelAutoSelectTimers();
 
     this.selectionStateManager?.clearSelection();
     this.keyboardHandler?.updateSelectedIds([]);
-    this.transformLifecycle?.detach();
-    this.transformLifecycle?.setKeepRatio(false);
-  }
-
-  // Helper method to attach transformer to nodes
-  private attachTransformerToNodes(
-    selectedIds: Set<string>,
-    delay: number = 50,
-  ) {
-    if (!this.transformLifecycle) return;
-
-    setTimeout(() => {
-      const rawNodes = resolveElementsToNodes({
-        stage: this.getStage(),
-        layers: this.getLayers(),
-        elementIds: selectedIds,
-      });
-      const nodes = filterTransformableNodes(rawNodes, (message, data) =>
-        this.debugLog(message, data),
-      );
-
-      if (nodes.length > 0) {
-        this.transformLifecycle?.detach();
-        setTimeout(() => {
-          this.transformLifecycle?.attach(nodes);
-          const lockAspect =
-            transformStateManager.shouldLockAspectRatio(selectedIds);
-          this.transformLifecycle?.setKeepRatio(lockAspect);
-          this.transformLifecycle?.show();
-        }, 10);
-      } else {
-        this.transformLifecycle?.detach();
-        this.transformLifecycle?.setKeepRatio(false);
-      }
-    }, delay);
+    this.transformerSelectionManager?.detach();
+    this.syncSelectionBounds(new Set<string>());
   }
 
   // Private method to refresh transformer for current selection (used when selection version changes)
   private refreshTransformerForSelection(selectedIds: Set<string>) {
-    if (!this.transformLifecycle || !this.storeCtx) return;
+    if (!this.transformerSelectionManager || !this.storeCtx) {
+      return;
+    }
 
     if (selectedIds.size === 0) {
-      this.transformLifecycle.setKeepRatio(false);
-      this.transformLifecycle.detach();
+      this.transformerSelectionManager.detach();
       return;
     }
 
     const selectionSnapshot = new Set(selectedIds);
 
-    // Handle connector-only selection via debouncer
-    if (
-      this.selectionDebouncer.handleImmediateConnectorSelection(
-        selectionSnapshot,
-        this.storeCtx,
-        this.connectorSelectionManager,
-        (message, data) => this.debugLog(message, data),
-      )
-    ) {
-      // Ensure transformer is detached when handling connector-only selection
-      this.transformLifecycle?.detach();
-      this.transformLifecycle?.setKeepRatio(false);
-      this.connectorSelectionManager?.clearSelection();
+    // Handle connector-only selection via orchestrator
+    if (this.useSelectionManagersV2) {
+      if (this.connectorSelectionOrchestrator?.handleImmediateSelection(selectionSnapshot)) {
+        this.transformerSelectionManager.detach();
+        this.connectorSelectionManager?.clearSelection();
+        return;
+      }
+
+      this.transformerSelectionManager.refresh(selectionSnapshot, {
+        delay: 50,
+      });
       return;
     }
 
-    // Handle non-connector selection with transformer
-    this.attachTransformerToNodes(selectionSnapshot, 50);
+    this.handleLegacySelection(selectionSnapshot, "refresh");
   }
 
   /**
@@ -771,9 +721,10 @@ export class SelectionModule implements RendererModule {
    * needs to update immediately without waiting for async delays.
    */
   public forceRefresh(): void {
-    if (!this.transformLifecycle || !this.storeCtx) return;
+    if (!this.transformerSelectionManager || !this.storeCtx) {
+      return;
+    }
 
-    // Get current selection from store
     const currentState = this.storeCtx.store.getState();
     const selectedIds = (() => {
       const value = currentState.selectedElementIds;
@@ -794,51 +745,61 @@ export class SelectionModule implements RendererModule {
       return new Set<string>();
     })();
 
-    // Delegate to immediate connector selection handler
-    if (
-      this.selectionDebouncer.handleImmediateConnectorSelection(
-        selectedIds,
-        this.storeCtx,
-        this.connectorSelectionManager,
-        (message, data) => this.debugLog(message, data),
-      )
-    ) {
-      this.transformLifecycle?.detach();
-      this.transformLifecycle?.setKeepRatio(false);
-      this.connectorSelectionManager?.refreshSelection();
+    if (this.useSelectionManagersV2) {
+      if (this.connectorSelectionOrchestrator?.handleImmediateSelection(selectedIds)) {
+        this.transformerSelectionManager.detach();
+        this.connectorSelectionManager?.refreshSelection();
+        return;
+      }
+    } else if (this.handleLegacySelection(selectedIds, "immediate")) {
       return;
     }
 
-    // Handle non-connector selection with immediate attachment (no delay)
     if (selectedIds.size === 0) {
-      this.transformLifecycle?.detach();
-      this.transformLifecycle?.setKeepRatio(false);
+      this.transformerSelectionManager.detach();
       return;
     }
 
-    // Resolve nodes and attach transformer immediately
-    const rawNodes = resolveElementsToNodes({
-      stage: this.getStage(),
-      layers: this.getLayers(),
-      elementIds: selectedIds,
-    });
-    const nodes = filterTransformableNodes(rawNodes, (message, data) =>
-      this.debugLog(message, data),
-    );
+    this.transformerSelectionManager.attachImmediately(selectedIds);
+  }
 
-    if (nodes.length > 0) {
-      this.transformLifecycle?.detach();
-      this.transformLifecycle?.attach(nodes);
-      const lockAspect =
-        transformStateManager.shouldLockAspectRatio(selectedIds);
-      this.transformLifecycle?.setKeepRatio(lockAspect);
-      this.transformLifecycle?.show();
-      // Force immediate update for dimension changes
-      this.transformLifecycle?.refresh();
-    } else {
-      this.transformLifecycle?.detach();
-      this.transformLifecycle?.setKeepRatio(false);
+  private handleLegacySelection(selectedIds: Set<string>, mode: LegacySelectionMode): boolean {
+    if (!this.storeCtx || selectedIds.size === 0) {
+      return false;
     }
+
+    const state = this.storeCtx.store.getState();
+    const { connectorIds, mindmapEdgeIds, nonConnectorIds } = categorizeSelection({
+      selectedIds,
+      elements: (state.elements as Map<string, { type?: string }>) ?? new Map(),
+      getElementById: state.element?.getById?.bind(state.element),
+    });
+
+    if (nonConnectorIds.length === 0) {
+      const connectorId = connectorIds[0] ?? mindmapEdgeIds[0];
+      if (connectorId) {
+        this.connectorSelectionManager?.showSelection(connectorId);
+      }
+      this.transformerSelectionManager?.detach();
+      return true;
+    }
+
+    const snapshot = new Set(nonConnectorIds);
+
+    switch (mode) {
+      case "immediate":
+        this.transformerSelectionManager?.attachImmediately(snapshot);
+        break;
+      case "refresh":
+        this.transformerSelectionManager?.attachImmediately(snapshot);
+        break;
+      case "schedule":
+      default:
+        this.transformerSelectionManager?.scheduleAttach(snapshot, { delay: 75 });
+        break;
+    }
+
+    return true;
   }
 
   // Keyboard handler implementations
@@ -1013,6 +974,34 @@ export class SelectionModule implements RendererModule {
         }
       });
     }
+  }
+
+  public getSelectionBounds(ids?: Iterable<string>): { x: number; y: number; width: number; height: number } | null {
+    const state = this.storeCtx?.store.getState();
+    const geometry = state?.geometry?.getUnionBounds;
+    if (!geometry) {
+      return null;
+    }
+
+    let source: Iterable<string> | undefined;
+    if (ids) {
+      source = ids;
+    } else if (state?.selectedElementIds instanceof Set) {
+      source = state.selectedElementIds;
+    } else if (Array.isArray(state?.selectedElementIds)) {
+      source = state?.selectedElementIds;
+    }
+
+    if (!source) {
+      return null;
+    }
+
+    const normalized = Array.from(source);
+    if (normalized.length === 0) {
+      return null;
+    }
+
+    return geometry(normalized) ?? null;
   }
 
   public selectElementsInBounds(

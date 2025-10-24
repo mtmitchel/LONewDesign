@@ -16,6 +16,7 @@ interface GlobalSelectionModule {
   clearSelection?: () => void;
   toggleSelection?: (elementId: string, additive?: boolean) => void;
   selectElementsInBounds?: (stage: Stage, bounds: SelectionBounds) => string[];
+  getSelectionBounds?: (ids?: Iterable<string>) => SelectionBounds | null;
   marqueeSelectionController?: MarqueeSelectionController;
   [key: string]: unknown;
 }

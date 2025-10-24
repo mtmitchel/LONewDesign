@@ -9,6 +9,7 @@ export interface MarqueeSelectionControllerDeps {
   setSelection: (ids: string[]) => void;
   onSelectionComplete?: (selectedIds: string[]) => void;
   debug?: (message: string, data?: unknown) => void;
+  getElementBounds?: (id: string) => { x: number; y: number; width: number; height: number } | null;
 }
 
 /**
@@ -45,16 +46,16 @@ export class MarqueeSelectionController {
       const elements = this.deps.elements();
       if (!elementId || !elements.has(elementId)) continue;
 
-      const nodeRect = node.getClientRect({
+      const rect = this.deps.getElementBounds?.(elementId) ?? node.getClientRect({
         skipStroke: false,
         skipShadow: true,
       });
 
       const intersects = !(
-        nodeRect.x > bounds.x + bounds.width ||
-        nodeRect.x + nodeRect.width < bounds.x ||
-        nodeRect.y > bounds.y + bounds.height ||
-        nodeRect.y + nodeRect.height < bounds.y
+        rect.x > bounds.x + bounds.width ||
+        rect.x + rect.width < bounds.x ||
+        rect.y > bounds.y + bounds.height ||
+        rect.y + rect.height < bounds.y
       );
 
       if (intersects) {

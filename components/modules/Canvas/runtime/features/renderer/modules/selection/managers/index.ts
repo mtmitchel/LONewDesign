@@ -50,6 +50,18 @@ export {
   shapeTextSynchronizer 
 } from './ShapeTextSynchronizer';
 
+export type { SelectionSubscriptionCallbacks } from './SelectionSubscriptionManager';
+export { SelectionSubscriptionManager } from './SelectionSubscriptionManager';
+
+export type { TransformerSelectionManagerConfig, TransformerAttachOptions } from './TransformerSelectionManager';
+export { TransformerSelectionManager } from './TransformerSelectionManager';
+
+export type { ConnectorSelectionOrchestratorConfig } from './ConnectorSelectionOrchestrator';
+export { ConnectorSelectionOrchestrator } from './ConnectorSelectionOrchestrator';
+
+export type { MindmapSelectionOrchestratorConfig } from './MindmapSelectionOrchestrator';
+export { MindmapSelectionOrchestrator } from './MindmapSelectionOrchestrator';
+
 // Re-export singleton instances for easy access
 import { transformStateManager } from './TransformStateManager';
 import { elementSynchronizer } from './ElementSynchronizer';
