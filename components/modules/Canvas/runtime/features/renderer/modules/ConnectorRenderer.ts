@@ -165,13 +165,22 @@ export class ConnectorRenderer {
       return;
     }
 
-    const points = [p1.x, p1.y, p2.x, p2.y];
+    const centerX = (p1.x + p2.x) / 2;
+    const centerY = (p1.y + p2.y) / 2;
+    const localPoints = [
+      p1.x - centerX,
+      p1.y - centerY,
+      p2.x - centerX,
+      p2.y - centerY,
+    ];
+
+    g.position({ x: centerX, y: centerY });
 
     if (conn.variant === "arrow") {
       if (!shape || !(shape instanceof Konva.Arrow) || !shape.getStage()) {
         if (shape) shape.destroy();
         shape = new Konva.Arrow({
-          points,
+          points: localPoints,
           stroke: conn.style.stroke,
           strokeWidth: conn.style.strokeWidth,
           dash: conn.style.dash,
@@ -193,7 +202,7 @@ export class ConnectorRenderer {
         shape.hitStrokeWidth(Math.max(conn.style.strokeWidth, 24));
         this.shapeById.set(conn.id, shape);
       } else {
-        shape.points(points);
+        shape.points(localPoints);
         shape.stroke(conn.style.stroke);
         shape.strokeWidth(conn.style.strokeWidth);
         shape.dash(conn.style.dash);
@@ -209,7 +218,7 @@ export class ConnectorRenderer {
       if (!shape || !(shape instanceof Konva.Line) || !shape.getStage()) {
         if (shape) shape.destroy();
         shape = new Konva.Line({
-          points,
+          points: localPoints,
           stroke: conn.style.stroke,
           strokeWidth: conn.style.strokeWidth,
           dash: conn.style.dash,
@@ -228,7 +237,7 @@ export class ConnectorRenderer {
         shape.hitStrokeWidth(Math.max(conn.style.strokeWidth, 24));
         this.shapeById.set(conn.id, shape);
       } else {
-        shape.points(points);
+        shape.points(localPoints);
         shape.stroke(conn.style.stroke);
         shape.strokeWidth(conn.style.strokeWidth);
         shape.dash(conn.style.dash);
