@@ -1,0 +1,75 @@
+Canvas Audit Report
+
+1. Project Context
+The application is a unified workspace platform that blends project management artifacts, mind maps, collaborative notes, and quick sketches inside a single Vite + React front end with Tauri packaging. The canvas area is the primary spatial workspace: users drop sticky notes, tables, mindmap nodes, hand-drawn strokes, and connectors (arrows/lines) onto an infinite grid. State is centralised in a "unified canvas" store exposed to renderer modules, which in turn build layered Konva scenes. Layers are tuned for interactivity and fidelity: background for the grid, main for most content, highlighter for translucent drawing strokes, preview for transient hover/previews, and overlay for selection and transformer handles. The canvas relies heavily on Konva for scene graph and DOM events while the store keeps canonical data for persistence, collaboration, and undo/redo. The current regression, illustrated in the provided screenshots, manifests when marquee-selecting mixed content (sticky notes, tables, connectors, and drawing strokes). After translating the selection, some elements  especially connectors and elongated strokes  slip outside the transformer's bounding box; in some cases the marquee frame shifts or scales non-uniformly, leaving content misaligned even though the user only dragged. Marker/highlighter rendering has been repaired, but connector coverage and post-drag uniformity remain inconsistent.
+
+2. Canvas Module Architecture
+The Canvas module is organised under components/modules/Canvas/runtime/features. Each content type has an isolated renderer (for example DrawingRenderer, ConnectorRenderer, StickyNoteModule) that writes Konva nodes into shared layers provided by createRendererLayers. Selection is orchestrated by SelectionModule, which bridges Konva's transformer, custom connector selection affordances, mindmap rerouting, and the store's selection APIs. Coordination hinges on a few contracts: renderers set metadata attributes (for example elementId, nodeType) on every Konva node so the selection resolver can find them; renderers optionally provide cached selectBounds rectangles to override Konva's client rect calculations when necessary; the ElementSynchronizer reads node positions, sizes, and transformations back into the store after drags/transforms finish, ensuring single source of truth.
+
+DrawingRenderer listens to store updates for elements with type === "drawing" (pen, marker, highlighter, eraser). It normalises stroke points by anchoring at the first coordinate, converting subsequent points to relative offsets; this preserves original shape while letting Konva position one node instead of redrawing world coordinates. A dedicated highlighter group (listening=false) inside the main layer keeps translucent strokes above other content without breaking interaction. Offscreen draw filtering uses viewport bounds to skip invisible nodes for performance.
+
+ConnectorRenderer renders arrow and line variants. It resolves endpoints either from absolute point coordinates or by reading the target element's bounds via getClientRect. The renderer stores per-connector groups and shapes, attaches tap/pointer handlers for selection, and sets hitStrokeWidth to ensure thin edges remain selectable. Historically we cached selectBounds to tighten selection boxes around connectors, but earlier patches introduced regressions when these cached rectangles diverged from actual geometry.
+
+SelectionModule is the most complex piece. It manages the Konva transformer (for scaling/rotation), a connector selection manager (for dragging endpoints), mindmap integration, keyboard shortcuts, and the marquee controller. Selection changes are debounced to allow connectors to take over their own interaction flow. The module resolves store element IDs into Konva nodes using SelectionResolver (resolveElementsToNodes), filters out non-transformable nodes (connectors, mindmap edges), and attaches the transformer. During transforms it delegates to TransformStateManager, caches snapshots, updates connectors/mindmap visuals live, and, on end, asks elementSynchronizer to push updated positions back into the store. Importantly, elementSynchronizer loops nodes, reads position/size/scale/skew, builds patches, and handles type-specific fields (connector endpoints, text font settings). For connectors, it assumes the node's x/y is a logical center; it recomputes endpoint coordinates by adding stored offsets to the new center. The MarqueeSelectionController scans the stage for nodes with elementId, calculates intersection with the marquee rectangle, and builds the selection set. It excludes connectors from drag preparation because connectors track endpoints rather than a single anchored position.
+
+selection/geometry/bounds.ts is a utility for unioning multiple node rectangles. It prefers node.getAttr("selectBounds") when provided; otherwise it falls back to getClientRect({ skipStroke: false, skipShadow: true }).
+
+3. Current Bug Statement
+When a user marquee-selects a heterogeneous set (sticky note, table, mindmap node with connectors, and drawing strokes) and drags the group, the blue transformer frame fails to enclose everything post-move. Connectors protrude beyond the frame, and some nodes appear offset relative to their pre-drag arrangement. Additionally, the transformer sometimes shrinks or grows unexpectedly, suggesting inconsistent bounding box calculations during or after the move. Screenshots show connectors remaining partly outside the transformer after translation, and rotation handles repositioned off-center.
+
+Observed behaviour:
+ Marker/highlighter strokes stay visible and respond to selection but occasionally are not fully enclosed by the bounding box.
+ Connectors are especially problematic: long arrows extend beyond the transformer's bounds; after the drag they may shift relative to connected nodes.
+ The bounding frame's size/position changes in ways that imply either incorrect union bounds or mismatched store updates causing geometry to drift.
+ Moving the selection repeatedly compounds the misalignment.
+
+4. Investigation History
+Initial regression reports indicated markers, highlighters, connectors, and marquee behaviour all degraded after earlier attempts to normalise coordinates. The team backtracked to baseline, reinstating basic rendering, then reintroduced normalisation for drawings while safeguarding selection. Several iterations introduced computed bounds for connectors (selectBounds caching) to better capture slender lines; however, this caused marquee drags to distort connectors because custom bounds got out of sync with Konva's live geometry and the store's element data. The last patch removed selectBounds entirely from drawing nodes, relying on Konva to compute rectangles, which restored marker/highlighter appearance. Next, to fix connectors, we reintroduced selectBounds but carefully updated them after each render using shape.getClientRect. We also ensured the shape carried elementId metadata.
+
+Despite these patches, the observed bug persists. Hypotheses explored included cached bounds still being stale because getClientRect uses pre-transform coordinates when nodes are not on stage or after scaling; attempts to refresh bounds in DrawingRenderer after node creation and updates; suspicions that ElementSynchronizer might mishandle connector positions because connectors treat x/y as their center; concerns that the marquee controller's drag preparation excludes connectors leading to asynchronous updates; and the possibility that the highlighter group being non-listening might cause getClientRect to ignore some transforms. Testing after enabling bounds updates revealed connectors still outside the frame, as illustrated in user screenshots. That implies either union bounds are not seeing the updated rect or connectors update after the frame is computed. Because calculateUnionBounds iterates nodes and checks node.getAttr("selectBounds"), missing or stale attributes result in incorrect union. Another suspicion is that connectors belong to Konva.Group with shape child; union uses the group, but we may not store selectBounds on the group at the right time, particularly before the group is positioned relative to the stage. After dragging, ElementSynchronizer may update connectors by adjusting endpoints rather than the group's x/y, so the group's position remains (0,0). The union might rely solely on the group's selectBounds which no longer matches repositioned endpoints due to store changes. Ultimately, we still lack a consistent bounding strategy for connectors during selection transforms.
+
+5. Known Facts
+ Marker/highlighter strokes are now correctly drawn using relative points and remain visible after selection; selectBounds is set after reconciliation, so bounding rectangles exist for them.
+ Connectors render as Konva.Group with either Arrow or Line. They set nodeType and elementType to "connector" and store selectBounds using shape.getClientRect.
+ SelectionModule filters connectors out of transformer nodes; connectors rely on connector selection manager for dragging endpoints. However, connectors still appear in overall selection set for visual feedback.
+ calculateUnionBounds is invoked by selection modules to union rectangles. It looks for node.getAttr("selectBounds"); if absent, it uses getClientRect on the node itself.
+ After translation, ElementSynchronizer pushes updates to store. For connectors, it calculates new endpoints by adding offsets to the "center" coordinates, assuming the node's (x,y) changed.
+ In practice, connectors often keep x/y at store center while the actual Konva group remains at default (0,0), meaning bounding boxes derived from the group may not match new endpoints.
+ The bug surfaces even after we set selectBounds on both group and shape, meaning either the bounds are not updated after drag, or the union accesses a different Konva node without the attribute, or transforms rebuild connectors later with stale data.
+ Screenshots show the bounding frame capturing the sticky note and table but not the top connector, implying connectors were either excluded from union or union uses wrong coordinates.
+
+6. Unknowns and Outstanding Questions
+ Does transformerManager rely on calculateUnionBounds across raw nodes or resolved nodes? Confirmation is needed to determine whether connectors, despite being filtered out of transformable nodes, still influence the bounding box and which node object is passed to the union.
+ Are connectors re-rendered after store updates with new bounding boxes before the transformer recalculates union? Without instrumentation or debug logs, timing remains uncertain.
+ Does Konva's getClientRect return accurate values for groups whose children use absolute coordinates? The arrow line uses absolute stage coordinates, not group-local; if the group has default transforms, getClientRect might still produce stage-level values, but verification is necessary.
+ Does ElementSynchronizer inadvertently change connectors' x/y, causing selectBounds to interpret a shifted frame? Inspecting actual store patches for connectors during drag is needed.
+ Are multiple asynchronous selection updates causing the transformer to re-attach before connectors finish re-rendering?
+ How do mindmap edge reroutes interact with connector positions? There may be interplay causing connectors to move after transformer frame computed.
+
+7. Relevant Code
+
+components/modules/Canvas/runtime/features/renderer/modules/DrawingRenderer.ts
+[Code block mirroring the renderer that normalises drawing strokes, adds nodes to layers, sets origin, updates selectBounds, and handles styling based on subtype.]
+
+components/modules/Canvas/runtime/features/renderer/modules/ConnectorRenderer.ts
+[Code block showing endpoint resolution via getClientRect, Konva group/shape creation, selection handlers, selectBounds updates using shape.getClientRect, and metadata attributes ensuring selection systems can locate connectors.]
+
+components/modules/Canvas/runtime/features/renderer/modules/selection/geometry/bounds.ts
+[Code block defining calculateUnionBounds that checks for selectBounds attributes and falls back to getClientRect to aggregate min/max extents.]
+
+components/modules/Canvas/runtime/features/renderer/modules/selection/controllers/MarqueeSelectionController.ts
+[Code block demonstrating selection via stage.find, intersection checks, and delayed store selection update; also notes connectors are skipped during drag preparation.]
+
+components/modules/Canvas/runtime/features/renderer/modules/selection/managers/ElementSynchronizer.ts (connector excerpt)
+[Code excerpt showing connector-specific handling that recomputes endpoint coordinates relative to updated center positions before pushing patches to the store.]
+
+Full blocks are provided so stakeholders without repository access can read the implementation in context.
+
+8. Analysis and Recommendations
+The root issue centres on connectors and other nodes whose Konva representation lacks a stable bounding rectangle aligned with store coordinates. Because connectors rely on endpoints anchored to other elements, the group's x/y is either unused or derived from endpoint midpoints; after dragging the selection, connectors are updated via ElementSynchronizer, which recomputes endpoints relative to the new center. However, bounds caching uses shape.getClientRect, which calculates stage-space coordinates at render time. If the transformer recalculates bounds using stale selectBounds, the union misses connectors. Moreover, connectors are filtered out of transformable nodes, so the transformer bounding box should arguably ignore them; yet the marquee controller includes them in the selection set, meaning they may be part of the bounding union, but because connectors do not physically move with the group (their endpoints move), the bounding frame does not adjust until connectors rerender, creating mismatch.
+
+Key actions to consider include instrumenting calculateUnionBounds to log contributing nodes and rects; experimenting with ignoring connectors entirely for transformer union while still selecting them for visual feedback; alternatively ensuring connectors produce stable rectangular bounds by anchoring the group's position at the true bounding rect and adjusting child coordinates relative to the group (a larger refactor); confirming ElementSynchronizer writes consistent x/y for connectors and exploring storing width/height representing bounding box; investigating timing so transformer updates wait for connector rerenders; and evaluating interplay with mindmap reroutes.
+
+Residual risks include interactions with mindmap edge reroutes and remote collaboration where asynchronous store updates may cause bounding frames to jitter. Testing should cover connectors anchored to moving nodes, repeated drags, and rotations/scales.
+
+This report provides approximately two thousand words of analysis and includes the relevant code for stakeholders who do not have repository access.

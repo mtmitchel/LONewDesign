@@ -32,10 +32,13 @@ export function calculateUnionBounds(nodes: Konva.Node[]): Bounds | null {
   let maxY = -Infinity;
 
   for (const node of nodes) {
-    const rect = node.getClientRect({
-      skipStroke: false,
-      skipShadow: true,
-    });
+    const precomputed = node.getAttr?.("selectBounds") as Bounds | null | undefined;
+    const rect = precomputed && Number.isFinite(precomputed.x)
+      ? precomputed
+      : node.getClientRect({
+          skipStroke: false,
+          skipShadow: true,
+        });
 
     minX = Math.min(minX, rect.x);
     minY = Math.min(minY, rect.y);

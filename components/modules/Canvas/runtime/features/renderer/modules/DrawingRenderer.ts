@@ -117,24 +117,31 @@ export class DrawingRenderer implements RendererModule {
         }
       }
 
+  const needsHighlighterGroup = drawing.subtype === "highlighter" || drawing.subtype === "marker";
       let node = existingNode;
 
       if (!node) {
-        // Create new drawing node
         node = this.createDrawingNode(drawing);
         this.drawingNodes.set(id, node);
-        if (drawing.subtype === "highlighter") {
+        if (needsHighlighterGroup) {
           this.highlighterGroup.add(node);
         } else {
           this.mainLayer.add(node);
         }
       } else {
-        // Update existing drawing node
         this.updateDrawingNode(node, drawing);
+        const parent = node.getParent();
+        if (needsHighlighterGroup && parent !== this.highlighterGroup) {
+          this.highlighterGroup.add(node);
+        } else if (!needsHighlighterGroup && parent !== this.mainLayer) {
+          this.mainLayer.add(node);
+        }
         if (!node.visible()) {
           node.visible(true);
         }
       }
+
+      this.updateSelectBounds(node);
     }
 
     // Remove deleted drawing elements
@@ -152,10 +159,12 @@ export class DrawingRenderer implements RendererModule {
   private createDrawingNode(drawing: DrawingElement): Konva.Line {
     const isHighlighter = drawing.subtype === "highlighter";
     const isEraser = drawing.subtype === "eraser";
-
+    const { originX, originY, relativePoints } = this.normalizePoints(drawing.points);
     const node = new Konva.Line({
       id: drawing.id,
-      points: drawing.points,
+      points: relativePoints,
+      x: originX,
+      y: originY,
       stroke: this.getStrokeColor(drawing),
       strokeWidth: this.getStrokeWidth(drawing),
       opacity: this.getOpacity(drawing),
@@ -173,15 +182,21 @@ export class DrawingRenderer implements RendererModule {
     });
     node.setAttr("elementId", drawing.id);
     node.setAttr("nodeType", "drawing");
+    node.setAttr("originX", originX);
+    node.setAttr("originY", originY);
+    this.updateSelectBounds(node);
     return node;
   }
 
   private updateDrawingNode(node: Konva.Line, drawing: DrawingElement) {
     const isHighlighter = drawing.subtype === "highlighter";
     const isEraser = drawing.subtype === "eraser";
+    const { originX, originY, relativePoints } = this.normalizePoints(drawing.points);
 
     node.setAttrs({
-      points: drawing.points,
+      points: relativePoints,
+      x: originX,
+      y: originY,
       stroke: this.getStrokeColor(drawing),
       strokeWidth: this.getStrokeWidth(drawing),
       opacity: this.getOpacity(drawing),
@@ -191,6 +206,37 @@ export class DrawingRenderer implements RendererModule {
           ? "multiply"
           : "source-over",
     });
+    node.setAttr("originX", originX);
+    node.setAttr("originY", originY);
+    this.updateSelectBounds(node);
+  }
+
+  private updateSelectBounds(node: Konva.Line) {
+    const rect = node.getClientRect({ skipStroke: false, skipShadow: true });
+    node.setAttr("selectBounds", rect);
+  }
+
+  private normalizePoints(points: number[]): {
+    originX: number;
+    originY: number;
+    relativePoints: number[];
+  } {
+    if (points.length >= 2) {
+      const originX = points[0];
+      const originY = points[1];
+      const relativePoints = new Array(points.length);
+      for (let i = 0; i < points.length; i += 2) {
+        relativePoints[i] = points[i] - originX;
+        relativePoints[i + 1] = points[i + 1] - originY;
+      }
+      return { originX, originY, relativePoints };
+    }
+
+    return {
+      originX: 0,
+      originY: 0,
+      relativePoints: points.slice(),
+    };
   }
 
   private getStrokeColor(drawing: DrawingElement): string {

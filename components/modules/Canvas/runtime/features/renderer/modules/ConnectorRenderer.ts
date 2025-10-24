@@ -158,6 +158,8 @@ export class ConnectorRenderer {
     const rounded = conn.style.rounded ?? true;
 
     if (!p1 || !p2) {
+      g?.setAttr("selectBounds", null);
+      shape?.setAttr("selectBounds", null);
       if (shape) shape.hide();
       this.layers.main.batchDraw();
       return;
@@ -187,6 +189,7 @@ export class ConnectorRenderer {
         // Mark shape with metadata as well (defensive)
         shape.setAttr('nodeType', 'connector');
         shape.setAttr('elementType', 'connector');
+  shape.setAttr('elementId', conn.id);
         shape.hitStrokeWidth(Math.max(conn.style.strokeWidth, 24));
         this.shapeById.set(conn.id, shape);
       } else {
@@ -221,6 +224,7 @@ export class ConnectorRenderer {
         g.add(shape);
         shape.setAttr('nodeType', 'connector');
         shape.setAttr('elementType', 'connector');
+  shape.setAttr('elementId', conn.id);
         shape.hitStrokeWidth(Math.max(conn.style.strokeWidth, 24));
         this.shapeById.set(conn.id, shape);
       } else {
@@ -236,6 +240,7 @@ export class ConnectorRenderer {
     }
 
     shape.show();
+    this.updateSelectBounds(g, shape);
     this.layers.main.batchDraw();
   }
 
@@ -259,5 +264,16 @@ export class ConnectorRenderer {
   cleanup(): void {
     this.groupById.clear();
     this.shapeById.clear();
+  }
+
+  private updateSelectBounds(group: Konva.Group | null, shape: Konva.Shape | undefined) {
+    if (!shape) {
+      group?.setAttr("selectBounds", null);
+      return;
+    }
+
+    const rect = shape.getClientRect({ skipStroke: false, skipShadow: true });
+    group?.setAttr("selectBounds", rect);
+    shape.setAttr("selectBounds", rect);
   }
 }

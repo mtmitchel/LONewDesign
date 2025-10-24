@@ -50,15 +50,18 @@ export function createRendererLayers(
   // Many renderers append nodes to `main`, which would otherwise push the
   // highlighter group underneath and make committed highlights appear missing.
   main.on('add.highlighter-order', (evt) => {
-    // Ignore events triggered by the highlighter itself to avoid unnecessary churn.
-    if (evt?.target === highlighter) {
+    const added = evt?.target;
+    if (!added || added === highlighter) {
       return;
     }
 
-    // Only rebalance when the highlighter is still attached to the main layer.
+    const nodeType = added.getAttr?.('nodeType');
+    if (nodeType === 'mindmap-edge') {
+      return;
+    }
+
     if (highlighter.getParent() === main) {
       highlighter.moveToTop();
-      // Batch the draw to avoid redundant full renders when multiple nodes are added in succession.
       main.batchDraw();
     }
   });
