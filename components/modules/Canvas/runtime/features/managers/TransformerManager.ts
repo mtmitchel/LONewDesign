@@ -77,7 +77,25 @@ export class TransformerManager {
   }
 
   private ensureTransformer() {
+    const existing = this.transformer;
+    const missingStage = Boolean(existing && existing.getStage() === null);
+    const detachedFromOverlay = Boolean(existing && existing.getLayer() !== this.overlay);
+
+    if (existing && (missingStage || detachedFromOverlay)) {
+      try {
+        existing.destroy();
+      } catch {
+        // ignore secondary destroy errors
+      }
+      this.transformer = null;
+    }
+
     if (this.transformer) return;
+
+    if (this.keyboardCleanup) {
+      this.keyboardCleanup();
+      this.keyboardCleanup = null;
+    }
 
     this.transformer = new Konva.Transformer({
       name: "selection-transformer",

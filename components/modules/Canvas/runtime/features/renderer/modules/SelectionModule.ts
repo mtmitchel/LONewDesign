@@ -42,6 +42,7 @@ export class SelectionModule implements RendererModule {
   private keyboardHandler?: KeyboardHandler;
   private selectionStateManager?: SelectionStateManager;
   private autoSelectTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
+  private updateSelectionTimer?: ReturnType<typeof setTimeout>;
 
   mount(ctx: ModuleRendererCtx): () => void {
     this.storeCtx = ctx;
@@ -322,8 +323,15 @@ export class SelectionModule implements RendererModule {
     // CRITICAL FIX: Handle mixed or non-connector selection
     const selectionSnapshot = new Set(nonConnectorIds);
 
+    // Cancel any pending updateSelection timer before scheduling a new one
+    if (this.updateSelectionTimer) {
+      clearTimeout(this.updateSelectionTimer);
+      this.updateSelectionTimer = undefined;
+    }
+
     // Enhanced delay to ensure elements are fully rendered
-    setTimeout(() => {
+    this.updateSelectionTimer = setTimeout(() => {
+      this.updateSelectionTimer = undefined;
       // Find Konva nodes for selected elements across all layers
       const rawNodes = resolveElementsToNodes({
         stage: this.getStage(),
@@ -673,8 +681,15 @@ export class SelectionModule implements RendererModule {
   // Public method to clear selection
   clearSelection(force: boolean = false) {
     if (this.transformController?.isActive()) {
-      if (!force) return;
+      if (!force) {
+        return;
+      }
       this.transformController.release();
+    }
+
+    if (this.updateSelectionTimer) {
+      clearTimeout(this.updateSelectionTimer);
+      this.updateSelectionTimer = undefined;
     }
 
     this.cancelAutoSelectTimers();

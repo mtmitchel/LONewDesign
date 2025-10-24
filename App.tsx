@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { AppShell } from './components/AppShell';
 import { TaskStoreProvider } from './components/modules/tasks/taskStore';
 import { QuickAssistantProvider } from './components/assistant';
@@ -23,9 +23,49 @@ import { MasterComponentsGuide } from './components/dev/MasterComponentsGuide';
 import { ComponentUsageGuide } from './components/dev/ComponentUsageGuide';
 import { MigrationChecklist } from './components/dev/MigrationChecklist';
 
+const MODULE_STORAGE_KEY = 'therefore:last-module';
+const DEFAULT_MODULE = 'mail';
+const KNOWN_MODULES = new Set([
+  'mail',
+  'dashboard',
+  'chat',
+  'notes',
+  'tasks',
+  'calendar',
+  'canvas',
+  'projects',
+  'settings',
+  'design-demo',
+  'design-system',
+  'master-components',
+  'pane-caret-spec',
+  'usage-guide',
+  'migration-checklist',
+  'mail-tripane',
+  'mail-edge-handles',
+]);
+
 export default function App() {
-  const [activeModule, setActiveModule] = useState('mail');
+  const [activeModule, setActiveModule] = useState(() => {
+    if (typeof window === 'undefined') {
+      return DEFAULT_MODULE;
+    }
+
+    const stored = window.localStorage.getItem(MODULE_STORAGE_KEY);
+    return stored && KNOWN_MODULES.has(stored) ? stored : DEFAULT_MODULE;
+  });
   
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(MODULE_STORAGE_KEY, activeModule);
+  }, [activeModule]);
+
+  const handleModuleChange = useCallback((module: string) => {
+    setActiveModule(KNOWN_MODULES.has(module) ? module : DEFAULT_MODULE);
+  }, []);
 
 
   const renderActiveModule = () => {
@@ -77,7 +117,7 @@ export default function App() {
   return (
     <TaskStoreProvider>
       <QuickAssistantProvider>
-        <AppShell activeModule={activeModule} onModuleChange={setActiveModule}>
+        <AppShell activeModule={activeModule} onModuleChange={handleModuleChange}>
           {renderActiveModule()}
         </AppShell>
         <Toaster />

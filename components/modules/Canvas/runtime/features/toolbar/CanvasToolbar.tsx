@@ -31,6 +31,7 @@ import {
   Trash2,
   ZoomIn,
   ZoomOut,
+  Maximize2,
 } from "lucide-react";
 import { cn } from "../../../../../ui/utils";
 import {
@@ -80,6 +81,7 @@ const getIcon = (toolId: string) => {
     case "undo": return <Undo2 {...iconProps} />;
     case "redo": return <Redo2 {...iconProps} />;
     case "clear": return <Trash2 {...iconProps} />;
+    case "zoom-fit": return <Maximize2 {...iconProps} />;
     case "zoom-in": return <ZoomIn {...iconProps} />;
     case "zoom-out": return <ZoomOut {...iconProps} />;
     default: return null;
@@ -170,6 +172,14 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
   const handleZoomReset = useCallback(() => {
     const state = useUnifiedCanvasStore.getState();
     state.viewport?.reset?.();
+  }, []);
+
+  const handleZoomFit = useCallback(() => {
+    const state = useUnifiedCanvasStore.getState();
+    const viewport = state.viewport;
+    if (!viewport || typeof viewport.fitToContent !== "function") return;
+
+    viewport.fitToContent(64);
   }, []);
 
   // Clear canvas
@@ -667,6 +677,19 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
               </button>
             </TooltipTrigger>
             <TooltipContent>Reset zoom (100%)</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={toolButtonClass(false)}
+                aria-label="Fit to canvas"
+                onClick={handleZoomFit}
+              >
+                {getIcon("zoom-fit")}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>Fit to content</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
