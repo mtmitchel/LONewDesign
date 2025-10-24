@@ -2,7 +2,7 @@
 // CONTEXT & TYPES
 // ============================================================================
 
-import { createContext } from "react";
+import { createContext, useContext } from "react";
 
 export type QuickAssistantScope = {
   projectId?: string | null;
@@ -30,3 +30,11 @@ export type QuickAssistantContextValue = {
 export const QuickAssistantContext = createContext<QuickAssistantContextValue | null>(
   null
 );
+
+export function useQuickAssistant() {
+  const context = useContext(QuickAssistantContext);
+  if (!context) {
+    throw new Error("useQuickAssistant must be used within a QuickAssistantProvider");
+  }
+  return context;
+}

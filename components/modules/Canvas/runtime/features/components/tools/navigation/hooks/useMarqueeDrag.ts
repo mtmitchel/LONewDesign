@@ -546,6 +546,7 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
       id: string;
       patch: Partial<CanvasElement>;
     }> = [];
+    const movedElementIds = new Set<string>();
 
     marqueeRef.current.selectedNodes.forEach((node) => {
       const elementId = node.getAttr("elementId") || node.id();
@@ -563,6 +564,7 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
                 y: basePos.y + finalDelta.dy,
               },
             });
+            movedElementIds.add(elementId);
 
             const mindmapRenderer =
               typeof window !== "undefined"
@@ -583,6 +585,7 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
                         y: descendantBasePos.y + finalDelta.dy,
                       },
                     });
+                    movedElementIds.add(descendantId);
                   }
                 });
               }
@@ -596,6 +599,7 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
               y: basePos.y + finalDelta.dy,
             },
           });
+          movedElementIds.add(elementId);
         }
       }
     });
@@ -607,6 +611,14 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
     // Commit non-connector moves with history
     if (elementUpdates.length > 0 && store.updateElements) {
       store.updateElements(elementUpdates, { pushHistory: true });
+    }
+
+    if (movedElementIds.size > 0) {
+      const connectorManager =
+        typeof window !== "undefined"
+          ? window.connectorSelectionManager
+          : undefined;
+      connectorManager?.scheduleRefresh(movedElementIds);
     }
 
     // Commit connectors via ConnectorSelectionManager
@@ -624,14 +636,21 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
       }
     }
 
-    if (marqueeRef.current.activeMindmapNodeIds.length > 0) {
+    if (marqueeRef.current.activeMindmapNodeIds.length > 0 || marqueeRef.current.mindmapDescendantBaselines.size > 0) {
       const mindmapManager =
         typeof window !== "undefined"
           ? window.mindmapSelectionManager ?? null
           : null;
-      mindmapManager?.scheduleReroute?.(
-        new Set(marqueeRef.current.activeMindmapNodeIds),
-      );
+
+      if (mindmapManager?.scheduleReroute) {
+        const rerouteIds = new Set<string>(
+          marqueeRef.current.activeMindmapNodeIds,
+        );
+        marqueeRef.current.mindmapDescendantBaselines.forEach((_, descendantId) => {
+          rerouteIds.add(descendantId);
+        });
+        mindmapManager.scheduleReroute(rerouteIds);
+      }
     }
 
     // End transform if initiated

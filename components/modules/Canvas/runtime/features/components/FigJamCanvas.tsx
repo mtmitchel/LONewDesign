@@ -62,9 +62,12 @@ const FigJamCanvas: React.FC = () => {
   const undo = useUnifiedCanvasStore((state) => state.undo);
   const redo = useUnifiedCanvasStore((state) => state.redo);
   const setSelectedTool = useCallback((tool: string) => {
-    // Only update if different to avoid render loops
-    const cur = useUnifiedCanvasStore.getState().ui?.selectedTool;
-    if (cur === tool) return;
+    const current = useUnifiedCanvasStore.getState().ui?.selectedTool;
+    if (current !== tool) {
+      StoreActions.setSelectedTool?.(tool);
+      return;
+    }
+
     StoreActions.setSelectedTool?.(tool);
   }, []);
 

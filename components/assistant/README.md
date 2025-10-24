@@ -6,15 +6,16 @@ This directory owns the end-to-end quick assistant experience: the floating laun
 
 ```
 components/assistant/
-├── AssistantCaptureDialog.tsx   # Streamlined capture surface
-├── QuickAssistantProvider.tsx   # Launcher, context, routing
+├── AssistantCaptureDialog.tsx   # Thin wrapper around capture/CaptureDialog
+├── capture/                     # Modular capture dialog (shell, panes, hooks)
+├── quick/                       # Quick assistant provider, commands, telemetry
 ├── index.ts                     # Public exports
 └── README.md                    # You are here
 ```
 
 ### QuickAssistantProvider
 
-`QuickAssistantProvider` renders the floating launcher, registers global shortcuts (`⌘/Ctrl+K`, `T`, `N`, `E`), and feeds captures into existing quick modals (`QuickTaskModal`, `QuickNoteModal`, `QuickEventModal`). Wrap the application shell once:
+`QuickAssistantProvider` (now located under `components/assistant/quick/`) renders the floating launcher, registers global shortcuts (`⌘/Ctrl+K`, `T`, `N`, `E`), and feeds captures into existing quick modals (`QuickTaskModal`, `QuickNoteModal`, `QuickEventModal`). Wrap the application shell once:
 
 ```tsx
 import { QuickAssistantProvider } from '@/components/assistant';

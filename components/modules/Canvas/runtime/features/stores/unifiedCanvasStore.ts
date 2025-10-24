@@ -420,12 +420,26 @@ export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
             fillColor: DEFAULT_UI.fillColor,
             strokeWidth: DEFAULT_UI.strokeWidth,
             stickyNoteColor: "#FFEFC8",
-            setSelectedTool: (tool: string) =>
+            setSelectedTool: (tool: string) => {
+              const previousTool = get().ui?.selectedTool;
+
               set((state) => {
                 if (state.ui) {
                   state.ui.selectedTool = tool;
                 }
-              }),
+              });
+
+              const store = get();
+              const clearSelection = store.clearSelection ?? store.selection?.clear;
+              clearSelection?.();
+
+              if (typeof window !== "undefined") {
+                const selectionModule = (window as typeof window & {
+                  selectionModule?: { clearSelection?: (force?: boolean) => void };
+                }).selectionModule;
+                selectionModule?.clearSelection?.(true);
+              }
+            },
             setStrokeColor: (color: string) => {
               set((state) => {
                 if (state.ui) {

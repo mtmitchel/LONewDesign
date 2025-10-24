@@ -10,11 +10,11 @@ This plan covers the large files called out in the latest audit that underpin as
 
 | Stage | File | Current LOC | Owners |
 |-------|------|-------------|--------|
-| 1 | `components/assistant/QuickAssistantProvider.tsx` | 1,079 | Assistant
-| 2 | `components/assistant/AssistantCaptureDialog.tsx` | 945 | Assistant
+| 1 | `components/assistant/quick/QuickAssistantProvider.tsx` | 554 | Assistant
+| 2 | `components/assistant/AssistantCaptureDialog.tsx` + `.backup` | 946 (legacy) / 22 (active) | Assistant
 | 3 | `components/modules/ChatModuleTriPane.tsx` | 1,293 | Conversations
 | 4 | `components/modules/settings/_parts/SettingsProviders.tsx` | 921 | Settings
-| 5 | `components/modules/notes/NotesLeftPane.tsx` | 899 | Notes
+| 5 | `components/modules/notes/NotesLeftPane.tsx` | 211 | Notes
 | 6 | `src-tauri/src/sync/queue_worker.rs` | 877 | Backend sync
 | 7 | `components/modules/Canvas/runtime/features/renderer/modules/SelectionModule.ts` | 807 | Canvas
 | 8 | `styles/globals.css` | 1,519 | Design systems
@@ -43,7 +43,9 @@ Exit: git diff shows only annotations; all baselines pass.
 
 ---
 
-## Stage 1 – Quick Assistant provider (1,079 LOC)
+## Stage 1 – Quick Assistant provider consolidation (554 LOC)
+
+**Status (2025-10-23):** Legacy shell `components/assistant/QuickAssistantProvider.tsx` removed; all exports funnel through `components/assistant/quick/`. New regression tests live at `components/assistant/quick/__tests__/QuickAssistantProvider.test.tsx`.
 
 ### Responsibilities inventory
 
@@ -54,12 +56,13 @@ Exit: git diff shows only annotations; all baselines pass.
 | Command registry | Slash commands, AI tool metadata, routing |
 | Dialog orchestration | Opening modals, delegating to capture dialog |
 | Telemetry | Emit `assistant.*` events |
+| Legacy shell (former `components/assistant/QuickAssistantProvider.tsx`) | Removed; confirm no direct imports linger |
 
 ### Target layout
 
 ```
 components/assistant/quick/
-  ├── QuickAssistantProvider.tsx (context shell)
+  ├── QuickAssistantProvider.tsx (canonical shell)
   ├── hotkeys.ts (register/unregister listeners)
   ├── commands/
   │     ├── registry.ts
@@ -71,33 +74,32 @@ components/assistant/quick/
   ├── telemetry.ts
   └── __tests__/
         └── provider.test.tsx
+components/assistant/QuickAssistantProvider.tsx (thin shim → delete once references updated)
 ```
 
 ### Sequential tasks
 
-1. Annotate regions with `// #region`.
-2. Extract `QuickAssistantContext` (state + provider) into `state/` with typed value.
-3. Move hotkey wiring into `hotkeys.ts`; ensure cleanup happens on unmount.
-4. Lift slash command definitions into `commands/` exports; provide pure registry for testing.
-5. Keep `QuickAssistantProvider.tsx` as orchestration shell delegating to new modules.
-6. Add targeted tests for hotkey registration and command resolution.
-7. Manual validation: open assistant via hotkey, run slash command, capture selection, ensure telemetry still fires.
+Remaining follow-ups:
 
-Exit: provider file <250 LOC, tests pass, manual smoke verified.
+1. Keep auditing for new direct imports that bypass the barrel and re-route them to `components/assistant/quick/QuickAssistantProvider`.
+2. Extend provider tests to cover hotkey bindings once linting is in place.
+3. Manual validation: open assistant via hotkey, run slash command, capture selection, ensure telemetry still fires after future edits.
+
+Exit: Provider stays under 600 LOC, tests remain green, and manual smoke continues to pass.
 
 ---
 
-## Stage 2 – Assistant capture dialog (945 LOC)
+## Stage 2 – Assistant capture dialog cleanup (0 LOC legacy / 22 LOC active)
+
+**Status (2025-10-23):** `AssistantCaptureDialog.tsx.backup` removed; active implementation lives entirely under `components/assistant/capture/` with wrapper `AssistantCaptureDialog.tsx`.
 
 ### Responsibilities inventory
 
 | Region | Responsibility |
 |--------|----------------|
-| Dialog chrome | Radix sheet orchestration, focus management |
-| Capture modes | Task/note/event/ask toggle surfaces |
-| Form state | Controlled inputs, validation, CTA enablement |
-| Submission | Invoking assistant provider callbacks, telemetry |
-| Attachments | File drop, preview list |
+| Active shell (`capture/`) | Already composed from modular hooks/components |
+| Legacy implementation | Removed backup file (2025-10-23) |
+| Tests | Still missing coverage for modular capture workflow |
 
 ### Target layout
 
@@ -116,19 +118,19 @@ components/assistant/capture/
   │     ├── AttachmentList.tsx
   │     └── FooterActions.tsx
   └── __tests__/
-        └── capture-dialog.test.tsx
+        └── capture-dialog.test.tsx (add)
 ```
 
 ### Sequential tasks
 
-1. Map each mode to a target pane component; ensure shared props typed.
-2. Extract `useCaptureState` hook for shared form state (title, payload, attachments).
-3. Move header/footer UI into `components/` with minimal props.
-4. Update `QuickAssistantProvider` imports to new structure (from Stage 1).
-5. Tests: render each pane with mock provider; verify CTA states.
-6. Manual validation: open dialog, switch modes, upload attachment, submit.
+Remaining follow-ups:
 
-Exit: capture dialog shell <250 LOC, tests + manual checks pass.
+1. Confirm all imports continue flowing through `components/assistant/capture/` entry points during future changes.
+2. Add granular tests for mode switching, attachment handling, and submission flows.
+3. Document any future capture enhancements in `components/assistant/README.md` and roadmap updates.
+4. Manual validation: open dialog, switch modes, upload attachment, submit.
+
+Exit: tests cover capture flows, manual checks pass, documentation stays current.
 
 ---
 
@@ -217,16 +219,17 @@ Exit: shell <200 LOC, hydration flow validated.
 
 ---
 
-## Stage 5 – Notes left pane (899 LOC)
+## Stage 5 – Notes left pane hardening (211 LOC shell / extracted modules)
 
 ### Responsibilities inventory
 
 | Region | Responsibility |
 |--------|----------------|
-| Navigation | Notebook list, search |
-| Filters | Tags, favorites |
-| Drag/drop | Notebook reordering |
-| Context menu | Notebook actions (rename/delete) |
+| Shell (`NotesLeftPane.tsx`) | Delegates to `left-pane/` components |
+| Notebook list | Sorting, selection, context menu |
+| Filters/search | Already extracted to `Filters` component |
+| Drag/drop hooks | `useFolderTree`, DnD helpers in `left-pane/` |
+| Tests | No automated coverage for rename/drag/drop flows |
 
 ### Target layout
 
@@ -240,18 +243,17 @@ components/modules/notes/left-pane/
   │     ├── useNotebookFilterState.ts
   │     └── useNotebookDnD.ts
   └── __tests__/
-        └── notes-left-pane.test.tsx
+        └── notes-left-pane.test.tsx (add)
 ```
 
 ### Sequential tasks
 
-1. Annotate responsibilities; capture drag-drop details.
-2. Split filters/header into `Filters.tsx` component.
-3. Move list rendering into dedicated components; isolate context menu logic.
-4. Extract hooks for filter state and drag-drop (so they can be unit tested).
-5. Manual validation: Apply filters, drag notebook, open context menu.
+1. Audit `left-pane/` exports to ensure each hook/component has region annotations and minimal props; prune unused exports.
+2. Add targeted tests covering folder expansion, rename commit/cancel, drag/drop edge cases, and context menu actions.
+3. Verify stories or docs reference the new structure; add usage notes if missing.
+4. Manual validation: Apply filters, drag notebook, open context menu.
 
-Exit: shell ~250 LOC, tests ensure DnD hooks called with correct payloads.
+Exit: shell remains thin, automated coverage added, manual smoke verified.
 
 ---
 
@@ -295,6 +297,8 @@ Exit: worker orchestrator <250 LOC, modules compiled with tests.
 
 ## Stage 7 – Canvas selection module (807 LOC)
 
+**Status (2025-10-24):** Keyboard shortcut management moved into `selection/utils/KeyboardHandler`, selection state centralized via `SelectionStateManager`, and the primary module lifecycle now enables/disables both. Geometry helpers remain stubbed for extraction.
+
 ### Responsibilities inventory
 
 | Region | Responsibility |
@@ -330,7 +334,7 @@ components/modules/Canvas/runtime/features/selection/
 3. Move pointer/keyboard handlers into `handlers/`, injected into shell.
 4. Render overlay via dedicated component (enables storybook stories later).
 5. Provide state machine wrapper using XState or homegrown reducer.
-6. Manual validation: start selection, multi-select nodes, keyboard shortcuts (Shift, Esc) still function.
+6. Manual validation: start selection, multi-select nodes, keyboard shortcuts (Shift, Esc, arrow nudges, delete/duplicate) still function.
 
 Exit: shell orchestrator ~200 LOC, tests cover geometry + handler scenarios.
 

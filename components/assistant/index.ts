@@ -1,15 +1,19 @@
 export {
   QuickAssistantProvider,
   useQuickAssistant,
+} from "./quick/QuickAssistantProvider";
+
+export {
   openQuickAssistant,
   QUICK_ASSISTANT_EVENTS,
-} from "./QuickAssistantProvider";
+} from "./quick/telemetry";
 
 export type {
   QuickAssistantScope,
   QuickAssistantMode,
   OpenAssistantOptions,
-} from "./QuickAssistantProvider";
+  QuickAssistantContextValue,
+} from "./quick/QuickAssistantProvider";
 
 export { AssistantCaptureDialog } from "./AssistantCaptureDialog";
 export type {

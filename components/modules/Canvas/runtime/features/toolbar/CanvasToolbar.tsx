@@ -458,7 +458,7 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--canvas-active-ring)]",
       isDisabled && "opacity-40 pointer-events-none",
       isActive
-        ? "bg-[var(--canvas-active-bg)] text-[var(--text-primary)]"
+        ? "bg-[var(--btn-primary-bg)] text-[color:var(--btn-primary-text)] hover:bg-[var(--btn-primary-hover)]"
         : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface-elevated)] hover:text-[var(--text-primary)]"
     );
 

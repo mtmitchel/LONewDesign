@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { useEffect } from "react";
+import type { OpenAssistantOptions } from "./state/QuickAssistantContext";
 
 export const QUICK_ASSISTANT_EVENTS = {
   open: "quick-assistant:open",
@@ -13,6 +14,11 @@ export const QUICK_ASSISTANT_EVENTS = {
 export function dispatchAssistantEvent(eventName: string, detail?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent(eventName, { detail }));
+}
+
+export function openQuickAssistant(options?: OpenAssistantOptions) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(QUICK_ASSISTANT_EVENTS.open, { detail: options }));
 }
 
 export function useEventListeners(openAssistant: (options?: any) => void) {

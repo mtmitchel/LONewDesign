@@ -258,6 +258,38 @@ export class MindmapRenderer {
     };
   }
 
+  /**
+   * Retrieve all descendant node ids for subtree operations
+   */
+  getAllDescendants(nodeId: string): Set<string> {
+    return this.dragLogic.getAllDescendants(nodeId);
+  }
+
+  /**
+   * Update edge visuals for a node that is moving without committing to store
+   */
+  updateEdgeVisuals(nodeId: string, _delta: { dx: number; dy: number }) {
+    this.updateConnectedEdges(
+      nodeId,
+      () => this.getAllEdges(),
+      (id, side) => this.getNodePoint(id, side),
+    );
+  }
+
+  /**
+   * Reroute all edges connected to the provided nodes after a drag completes
+   */
+  rerouteNodes(nodeIds: string[]) {
+    const uniqueIds = Array.from(new Set(nodeIds));
+    uniqueIds.forEach((nodeId) => {
+      this.updateConnectedEdges(
+        nodeId,
+        () => this.getAllEdges(),
+        (id, side) => this.getNodePoint(id, side),
+      );
+    });
+  }
+
   // Helper method for getAllEdges callback
   private getAllEdges(): MindmapEdgeElement[] {
     const state = this.store.getState() as StoreState;

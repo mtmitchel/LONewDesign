@@ -156,8 +156,12 @@ const StickyNoteTool: React.FC<StickyNoteToolProps> = ({
         if (finalized) return;
         finalized = true;
         debug("Switching back to select tool", { category: 'StickyNoteTool' });
-        if (typeof store.ui?.setSelectedTool === "function") {
-          store.ui.setSelectedTool("select");
+        const latest = useUnifiedCanvasStore.getState();
+        const selectedTool = latest.ui?.selectedTool;
+        const setTool = latest.ui?.setSelectedTool;
+
+        if (selectedTool === "sticky-note") {
+          setTool?.("select");
         }
       };
 

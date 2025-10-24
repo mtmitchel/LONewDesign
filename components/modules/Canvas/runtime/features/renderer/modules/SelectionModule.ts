@@ -21,6 +21,8 @@ import {
 import { TransformLifecycleCoordinator } from "./selection/controllers/TransformLifecycleCoordinator";
 import { MarqueeSelectionController } from "./selection/controllers/MarqueeSelectionController";
 import { SelectionDebouncer } from "./selection/utils/SelectionDebouncer";
+import { KeyboardHandler } from "./selection/utils/KeyboardHandler";
+import { SelectionStateManager } from "./selection/managers/SelectionStateManager";
 import { debug } from "../../../../utils/debug";
 
 const LOG_CATEGORY = "selection/module";
@@ -37,9 +39,15 @@ export class SelectionModule implements RendererModule {
   private transformLifecycle?: TransformLifecycleCoordinator;
   private connectorTransformFinalizer?: ConnectorTransformFinalizer;
   private readonly mindmapDescendantInitialPositions = new Map<string, { x: number; y: number }>();
+  private keyboardHandler?: KeyboardHandler;
+  private selectionStateManager?: SelectionStateManager;
+  private autoSelectTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
 
   mount(ctx: ModuleRendererCtx): () => void {
     this.storeCtx = ctx;
+
+    // Initialize SelectionStateManager
+    this.selectionStateManager = new SelectionStateManager(ctx);
 
     // Create transformer manager on overlay layer with dynamic aspect ratio control
     try {
@@ -163,6 +171,30 @@ export class SelectionModule implements RendererModule {
       window.marqueeSelectionController = this.marqueeSelectionController;
     }
 
+    // Initialize KeyboardHandler for selection shortcuts
+    this.keyboardHandler = new KeyboardHandler({
+      onEscape: () => this.clearSelection(),
+      onDelete: (selectedIds) => this.handleDelete(selectedIds),
+      onSelectAll: () => this.handleSelectAll(),
+      onCopy: (selectedIds) => this.handleCopy(selectedIds),
+      onPaste: () => this.handlePaste(),
+      onDuplicate: (selectedIds) => this.handleDuplicate(selectedIds),
+      onArrowKey: (direction, shiftKey) => this.handleArrowKey(direction, shiftKey),
+    });
+
+    if (typeof document !== "undefined") {
+      this.keyboardHandler.enable();
+      const initialSelection = ctx.store.getState().selectedElementIds;
+      if (initialSelection) {
+        const selectionArray = initialSelection instanceof Set
+          ? Array.from(initialSelection)
+          : Array.isArray(initialSelection)
+            ? [...initialSelection]
+            : [];
+        this.keyboardHandler.updateSelectedIds(selectionArray);
+      }
+    }
+
     this.transformLifecycle = new TransformLifecycleCoordinator(
       this.transformerManager,
       {
@@ -236,6 +268,10 @@ export class SelectionModule implements RendererModule {
     this.transformLifecycle = undefined;
     this.transformController = undefined;
     this.marqueeSelectionController = undefined;
+    this.keyboardHandler?.destroy();
+    this.keyboardHandler = undefined;
+    this.selectionStateManager?.destroy();
+    this.selectionStateManager = undefined;
     if (typeof window !== "undefined") {
       delete window.marqueeSelectionController;
     }
@@ -246,6 +282,9 @@ export class SelectionModule implements RendererModule {
     }
 
     this.debugLog("updateSelection", { ids: Array.from(selectedIds) });
+
+    this.selectionStateManager?.updateFromExternal(selectedIds);
+    this.keyboardHandler?.updateSelectedIds(Array.from(selectedIds));
 
     // CRITICAL FIX: Always clear both selection systems first to prevent conflicts
     this.transformLifecycle?.setKeepRatio(false);
@@ -544,36 +583,10 @@ export class SelectionModule implements RendererModule {
 
   // FIXED: Enhanced auto-select element with better timing and error recovery
   autoSelectElement(elementId: string) {
-    // Immediate selection attempt
-    const storeCtx = this.storeCtx;
-    if (storeCtx) {
-      const store = storeCtx.store;
-      const state = store.getState();
+    this.cancelAutoSelectTimers(elementId);
 
-      if (typeof state.setSelection === "function") {
-        state.setSelection([elementId]);
-      } else {
-        // Some store variants expose a selection controller object
-        const selectionController = state.selection as
-          | { set?: (ids: string[]) => void; replace?: (ids: string[]) => void }
-          | undefined;
-
-        if (selectionController?.set) {
-          selectionController.set([elementId]);
-        } else if (selectionController?.replace) {
-          selectionController.replace([elementId]);
-        } else {
-          const selected = state.selectedElementIds;
-
-          if (selected instanceof Set || Array.isArray(selected)) {
-            const next = new Set<string>([elementId]);
-            store.setState?.({ selectedElementIds: next });
-          } else {
-            store.setState?.({ selectedElementIds: new Set([elementId]) });
-          }
-        }
-      }
-    }
+    // Use SelectionStateManager for centralized selection management
+    this.selectionStateManager?.setSelection([elementId]);
 
     // Enhanced retry mechanism with exponential backoff for better reliability
     let attempts = 0;
@@ -584,7 +597,7 @@ export class SelectionModule implements RendererModule {
       attempts += 1;
       const delay = baseDelay * Math.pow(1.5, attempts - 1); // Exponential backoff
 
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         const rawNodes = resolveElementsToNodes({
           stage:
             this.storeCtx?.stage ??
@@ -613,47 +626,61 @@ export class SelectionModule implements RendererModule {
             this.transformLifecycle?.attach(nodes);
             this.transformLifecycle?.show();
           }, 10);
+          this.cancelAutoSelectTimers(elementId);
           return; // Success, stop retrying
         }
 
         if (attempts < maxAttempts) {
-          // Re-set selection for retry
-          if (storeCtx) {
-            const store = storeCtx.store;
-            const state = store.getState();
-            if (typeof state.setSelection === "function") {
-              state.setSelection([elementId]);
-            }
-          }
+          // Re-set selection for retry using SelectionStateManager
+          this.selectionStateManager?.setSelection([elementId]);
           attemptSelection(); // Recursive retry
+        } else {
+          this.cancelAutoSelectTimers(elementId);
         }
       }, delay);
+
+      this.trackAutoSelectTimer(elementId, timeoutId);
     };
 
     attemptSelection();
   }
 
-  // Public method to clear selection
-  clearSelection() {
-    if (!this.storeCtx || this.transformController?.isActive()) return;
+  private trackAutoSelectTimer(
+    elementId: string,
+    timeoutId: ReturnType<typeof setTimeout>,
+  ) {
+    const timers = this.autoSelectTimers.get(elementId) ?? [];
+    timers.push(timeoutId);
+    this.autoSelectTimers.set(elementId, timers);
+  }
 
-    const store = this.storeCtx.store.getState();
-
-    if (store.setSelection) {
-      store.setSelection([]);
-    } else if (store.selection?.clear) {
-      store.selection.clear();
-    } else if (store.selectedElementIds) {
-      if (store.selectedElementIds instanceof Set) {
-        store.selectedElementIds.clear();
-      } else if (Array.isArray(store.selectedElementIds)) {
-        (store.selectedElementIds as string[]).length = 0;
+  private cancelAutoSelectTimers(elementId?: string) {
+    if (elementId) {
+      const timers = this.autoSelectTimers.get(elementId);
+      if (timers) {
+        timers.forEach((id) => clearTimeout(id));
+        this.autoSelectTimers.delete(elementId);
       }
-      this.storeCtx.store.setState?.({
-        selectedElementIds: store.selectedElementIds,
-      });
+      return;
     }
 
+    this.autoSelectTimers.forEach((timers) => {
+      timers.forEach((id) => clearTimeout(id));
+    });
+    this.autoSelectTimers.clear();
+  }
+
+  // Public method to clear selection
+  clearSelection(force: boolean = false) {
+    if (this.transformController?.isActive()) {
+      if (!force) return;
+      this.transformController.release();
+    }
+
+    this.cancelAutoSelectTimers();
+
+    this.selectionStateManager?.clearSelection();
+    this.keyboardHandler?.updateSelectedIds([]);
     this.transformLifecycle?.detach();
     this.transformLifecycle?.setKeepRatio(false);
   }
@@ -797,6 +824,208 @@ export class SelectionModule implements RendererModule {
       this.transformLifecycle?.detach();
       this.transformLifecycle?.setKeepRatio(false);
     }
+  }
+
+  // Keyboard handler implementations
+  private handleDelete(selectedIds: string[]): void {
+    this.debugLog("KeyboardHandler: delete", { selectedIds });
+    
+    if (!this.storeCtx || selectedIds.length === 0) return;
+    
+    const store = this.storeCtx.store;
+    const state = store.getState();
+    
+    // Check if we're currently transforming - don't delete during transform
+    if (this.transformController?.isActive()) return;
+    
+    // Delete elements using store's selection.deleteSelected method
+    if (typeof state.selection?.deleteSelected === "function") {
+      state.selection.deleteSelected();
+    } else {
+      // Fallback: delete elements individually
+      selectedIds.forEach((id) => {
+        if (typeof state.element?.delete === "function") {
+          state.element.delete(id);
+        }
+      });
+    }
+
+    // Clear selection after deletion to keep transformer + handler in sync
+    this.selectionStateManager?.clearSelection();
+    this.keyboardHandler?.updateSelectedIds([]);
+
+    // Clean up transformer
+    this.transformLifecycle?.detach();
+  }
+
+  private handleSelectAll(): void {
+    this.debugLog("KeyboardHandler: select all");
+    
+    if (!this.storeCtx) return;
+    
+    const store = this.storeCtx.store;
+    const state = store.getState();
+    
+    // Use SelectionStateManager for select all
+    if (typeof state.selection?.selectAll === "function") {
+      state.selection.selectAll();
+    } else {
+      // Fallback: select all elements
+      const allElementIds = Array.from(state.elements?.keys() || []);
+      this.selectionStateManager?.setSelection(allElementIds);
+    }
+  }
+
+  private handleCopy(selectedIds: string[]): void {
+    this.debugLog("KeyboardHandler: copy", { selectedIds });
+    
+    if (!this.storeCtx || selectedIds.length === 0) return;
+    
+    const store = this.storeCtx.store;
+    const state = store.getState();
+    
+    // Store copied elements in memory for paste (fallback implementation)
+    const elements = selectedIds.map(id => state.elements?.get(id)).filter(Boolean);
+    if (elements.length > 0) {
+      // Store copied elements in memory for paste
+      if (typeof window !== "undefined") {
+        (window as any).__copiedElements = elements;
+      }
+    }
+  }
+
+  private handlePaste(): void {
+    this.debugLog("KeyboardHandler: paste");
+    
+    if (!this.storeCtx) return;
+    
+    const store = this.storeCtx.store;
+    const state = store.getState();
+    
+    // Fallback: paste from memory clipboard
+    if (typeof window !== "undefined" && (window as any).__copiedElements) {
+      const copiedElements = (window as any).__copiedElements;
+      if (copiedElements && Array.isArray(copiedElements)) {
+        // Create duplicates of copied elements with offset
+        copiedElements.forEach((element: any, index: number) => {
+          if (element && typeof state.element?.upsert === "function") {
+            const newElement = {
+              ...element,
+              id: `${element.id}_copy_${Date.now()}_${index}`,
+              x: (element.x || 0) + 20,
+              y: (element.y || 0) + 20
+            };
+            state.element.upsert(newElement);
+          }
+        });
+      }
+    }
+  }
+
+  private handleDuplicate(selectedIds: string[]): void {
+    this.debugLog("KeyboardHandler: duplicate", { selectedIds });
+    
+    if (!this.storeCtx || selectedIds.length === 0) return;
+    
+    const store = this.storeCtx.store;
+    const state = store.getState();
+    
+    // Fallback: duplicate elements with offset using element.duplicate method
+    selectedIds.forEach((id, index) => {
+      const element = state.elements?.get(id);
+      if (element && typeof state.element?.duplicate === "function") {
+        const newId = state.element.duplicate(id);
+        if (newId && typeof state.element?.update === "function") {
+          // Update position of duplicated element with offset
+          state.element.update(newId, {
+            x: (element.x || 0) + 20,
+            y: (element.y || 0) + 20
+          });
+        }
+      }
+    });
+  }
+
+  private handleArrowKey(direction: 'up' | 'down' | 'left' | 'right', shiftKey: boolean): void {
+    this.debugLog("KeyboardHandler: arrow key", { direction, shiftKey });
+    
+    if (!this.storeCtx) return;
+    
+    const store = this.storeCtx.store;
+    const state = store.getState();
+    const selectedIds = Array.from(state.selectedElementIds || []);
+    
+    if (selectedIds.length === 0) return;
+    
+    // Check if we're currently transforming - don't nudge during transform
+    if (this.transformController?.isActive()) return;
+    
+    const nudgeAmount = shiftKey ? 10 : 1; // Larger nudge with Shift key
+    
+    // Calculate delta based on direction
+    let deltaX = 0;
+    let deltaY = 0;
+    
+    switch (direction) {
+      case 'up':
+        deltaY = -nudgeAmount;
+        break;
+      case 'down':
+        deltaY = nudgeAmount;
+        break;
+      case 'left':
+        deltaX = -nudgeAmount;
+        break;
+      case 'right':
+        deltaX = nudgeAmount;
+        break;
+    }
+    
+    // Use store's moveSelectedBy functionality
+    if (typeof state.selection?.moveSelectedBy === "function") {
+      state.selection.moveSelectedBy(deltaX, deltaY);
+    } else {
+      // Fallback: update element positions directly
+      selectedIds.forEach(id => {
+        const element = state.elements?.get(id);
+        if (element && typeof state.element?.update === "function") {
+          const updatedElement = {
+            ...element,
+            x: (element.x || 0) + deltaX,
+            y: (element.y || 0) + deltaY
+          };
+          state.element.update(id, updatedElement);
+        }
+      });
+    }
+  }
+
+  public selectElementsInBounds(
+    stage: Konva.Stage,
+    bounds: { x: number; y: number; width: number; height: number },
+    options: { additive?: boolean } = {},
+  ): string[] {
+    this.debugLog("selectElementsInBounds", { bounds, options });
+
+    if (!this.marqueeSelectionController) {
+      this.debugLog("selectElementsInBounds skipped", {
+        reason: "marqueeSelectionController unavailable",
+      });
+      return [];
+    }
+
+    const selectedIds = this.marqueeSelectionController.selectElementsInBounds(
+      stage,
+      bounds,
+      options,
+    );
+
+    if (selectedIds.length > 0) {
+      this.keyboardHandler?.updateSelectedIds(selectedIds);
+      this.selectionStateManager?.updateFromExternal(new Set(selectedIds));
+    }
+
+    return selectedIds;
   }
 }
 

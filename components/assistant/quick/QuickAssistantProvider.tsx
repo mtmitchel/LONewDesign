@@ -552,3 +552,11 @@ export function QuickAssistantProvider({
     </QuickAssistantContext.Provider>
   );
 }
+
+export { useQuickAssistant } from "./state/QuickAssistantContext";
+export type {
+  QuickAssistantScope,
+  QuickAssistantMode,
+  OpenAssistantOptions,
+  QuickAssistantContextValue,
+} from "./state/QuickAssistantContext";

@@ -203,6 +203,7 @@ The full historical narrative (rationale, step-by-step task list) now lives in `
 - ⏳ **Phase 3: Projects Persistence** - SQLite storage for projects/phases/milestones
 - ⏳ **Phase 4: Notes & Chats** - Local-first persistence
 - ⏳ **Testing**: Property tests (Rust) for normalization, CRUD, conflict paths; integration tests for queue worker, saga moves
+- 🔄 **Canvas selection modularization**: Keyboard shortcuts now flow through `KeyboardHandler`; selection lifecycle centralized in `SelectionStateManager`. Next up: extract geometry helpers into `selection/geometry`, add shortcut regression tests, and evaluate state machine split.
 
 #### Status – 2025-01-14
 
@@ -258,7 +259,7 @@ See detailed executable tasks document for complete implementation plan.
 
 #### Status – 2025-10-10
 
-* ✅ `QuickAssistantProvider` lives in `components/assistant/QuickAssistantProvider.tsx`, centralizing slash capture and wiring the quick modals across the app shell.
+* ✅ `QuickAssistantProvider` now lives in `components/assistant/quick/QuickAssistantProvider.tsx`, centralizing slash capture and wiring the quick modals across the app shell.
 * ✅ Global hotkeys (`⌘/Ctrl+K`, `T`, `N`, `E`) are live; provider emits `assistant.opened|submitted|error` and `assistant.command_selected` events.
 * ✅ Selection-aware dialog + writing tools (`WritingToolsGrid.tsx`) now execute via providers and apply Replace/Insert inline.
 * ✅ Floating launcher FAB (sidebar) ships with tooltip + selection badge handoff.
