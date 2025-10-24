@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Canvas zoom fit-to-content button (2025-10-24)**: Added dedicated "fit to content" button to canvas toolbar zoom controls (Maximize2 icon) that centers all elements in the viewport with padding, separate from the 100% reset button
+- **Module persistence across refreshes (2025-10-24)**: App now restores the last active module on refresh using localStorage (`therefore:last-module` key) instead of always defaulting to mail module. Validates stored module against known module list for safety
+
+### Fixes
+- **Canvas selection clearing race condition (2025-10-24)**: Fixed inconsistent element deselection when switching canvas tools. The `SelectionModule.updateSelection` method was scheduling a 75ms delayed transformer attachment that raced with `clearSelection` calls, causing elements to re-select after being cleared. Solution: track the pending `updateSelectionTimer` and cancel it in `clearSelection(force)` alongside existing auto-select timer cancellation
+- **Canvas transformer loss after clearing (2025-10-24)**: Fixed critical bug where elements couldn't auto-select after using the trash can "clear canvas" action. The `TransformerManager.ensureTransformer()` now detects when the underlying Konva transformer has been destroyed (stage null or layer detached) and recreates it with fresh keyboard listeners, preventing the stale transformer reference issue that required app refresh
+
 ### Refactoring
 - **Assistant module modularization — COMPLETE (2025-10-23)**: Successfully modularized AssistantCaptureDialog and QuickAssistantProvider:
   - **AssistantCaptureDialog**: Refactored from 945 lines to 21 lines using modular `capture/` components
