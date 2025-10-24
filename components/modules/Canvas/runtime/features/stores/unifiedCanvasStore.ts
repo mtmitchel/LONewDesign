@@ -421,24 +421,29 @@ export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
             strokeWidth: DEFAULT_UI.strokeWidth,
             stickyNoteColor: "#FFEFC8",
             setSelectedTool: (tool: string) => {
-              const previousTool = get().ui?.selectedTool;
+              // CRITICAL FIX: Clear selection BEFORE changing tool to prevent race conditions
+              // This ensures no tool-specific logic runs before selection is fully cleared
+              
+              // Step 1: Force clear visual selection (SelectionModule with transformer)
+              if (typeof window !== "undefined") {
+                const selectionModule = (window as typeof window & {
+                  selectionModule?: { clearSelection?: (force?: boolean) => void };
+                }).selectionModule;
+                // Use force=true to bypass any early-return guards
+                selectionModule?.clearSelection?.(true);
+              }
 
+              // Step 2: Clear store-level selection state
+              const store = get();
+              const clearSelection = store.clearSelection ?? store.selection?.clear;
+              clearSelection?.();
+
+              // Step 3: Now update the tool state after selection is fully cleared
               set((state) => {
                 if (state.ui) {
                   state.ui.selectedTool = tool;
                 }
               });
-
-              const store = get();
-              const clearSelection = store.clearSelection ?? store.selection?.clear;
-              clearSelection?.();
-
-              if (typeof window !== "undefined") {
-                const selectionModule = (window as typeof window & {
-                  selectionModule?: { clearSelection?: (force?: boolean) => void };
-                }).selectionModule;
-                selectionModule?.clearSelection?.(true);
-              }
             },
             setStrokeColor: (color: string) => {
               set((state) => {

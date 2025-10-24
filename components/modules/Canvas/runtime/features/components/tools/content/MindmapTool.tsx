@@ -52,7 +52,7 @@ export const MindmapTool: React.FC<MindmapToolProps> = ({
   stageRef,
   toolId = "mindmap",
 }) => {
-  const selectedTool = useUnifiedCanvasStore((s): string | undefined => s.ui?.selectedTool) ?? "select";
+  // FIXED: Remove selectedTool subscription to prevent race conditions
   const setSelectedTool = useUnifiedCanvasStore(
     (s): ((tool: string) => void) | undefined => s.ui?.setSelectedTool,
   );
@@ -81,7 +81,8 @@ export const MindmapTool: React.FC<MindmapToolProps> = ({
 
   useEffect(() => {
     const stage = stageRef.current;
-    const active = isActive && selectedTool === toolId;
+    // FIXED: Only check isActive prop
+    const active = isActive;
     if (!stage || !active) return;
 
     // Capture ref value to avoid stale closure issues in cleanup
@@ -352,15 +353,10 @@ export const MindmapTool: React.FC<MindmapToolProps> = ({
     };
   }, [
     isActive,
-    selectedTool,
     stageRef,
     toolId,
-    setSelectedTool,
-    addElement,
-    replaceSelection,
-    getSelectedIds,
-    beginBatch,
-    endBatch,
+    // Store functions removed - they're stable and don't need to trigger effect re-runs:
+    // setSelectedTool, addElement, replaceSelection, getSelectedIds, beginBatch, endBatch
   ]);
 
   return null;

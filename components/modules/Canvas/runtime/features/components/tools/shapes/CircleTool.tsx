@@ -27,7 +27,8 @@ const FIGJAM_CIRCLE_SIZE = { width: 160, height: 160 }; // Same as your sticky n
 const MAX_DIMENSION = 5000;
 const MIN_DIMENSION = 10;
 export const CircleTool: React.FC<CircleToolProps> = ({ isActive, stageRef, toolId = 'draw-circle' }) => {
-  const selectedTool = useUnifiedCanvasStore((s) => s.ui?.selectedTool);
+  // FIXED: Remove selectedTool subscription to prevent race conditions with isActive prop
+  // Only use setSelectedTool for imperative calls after committing elements
   const setSelectedTool = useUnifiedCanvasStore((s) => s.ui?.setSelectedTool);
   const upsertElement = useUnifiedCanvasStore((s) => s.element?.upsert);
   const replaceSelectionWithSingle = useUnifiedCanvasStore((s) => s.replaceSelectionWithSingle);
@@ -43,8 +44,8 @@ export const CircleTool: React.FC<CircleToolProps> = ({ isActive, stageRef, tool
 
   useEffect(() => {
     const stage = stageRef.current;
-    const active = isActive && selectedTool === toolId;
-    if (!stage || !active) return;
+    // FIXED: Only check isActive prop
+    if (!stage || !isActive) return;
 
     // Capture ref value to avoid stale closure issues in cleanup
     const drawingRefCapture = drawingRef.current;
@@ -217,7 +218,16 @@ export const CircleTool: React.FC<CircleToolProps> = ({ isActive, stageRef, tool
       drawingRefCapture.start = null;
       previewLayer?.batchDraw();
     };
-  }, [isActive, selectedTool, toolId, stageRef, strokeColor, fillColor, strokeWidth, upsertElement, setSelectedTool, replaceSelectionWithSingle, bumpSelectionVersion]);
+  }, [
+    isActive,
+    toolId,
+    stageRef,
+    strokeColor,
+    fillColor,
+    strokeWidth,
+    // Store functions removed - they're stable and don't need to trigger effect re-runs:
+    // setSelectedTool, upsertElement, replaceSelectionWithSingle, bumpSelectionVersion
+  ]);
 
   return null;
 };

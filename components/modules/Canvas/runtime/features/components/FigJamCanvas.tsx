@@ -63,12 +63,10 @@ const FigJamCanvas: React.FC = () => {
   const redo = useUnifiedCanvasStore((state) => state.redo);
   const setSelectedTool = useCallback((tool: string) => {
     const current = useUnifiedCanvasStore.getState().ui?.selectedTool;
+    // Only update if the tool is actually changing
     if (current !== tool) {
       StoreActions.setSelectedTool?.(tool);
-      return;
     }
-
-    StoreActions.setSelectedTool?.(tool);
   }, []);
 
   // Mindmap operations for keyboard shortcuts

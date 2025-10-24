@@ -23,9 +23,8 @@ export const ImageTool: React.FC<ImageToolProps> = ({
   stageRef,
   toolId = "image",
 }) => {
-  const selectedTool = useUnifiedCanvasStore(
-    (s): string | null | undefined => s.ui?.selectedTool,
-  );
+  // FIXED: Remove selectedTool subscription to prevent race conditions with isActive prop
+  // Only use setSelectedTool for imperative calls after committing elements
   const setSelectedTool = useUnifiedCanvasStore(
     (s): ((tool: string) => void) | undefined => s.ui?.setSelectedTool,
   );
@@ -44,22 +43,31 @@ export const ImageTool: React.FC<ImageToolProps> = ({
   const hasTriggeredPickerRef = useRef(false);
   const fileInputPromiseRef = useRef<Promise<void> | null>(null);
 
-  // Reset trigger flag when tool changes
+  // FIXED: Reset trigger flag when tool deactivates (use isActive instead of selectedTool)
   useEffect(() => {
-    if (selectedTool !== toolId) {
+    if (!isActive) {
       hasTriggeredPickerRef.current = false;
       fileInputPromiseRef.current = null;
       // Clear any existing image data when switching away from tool
       stateRef.current.dataUrl = null;
       stateRef.current.natural = null;
     }
-  }, [selectedTool, toolId]);
+  }, [isActive]);
 
   // Trigger file picker only when explicitly requested
   const triggerFilePicker = useCallback(async () => {
+    // Prevent multiple file pickers
     if (hasTriggeredPickerRef.current || fileInputPromiseRef.current) {
       return fileInputPromiseRef.current;
     }
+    
+    // Clean up any existing orphaned inputs first
+    const existingInputs = document.querySelectorAll('input[type="file"]');
+    existingInputs.forEach(input => {
+      if (input.parentElement && !input.files?.length) {
+        input.parentElement.removeChild(input);
+      }
+    });
 
     hasTriggeredPickerRef.current = true;
 
@@ -74,7 +82,15 @@ export const ImageTool: React.FC<ImageToolProps> = ({
           const files = input.files;
           if (!files || files.length === 0) {
             // User cancelled - switch back to select tool
-            setSelectedTool?.("select");
+            // Force restore focus to ensure toolbar remains interactive
+            setTimeout(() => {
+              if (document.activeElement && document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+              document.body.focus();
+              document.body.click();
+              setSelectedTool?.("select");
+            }, 10);
             resolve();
             return;
           }
@@ -101,14 +117,38 @@ export const ImageTool: React.FC<ImageToolProps> = ({
           setSelectedTool?.("select");
           reject(error);
         } finally {
-          // Cleanup
+          // Cleanup - ensure input is removed and focus is restored
           if (input.parentElement) {
             input.parentElement.removeChild(input);
           }
+          inputRef.current = null;
+          // Force restore focus and clear any focus traps
+          // The file input can leave focus in a bad state
+          setTimeout(() => {
+            // Remove focus from any active element
+            if (document.activeElement && document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+            }
+            // Force focus back to body
+            document.body.focus();
+            // Trigger a fake click to ensure document is active
+            document.body.click();
+          }, 10);
         }
       };
 
+      // Also handle blur/cancel events to ensure cleanup
+      const onBlur = () => {
+        setTimeout(() => {
+          if (input.parentElement) {
+            input.parentElement.removeChild(input);
+          }
+          inputRef.current = null;
+        }, 100);
+      };
+
       input.addEventListener("change", onChange, { once: true });
+      input.addEventListener("blur", onBlur, { once: true });
       document.body.appendChild(input);
       inputRef.current = input;
       input.click();
@@ -116,7 +156,7 @@ export const ImageTool: React.FC<ImageToolProps> = ({
 
     fileInputPromiseRef.current = promise;
     return promise;
-  }, [setSelectedTool]);
+  }, []); // setSelectedTool removed - stable function that doesn't need to trigger effect re-runs
 
   // Define setElementSelection utility function
   const setElementSelection = useCallback((id: string) => {
@@ -200,6 +240,18 @@ export const ImageTool: React.FC<ImageToolProps> = ({
 
         // Small delay before switching to select tool to allow selection to take effect
         await new Promise((resolve) => setTimeout(resolve, 50));
+        
+        // Force restore focus to ensure toolbar remains fully interactive
+        // File input can leave focus in bad state requiring double-clicks
+        if (document.activeElement && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+        document.body.focus();
+        // Trigger a click to fully activate document
+        setTimeout(() => {
+          document.body.click();
+        }, 10);
+        
         setSelectedTool?.("select");
       } catch (error) {
         debug("[ImageTool] Error creating element:", {
@@ -212,7 +264,7 @@ export const ImageTool: React.FC<ImageToolProps> = ({
       stateRef.current.dataUrl = null;
       stateRef.current.natural = null;
     },
-    [setSelectedTool, setElementSelection],
+    [setElementSelection], // setSelectedTool removed - stable function that doesn't need to trigger effect re-runs
   );
 
   // Auto-place image at center of viewport
@@ -266,8 +318,8 @@ export const ImageTool: React.FC<ImageToolProps> = ({
 
   // Auto-trigger file picker when image tool becomes active
   useEffect(() => {
-    const active = isActive && selectedTool === toolId;
-    if (!active || hasTriggeredPickerRef.current) return;
+    // FIXED: Only check isActive prop
+    if (!isActive || hasTriggeredPickerRef.current) return;
 
     // Auto-triggering file picker
 
@@ -287,7 +339,6 @@ export const ImageTool: React.FC<ImageToolProps> = ({
     autoTrigger();
   }, [
     isActive,
-    selectedTool,
     toolId,
     stageRef,
     triggerFilePicker,
@@ -296,8 +347,14 @@ export const ImageTool: React.FC<ImageToolProps> = ({
 
   // Cleanup effect for when tool is deactivated
   useEffect(() => {
-    const active = isActive && selectedTool === toolId;
-    if (active) return;
+    // FIXED: Only check isActive prop
+    if (isActive) return;
+
+    // Clean up any orphaned file input elements
+    if (inputRef.current && inputRef.current.parentElement) {
+      inputRef.current.parentElement.removeChild(inputRef.current);
+      inputRef.current = null;
+    }
 
     // Clean up any preview elements when tool is deactivated
     const stage = stageRef.current;
@@ -319,7 +376,7 @@ export const ImageTool: React.FC<ImageToolProps> = ({
       previewLayer.batchDraw();
     }
     stateRef.current.start = null;
-  }, [isActive, selectedTool, toolId, stageRef]);
+  }, [isActive, toolId, stageRef]);
 
   return null;
 };

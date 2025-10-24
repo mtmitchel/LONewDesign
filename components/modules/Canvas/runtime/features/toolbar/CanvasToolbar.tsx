@@ -216,6 +216,13 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     }
 
     StoreActions.bumpSelectionVersion?.();
+    
+    // Reset viewport to 100% zoom and default position
+    // This behaves like "fit to content" on an empty canvas
+    const viewport = s.viewport;
+    if (viewport && typeof viewport.reset === "function") {
+      viewport.reset();
+    }
   }, []);
 
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -322,12 +329,31 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     [handleToolSelect],
   );
 
-  const handleStickyClick = useCallback(() => {
-    handleToolSelect("sticky-note");
-    setShapesOpen(false);
-    setConnectorsOpen(false);
-    setStickyNoteColorsOpen((prev) => !prev);
-  }, [handleToolSelect]);
+  const handleStickyClick = useCallback((e: React.MouseEvent | React.PointerEvent) => {
+    // Prevent event bubbling
+    e.stopPropagation();
+    
+    const isPointerDown = e.type === 'pointerdown';
+    const isAlreadySelected = currentTool === "sticky-note";
+    
+    // Always handle activation on first event (click OR pointerdown)
+    // This ensures it works even when focus is in weird state after image upload
+    if (!isAlreadySelected) {
+      handleToolSelect("sticky-note");
+      setShapesOpen(false);
+      setConnectorsOpen(false);
+      setStickyNoteColorsOpen(false);
+      // Prevent the click event from also firing
+      if (isPointerDown) {
+        e.preventDefault();
+      }
+    } else if (!isPointerDown) {
+      // Toggle color picker on click if already selected
+      setStickyNoteColorsOpen((prev) => !prev);
+      setShapesOpen(false);
+      setConnectorsOpen(false);
+    }
+  }, [handleToolSelect, currentTool]);
 
   const toggleShapesDropdown = useCallback(() => {
     setStickyNoteColorsOpen(false);
@@ -458,6 +484,20 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     ["pen", "marker", "highlighter", "eraser"],
     ["undo", "redo", "clear"],
   ];
+  
+  /* EVENT HANDLING STRATEGY:
+   * - Regular tool selection buttons (select, pan, text, table, image, pen, marker, highlighter, eraser): 
+   *   Use onPointerDown for immediate response, prevents click interruption from editor closing
+   * - Dropdown triggers (shapes, connector): 
+   *   Use onClick to properly toggle dropdowns
+   * - Sticky note button: 
+   *   Hybrid - onPointerDown when not selected (immediate tool switch), 
+   *   onClick when selected (toggle color picker)
+   * - Action buttons (undo, redo, clear): 
+   *   Use onClick for standard behavior
+   * - Other controls (zoom): 
+   *   Use onClick for standard behavior
+   */
 
   // Styling (using new tokens)
   const toolButtonClass = (isActive: boolean, isDisabled?: boolean) =>
@@ -485,6 +525,23 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
     const label = getLabel(tool);
     const shortcut = getShortcut(tool);
 
+    // Determine which event to use based on tool type
+    // Use onClick for actions (undo/redo/clear), onPointerDown for tool selection
+    const isActionButton = tool === "undo" || tool === "redo" || tool === "clear";
+    
+    const handleButtonAction = (e?: React.MouseEvent | React.PointerEvent) => {
+      // Prevent event bubbling that might interfere with toolbar
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      if (tool === "undo") handleUndo();
+      else if (tool === "redo") handleRedo();
+      else if (tool === "clear") handleClearCanvas();
+      else handleToolSelect(tool);
+    };
+
     const button = (
       <button
         type="button"
@@ -494,11 +551,19 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
         aria-label={label}
         aria-keyshortcuts={shortcut}
         title={label}
-        onClick={() => {
-          if (tool === "undo") handleUndo();
-          else if (tool === "redo") handleRedo();
-          else if (tool === "clear") handleClearCanvas();
-          else handleToolSelect(tool);
+        // Use both events to ensure buttons work even when focus is in weird state
+        // This fixes double-click issues after image upload
+        onClick={(e) => {
+          if (isActionButton || !e.defaultPrevented) {
+            handleButtonAction(e);
+          }
+        }}
+        onPointerDown={(e) => {
+          if (!isActionButton) {
+            handleButtonAction(e);
+            // Mark as handled to prevent double-firing
+            e.preventDefault();
+          }
         }}
       >
         {getIcon(tool)}
@@ -553,6 +618,7 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
                           aria-expanded={stickyNoteColorsOpen}
                           aria-haspopup="menu"
                           aria-label={getLabel(tool)}
+                          onPointerDown={handleStickyClick}
                           onClick={handleStickyClick}
                         >
                           {getIcon(tool)}
@@ -568,13 +634,23 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
                   );
                 }
                 if (tool === "shapes") {
+                  // Check if any shape tool is currently active
+                  const isShapeToolActive = currentTool === "draw-circle" || 
+                                           currentTool === "mindmap" ||
+                                           currentTool === "rectangle" ||
+                                           currentTool === "draw-rectangle" ||
+                                           currentTool === "triangle" ||
+                                           currentTool === "draw-triangle" ||
+                                           currentTool === "circle" ||
+                                           currentTool === "ellipse";
+                  
                   return (
                     <Tooltip key={tool}>
                       <TooltipTrigger asChild>
                         <button
                           ref={shapesBtnRef}
                           type="button"
-                          className={toolButtonClass(false)}
+                          className={toolButtonClass(isShapeToolActive)}
                           aria-expanded={shapesOpen}
                           aria-haspopup="menu"
                           aria-label={getLabel(tool)}
@@ -604,7 +680,7 @@ const CanvasToolbar: React.FC<ToolbarProps> = ({
                               aria-expanded={connectorsOpen}
                               aria-label="Connector"
                             >
-                              {getIcon("mindmap")}
+                              {getIcon("connector")}
                             </button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>

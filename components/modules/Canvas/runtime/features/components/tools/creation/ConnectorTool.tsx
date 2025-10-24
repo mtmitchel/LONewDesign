@@ -41,7 +41,7 @@ export const ConnectorTool: React.FC<ConnectorToolProps> = ({
   toolId = "connector-line",
   layers,
 }) => {
-  const selectedTool = useUnifiedCanvasStore((s) => s.ui?.selectedTool);
+  // FIXED: Remove selectedTool subscription to prevent race conditions
   const setTool = useUnifiedCanvasStore((s) => s.ui?.setSelectedTool);
   const upsertElement = useUnifiedCanvasStore((s) => s.element?.upsert);
   const selectOnly = useUnifiedCanvasStore((s) => s.selection?.selectOne);
@@ -66,7 +66,8 @@ export const ConnectorTool: React.FC<ConnectorToolProps> = ({
 
     try {
       const stage = stageRef.current;
-      const active = isActive && selectedTool === toolId;
+      // FIXED: Only check isActive prop
+      const active = isActive;
 
       // Force crosshair cursor whenever this tool is active
       if (stage && active) {
@@ -432,7 +433,14 @@ export const ConnectorTool: React.FC<ConnectorToolProps> = ({
       // Ignore error
       return;
     }
-  }, [isActive, selectedTool, toolId, stageRef, upsertElement, selectOnly, begin, end, setTool, layers]);
+  }, [
+    isActive,
+    toolId,
+    stageRef,
+    layers,
+    // Store functions removed - they're stable and don't need to trigger effect re-runs:
+    // upsertElement, selectOnly, begin, end, setTool
+  ]);
 
   return null;
 };

@@ -45,6 +45,23 @@ export function createRendererLayers(
   const highlighter = new Konva.Group({ listening: false });
   highlighter.name('main-highlighter');
   main.add(highlighter);
+
+  // Ensure highlight strokes stay visually above other main-layer content.
+  // Many renderers append nodes to `main`, which would otherwise push the
+  // highlighter group underneath and make committed highlights appear missing.
+  main.on('add.highlighter-order', (evt) => {
+    // Ignore events triggered by the highlighter itself to avoid unnecessary churn.
+    if (evt?.target === highlighter) {
+      return;
+    }
+
+    // Only rebalance when the highlighter is still attached to the main layer.
+    if (highlighter.getParent() === main) {
+      highlighter.moveToTop();
+      // Batch the draw to avoid redundant full renders when multiple nodes are added in succession.
+      main.batchDraw();
+    }
+  });
   const preview = new Konva.Layer({ listening: listeningPreview });
   preview.name('preview-layer');
 
@@ -124,6 +141,7 @@ export function ensureOverlayOnTop(layers: RendererLayers) {
  */
 export function destroyLayers(layers: RendererLayers) {
   // Destroy in reverse z-order is generally safe
+  layers.main.off('add.highlighter-order');
   layers.overlay.destroy();
   layers.preview.destroy();
   layers.highlighter.destroy();

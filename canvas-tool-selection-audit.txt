@@ -1,0 +1,444 @@
+TECHNICAL AUDIT REPORT: CANVAS TOOL SELECTION ISSUE
+Date: October 24, 2025
+Status: Unresolved
+
+================================================================================
+1. EXECUTIVE SUMMARY
+================================================================================
+
+This report documents an ongoing issue with the canvas tool selection system 
+where switching between tools after creating an element requires multiple 
+clicks instead of the expected single click. Specifically, after adding a 
+sticky note to the canvas (which auto-selects correctly), selecting the table 
+tool from the toolbar requires three clicks before the tool activates and the 
+previously selected element is deselected.
+
+Multiple fix attempts have been made based on hypotheses about React component 
+lifecycle timing, Zustand store update propagation, and useEffect dependency 
+management. All attempted solutions have failed to resolve the issue. The root 
+cause remains unknown.
+
+This report provides technical background for developers unfamiliar with the 
+codebase, documents investigation findings, details attempted solutions, and 
+recommends next steps for debugging.
+
+================================================================================
+2. APPLICATION ARCHITECTURE
+================================================================================
+
+The application is built using the following technology stack:
+
+React Framework:
+The UI is built with React 18+, using functional components and hooks. The 
+canvas module follows React's declarative rendering model where component 
+state changes trigger re-renders.
+
+State Management - Zustand:
+Global state is managed using Zustand, a lightweight state management library. 
+The store is located in `unifiedCanvasStore.ts` and uses middleware including:
+- immer (for immutable state updates)
+- persist (for data persistence)
+- subscribeWithSelector (for granular subscriptions)
+
+Components subscribe to store state using selectors:
+  const selectedTool = useUnifiedCanvasStore((s) => s.ui?.selectedTool);
+
+Store updates trigger re-renders in subscribed components. Functions stored in 
+the state (like setSelectedTool) may have their references change when the 
+store updates, depending on how Zustand's middleware processes state changes.
+
+Canvas Rendering - Konva.js:
+The visual canvas is rendered using Konva.js, a 2D canvas framework built on 
+HTML5 Canvas. Konva provides a scene graph with layers, groups, and shapes. 
+Event handling is done through Konva's event system (e.g., 
+stage.on('pointerdown', handler)).
+
+Component Hierarchy:
+FigJamCanvas (parent component)
+  └─ CanvasToolbar (toolbar with tool buttons)
+  └─ useCanvasTools hook (manages active tool rendering)
+       └─ Individual tool components (TableTool, PenTool, etc.)
+
+The parent component manages which tool is active and passes an `isActive` 
+prop to the tool component that matches the currently selected tool ID.
+
+================================================================================
+3. CANVAS TOOL SYSTEM DESIGN
+================================================================================
+
+Tool Types:
+The canvas supports multiple tool types:
+- Creation tools: StickyNoteTool, ConnectorTool
+- Content tools: TableTool, ImageTool, MindmapTool, TextTool
+- Drawing tools: PenTool, MarkerTool, HighlighterTool, EraserTool
+- Shape tools: CircleTool
+- Navigation tools: Select, Pan
+
+Tool Activation Mechanism:
+Tools are React components that receive an `isActive` boolean prop. The 
+useCanvasTools hook (located in 
+`components/modules/Canvas/runtime/features/components/figjam/hooks/useCanvasTools.tsx`) 
+determines which tool should be active based on the selectedTool state:
+
+  const activeToolNode = useMemo(() => {
+    const toolKey = (selectedTool ?? "select").toLowerCase();
+    const toolProps = { isActive: true, stageRef };
+    
+    switch (toolKey) {
+      case "table":
+        return <TableTool key="table-tool" {...toolProps} />;
+      case "pen":
+        return <PenTool key="pen-tool" {...toolProps} />;
+      // ... other cases
+    }
+  }, [selectedTool, stageRef, /* other deps */]);
+
+When selectedTool changes in the store, the useMemo re-computes and returns a 
+new tool component with isActive=true. Only one tool is active at a time.
+
+Event Listener Pattern:
+Tool components use React's useEffect hook to attach and detach Konva event 
+listeners. A typical pattern looks like:
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || !isActive) return;
+    
+    const onPointerDown = (e) => { /* handle drawing */ };
+    
+    stage.on('pointerdown.tooltag', onPointerDown);
+    
+    return () => {
+      stage.off('pointerdown.tooltag', onPointerDown);
+    };
+  }, [isActive, stageRef, /* other dependencies */]);
+
+The effect runs when dependencies change. The cleanup function (returned from 
+useEffect) detaches event listeners when the component unmounts or before the 
+effect re-runs.
+
+Store Integration:
+Tools interact with the store in two ways:
+
+1. Props-based activation: The isActive prop is passed from parent and changes 
+   when the store's selectedTool changes.
+
+2. Direct store subscriptions: Some tools subscribe directly to store state:
+   const setSelectedTool = useUnifiedCanvasStore((s) => s.ui?.setSelectedTool);
+
+When a tool uses direct store subscriptions, it creates a dependency on store 
+updates. If these subscriptions are included in useEffect dependency arrays, 
+the effect will re-run whenever the store updates, potentially causing timing 
+issues.
+
+================================================================================
+4. PROBLEM DESCRIPTION
+================================================================================
+
+Reproduction Steps:
+1. Open the canvas module
+2. Select the sticky note tool from the toolbar
+3. Click on the canvas to create a sticky note
+4. Observe that the sticky note is auto-selected (transformer box appears) - 
+   this works correctly
+5. Click the table tool icon in the toolbar
+6. Observe that nothing happens - table tool does not activate, sticky note 
+   remains selected
+7. Click the table tool icon a second time
+8. Observe that nothing happens
+9. Click the table tool icon a third time
+10. Observe that the table tool finally activates and the sticky note is 
+    deselected
+
+Expected Behavior:
+After step 5 (single click on table tool icon), the table tool should 
+immediately activate, the toolbar should highlight the table tool button, and 
+the sticky note should be deselected. All subsequent tool operations should 
+work with a single click.
+
+Actual Behavior:
+The table tool requires three clicks before activating. The first two clicks 
+appear to have no effect. The sticky note remains selected until the third 
+click.
+
+Affected Tools:
+The issue has been confirmed with the table tool. Other tools that may be 
+affected include:
+- ImageTool
+- CircleTool
+- ConnectorTool
+- MindmapTool
+
+The PenTool appears to work correctly with a single click.
+
+Impact:
+This issue significantly degrades user experience, making the canvas feel 
+unresponsive and broken. Users must click multiple times to switch tools, 
+which is not intuitive and suggests a fundamental flaw in the tool activation 
+system.
+
+================================================================================
+5. TECHNICAL INVESTIGATION
+================================================================================
+
+Store setSelectedTool Implementation:
+The setSelectedTool function in unifiedCanvasStore.ts (lines 423-448) performs 
+the following operations:
+
+1. Clear visual selection via SelectionModule.clearSelection(force=true)
+2. Clear store-level selection state
+3. Update state.ui.selectedTool to the new tool ID
+
+The operation order was modified to ensure selection clearing happens BEFORE 
+the tool state updates, preventing tool-specific logic from running before 
+selection is cleared.
+
+SelectionModule.clearSelection Analysis:
+The clearSelection method (SelectionModule.ts, lines 682-700) has a force 
+parameter. When force=false, the method returns early without clearing if a 
+transformer is active. When force=true, it:
+- Releases the active transformer
+- Clears the updateSelectionTimer
+- Cancels auto-select timers
+- Clears selection state manager
+- Detaches keyboard handler and transformer lifecycle
+
+The force=true parameter is critical for ensuring selection is actually 
+cleared.
+
+Tool Component Implementation Comparison:
+PenTool (working correctly):
+- useEffect dependencies: [stageRef, isActive, color, size, opacity, batcher]
+- NO store function subscriptions
+- Only re-runs when props or local state changes
+
+TableTool (requires 3 clicks - before fixes):
+- Had: const setSelectedTool = useUnifiedCanvasStore((s) => s.ui?.setSelectedTool)
+- useEffect dependencies included: setSelectedTool
+- This caused the effect to potentially re-run when the store updated
+
+The key difference identified: TableTool subscribed to a store function and 
+included it in the useEffect dependency array, while PenTool did not.
+
+React useEffect Lifecycle Analysis:
+When a component has a store function in its useEffect dependencies:
+
+1. User clicks table tool button
+2. Toolbar calls setSelectedTool("table")
+3. Store updates (state.ui.selectedTool = "table")
+4. Store emits update event
+5. Parent component re-renders (selectedTool changed)
+6. Parent renders TableTool with isActive=true
+7. TableTool's useEffect runs (isActive changed from false to true)
+8. Event listeners attach
+
+However, if the useEffect also depends on a store function:
+1-6. Same as above
+7a. If the store function reference changed, useEffect may re-run
+7b. This could cause event listeners to detach and reattach
+7c. Timing issues could prevent proper activation on first click
+
+The hypothesis was that having store functions in dependency arrays caused 
+race conditions with the isActive prop updates.
+
+Zustand Function Reference Stability:
+Zustand stores functions as part of state. When set() is called with immer 
+middleware, the state object is processed. The stability of function 
+references depends on whether the functions are recreated during state updates. 
+This behavior is not fully understood in the current investigation.
+
+================================================================================
+6. ATTEMPTED SOLUTIONS
+================================================================================
+
+Solution Attempt #1: Reorder Store Operations
+Date: October 24, 2025
+Hypothesis: Selection clearing was happening AFTER tool state update, allowing 
+           tool-specific logic to run before selection was cleared.
+
+Changes Made:
+- Modified unifiedCanvasStore.ts setSelectedTool function (lines 423-448)
+- Changed operation order to:
+  1. SelectionModule.clearSelection(force=true)
+  2. Store clearSelection()
+  3. Update state.ui.selectedTool
+
+Result: FAILED - Table tool still requires 3 clicks
+
+Solution Attempt #2: Remove Tool Store Subscriptions
+Date: October 24, 2025
+Hypothesis: Tools subscribing to selectedTool from the store created race 
+           conditions with the isActive prop.
+
+Changes Made:
+- TableTool.tsx: Removed line `const selectedTool = useUnifiedCanvasStore((s) => s.ui?.selectedTool)`
+- ImageTool.tsx: Removed selectedTool subscription
+- CircleTool.tsx: Removed selectedTool subscription
+- ConnectorTool.tsx: Removed selectedTool subscription (required git reset due 
+  to file corruption during editing)
+- MindmapTool.tsx: Removed selectedTool subscription
+
+Kept the setSelectedTool subscription for imperative calls (e.g., 
+setSelectedTool?.("select") after committing an element).
+
+Result: FAILED - Table tool still requires 3 clicks
+
+Solution Attempt #3: Remove Store Functions from Dependency Arrays
+Date: October 24, 2025
+Hypothesis: Having store function references in useEffect dependency arrays 
+           causes effects to re-run when the store updates, creating timing 
+           issues with isActive prop updates.
+
+Changes Made:
+- TableTool.tsx: Removed setSelectedTool from useEffect dependencies
+- ImageTool.tsx: Removed setSelectedTool from two useEffect dependency arrays
+- CircleTool.tsx: Removed setSelectedTool, upsertElement, 
+  replaceSelectionWithSingle, bumpSelectionVersion from dependencies
+- MindmapTool.tsx: Removed setSelectedTool, addElement, replaceSelection, 
+  getSelectedIds, beginBatch, endBatch from dependencies
+- ConnectorTool.tsx: Removed upsertElement, selectOnly, begin, end, setTool 
+  from dependencies
+
+All dependency arrays now only include: isActive, toolId, stageRef, and visual 
+properties (colors, sizes, etc.). Store functions are excluded.
+
+Result: FAILED - Table tool still requires 3 clicks (per user report)
+
+All TypeScript compilation errors were resolved. The changes are syntactically 
+correct but do not solve the functional issue.
+
+================================================================================
+7. CURRENT UNDERSTANDING
+================================================================================
+
+Confirmed Facts:
+1. The issue is reproducible: Adding a sticky note, then clicking the table 
+   tool requires 3 clicks
+2. PenTool works correctly with 1 click
+3. PenTool has no store function subscriptions in its useEffect dependencies
+4. TableTool and other affected tools previously had store functions in their 
+   dependencies (now removed)
+5. The toolbar button onClick handler calls handleToolSelect, which calls 
+   setSelectedTool from the store
+6. setSelectedTool clears selection before updating the tool state
+7. The parent component (useCanvasTools) renders the active tool with 
+   isActive=true
+8. The isActive prop change should trigger the tool's useEffect to run
+
+Suspected Mechanisms (Unconfirmed):
+1. There may be additional timing issues beyond useEffect dependencies
+2. The isActive prop might not be updating when expected
+3. Store update propagation to the parent component might be delayed
+4. Multiple state updates might be batching in unexpected ways
+5. Event listener attachment might be failing on first activation
+6. The Konva stage might not be in the correct state when listeners attach
+
+Gaps in Knowledge:
+1. Why does the third click work when the first two don't?
+2. What is the actual sequence of events (store updates, re-renders, effect 
+   runs) during each click?
+3. Are the event listeners actually being attached on the first click?
+4. Is the isActive prop actually changing to true on the first click?
+5. Is there a race condition between multiple store subscribers?
+6. Does the issue occur with ALL tools or only specific ones?
+7. Is there something unique about the sticky note creation that causes the 
+   issue?
+8. Would adding console.log statements to track the exact execution sequence 
+   reveal the problem?
+9. Are there other components subscribing to selectedTool that might interfere?
+10. Is the issue related to React's concurrent rendering or state batching?
+
+The fundamental mystery: If all the fixes that should theoretically work (based 
+on standard React patterns) have failed, what is the actual root cause?
+
+================================================================================
+8. RECOMMENDATIONS
+================================================================================
+
+Debugging Strategies:
+1. Add detailed console logging to track the exact sequence of events:
+   - Log when toolbar button onClick fires
+   - Log when setSelectedTool is called in the store
+   - Log when store state updates (selectedTool value)
+   - Log when parent component re-renders (useCanvasTools)
+   - Log when TableTool component renders
+   - Log when TableTool's useEffect runs
+   - Log when isActive prop changes
+   - Log when event listeners are attached/detached
+
+2. Use React DevTools to observe:
+   - Component re-render timing
+   - Prop changes in real-time
+   - Store state updates
+
+3. Add a simple counter or flag that increments on each click to see if the 
+   clicks are actually being registered
+
+4. Test with a minimal reproduction case: Create a simplified tool component 
+   with just the essential code to see if the issue persists
+
+5. Verify that the toolbar button's onClick handler is actually firing on each 
+   click (it may be getting blocked by something)
+
+6. Check if there are any event.stopPropagation() or event.preventDefault() 
+   calls that might be interfering with click handling
+
+Potential Areas to Investigate:
+1. FigJamCanvas.tsx setSelectedTool implementation (lines 64-72) - there's 
+   redundant logic that always calls StoreActions.setSelectedTool twice
+
+2. The useMemo in useCanvasTools - verify that it's actually re-computing when 
+   selectedTool changes
+
+3. Check if React.StrictMode is enabled, which causes double-rendering in 
+   development and might mask timing issues
+
+4. Investigate whether the issue occurs in production builds vs development
+
+5. Check for any global event handlers or window-level click handlers that 
+   might be consuming clicks
+
+6. Examine whether the toolbar button's aria-pressed or other state attributes 
+   are updating correctly
+
+7. Test if the issue occurs when elements are NOT auto-selected after creation
+
+8. Verify that the Konva stage is in a consistent state (not being destroyed 
+   and recreated unexpectedly)
+
+Testing Approaches:
+1. Create a branch that reverts all attempted fixes to establish a clean 
+   baseline
+
+2. Test each tool individually to create a matrix of which tools work vs which 
+   require multiple clicks
+
+3. Test the issue with different types of elements (not just sticky notes) to 
+   see if the problem is specific to sticky note creation
+
+4. Test rapid clicking vs slow clicking to see if timing is a factor
+
+5. Test in different browsers to rule out browser-specific issues
+
+Next Steps:
+Given that multiple theoretically sound fixes have failed, the next phase 
+requires empirical data gathering rather than hypothesis-driven fixes. The 
+priority should be on instrumenting the code with detailed logging to 
+understand the actual execution flow, rather than making additional speculative 
+changes.
+
+The developer should:
+1. Implement comprehensive logging as described above
+2. Reproduce the issue while logging is active
+3. Analyze the logs to identify the actual sequence of events
+4. Form new hypotheses based on empirical evidence
+5. Test those hypotheses with minimal, targeted changes
+
+This issue has proven resistant to standard debugging approaches, suggesting 
+that the root cause may involve unexpected interactions between React's 
+rendering system, Zustand's state management, and Konva's event handling. A 
+systematic, evidence-based approach is now required.
+
+================================================================================
+END OF REPORT
+================================================================================

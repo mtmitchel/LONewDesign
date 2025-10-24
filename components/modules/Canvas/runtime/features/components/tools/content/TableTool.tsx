@@ -39,7 +39,8 @@ export const TableTool: React.FC<TableToolProps> = ({
   stageRef,
   toolId = "table",
 }) => {
-  const selectedTool = useUnifiedCanvasStore((s) => s.ui?.selectedTool);
+  // FIXED: Remove selectedTool subscription to prevent race conditions with isActive prop
+  // Only use setSelectedTool for imperative calls after committing elements
   const setSelectedTool = useUnifiedCanvasStore((s) => s.ui?.setSelectedTool);
 
   const drawingRef = useRef<{
@@ -49,8 +50,8 @@ export const TableTool: React.FC<TableToolProps> = ({
 
   useEffect(() => {
     const stage = stageRef.current;
-    const active = isActive && selectedTool === toolId;
-    if (!stage || !active) return;
+    // FIXED: Only check isActive prop, not store subscription
+    if (!stage || !isActive) return;
 
     // Capture ref value to avoid stale closure issues in cleanup
     const drawingRefCapture = drawingRef.current;
@@ -224,10 +225,9 @@ export const TableTool: React.FC<TableToolProps> = ({
     };
   }, [
     isActive,
-    selectedTool,
     toolId,
     stageRef,
-    setSelectedTool,
+    // setSelectedTool removed - stable function that doesn't need to trigger effect re-runs
   ]);
 
   return null;
