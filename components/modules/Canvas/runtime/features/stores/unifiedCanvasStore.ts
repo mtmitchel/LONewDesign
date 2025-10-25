@@ -212,6 +212,7 @@ export interface TransformSnapshotState {
       x: number;
       y: number;
       points: number[];
+      absolute?: { x: number; y: number };
     }
   >;
 }

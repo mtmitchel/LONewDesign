@@ -585,7 +585,9 @@ export class SelectionModule implements RendererModule {
       if (this.stageListeningBeforeTransform === undefined) {
         this.stageListeningBeforeTransform = stage.listening();
       }
-      stage.listening(false);
+      if (source === "transform") {
+        stage.listening(false);
+      }
     }
 
     this.mindmapSelectionOrchestrator?.handleTransformBegin(nodes, source);
@@ -794,8 +796,8 @@ export class SelectionModule implements RendererModule {
         if (!elementId) {
           return;
         }
-        const position = node.position();
-        basePositions.set(elementId, { x: position.x, y: position.y });
+        const absolute = node.getAbsolutePosition();
+        basePositions.set(elementId, { x: absolute.x, y: absolute.y });
         selectedIds.add(elementId);
       } catch (error) {
         this.debugLog("buildTransformControllerSnapshot: position read failed", {
@@ -852,10 +854,10 @@ export class SelectionModule implements RendererModule {
 
         const group = stage?.findOne<Konva.Group>(`#${connectorId}`) ?? null;
         const shapeNode = group?.findOne<Konva.Shape>(".connector-shape") ?? null;
-        const groupPosition = group
+        const groupAbsolutePosition = group
           ? (() => {
-              const pos = group.position();
-              return { x: pos.x, y: pos.y };
+              const abs = group.getAbsolutePosition();
+              return { x: abs.x, y: abs.y };
             })()
           : undefined;
 
@@ -869,7 +871,7 @@ export class SelectionModule implements RendererModule {
             (connector.to?.kind === "element" && Boolean(connector.to.elementId)),
           shape: shapeNode as unknown as Konva.Line | Konva.Arrow | null,
           group,
-          groupPosition,
+          groupPosition: groupAbsolutePosition,
         });
       });
 
@@ -884,6 +886,12 @@ export class SelectionModule implements RendererModule {
           node,
           x: typeof element.x === "number" ? element.x : 0,
           y: typeof element.y === "number" ? element.y : 0,
+          absolute: node
+            ? (() => {
+                const abs = node.getAbsolutePosition();
+                return { x: abs.x, y: abs.y };
+              })()
+            : undefined,
           points: Array.isArray(element.points) ? [...element.points] : [],
         });
       });
@@ -954,6 +962,9 @@ export class SelectionModule implements RendererModule {
         x: drawingSnapshot.x,
         y: drawingSnapshot.y,
         points: [...drawingSnapshot.points],
+        absolute: drawingSnapshot.absolute
+          ? { x: drawingSnapshot.absolute.x, y: drawingSnapshot.absolute.y }
+          : undefined,
       };
     });
 
@@ -1034,10 +1045,12 @@ export class SelectionModule implements RendererModule {
         return;
       }
 
+      const baseAbs = baseline.absolute ?? { x: baseline.x, y: baseline.y };
+
       try {
-        node.position({
-          x: baseline.x + delta.dx,
-          y: baseline.y + delta.dy,
+        node.absolutePosition({
+          x: baseAbs.x + delta.dx,
+          y: baseAbs.y + delta.dy,
         });
         const layer = node.getLayer?.();
         if (layer) {
@@ -1062,7 +1075,7 @@ export class SelectionModule implements RendererModule {
       }
 
       try {
-        group.position({
+        group.absolutePosition({
           x: baseline.groupPosition.x + delta.dx,
           y: baseline.groupPosition.y + delta.dy,
         });
@@ -1078,13 +1091,14 @@ export class SelectionModule implements RendererModule {
       }
     });
 
-    this.routeAnchoredConnectorsDuringTransient(snapshot, delta);
+    this.routeAnchoredConnectorsDuringTransient(snapshot, delta, layersToRedraw);
     this.flushTransientRedraws(layersToRedraw);
   }
 
   private routeAnchoredConnectorsDuringTransient(
     snapshot: TransformSnapshotState,
     delta: { dx: number; dy: number },
+    layersToRedraw: Set<Konva.Layer>,
   ): void {
     const requiresRouting = Object.values(snapshot.connectorBaselines).some(
       (baseline) => baseline.anchored,
@@ -1095,25 +1109,38 @@ export class SelectionModule implements RendererModule {
     }
 
     try {
-      const connectorEntries = Object.entries(snapshot.connectorBaselines);
-      const anchoredEntries = connectorEntries.filter(([, baseline]) => baseline.anchored);
-
-      if (anchoredEntries.length === 0) {
-        return;
-      }
-
-      // Reset any residual scale/rotation on transient groups so routing math stays clean
       const stage = this.getStage();
-      anchoredEntries.forEach(([id]) => {
-        const group = stage?.findOne<Konva.Group>(`#${id}`);
-        if (group) {
-          group.scale({ x: 1, y: 1 });
-          group.rotation(0);
+      const anchoredEntries = Object.entries(snapshot.connectorBaselines).filter(
+        ([, baseline]) => baseline.anchored,
+      );
+
+      anchoredEntries.forEach(([id, baseline]) => {
+        try {
+          const group = stage?.findOne<Konva.Group>(`#${id}`);
+          if (group && baseline.groupPosition) {
+            group.scale({ x: 1, y: 1 });
+            group.rotation(0);
+            group.absolutePosition({
+              x: baseline.groupPosition.x + delta.dx,
+              y: baseline.groupPosition.y + delta.dy,
+            });
+            const layer = group.getLayer?.();
+            if (layer) {
+              layersToRedraw.add(layer);
+            }
+          } else if (group) {
+            const layer = group.getLayer?.();
+            if (layer) {
+              layersToRedraw.add(layer);
+            }
+          }
+        } catch (groupError) {
+          this.debugLog("applyTransientDelta: anchored connector group move failed", {
+            id,
+            error: groupError,
+          });
         }
       });
-
-      connectorSelectionManager.updateVisuals(delta);
-      this.dragContainer?.getLayer?.()?.batchDraw?.();
     } catch (error) {
       this.debugLog("applyTransientDelta: connector routing update failed", { error });
     }
@@ -1305,8 +1332,22 @@ export class SelectionModule implements RendererModule {
       return;
     }
 
+    const snapshot = this.lastTransientSnapshot;
+    const movableIds = new Set<string>();
+
+    this.activeConnectorIds.forEach((id) => {
+      const baseline = snapshot?.connectorBaselines?.[id];
+      if (!baseline || baseline.anchored === false) {
+        movableIds.add(id);
+      }
+    });
+
+    if (movableIds.size === 0) {
+      return;
+    }
+
     connectorSelectionManager.moveSelectedConnectors(
-      new Set(this.activeConnectorIds),
+      movableIds,
       delta,
       this.connectorBaselines,
     );

@@ -175,6 +175,8 @@ snapshot.connectors.forEach((baseline, connectorId) => {
 - Use `pointerdown`, `pointermove`, `pointerup` and apply `touch-action: none` to the canvas container.
 - Adjust deltas for zoom: `deltaX = (clientX - startX) / stage.scaleX()`.
 - Handle `getCoalescedEvents()` (and `pointerrawupdate` where supported) to avoid jitter during stylus or rapid mouse movement. See MDN pointer-event guidance for browser compatibility.
+- Route marquee drags through the same lifecycle as transformer drags: when the first significant pointer delta is detected, call `selectionModule.beginSelectionTransform(nodes, "drag")`, stream each move via `progressSelectionTransform`, and finish with `endSelectionTransform`. This ensures connectors/drawings receive snapshot-driven deltas even when the user never touches the transformer handles.
+- Retain legacy connector/drawing fallbacks behind a guard (`if (!selectionModuleTransformActive)`) so the editor degrades gracefully when the module is not mounted (e.g., in isolated stories or broken embeds).
 
 ### 4.7 Transform Mathematics Reference
 For translation-only drags:
@@ -225,6 +227,7 @@ describe("Marquee Transform", () => {
 - Extend `ElementSynchronizer.drawing.test.ts` to cover both transient and final commit flows.
 - Add Playwright (or equivalent) integration tests covering marquee drags, connectors, drawings, and mindmap branches.
 - Enforce performance budgets in CI (≥60 FPS, <10 ms scripting time during synthetic drags).
+- Current coverage: `transform-stage-listening.test.ts` programmatically invokes `SelectionModule.beginSelectionTransform` / `endSelectionTransform` to confirm stage listening toggles during live transforms, and `marquee-all-elements.test.ts` drives a full marquee drag (shapes, connectors, drawings) verifying the absolute-position transient pipeline keeps Konva visuals and store baselines in lockstep mid-drag.
 
 ### 5.3 Manual QA Matrix
 - Browsers: Chrome, Edge, Firefox, Safari at 1× and 2× zoom.

@@ -16,9 +16,9 @@ Stabilise live transforms on the unified canvas so transformer geometry, drawing
 
 | Task ID | Outcome | Primary files / systems | Status | Dependencies |
 |---------|---------|-------------------------|--------|--------------|
-| CLTI-001 | Translate live transform deltas into ElementSynchronizer updates for drawings | `components/modules/Canvas/runtime/features/renderer/modules/SelectionModule.ts`, `components/modules/Canvas/runtime/features/renderer/modules/selection/managers/ElementSynchronizer.ts` | Planned | — |
-| CLTI-002 | Keep mindmap descendants in sync with selection bounds while dragging | `components/modules/Canvas/runtime/features/renderer/modules/selection/managers/MindmapSelectionOrchestrator.ts` | Planned | CLTI-001 |
-| CLTI-003 | Regression coverage for drawing translation logic | `components/modules/Canvas/runtime/features/renderer/modules/selection/managers/__tests__/ElementSynchronizer.drawing.test.ts` | Planned | CLTI-001 |
+| CLTI-001 | Translate live transform deltas into ElementSynchronizer updates for drawings | `components/modules/Canvas/runtime/features/renderer/modules/SelectionModule.ts`, `components/modules/Canvas/runtime/features/renderer/modules/selection/managers/ElementSynchronizer.ts` | Complete | — |
+| CLTI-002 | Keep mindmap descendants in sync with selection bounds while dragging | `components/modules/Canvas/runtime/features/renderer/modules/selection/managers/MindmapSelectionOrchestrator.ts` | Complete | CLTI-001 |
+| CLTI-003 | Regression coverage for drawing translation logic | `components/modules/Canvas/runtime/features/renderer/modules/selection/managers/__tests__/ElementSynchronizer.drawing.test.ts` | Complete | CLTI-001 |
 | CLTI-004 | Roadmap entry describing the initiative | `docs/roadmap/Unified-Workspace-Roadmap.md` | Planned | CLTI-001 → CLTI-003 |
 | CLTI-005 | Changelog note captured under Unreleased | `CHANGELOG.md` | Planned | CLTI-001 → CLTI-003 |
 | CLTI-006 | Memory graph update once work ships | `mcp_mcp_docker_add_observations` (Factory AI) | Pending release | CLTI-001 → CLTI-005 |
@@ -43,6 +43,7 @@ Stabilise live transforms on the unified canvas so transformer geometry, drawing
   - `npm run type-check`
   - Targeted unit/vitest coverage where available
   - Manual marquee drag of drawings, shapes, connectors.
+- **Status:** ✅ 2025-10-26 — `useMarqueeDrag` now pushes marquee deltas through `SelectionModule`'s begin/progress/end lifecycle, so drawings/connectors stay inside the transformer mid-drag. Verified with `npx playwright test components/modules/Canvas/runtime/features/__tests__/e2e/marquee-all-elements.test.ts`.
 
 ### CLTI-002 · Sync mindmap descendants mid-drag
 
@@ -53,12 +54,14 @@ Stabilise live transforms on the unified canvas so transformer geometry, drawing
   - Register mindmap descendants with the connector baseline set so branch edges receive the same deltas as their parent nodes; without this the connectors snap back when the drag ends.
 - **Acceptance criteria:** Dragging a mindmap branch keeps descendants aligned; transformer bounds stay accurate.
 - **Validation:** Repeat manual mindmap drag scenarios; confirm no state churn in collaborator sessions.
+- **Status:** ✅ 2025-10-26 — Mindmap orchestrator reuses transient deltas propagated via SelectionModule; marquee drags keep descendant groups and branch edges aligned during pointer-driven moves.
 
 ### CLTI-003 · Regression coverage for drawing translation
 
 - **Scope:** Add a focused vitest suite that constructs a Konva line, applies `updateElementsFromNodes` with a delta, and asserts the points translate.
 - **Acceptance criteria:** Test fails if drawing points do not shift by the supplied delta.
 - **Validation:** `npm run test -- ElementSynchronizer.drawing.test.ts`.
+- **Status:** ✅ 2025-10-25 — Regression suite in place (`ElementSynchronizer.drawing.test.ts`, `SelectionModule.transient.test.ts`); Playwright marquee scenario adds end-to-end coverage of drawing translation.
 
 ### CLTI-004 · Roadmap documentation
 

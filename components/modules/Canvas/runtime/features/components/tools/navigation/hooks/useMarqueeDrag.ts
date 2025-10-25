@@ -17,6 +17,30 @@ import type { ConnectorSelectionManager } from "../../../../renderer/modules/sel
 import type { MindmapSelectionManager } from "../../../../renderer/modules/selection/managers/MindmapSelectionManager";
 import { cloneEndpoint, connectorHasFreeEndpoint } from "./useMarqueeState";
 
+type SelectionModulePublicAPI = {
+  [key: string]: unknown;
+  beginSelectionTransform?: (nodes: Konva.Node[], source: "drag" | "transform") => void;
+  progressSelectionTransform?: (nodes: Konva.Node[], source: "drag" | "transform") => void;
+  endSelectionTransform?: (nodes: Konva.Node[], source: "drag" | "transform") => void;
+  selectElementsInBounds?: (
+    stage: Konva.Stage,
+    bounds: { x: number; y: number; width: number; height: number },
+    options?: { additive?: boolean },
+  ) => string[];
+  clearSelection?: () => void;
+  selectElement?: (elementId: string, options?: Record<string, unknown>) => void;
+  toggleSelection?: (elementId: string, additive?: boolean) => void;
+  marqueeSelectionController?: {
+    prepareNodesForDrag?: (
+      stage: Konva.Stage,
+      selectedIds: string[],
+    ) => {
+      nodes: Konva.Node[];
+      basePositions: Map<string, { x: number; y: number }>;
+    };
+  };
+};
+
 const isPointEndpoint = (
   endpoint?: ConnectorEndpoint | null,
 ): endpoint is ConnectorEndpointPoint => endpoint?.kind === "point";
@@ -189,6 +213,7 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
     
     marqueeRef.current.isDragging = true;
     marqueeRef.current.transformInitiated = false;
+    marqueeRef.current.selectionModuleTransformActive = false;
     marqueeRef.current.startPoint = { x: pos.x, y: pos.y };
 
     debug("MarqueeDrag: finding nodes for drag", {
@@ -396,6 +421,11 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
       dy: pos.y - startPoint.y,
     };
 
+    const selectionModule =
+      typeof window !== "undefined"
+        ? (window.selectionModule as SelectionModulePublicAPI | undefined)
+        : undefined;
+
     // Call beginTransform on first actual movement
     if (
       !marqueeRef.current.transformInitiated &&
@@ -406,6 +436,31 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
       });
       beginTransform?.();
       marqueeRef.current.transformInitiated = true;
+
+      if (!marqueeRef.current.selectionModuleTransformActive) {
+        const nodes = marqueeRef.current.selectedNodes.filter(Boolean);
+        if (selectionModule?.beginSelectionTransform && nodes.length > 0) {
+          try {
+            selectionModule.beginSelectionTransform(nodes, "drag");
+            marqueeRef.current.selectionModuleTransformActive = true;
+            try {
+              // Re-enable stage listening so pointer events keep firing for marquee drags.
+              stage.listening(true);
+            } catch (stageError) {
+              debug("MarqueeDrag: failed to re-enable stage listening", {
+                category: "marquee/drag",
+                data: { stageError },
+              });
+            }
+          } catch (error) {
+            debug("MarqueeDrag: selection module begin failed", {
+              category: "marquee/drag",
+              data: { error },
+            });
+            marqueeRef.current.selectionModuleTransformActive = false;
+          }
+        }
+      }
     }
 
     // Update node positions for live feedback
@@ -432,7 +487,10 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
       }
     });
 
-    if (marqueeRef.current.selectedConnectorIds.size > 0) {
+    if (
+      !marqueeRef.current.selectionModuleTransformActive &&
+      marqueeRef.current.selectedConnectorIds.size > 0
+    ) {
       marqueeRef.current.selectedConnectorIds.forEach((connectorId) => {
         const baseline = marqueeRef.current.connectorBaselines.get(connectorId);
         if (!baseline) {
@@ -491,7 +549,10 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
       });
     }
 
-    if (marqueeRef.current.activeMindmapNodeIds.length > 0) {
+    if (
+      !marqueeRef.current.selectionModuleTransformActive &&
+      marqueeRef.current.activeMindmapNodeIds.length > 0
+    ) {
       const manager =
         typeof window !== "undefined"
           ? window.mindmapSelectionManager ?? null
@@ -510,7 +571,21 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
     // Store updates trigger re-renders that destroy/recreate components
     // which removes event listeners, breaking pointer move events
     // Only update Konva positions visually, commit to store on dragEnd
-    
+
+    if (marqueeRef.current.selectionModuleTransformActive) {
+      const nodes = marqueeRef.current.selectedNodes.filter(Boolean);
+      if (selectionModule?.progressSelectionTransform && nodes.length > 0) {
+        try {
+          selectionModule.progressSelectionTransform(nodes, "drag");
+        } catch (error) {
+          debug("MarqueeDrag: selection module progress failed", {
+            category: "marquee/drag",
+            data: { error },
+          });
+        }
+      }
+    }
+
     // Redraw layer to show visual updates
     const layers = stage.getLayers();
     const mainLayer = layers[1];
@@ -541,6 +616,39 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
       dy: pos.y - startPoint.y,
     };
 
+    const selectionModule =
+      typeof window !== "undefined"
+        ? (window.selectionModule as SelectionModulePublicAPI | undefined)
+        : undefined;
+    const usingSelectionModule = marqueeRef.current.selectionModuleTransformActive;
+
+    if (usingSelectionModule) {
+      const nodes = marqueeRef.current.selectedNodes.filter(Boolean);
+      if (nodes.length > 0 && selectionModule?.progressSelectionTransform) {
+        try {
+          selectionModule.progressSelectionTransform(nodes, "drag");
+        } catch (error) {
+          debug("MarqueeDrag: selection module final progress failed", {
+            category: "marquee/drag",
+            data: { error },
+          });
+        }
+      }
+
+      if (nodes.length > 0 && selectionModule?.endSelectionTransform) {
+        try {
+          selectionModule.endSelectionTransform(nodes, "drag");
+        } catch (error) {
+          debug("MarqueeDrag: selection module end failed", {
+            category: "marquee/drag",
+            data: { error },
+          });
+        }
+      }
+
+      marqueeRef.current.selectionModuleTransformActive = false;
+    }
+
     // Separate connectors from regular elements
     const elementUpdates: Array<{
       id: string;
@@ -548,15 +656,51 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
     }> = [];
     const movedElementIds = new Set<string>();
 
-    marqueeRef.current.selectedNodes.forEach((node) => {
-      const elementId = node.getAttr("elementId") || node.id();
-      const element = store.elements?.get(elementId);
-      const basePos = marqueeRef.current.basePositions.get(elementId);
+    if (!usingSelectionModule) {
+      marqueeRef.current.selectedNodes.forEach((node) => {
+        const elementId = node.getAttr("elementId") || node.id();
+        const element = store.elements?.get(elementId);
+        const basePos = marqueeRef.current.basePositions.get(elementId);
 
-      if (element) {
-        if (element.type === "mindmap-node") {
-          // Commit parent and descendants
-          if (basePos) {
+        if (element) {
+          if (element.type === "mindmap-node") {
+            // Commit parent and descendants
+            if (basePos) {
+              elementUpdates.push({
+                id: elementId,
+                patch: {
+                  x: basePos.x + finalDelta.dx,
+                  y: basePos.y + finalDelta.dy,
+                },
+              });
+              movedElementIds.add(elementId);
+
+              const mindmapRenderer =
+                typeof window !== "undefined"
+                  ? window.mindmapRenderer ?? null
+                  : null;
+              if (mindmapRenderer) {
+                const descendants =
+                  mindmapRenderer.getAllDescendants?.(elementId);
+                if (descendants && descendants.size > 0) {
+                  descendants.forEach((descendantId: string) => {
+                    const descendantBasePos =
+                      marqueeRef.current.basePositions.get(descendantId);
+                    if (descendantBasePos) {
+                      elementUpdates.push({
+                        id: descendantId,
+                        patch: {
+                          x: descendantBasePos.x + finalDelta.dx,
+                          y: descendantBasePos.y + finalDelta.dy,
+                        },
+                      });
+                      movedElementIds.add(descendantId);
+                    }
+                  });
+                }
+              }
+            }
+          } else if (basePos) {
             elementUpdates.push({
               id: elementId,
               patch: {
@@ -565,91 +709,57 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
               },
             });
             movedElementIds.add(elementId);
-
-            const mindmapRenderer =
-              typeof window !== "undefined"
-                ? window.mindmapRenderer ?? null
-                : null;
-            if (mindmapRenderer) {
-              const descendants =
-                mindmapRenderer.getAllDescendants?.(elementId);
-              if (descendants && descendants.size > 0) {
-                descendants.forEach((descendantId: string) => {
-                  const descendantBasePos =
-                    marqueeRef.current.basePositions.get(descendantId);
-                  if (descendantBasePos) {
-                    elementUpdates.push({
-                      id: descendantId,
-                      patch: {
-                        x: descendantBasePos.x + finalDelta.dx,
-                        y: descendantBasePos.y + finalDelta.dy,
-                      },
-                    });
-                    movedElementIds.add(descendantId);
-                  }
-                });
-              }
-            }
           }
-        } else if (basePos) {
-          elementUpdates.push({
-            id: elementId,
-            patch: {
-              x: basePos.x + finalDelta.dx,
-              y: basePos.y + finalDelta.dy,
-            },
-          });
-          movedElementIds.add(elementId);
+        }
+      });
+
+      const connectorIds = new Set<string>(
+        marqueeRef.current.selectedConnectorIds,
+      );
+
+      // Commit non-connector moves with history
+      if (elementUpdates.length > 0 && store.updateElements) {
+        store.updateElements(elementUpdates, { pushHistory: true });
+      }
+
+      if (movedElementIds.size > 0) {
+        const connectorManager =
+          typeof window !== "undefined"
+            ? window.connectorSelectionManager
+            : undefined;
+        connectorManager?.scheduleRefresh(movedElementIds);
+      }
+
+      // Commit connectors via ConnectorSelectionManager
+      if (connectorIds.size > 0) {
+        const manager =
+          typeof window !== "undefined"
+            ? window.connectorSelectionManager
+            : undefined;
+        if (manager && typeof manager.moveSelectedConnectors === "function") {
+          manager.moveSelectedConnectors(
+            connectorIds,
+            finalDelta,
+            marqueeRef.current.connectorBaselines,
+          );
         }
       }
-    });
 
-    const connectorIds = new Set<string>(
-      marqueeRef.current.selectedConnectorIds,
-    );
+      if (marqueeRef.current.activeMindmapNodeIds.length > 0 || marqueeRef.current.mindmapDescendantBaselines.size > 0) {
+        const mindmapManager =
+          typeof window !== "undefined"
+            ? window.mindmapSelectionManager ?? null
+            : null;
 
-    // Commit non-connector moves with history
-    if (elementUpdates.length > 0 && store.updateElements) {
-      store.updateElements(elementUpdates, { pushHistory: true });
-    }
-
-    if (movedElementIds.size > 0) {
-      const connectorManager =
-        typeof window !== "undefined"
-          ? window.connectorSelectionManager
-          : undefined;
-      connectorManager?.scheduleRefresh(movedElementIds);
-    }
-
-    // Commit connectors via ConnectorSelectionManager
-    if (connectorIds.size > 0) {
-      const manager =
-        typeof window !== "undefined"
-          ? window.connectorSelectionManager
-          : undefined;
-      if (manager && typeof manager.moveSelectedConnectors === "function") {
-        manager.moveSelectedConnectors(
-          connectorIds,
-          finalDelta,
-          marqueeRef.current.connectorBaselines,
-        );
-      }
-    }
-
-    if (marqueeRef.current.activeMindmapNodeIds.length > 0 || marqueeRef.current.mindmapDescendantBaselines.size > 0) {
-      const mindmapManager =
-        typeof window !== "undefined"
-          ? window.mindmapSelectionManager ?? null
-          : null;
-
-      if (mindmapManager?.scheduleReroute) {
-        const rerouteIds = new Set<string>(
-          marqueeRef.current.activeMindmapNodeIds,
-        );
-        marqueeRef.current.mindmapDescendantBaselines.forEach((_, descendantId) => {
-          rerouteIds.add(descendantId);
-        });
-        mindmapManager.scheduleReroute(rerouteIds);
+        if (mindmapManager?.scheduleReroute) {
+          const rerouteIds = new Set<string>(
+            marqueeRef.current.activeMindmapNodeIds,
+          );
+          marqueeRef.current.mindmapDescendantBaselines.forEach((_, descendantId) => {
+            rerouteIds.add(descendantId);
+          });
+          mindmapManager.scheduleReroute(rerouteIds);
+        }
       }
     }
 
@@ -662,12 +772,13 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
     // This ensures selectedNodes array is cleared before reconcile creates new nodes
     marqueeRef.current.isDragging = false;
     marqueeRef.current.selectedNodes = []; // Clear stale node references
-  marqueeRef.current.selectedConnectorIds.clear();
+    marqueeRef.current.selectedConnectorIds.clear();
     marqueeRef.current.basePositions.clear();
     marqueeRef.current.originalDraggableStates.clear();
     marqueeRef.current.connectorBaselines.clear();
-  marqueeRef.current.mindmapDescendantBaselines.clear();
-  marqueeRef.current.activeMindmapNodeIds = [];
+    marqueeRef.current.mindmapDescendantBaselines.clear();
+    marqueeRef.current.activeMindmapNodeIds = [];
+    marqueeRef.current.transformInitiated = false;
 
     // Re-select elements to maintain visual feedback
     // This will repopulate selectedNodes with fresh nodes after reconcile
@@ -688,6 +799,7 @@ export const useMarqueeDrag = (options: MarqueeDragOptions) => {
 
 declare global {
   interface Window {
+    selectionModule?: SelectionModulePublicAPI;
     connectorSelectionManager?: ConnectorSelectionManager;
     mindmapSelectionManager?: MindmapSelectionManager;
     mindmapRenderer?: MindmapRendererLike;

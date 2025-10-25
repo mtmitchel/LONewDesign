@@ -31,6 +31,7 @@ export type MarqueeState = {
   originalDraggableStates: Map<string, boolean>;
   connectorBaselines: Map<string, ConnectorDragBaseline>;
   transformInitiated: boolean;
+  selectionModuleTransformActive: boolean;
   mindmapDescendantBaselines: Map<string, { x: number; y: number }>;
   activeMindmapNodeIds: string[];
 };
@@ -76,6 +77,7 @@ export const useMarqueeState = () => {
     originalDraggableStates: new Map(),
     connectorBaselines: new Map(),
     transformInitiated: false,
+    selectionModuleTransformActive: false,
     mindmapDescendantBaselines: new Map(),
     activeMindmapNodeIds: [],
   });

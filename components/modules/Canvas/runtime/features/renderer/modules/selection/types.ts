@@ -22,6 +22,7 @@ export interface DrawingSnapshot {
   x: number;
   y: number;
   points: number[];
+  absolute?: { x: number; y: number };
 }
 
 export interface TransformSnapshot {

@@ -171,7 +171,7 @@ export class MindmapSelectionManagerImpl implements MindmapSelectionManager {
         
         if (descendantGroup && initialPos) {
           // Set position relative to initial position, not incrementally
-          descendantGroup.position({
+          descendantGroup.absolutePosition({
             x: initialPos.x + delta.dx,
             y: initialPos.y + delta.dy,
           });

@@ -83,8 +83,10 @@ export class MindmapSelectionOrchestrator {
         }
 
         this.mindmapDescendantInitialPositions.set(descendantId, {
-          x: descendantGroup.x(),
-          y: descendantGroup.y(),
+          ...(() => {
+            const abs = descendantGroup.getAbsolutePosition();
+            return { x: abs.x, y: abs.y };
+          })(),
         });
         connectorBaselineCandidates.add(descendantId);
       });

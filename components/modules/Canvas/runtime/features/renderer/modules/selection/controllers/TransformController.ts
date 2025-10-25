@@ -75,7 +75,7 @@ export class TransformController {
       const baseline = this.snapshot.basePositions.get(elementId);
       if (!baseline) continue;
 
-      const pos = node.position();
+      const pos = node.absolutePosition();
       const delta = { dx: pos.x - baseline.x, dy: pos.y - baseline.y };
       this.deps.debug?.("Computed transform delta", { elementId, delta });
       return delta;

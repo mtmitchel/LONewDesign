@@ -331,15 +331,15 @@ export class MindmapRenderer {
     const group = this.nodeGroups.get(id);
     if (!group) return null;
 
-    const x = group.x();
-    const y = group.y();
-    const width = group.width();
-    const height = group.height();
+    const abs = group.getAbsolutePosition();
+    const scale = group.getAbsoluteScale();
+    const width = group.width() * (scale.x ?? 1);
+    const height = group.height() * (scale.y ?? 1);
 
     if (side === "left") {
-      return { x, y: y + height / 2 };
+      return { x: abs.x, y: abs.y + height / 2 };
     } else {
-      return { x: x + width, y: y + height / 2 };
+      return { x: abs.x + width, y: abs.y + height / 2 };
     }
   }
 }

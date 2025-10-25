@@ -56,6 +56,7 @@ This plan translates the comprehensive analysis into a concrete mitigation progr
    - In `SelectionModule`, subscribe to transient delta updates outside React.  
    - Translate Konva nodes, connector groups, and drawings every frame using snapshot baselines.  
    - Batch redraws via a single `dragLayer.batchDraw()` call.
+   - ✅ Anchored connectors now reuse snapshot endpoints — `SelectionModule.routeAnchoredConnectorsDuringTransient` applies the delta directly to overriden connector endpoints and Konva groups while routing stays disabled, eliminating the mid-drag freeze.
 3. **Lifecycle wiring**  
    - On drag start: populate snapshot, move nodes into drag layer, disable non-essential listeners.  
    - On drag move: emit transient delta (no history push).  
@@ -67,7 +68,9 @@ This plan translates the comprehensive analysis into a concrete mitigation progr
 **Exit Criteria:** Connectors and drawings visually track the pointer with zero frame lag; transient state cleared post-interaction; FPS ≥ 60 in test scene. *(In progress — store slice + SelectionModule subscriber now streaming deltas; remaining work: connector visual sync + drag layer batching.)*
    - ✅ Added `transform` store slice with `begin/update/commit/cancel` actions and exercised it via `transformSlice.test.ts`.
    - ✅ SelectionModule now publishes per-frame deltas, repositions drawings/non-anchored connectors through Konva nodes, and temporarily moves them into an overlay drag container during live transforms.
+   - ✅ Transient deltas now operate in stage coordinates (`node.absolutePosition()`); snapshot baselines capture absolute positions so drag-layer reparenting no longer zeroes out deltas mid-drag.
    - ✅ Expanded transient updates to route anchored connector geometry during live drags and batch redraws via the overlay drag container to keep frame budgets intact.
+   - ✅ Pointer-driven marquee drags now piggyback on the same lifecycle: `useMarqueeDrag` forwards drag start/progress/end to `SelectionModule`, so the transient channel powers live updates without duplicating connector/drawing math. Manual fallback logic only executes when the module API is unavailable.
 
 ---
 
@@ -121,12 +124,8 @@ This plan translates the comprehensive analysis into a concrete mitigation progr
 
 ## Phase 6 — Validation & Regression Safety
 1. **Automated coverage**  
-   - ⚠️ **Playwright infrastructure setup in progress** — Added initial E2E test skeleton (`transform-stage-listening.test.ts`) with canvas instrumentation (window.canvasStage, canvasLayers, useUnifiedCanvasStore exposed in dev mode). Current blockers:
-     - Canvas module not rendering in test environment (despite localStorage seeding and navigation waiting)
-     - Toolbar container present in DOM but not accessible to Playwright selectors (waitForSelector/waitForFunction timeouts)
-     - Tool selection helpers need alignment with actual toolbar implementation (data-testid absent, aria-labels/titles present but unreachable)
-   - **Next steps**: Investigate why Canvas module DOM doesn't match running application; consider simpler unit-style tests using jsdom + canvas stub for initial transform lifecycle coverage before resolving full E2E infrastructure.
-   - TODO: Expand scenarios to cover marquee drags with connectors/drawings once fixture builders are ready and test runner stabilises.  
+   - ✅ Playwright stage listening coverage landed — `transform-stage-listening.test.ts` now launches the Canvas, injects a sticky note via the store API, and drives `SelectionModule.beginSelectionTransform`/`endSelectionTransform` inside the browser to validate Konva stage listening toggles.
+   - ✅ Added comprehensive marquee regression (`marquee-all-elements.test.ts`) that seeds every canvas element type, marquee-selects them, applies a scripted delta, and asserts connectors/drawings remain aligned while absolute-position deltas flow through the transient channel.  
    - Add performance budget checks to CI (custom script or Lighthouse) focused on drag frame times.
 2. **Manual QA matrix**  
    - Desktop (Chrome, Edge, Safari, Firefox) at 1× and 2× zoom.  
@@ -137,15 +136,14 @@ This plan translates the comprehensive analysis into a concrete mitigation progr
 
 **Exit Criteria:** All automated suites green; manual matrix signed off; metrics within tolerances.
 
-**Phase 6 Status Notes (2025-10-25):**
+**Phase 6 Status Notes (2025-10-26):**
 - ✅ Installed @playwright/test and browser binaries
 - ✅ Created test utilities (launchTestCanvas, waitForCanvasReady, selectTool helpers)
 - ✅ Exposed Konva stage, layers, and store on window in dev mode (useCanvasStageLifecycle)
 - ✅ Established E2E test infrastructure - Canvas module loads correctly, elements can be created/selected
-- ⚠️ **E2E Limitation Identified**: Playwright mouse events don't trigger Konva Transformer events (transformstart/transformend) in headless browser
-  - Root cause: Konva's internal event system requires canvas-level interactions that Playwright can't reliably simulate
-  - Workaround: Transform lifecycle is comprehensively covered by unit tests (SelectionModule.transient.test.ts)
-  - Future: Consider using Konva's internal API via page.evaluate() to programmatically trigger transformer events
+- ✅ Resolved transformer event gap by invoking SelectionModule lifecycle directly in-browser (programmatic `beginSelectionTransform` / `endSelectionTransform`)
+  - Playwright test `transform-stage-listening.test.ts` now exercises stage listening toggles without relying on raw pointer simulation
+  - Reuses transformer-attached nodes captured pre-transform to avoid Konva detachment edge cases
 - ✅ Phase 5 completion confirmed: Stage listening restoration, transient node cleanup, unmount coverage all validated via unit tests
 
 ---

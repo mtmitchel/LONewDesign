@@ -167,9 +167,13 @@ export class ElementSynchronizerImpl implements ElementSynchronizer {
         });
 
         // Get current node properties
-        const position = node.position();
+        const absolute = node.absolutePosition();
         let size = getNodeSize(node, element);
-        const scale = node.scale();
+        const scale =
+          typeof (node as { getAbsoluteScale?: () => { x: number; y: number } }).getAbsoluteScale ===
+          "function"
+            ? (node as { getAbsoluteScale: () => { x: number; y: number } }).getAbsoluteScale()
+            : node.scale();
         const rotation = node.rotation();
         const skew = node.skew();
         const scaleX = isFiniteNumber(scale.x) ? scale.x : 1;
@@ -207,8 +211,8 @@ export class ElementSynchronizerImpl implements ElementSynchronizer {
 
         // Base element patch
         const patch: ElementPatch = {
-          x: position.x,
-          y: position.y,
+          x: absolute.x,
+          y: absolute.y,
           width: effectiveWidth,
           height: effectiveHeight,
         };
