@@ -1,6 +1,6 @@
 # Canvas Refactor Plan
 
-> **Related documentation**: This plan sequences the five-track canvas stabilisation effort. For canonical geometry conventions and testing requirements, see [`Geometry.md`](./Geometry.md). For the technical audit that identified these issues, see [`../../Canvas-Audit-Report.txt`](../../Canvas-Audit-Report.txt).
+> **Related documentation**: This plan sequences the five-track canvas stabilisation effort. For canonical geometry conventions and testing requirements, see [`Geometry.md`](./Geometry.md). For the technical audit that identified these issues, see [`../technical/Canvas-Live-Transform-Audit-2025-10-25.md`](../technical/Canvas-Live-Transform-Audit-2025-10-25.md).
 
 ## Overview
 This plan sequences the five workstreams required to stabilise and scale the canvas module. Each track includes goals, deliverables, checkpoints, and risks. Execution order matters: Track 1 (Canonical Geometry Alignment) unblocks the remaining efforts. All work will be developed on `refactor/sync-service-modularization` unless noted otherwise.

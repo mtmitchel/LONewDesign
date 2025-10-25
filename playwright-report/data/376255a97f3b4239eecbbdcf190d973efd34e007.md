@@ -1,0 +1,126 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - button "Go to Dashboard" [ref=e6] [cursor=pointer]: ∴
+      - navigation [ref=e7]:
+        - list [ref=e8]:
+          - listitem [ref=e9]:
+            - button "Today" [ref=e10] [cursor=pointer]:
+              - img [ref=e11]
+              - generic [ref=e17]: Today
+          - listitem [ref=e18]:
+            - button "Projects" [ref=e19] [cursor=pointer]:
+              - img [ref=e20]
+              - generic [ref=e22]: Projects
+          - listitem [ref=e23]:
+            - button "Calendar" [ref=e24] [cursor=pointer]:
+              - img [ref=e25]
+              - generic [ref=e27]: Calendar
+          - listitem [ref=e28]:
+            - button "Tasks" [ref=e29] [cursor=pointer]:
+              - img [ref=e30]
+              - generic [ref=e33]: Tasks
+          - listitem [ref=e34]:
+            - button "Mail" [ref=e35] [cursor=pointer]:
+              - img [ref=e36]
+              - generic [ref=e39]: Mail
+          - listitem [ref=e40]:
+            - button "Chat" [ref=e41] [cursor=pointer]:
+              - img [ref=e42]
+              - generic [ref=e44]: Chat
+          - listitem [ref=e45]:
+            - button "Notes" [ref=e46] [cursor=pointer]:
+              - img [ref=e47]
+              - generic [ref=e50]: Notes
+          - listitem [ref=e51]:
+            - button "Canvas" [ref=e52] [cursor=pointer]:
+              - img [ref=e53]
+              - generic [ref=e58]: Canvas
+          - listitem [ref=e59]:
+            - button "Settings" [ref=e60] [cursor=pointer]:
+              - img [ref=e61]
+              - generic [ref=e64]: Settings
+          - listitem [ref=e65]:
+            - button "Canvas Stress" [ref=e66] [cursor=pointer]:
+              - img [ref=e67]
+              - generic [ref=e70]: Canvas Stress
+      - generic [ref=e71]:
+        - region "Assistant" [ref=e72]:
+          - button "Add" [ref=e73] [cursor=pointer]:
+            - img [ref=e74]
+        - generic [ref=e77]: Synced
+        - button [ref=e79] [cursor=pointer]:
+          - img
+    - main [ref=e80]:
+      - generic [ref=e81]:
+        - generic [ref=e82]:
+          - generic [ref=e83]:
+            - toolbar [ref=e85]:
+              - generic [ref=e86]: Canvas
+              - button "+ New" [ref=e87] [cursor=pointer]
+            - generic [ref=e89]:
+              - generic [ref=e91]:
+                - img
+                - textbox "Search canvases" [ref=e92]
+              - listbox "Canvas list" [ref=e93]:
+                - option "Untitled canvas" [selected] [ref=e95] [cursor=pointer]:
+                  - generic [ref=e97]: Untitled canvas
+              - button "Hide canvas list" [ref=e99] [cursor=pointer]:
+                - img [ref=e100]
+          - toolbar "Canvas tools" [ref=e106]:
+            - generic [ref=e107]:
+              - button "Select" [pressed] [ref=e108] [cursor=pointer]:
+                - img [ref=e109]
+              - button "Pan" [ref=e112] [cursor=pointer]:
+                - img [ref=e113]
+            - generic [ref=e119]:
+              - button "Sticky note" [ref=e120] [cursor=pointer]:
+                - img [ref=e121]
+              - button "Text" [ref=e125] [cursor=pointer]:
+                - img [ref=e126]
+              - button "Table" [ref=e128] [cursor=pointer]:
+                - img [ref=e129]
+              - button "Image" [ref=e131] [cursor=pointer]:
+                - img [ref=e132]
+            - generic [ref=e137]:
+              - button "Shapes" [ref=e138] [cursor=pointer]:
+                - img [ref=e139]
+              - button "Connector" [ref=e143] [cursor=pointer]:
+                - img [ref=e144]
+            - generic [ref=e147]:
+              - button "Pen" [ref=e148] [cursor=pointer]:
+                - img [ref=e149]
+              - button "Marker" [ref=e151] [cursor=pointer]:
+                - img [ref=e152]
+              - button "Highlighter" [ref=e155] [cursor=pointer]:
+                - img [ref=e156]
+              - button "Eraser" [ref=e159] [cursor=pointer]:
+                - img [ref=e160]
+            - generic [ref=e164]:
+              - button "Undo" [ref=e165] [cursor=pointer]:
+                - img [ref=e166]
+              - button "Redo" [ref=e169] [cursor=pointer]:
+                - img [ref=e170]
+              - button "Clear canvas" [ref=e173] [cursor=pointer]:
+                - img [ref=e174]
+            - generic [ref=e178]:
+              - button "Zoom out" [ref=e179] [cursor=pointer]:
+                - img [ref=e180]
+              - button "Reset zoom" [ref=e183] [cursor=pointer]: 100%
+              - button "Fit to canvas" [ref=e184] [cursor=pointer]:
+                - img [ref=e185]
+              - button "Zoom in" [ref=e190] [cursor=pointer]:
+                - img [ref=e191]
+        - generic [ref=e199]:
+          - generic [ref=e200]:
+            - generic [ref=e201]: Undo
+            - generic [ref=e202]: Ctrl+Z
+          - generic [ref=e203]:
+            - generic [ref=e204]: Redo
+            - generic [ref=e205]: Shift+Ctrl+Z
+          - generic [ref=e206]: Canvas autosaves locally in your browser.
+  - region "Notifications alt+T"
+```

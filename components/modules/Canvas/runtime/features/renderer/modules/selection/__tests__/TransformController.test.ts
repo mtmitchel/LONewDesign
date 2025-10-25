@@ -9,6 +9,7 @@ const createSnapshot = (
 ): TransformSnapshot => ({
   basePositions: new Map<string, { x: number; y: number }>(),
   connectors: new Map(),
+  drawings: new Map(),
   mindmapEdges: new Map(),
   movedMindmapNodes: new Set(),
   ...overrides,

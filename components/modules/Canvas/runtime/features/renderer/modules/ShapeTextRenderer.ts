@@ -7,9 +7,10 @@ import type { CanvasElement } from '../../../../../types';
 export interface RendererLayers {
   background: Konva.Layer;
   main: Konva.Layer;
-  highlighter: Konva.Layer;
+  highlighter: Konva.Group;
   preview: Konva.Layer;
   overlay: Konva.Layer;
+  drag: Konva.Group;
 }
 
 type ShapeWithText = CanvasElement & {

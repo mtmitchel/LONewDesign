@@ -116,8 +116,8 @@ export function useCanvasHistory(options: UseCanvasHistoryOptions): UseCanvasHis
     const stage = stageOrThrow();
     applyOps(stage, entry.ops, 'undo');
     indexRef.current = idx - 1;
-    // After applying several layer batchDraw calls, a stage draw is safe
-    stage.draw();
+  // After applying several layer updates, defer actual paints to Konva's batching
+  stage.batchDraw();
     updateFlags();
   }, [stageOrThrow, updateFlags]);
 
@@ -129,7 +129,7 @@ export function useCanvasHistory(options: UseCanvasHistoryOptions): UseCanvasHis
     const stage = stageOrThrow();
     applyOps(stage, entry.ops, 'redo');
     indexRef.current = idx + 1;
-    stage.draw();
+  stage.batchDraw();
     updateFlags();
   }, [stageOrThrow, updateFlags]);
 

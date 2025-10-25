@@ -92,4 +92,4 @@ Stabilise live transforms on the unified canvas so transformer geometry, drawing
 
 ## Provenance
 
-This document supersedes the scratch plan drafted on 2025-10-24. Historical investigation notes remain in `canvas-tool-selection-audit.txt` and the broader [Canvas Refactor Plan](../guidelines/CanvasRefactorPlan.md). Update this document for all future Live Transform Integrity work.
+This document supersedes the scratch plan drafted on 2025-10-24. Historical investigation notes now live in [`Canvas-Live-Transform-Audit-2025-10-25.md`](../technical/Canvas-Live-Transform-Audit-2025-10-25.md) and the broader [Canvas Refactor Plan](../guidelines/CanvasRefactorPlan.md). Update this document for all future Live Transform Integrity work.

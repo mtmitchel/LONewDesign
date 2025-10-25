@@ -73,7 +73,7 @@ export default class ShapeModule {
       this.layers.preview.add(this.previewCircle);
     }
 
-    this.layers.preview.draw();
+  this.layers.preview.batchDraw();
     return true;
   };
 
@@ -109,12 +109,12 @@ export default class ShapeModule {
     if (this.previewRect) {
       const rect = this.previewRect;
       this.previewRect = undefined;
-      this.layers.preview.removeChildren();
-      this.layers.preview.draw();
+  this.layers.preview.removeChildren();
+  this.layers.preview.batchDraw();
 
       rect.listening(true);
       this.layers.main.add(rect);
-      this.layers.main.draw();
+  this.layers.main.batchDraw();
 
       this.store.addElement({
         id: nanoid(),
@@ -131,12 +131,12 @@ export default class ShapeModule {
     } else if (this.previewCircle) {
       const circle = this.previewCircle;
       this.previewCircle = undefined;
-      this.layers.preview.removeChildren();
-      this.layers.preview.draw();
+  this.layers.preview.removeChildren();
+  this.layers.preview.batchDraw();
 
       circle.listening(true);
       this.layers.main.add(circle);
-      this.layers.main.draw();
+  this.layers.main.batchDraw();
 
       this.store.addElement({
         id: nanoid(),

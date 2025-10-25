@@ -23,10 +23,20 @@ import { TransformLifecycleCoordinator } from "./selection/controllers/Transform
 import { MarqueeSelectionController } from "./selection/controllers/MarqueeSelectionController";
 import { KeyboardHandler } from "./selection/utils/KeyboardHandler";
 import { SelectionStateManager } from "./selection/managers/SelectionStateManager";
+import { ConnectorAdjacencyCache } from "./selection/utils/ConnectorAdjacencyCache";
 import { debug } from "../../../../utils/debug";
-import type { UnifiedCanvasStore } from "../../stores/unifiedCanvasStore";
+import type {
+  UnifiedCanvasStore,
+  TransformSnapshotState,
+} from "../../stores/unifiedCanvasStore";
+import { getElementBoundsFromElements } from "../../stores/selectors/geometrySelectors";
 import type { TransformSnapshot as ControllerTransformSnapshot } from "./selection/types";
-import type { ConnectorElement, ConnectorEndpoint } from "../../types/connector";
+import type {
+  ConnectorElement,
+  ConnectorEndpoint,
+  ConnectorEndpointPoint,
+} from "../../types/connector";
+import type { CanvasElement } from "../../../../types";
 
 const FEATURE_FLAG_SELECTION_MANAGERS_V2 = "CANVAS_SELECTION_MANAGERS_V2";
 
@@ -114,11 +124,38 @@ export class SelectionModule implements RendererModule {
     }
   >();
   private activeConnectorIds = new Set<string>();
+  private transformSubscription?: () => void;
+  private lastTransientSnapshot: TransformSnapshotState | null = null;
+  private lastAppliedDelta: { dx: number; dy: number } | null = null;
+  private dragContainer?: Konva.Group;
+  private transientNodeParents = new Map<string, Konva.Container | null>();
+  private connectorAdjacencyCache = new ConnectorAdjacencyCache();
+  private stageListeningBeforeTransform?: boolean;
 
   mount(ctx: ModuleRendererCtx): () => void {
     this.storeCtx = ctx;
     this.useSelectionManagersV2 = isSelectionManagersV2Enabled();
     this.spatialIndex = ctx.store.getState().spatialIndex;
+    this.dragContainer = ctx.layers.drag;
+
+    if (typeof ctx.store.subscribe === "function") {
+      this.transformSubscription = ctx.store.subscribe(
+        (state) => state.transform,
+        (transform) => {
+          if (!transform) {
+            this.lastTransientSnapshot = null;
+            this.lastAppliedDelta = null;
+            return;
+          }
+          this.handleTransformState(
+            transform.snapshot ?? null,
+            transform.transientDelta ?? null,
+            transform.isActive ?? false,
+          );
+        },
+        { fireImmediately: true },
+      );
+    }
 
     // Initialize SelectionStateManager
     this.selectionStateManager = new SelectionStateManager(ctx);
@@ -356,7 +393,12 @@ export class SelectionModule implements RendererModule {
     if (typeof window !== "undefined") {
       delete window.marqueeSelectionController;
     }
+    this.transformSubscription?.();
+    this.transformSubscription = undefined;
+    this.lastTransientSnapshot = null;
+    this.lastAppliedDelta = null;
     this.spatialIndex = undefined;
+    this.publishTransformCancel();
   }
 
   private handleSelectionVersionChange(_version: number): void {
@@ -526,11 +568,25 @@ export class SelectionModule implements RendererModule {
     // Reset and capture controller snapshot for delta computations
     this.transformController?.clearSnapshot();
     const controllerSnapshot = this.buildTransformControllerSnapshot(nodes);
-    if (controllerSnapshot) {
-      this.transformController?.start(controllerSnapshot);
+    if (!controllerSnapshot) {
+      this.publishTransformCancel();
+      this.restoreStageListening();
+      return;
     }
 
+    this.moveNodesToDragLayer(nodes, controllerSnapshot);
+    this.transformController?.start(controllerSnapshot);
+    this.publishTransformBegin(controllerSnapshot);
+
     this.captureConnectorBaselines();
+
+    const stage = this.getStage();
+    if (stage) {
+      if (this.stageListeningBeforeTransform === undefined) {
+        this.stageListeningBeforeTransform = stage.listening();
+      }
+      stage.listening(false);
+    }
 
     this.mindmapSelectionOrchestrator?.handleTransformBegin(nodes, source);
   }
@@ -572,15 +628,106 @@ export class SelectionModule implements RendererModule {
           },
         );
       }
+      this.publishTransformDelta(delta);
+      // Push delta through transient channel for downstream subscribers
       this.applyConnectorDelta(delta);
       this.mindmapSelectionOrchestrator?.handleTransformProgress(
         nodes,
         source,
         delta,
       );
+    } else {
+      this.publishTransformClear();
     }
 
     this.syncElementsDuringTransform(nodes, source, delta ?? undefined);
+  }
+
+  private prepareConnectorAdjacency(elements?: Map<string, CanvasElement>): void {
+    if (!elements) {
+      this.connectorAdjacencyCache.clear();
+      return;
+    }
+
+    try {
+      this.connectorAdjacencyCache.rebuild(elements);
+    } catch (error) {
+      this.debugLog("prepareConnectorAdjacency failed", { error });
+      this.connectorAdjacencyCache.clear();
+    }
+  }
+
+  private collectConnectedConnectorIds(
+    elements: Map<string, CanvasElement>,
+    selectedIds: Set<string>,
+  ): Set<string> {
+    const connectorIds = new Set<string>();
+
+    selectedIds.forEach((id) => {
+      const element = elements.get(id);
+      if (element?.type === "connector") {
+        connectorIds.add(id);
+      }
+    });
+
+    const adjacencyMatches = this.connectorAdjacencyCache.getConnectedConnectors(selectedIds);
+    adjacencyMatches.forEach((id) => connectorIds.add(id));
+
+    return connectorIds;
+  }
+
+  private resolveConnectorEndpointPointForSnapshot(
+    endpoint: ConnectorEndpoint,
+    elements: Map<string, CanvasElement>,
+  ): ConnectorEndpointPoint | null {
+    if (!endpoint) {
+      return null;
+    }
+
+    if (endpoint.kind === "point") {
+      return {
+        kind: "point",
+        x: endpoint.x,
+        y: endpoint.y,
+      };
+    }
+
+    const bounds = getElementBoundsFromElements(elements, endpoint.elementId);
+    if (!bounds) {
+      return null;
+    }
+
+    let x = bounds.x + bounds.width / 2;
+    let y = bounds.y + bounds.height / 2;
+
+    switch (endpoint.anchor) {
+      case "left":
+        x = bounds.x;
+        break;
+      case "right":
+        x = bounds.x + bounds.width;
+        break;
+      case "top":
+        y = bounds.y;
+        break;
+      case "bottom":
+        y = bounds.y + bounds.height;
+        break;
+      case "center":
+      default:
+        break;
+    }
+
+    if (endpoint.offset) {
+      x += endpoint.offset.dx;
+      y += endpoint.offset.dy;
+    }
+
+    return {
+      kind: "point",
+      x,
+      y,
+    };
   }
 
   private endSelectionTransform(
@@ -620,8 +767,11 @@ export class SelectionModule implements RendererModule {
     }
 
     // Direct call to TransformStateManager (Phase 3: shim removal)
+    this.publishTransformCommit();
     transformStateManager.finalizeTransform();
     this.transformController?.release();
+
+    this.restoreStageListening();
 
     if (source === "transform") {
       this.spatialIndex?.endInteraction();
@@ -636,6 +786,7 @@ export class SelectionModule implements RendererModule {
     }
 
     const basePositions = new Map<string, { x: number; y: number }>();
+    const selectedIds = new Set<string>();
 
     nodes.forEach((node) => {
       try {
@@ -645,6 +796,7 @@ export class SelectionModule implements RendererModule {
         }
         const position = node.position();
         basePositions.set(elementId, { x: position.x, y: position.y });
+        selectedIds.add(elementId);
       } catch (error) {
         this.debugLog("buildTransformControllerSnapshot: position read failed", {
           error,
@@ -657,16 +809,448 @@ export class SelectionModule implements RendererModule {
     }
 
     const transformerRect = this.transformLifecycle?.getTransformerRect();
-
-    return {
+    const snapshot: ControllerTransformSnapshot = {
       basePositions,
       connectors: new Map(),
+      drawings: new Map(),
       mindmapEdges: new Map(),
       movedMindmapNodes: new Set(),
       transformerBox: transformerRect
         ? { x: transformerRect.x, y: transformerRect.y }
         : undefined,
     };
+
+    const elements = this.storeCtx?.store.getState().elements;
+    if (elements && elements.size > 0) {
+      this.prepareConnectorAdjacency(elements);
+
+      const stage = this.getStage();
+      const connectorsToCapture = this.collectConnectedConnectorIds(elements, selectedIds);
+      const drawingsToCapture = new Set<string>();
+      selectedIds.forEach((elementId) => {
+        const element = elements.get(elementId);
+        if (element?.type === "drawing") {
+          drawingsToCapture.add(elementId);
+        }
+      });
+
+      connectorsToCapture.forEach((connectorId) => {
+        const element = elements.get(connectorId);
+        if (!element || element.type !== "connector") {
+          return;
+        }
+
+        const connector = element as ConnectorElement;
+        const startFrom = this.resolveConnectorEndpointPointForSnapshot(connector.from, elements);
+        const startTo = this.resolveConnectorEndpointPointForSnapshot(connector.to, elements);
+        if (!startFrom || !startTo) {
+          this.debugLog("buildTransformControllerSnapshot: missing connector endpoints", {
+            connectorId,
+          });
+          return;
+        }
+
+        const group = stage?.findOne<Konva.Group>(`#${connectorId}`) ?? null;
+        const shapeNode = group?.findOne<Konva.Shape>(".connector-shape") ?? null;
+        const groupPosition = group
+          ? (() => {
+              const pos = group.position();
+              return { x: pos.x, y: pos.y };
+            })()
+          : undefined;
+
+        snapshot.connectors.set(connectorId, {
+          originalFrom: this.cloneConnectorEndpoint(connector.from) ?? connector.from,
+          originalTo: this.cloneConnectorEndpoint(connector.to) ?? connector.to,
+          startFrom,
+          startTo,
+          wasAnchored:
+            (connector.from?.kind === "element" && Boolean(connector.from.elementId)) ||
+            (connector.to?.kind === "element" && Boolean(connector.to.elementId)),
+          shape: shapeNode as unknown as Konva.Line | Konva.Arrow | null,
+          group,
+          groupPosition,
+        });
+      });
+
+      drawingsToCapture.forEach((elementId) => {
+        const element = elements.get(elementId);
+        if (!element || element.type !== "drawing") {
+          return;
+        }
+
+        const node = stage?.findOne<Konva.Line>(`#${elementId}`) ?? null;
+        snapshot.drawings.set(elementId, {
+          node,
+          x: typeof element.x === "number" ? element.x : 0,
+          y: typeof element.y === "number" ? element.y : 0,
+          points: Array.isArray(element.points) ? [...element.points] : [],
+        });
+      });
+
+      if (process.env.NODE_ENV !== "production") {
+        if (connectorsToCapture.size > 0 && snapshot.connectors.size === 0) {
+          this.debugLog("transform snapshot missing connectors despite dependencies", {
+            expected: connectorsToCapture.size,
+            captured: snapshot.connectors.size,
+          });
+        }
+        if (drawingsToCapture.size > 0 && snapshot.drawings.size === 0) {
+          this.debugLog("transform snapshot missing drawings despite selection", {
+            expected: drawingsToCapture.size,
+            captured: snapshot.drawings.size,
+          });
+        }
+      }
+    } else {
+      this.prepareConnectorAdjacency(undefined);
+    }
+
+    this.debugLog("buildTransformControllerSnapshot summary", {
+      baseCount: basePositions.size,
+      connectorCount: snapshot.connectors.size,
+      drawingCount: snapshot.drawings.size,
+    });
+    return snapshot;
+  }
+
+  private serializeTransformSnapshot(
+    snapshot: ControllerTransformSnapshot,
+  ): TransformSnapshotState {
+    const elementBaselines: TransformSnapshotState["elementBaselines"] = {};
+    snapshot.basePositions.forEach((pos, id) => {
+      elementBaselines[id] = { x: pos.x, y: pos.y };
+    });
+
+    const connectorBaselines: TransformSnapshotState["connectorBaselines"] = {};
+    snapshot.connectors.forEach((connectorSnapshot, connectorId) => {
+      connectorBaselines[connectorId] = {
+        startFrom: {
+          kind: "point",
+          x: connectorSnapshot.startFrom.x,
+          y: connectorSnapshot.startFrom.y,
+        },
+        startTo: {
+          kind: "point",
+          x: connectorSnapshot.startTo.x,
+          y: connectorSnapshot.startTo.y,
+        },
+        originalFrom:
+          this.cloneConnectorEndpoint(connectorSnapshot.originalFrom) ??
+          connectorSnapshot.originalFrom,
+        originalTo:
+          this.cloneConnectorEndpoint(connectorSnapshot.originalTo) ??
+          connectorSnapshot.originalTo,
+        groupPosition: connectorSnapshot.groupPosition
+          ? { x: connectorSnapshot.groupPosition.x, y: connectorSnapshot.groupPosition.y }
+          : null,
+        anchored: connectorSnapshot.wasAnchored,
+      };
+    });
+
+    const drawingBaselines: TransformSnapshotState["drawingBaselines"] = {};
+    snapshot.drawings.forEach((drawingSnapshot, drawingId) => {
+      drawingBaselines[drawingId] = {
+        x: drawingSnapshot.x,
+        y: drawingSnapshot.y,
+        points: [...drawingSnapshot.points],
+      };
+    });
+
+    return {
+      elementBaselines,
+      connectorBaselines,
+      drawingBaselines,
+    };
+  }
+
+  private publishTransformBegin(snapshot: ControllerTransformSnapshot): void {
+    const transformApi = this.storeCtx?.store.getState().transform;
+    if (!transformApi?.beginTransform) {
+      return;
+    }
+    transformApi.beginTransform(this.serializeTransformSnapshot(snapshot));
+  }
+
+  private publishTransformDelta(delta: { dx: number; dy: number }): void {
+    const transformApi = this.storeCtx?.store.getState().transform;
+    transformApi?.updateTransform?.({ ...delta });
+  }
+
+  private publishTransformClear(): void {
+    const transformApi = this.storeCtx?.store.getState().transform;
+    transformApi?.clearTransient?.();
+  }
+
+  private publishTransformCommit(): void {
+    const transformApi = this.storeCtx?.store.getState().transform;
+    this.restoreTransientNodes();
+    transformApi?.commitTransform?.();
+  }
+
+  private publishTransformCancel(): void {
+    const transformApi = this.storeCtx?.store.getState().transform;
+    transformApi?.cancelTransform?.();
+    this.restoreStageListening();
+    this.restoreTransientNodes();
+  }
+
+  private handleTransformState(
+    snapshot: TransformSnapshotState | null,
+    delta: { dx: number; dy: number } | null,
+    isActive: boolean,
+  ): void {
+    if (!snapshot || !isActive) {
+      this.lastTransientSnapshot = null;
+      this.lastAppliedDelta = null;
+      this.restoreStageListening();
+      this.restoreTransientNodes();
+      return;
+    }
+
+    const appliedDelta = delta ?? { dx: 0, dy: 0 };
+    if (
+      this.lastAppliedDelta &&
+      this.lastAppliedDelta.dx === appliedDelta.dx &&
+      this.lastAppliedDelta.dy === appliedDelta.dy
+    ) {
+      return;
+    }
+
+    this.lastTransientSnapshot = snapshot;
+    this.applyTransientDeltaToSnapshot(snapshot, appliedDelta);
+    this.lastAppliedDelta = appliedDelta;
+  }
+
+  private applyTransientDeltaToSnapshot(
+    snapshot: TransformSnapshotState,
+    delta: { dx: number; dy: number },
+  ): void {
+    const stage = this.getStage();
+    const layersToRedraw = new Set<Konva.Layer>();
+    Object.entries(snapshot.drawingBaselines).forEach(([id, baseline]) => {
+      const node = stage?.findOne<Konva.Line>(`#${id}`);
+      if (!node) {
+        return;
+      }
+
+      try {
+        node.position({
+          x: baseline.x + delta.dx,
+          y: baseline.y + delta.dy,
+        });
+        const layer = node.getLayer?.();
+        if (layer) {
+          layersToRedraw.add(layer);
+        }
+      } catch (error) {
+        this.debugLog("applyTransientDelta: drawing update failed", {
+          id,
+          error,
+        });
+      }
+    });
+
+    Object.entries(snapshot.connectorBaselines).forEach(([id, baseline]) => {
+      if (baseline.anchored) {
+        return;
+      }
+
+      const group = stage?.findOne<Konva.Group>(`#${id}`);
+      if (!group || !baseline.groupPosition) {
+        return;
+      }
+
+      try {
+        group.position({
+          x: baseline.groupPosition.x + delta.dx,
+          y: baseline.groupPosition.y + delta.dy,
+        });
+        const layer = group.getLayer?.();
+        if (layer) {
+          layersToRedraw.add(layer);
+        }
+      } catch (error) {
+        this.debugLog("applyTransientDelta: connector update failed", {
+          id,
+          error,
+        });
+      }
+    });
+
+    this.routeAnchoredConnectorsDuringTransient(snapshot, delta);
+    this.flushTransientRedraws(layersToRedraw);
+  }
+
+  private routeAnchoredConnectorsDuringTransient(
+    snapshot: TransformSnapshotState,
+    delta: { dx: number; dy: number },
+  ): void {
+    const requiresRouting = Object.values(snapshot.connectorBaselines).some(
+      (baseline) => baseline.anchored,
+    );
+
+    if (!requiresRouting) {
+      return;
+    }
+
+    try {
+      const connectorEntries = Object.entries(snapshot.connectorBaselines);
+      const anchoredEntries = connectorEntries.filter(([, baseline]) => baseline.anchored);
+
+      if (anchoredEntries.length === 0) {
+        return;
+      }
+
+      // Reset any residual scale/rotation on transient groups so routing math stays clean
+      const stage = this.getStage();
+      anchoredEntries.forEach(([id]) => {
+        const group = stage?.findOne<Konva.Group>(`#${id}`);
+        if (group) {
+          group.scale({ x: 1, y: 1 });
+          group.rotation(0);
+        }
+      });
+
+      connectorSelectionManager.updateVisuals(delta);
+      this.dragContainer?.getLayer?.()?.batchDraw?.();
+    } catch (error) {
+      this.debugLog("applyTransientDelta: connector routing update failed", { error });
+    }
+  }
+
+  private flushTransientRedraws(layers: Set<Konva.Layer>): void {
+    const dragLayer = this.dragContainer?.getLayer?.();
+    if (dragLayer) {
+      try {
+        dragLayer.batchDraw?.();
+      } catch (error) {
+        this.debugLog("flushTransientRedraws: drag layer batch failed", { error });
+      }
+      layers.delete(dragLayer);
+    }
+
+    if (layers.size === 0) {
+      const stage = this.getStage();
+      stage?.batchDraw?.();
+      return;
+    }
+
+    layers.forEach((layer) => {
+      try {
+        layer.batchDraw?.();
+      } catch (error) {
+        this.debugLog("flushTransientRedraws: layer batch failed", { error });
+      }
+    });
+  }
+
+  private moveNodesToDragLayer(
+    nodes: Konva.Node[],
+    snapshot: ControllerTransformSnapshot,
+  ): void {
+    const dragGroup = this.dragContainer;
+    if (!dragGroup) {
+      return;
+    }
+
+    this.transientNodeParents.clear();
+
+    const stage = this.getStage();
+
+    nodes.forEach((node) => {
+      const elementId = (node.getAttr("elementId") as string | undefined) ?? node.id();
+      if (!elementId) {
+        return;
+      }
+      this.moveNodeToDragGroup(node, elementId);
+    });
+
+    snapshot.connectors.forEach((_connectorSnapshot, connectorId) => {
+      const group = stage?.findOne<Konva.Group>(`#${connectorId}`);
+      if (!group) {
+        return;
+      }
+      this.moveNodeToDragGroup(group, connectorId);
+    });
+
+    snapshot.drawings.forEach((_drawingSnapshot, drawingId) => {
+      const drawingNode = stage?.findOne<Konva.Line>(`#${drawingId}`);
+      if (!drawingNode) {
+        return;
+      }
+      this.moveNodeToDragGroup(drawingNode, drawingId);
+    });
+
+    dragGroup.getLayer()?.batchDraw?.();
+  }
+
+  private moveNodeToDragGroup(node: Konva.Node, elementId: string): void {
+    const dragGroup = this.dragContainer;
+    if (!dragGroup) {
+      return;
+    }
+
+    const parent = node.getParent() ?? null;
+    if (parent === dragGroup) {
+      return;
+    }
+
+    if (!this.transientNodeParents.has(elementId)) {
+      this.transientNodeParents.set(elementId, parent);
+    }
+
+    try {
+      node.moveTo(dragGroup);
+    } catch (error) {
+      this.debugLog("moveNodeToDragGroup failed", { elementId, error });
+    }
+  }
+
+  private restoreTransientNodes(): void {
+    if (this.transientNodeParents.size === 0) {
+      return;
+    }
+
+    const stage = this.getStage();
+    this.transientNodeParents.forEach((parent, elementId) => {
+      const node = stage?.findOne<Konva.Node>(`#${elementId}`);
+      if (!node) {
+        return;
+      }
+
+      const target = parent ?? this.storeCtx?.layers.main;
+      if (!target) {
+        return;
+      }
+
+      try {
+        node.moveTo(target);
+        target.getLayer?.()?.batchDraw?.();
+      } catch (error) {
+        this.debugLog("restoreTransientNodes: move failed", { elementId, error });
+      }
+    });
+
+    this.transientNodeParents.clear();
+    this.dragContainer?.getLayer()?.batchDraw?.();
+  }
+
+  private restoreStageListening(): void {
+    if (this.stageListeningBeforeTransform === undefined) {
+      return;
+    }
+
+    const stage = this.getStage();
+    if (stage) {
+      try {
+        stage.listening(this.stageListeningBeforeTransform);
+      } catch (error) {
+        this.debugLog("restoreStageListening failed", { error });
+      }
+    }
+
+    this.stageListeningBeforeTransform = undefined;
   }
 
   private syncElementsDuringTransform(
@@ -749,6 +1333,7 @@ export class SelectionModule implements RendererModule {
     }
 
     const idSet = new Set(ids);
+    this.prepareConnectorAdjacency(elements);
 
     const addBaseline = (connectorId: string, connector: ConnectorElement) => {
       if (this.connectorBaselines.has(connectorId)) {
@@ -768,28 +1353,23 @@ export class SelectionModule implements RendererModule {
       this.activeConnectorIds.add(connectorId);
     };
 
-    elements.forEach((element, elementId) => {
+    const connectorIds = this.collectConnectedConnectorIds(elements, idSet);
+
+    if (includeConnectorSelf) {
+      idSet.forEach((elementId) => {
+        const element = elements.get(elementId);
+        if (element?.type === "connector") {
+          connectorIds.add(elementId);
+        }
+      });
+    }
+
+    connectorIds.forEach((connectorId) => {
+      const element = elements.get(connectorId);
       if (!element || element.type !== "connector") {
         return;
       }
-
-      const connector = element as ConnectorElement;
-
-      if (includeConnectorSelf && idSet.has(elementId)) {
-        addBaseline(elementId, connector);
-      }
-
-      const fromElementId =
-        connector.from?.kind === "element" ? connector.from.elementId : undefined;
-      const toElementId =
-        connector.to?.kind === "element" ? connector.to.elementId : undefined;
-
-      if (
-        (fromElementId && idSet.has(fromElementId)) ||
-        (toElementId && idSet.has(toElementId))
-      ) {
-        addBaseline(elementId, connector);
-      }
+      addBaseline(connectorId, element as ConnectorElement);
     });
   }
 
@@ -912,6 +1492,7 @@ export class SelectionModule implements RendererModule {
         return;
       }
       this.transformController.release();
+      this.publishTransformCancel();
     }
 
     this.transformerSelectionManager?.cancelPending();

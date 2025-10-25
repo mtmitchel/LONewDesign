@@ -31,8 +31,8 @@ export class ToolPreviewLayer {
       line.listening(false);
     }
 
-    line.destroy();
-    stage.draw();
+  line.destroy();
+  stage.batchDraw();
     // Use store action to persist the element with history
     const store = useUnifiedCanvasStore.getState();
     if (store.element?.upsert && store.withUndo) {

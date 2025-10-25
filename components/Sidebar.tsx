@@ -3,6 +3,7 @@ import {
   Calendar,
   CheckSquare,
   FileText,
+  Gauge,
   FolderKanban,
   LayoutDashboard,
   Mail,
@@ -37,6 +38,7 @@ const modules = [
   { id: 'notes', label: 'Notes', icon: FileText },
   { id: 'canvas', label: 'Canvas', icon: PenTool },
   { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'canvas-stress', label: 'Canvas Stress', icon: Gauge },
 ];
 
 export function Sidebar({ activeModule, onModuleChange, collapsed, onToggleCollapse, onAssistantOpen }: SidebarProps) {

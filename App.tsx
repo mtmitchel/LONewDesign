@@ -22,6 +22,7 @@ import { DesignSystemDemo } from './components/dev/DesignSystemDemo';
 import { MasterComponentsGuide } from './components/dev/MasterComponentsGuide';
 import { ComponentUsageGuide } from './components/dev/ComponentUsageGuide';
 import { MigrationChecklist } from './components/dev/MigrationChecklist';
+import CanvasStressHarness from './components/dev/CanvasStressHarness';
 
 const MODULE_STORAGE_KEY = 'therefore:last-module';
 const DEFAULT_MODULE = 'mail';
@@ -41,6 +42,7 @@ const KNOWN_MODULES = new Set([
   'pane-caret-spec',
   'usage-guide',
   'migration-checklist',
+  'canvas-stress',
   'mail-tripane',
   'mail-edge-handles',
 ]);
@@ -103,6 +105,8 @@ export default function App() {
         return <ComponentUsageGuide />;
       case 'migration-checklist':
         return <MigrationChecklist />;
+      case 'canvas-stress':
+        return <CanvasStressHarness />;
       
       // Legacy aliases (remove these eventually)
       case 'mail-tripane':

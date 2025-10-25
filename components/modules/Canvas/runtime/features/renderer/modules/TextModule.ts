@@ -54,7 +54,7 @@ export default class TextModule {
     });
 
     this.layers.main.add(textNode);
-    this.layers.main.draw();
+  this.layers.main.batchDraw();
 
     this.store.addElement({
       id,

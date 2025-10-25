@@ -19,6 +19,7 @@ type LayerRefs = {
   highlighter: Konva.Group | null;
   preview: Konva.Layer | null;
   overlay: Konva.Layer | null;
+  drag: Konva.Group | null;
 };
 
 type ConnectorLayers = {
@@ -43,6 +44,12 @@ type StageLifecycleResult = {
   };
 };
 
+type InstrumentedCanvasWindow = typeof window & {
+  canvasStage?: Konva.Stage | null;
+  canvasLayers?: LayerRefs | null;
+  useUnifiedCanvasStore?: typeof useUnifiedCanvasStore;
+};
+
 export const useCanvasStageLifecycle = (): StageLifecycleResult => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewportXRef = useRef<number>(0);
@@ -64,6 +71,7 @@ export const useCanvasStageLifecycle = (): StageLifecycleResult => {
     highlighter: null,
     preview: null,
     overlay: null,
+    drag: null,
   });
   const connectorLayersRef = useRef<ConnectorLayers | null>(null);
   const rendererDisposeRef = useRef<(() => void) | null>(null);
@@ -162,6 +170,8 @@ export const useCanvasStageLifecycle = (): StageLifecycleResult => {
     mainLayer.add(highlighterGroup);
     const previewLayer = new Konva.Layer({ listening: false });
     const overlayLayer = new Konva.Layer({ listening: true });
+    const dragGroup = new Konva.Group({ listening: false });
+    overlayLayer.add(dragGroup);
 
     layersRef.current = {
       background: backgroundLayer,
@@ -169,7 +179,15 @@ export const useCanvasStageLifecycle = (): StageLifecycleResult => {
       highlighter: highlighterGroup,
       preview: previewLayer,
       overlay: overlayLayer,
+      drag: dragGroup,
     };
+
+    if (isDev) {
+      const instrumentedWindow = window as InstrumentedCanvasWindow;
+      instrumentedWindow.canvasStage = stage;
+      instrumentedWindow.canvasLayers = { ...layersRef.current };
+      instrumentedWindow.useUnifiedCanvasStore = useUnifiedCanvasStore;
+    }
 
     connectorLayersRef.current = {
       main: mainLayer,
@@ -260,6 +278,7 @@ export const useCanvasStageLifecycle = (): StageLifecycleResult => {
       highlighter: highlighterGroup,
       preview: previewLayer,
       overlay: overlayLayer,
+      drag: dragGroup,
     });
     rendererDisposeRef.current = rendererDispose;
 
@@ -358,6 +377,13 @@ export const useCanvasStageLifecycle = (): StageLifecycleResult => {
 
       delete (window as unknown as Record<string, unknown>).konvaStage;
       delete (window as unknown as Record<string, unknown>).canvasRafBatcher;
+
+      if (isDev) {
+        const instrumentedWindow = window as InstrumentedCanvasWindow;
+        delete instrumentedWindow.canvasStage;
+        delete instrumentedWindow.canvasLayers;
+        delete instrumentedWindow.useUnifiedCanvasStore;
+      }
     };
   }, [updateOverlayTransform]);
 

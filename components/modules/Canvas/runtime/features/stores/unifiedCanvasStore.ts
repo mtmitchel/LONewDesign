@@ -17,7 +17,11 @@ import type { HistoryModuleSlice } from "./modules/historyModule";
 import type { InteractionModuleSlice } from "./modules/interactionModule";
 
 // Types (keep imports narrow to avoid circular types)
-import type { CanvasElement, ElementId, Bounds } from "../../../../types/index";
+import type {
+  CanvasElement,
+  ElementId,
+  Bounds,
+} from "../../../../types/index";
 import type { StoreHistoryOp } from "./modules/historyModule";
 import {
   getElementBoundsFromElements,
@@ -31,6 +35,10 @@ import {
   type SpatialIndexStats,
   type BoundsSource,
 } from "./spatialIndex/SpatialIndexService";
+import type {
+  ConnectorEndpoint,
+  ConnectorEndpointPoint,
+} from "../types/connector";
 
 // Persistence types
 interface PersistedState {
@@ -185,6 +193,52 @@ export interface SpatialIndexSlice {
   };
 }
 
+export interface TransformSnapshotState {
+  elementBaselines: Record<string, { x: number; y: number }>;
+  connectorBaselines: Record<
+    string,
+    {
+      startFrom: ConnectorEndpointPoint;
+      startTo: ConnectorEndpointPoint;
+      originalFrom: ConnectorEndpoint;
+      originalTo: ConnectorEndpoint;
+      groupPosition?: { x: number; y: number } | null;
+      anchored: boolean;
+    }
+  >;
+  drawingBaselines: Record<
+    string,
+    {
+      x: number;
+      y: number;
+      points: number[];
+    }
+  >;
+}
+
+export interface TransformCommitPatch {
+  id: ElementId;
+  patch: Partial<CanvasElement>;
+}
+
+export interface TransformCommitPayload {
+  patches?: TransformCommitPatch[];
+  pushHistory?: boolean;
+}
+
+export interface TransformSlice {
+  transform: {
+    snapshot: TransformSnapshotState | null;
+    transientDelta: { dx: number; dy: number } | null;
+    isActive: boolean;
+    beginTransform: (snapshot: TransformSnapshotState) => void;
+    updateTransform: (delta: { dx: number; dy: number }) => void;
+    clearTransient: () => void;
+    commitTransform: (payload?: TransformCommitPayload) => void;
+    cancelTransform: () => void;
+  };
+}
+
 export type UnifiedCanvasStore = CoreModuleSlice &
   HistoryModuleSlice &
   InteractionModuleSlice &
@@ -204,7 +258,7 @@ export type UnifiedCanvasStore = CoreModuleSlice &
       redo: () => void;
       clear: () => void;
     };
-  };
+  } & TransformSlice;
 
 // Helper for persistence: serialize Map/Set into arrays
 function partializeForPersist(state: UnifiedCanvasStore) {
@@ -462,6 +516,61 @@ export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
             endInteraction: () => spatialIndexService.endDeferred(),
             forceRebuild: () => spatialIndexService.forceRebuild(),
             getStats: () => spatialIndexService.getStats(),
+          },
+
+          transform: {
+            snapshot: null,
+            transientDelta: null,
+            isActive: false,
+            beginTransform: (snapshot: TransformSnapshotState) => {
+              set((state) => {
+                state.transform.snapshot = snapshot;
+                state.transform.transientDelta = null;
+                state.transform.isActive = true;
+              });
+            },
+            updateTransform: (delta: { dx: number; dy: number }) => {
+              set((state) => {
+                state.transform.transientDelta = { ...delta };
+              });
+            },
+            clearTransient: () => {
+              set((state) => {
+                state.transform.transientDelta = null;
+              });
+            },
+            commitTransform: (payload?: TransformCommitPayload) => {
+              const patches = payload?.patches ?? [];
+              if (patches.length > 0) {
+                const updateElements = get().updateElements ?? null;
+                if (updateElements) {
+                  updateElements(
+                    patches,
+                    { pushHistory: Boolean(payload?.pushHistory) },
+                  );
+                } else {
+                  // Fallback to individual updates if batch helper unavailable
+                  const updateElement = get().updateElement;
+                  patches.forEach(({ id, patch }) => {
+                    updateElement?.(id, patch, {
+                      pushHistory: Boolean(payload?.pushHistory),
+                    });
+                  });
+                }
+              }
+              set((state) => {
+                state.transform.snapshot = null;
+                state.transform.transientDelta = null;
+                state.transform.isActive = false;
+              });
+            },
+            cancelTransform: () => {
+              set((state) => {
+                state.transform.snapshot = null;
+                state.transform.transientDelta = null;
+                state.transform.isActive = false;
+              });
+            },
           },
 
           panBy: (dx: number, dy: number) => {

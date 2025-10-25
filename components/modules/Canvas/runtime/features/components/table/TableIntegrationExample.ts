@@ -4,7 +4,8 @@
 
 import type Konva from "konva";
 import type {
-  RendererLayers} from "../../renderer/modules/TableModule";
+  RendererLayers as TableRendererLayers,
+} from "../../renderer/modules/TableModule";
 import {
   TableRenderer
 } from "../../renderer/modules/TableModule";
@@ -26,7 +27,7 @@ import {
  */
 export class TableIntegrationExample {
   private readonly stage: Konva.Stage;
-  private readonly layers: RendererLayers;
+  private readonly layers: ModuleRendererCtx["layers"];
   private readonly tableRenderer: TableRenderer;
   private transformerController?: TableTransformerController;
   private contextMenuHelper?: TableContextMenuHelper;
@@ -42,7 +43,7 @@ export class TableIntegrationExample {
     };
   };
 
-  constructor(stage: Konva.Stage, layers: RendererLayers, storeContext: {
+  constructor(stage: Konva.Stage, layers: ModuleRendererCtx["layers"], storeContext: {
     store: {
       getState: () => {
         element: {
@@ -58,21 +59,22 @@ export class TableIntegrationExample {
     this.storeContext = storeContext;
 
     // Initialize table renderer with position jump prevention
+    const tableLayers: TableRendererLayers = {
+      background: layers.background,
+      main: layers.main,
+      preview: layers.preview,
+      overlay: layers.overlay,
+    };
+
     this.tableRenderer = new TableRenderer(
-      layers,
+      tableLayers,
       {
         cacheAfterCommit: true, // Enable caching for performance
         usePooling: true, // Enable node pooling for large tables
       },
       {
         stage: this.stage,
-        layers: {
-          background: layers.background,
-          main: layers.main,
-          highlighter: layers.main, // Use main layer as highlighter fallback
-          preview: layers.preview,
-          overlay: layers.overlay
-        },
+        layers: this.layers,
         store: storeContext.store as ModuleRendererCtx['store'] // Cast to match ModuleRendererCtx type
       },
     );
@@ -335,7 +337,7 @@ export class TableIntegrationExample {
  */
 export function createTableIntegration(
   stage: Konva.Stage,
-  layers: RendererLayers,
+  layers: ModuleRendererCtx["layers"],
   storeContext: {
     store: {
       getState: () => {

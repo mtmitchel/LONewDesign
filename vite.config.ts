@@ -23,7 +23,8 @@ export default defineConfig(() => ({
       '@': path.resolve(__dirname, 'components/modules/Canvas/runtime'),
       '@canvas-types': path.resolve(__dirname, 'components/modules/Canvas/types/index.ts'),
       '@types': path.resolve(__dirname, 'components/modules/Canvas/types/index.ts'),
-      '@canvas-utils': path.resolve(__dirname, 'components/modules/Canvas/runtime/utils')
+      '@canvas-utils': path.resolve(__dirname, 'components/modules/Canvas/runtime/utils'),
+      'canvas': path.resolve(__dirname, 'tests/stubs/canvas.ts')
     }
   },
   server: {

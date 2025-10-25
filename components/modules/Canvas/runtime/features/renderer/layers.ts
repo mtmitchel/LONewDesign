@@ -6,6 +6,7 @@ export interface RendererLayers {
   highlighter: Konva.Group; // non-interactive group nested inside main layer for highlight strokes
   preview: Konva.Layer; // tool previews/temporary
   overlay: Konva.Layer; // selection handles, UI overlays
+  drag: Konva.Group; // transient drag container nested in overlay
 }
 
 /**
@@ -71,6 +72,10 @@ export function createRendererLayers(
   const overlay = new Konva.Layer({ listening: listeningOverlay });
   overlay.name('overlay-layer');
 
+  const drag = new Konva.Group({ listening: false });
+  drag.name('overlay-drag-group');
+  overlay.add(drag);
+
   stage.add(background);
   stage.add(main);
   stage.add(preview);
@@ -86,12 +91,12 @@ export function createRendererLayers(
   });
 
   // Initial draws
-  background.draw();
-  main.draw();
-  preview.draw();
-  overlay.draw();
+  background.batchDraw();
+  main.batchDraw();
+  preview.batchDraw();
+  overlay.batchDraw();
 
-  return { background, main, highlighter, preview, overlay };
+  return { background, main, highlighter, preview, overlay, drag };
 }
 
 /**

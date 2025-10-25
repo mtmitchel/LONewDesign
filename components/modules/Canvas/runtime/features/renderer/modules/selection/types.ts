@@ -4,10 +4,7 @@ import type {
   ConnectorEndpoint,
   ConnectorEndpointPoint,
 } from "@features/canvas/types/connector";
-import type {
-  MindmapEdgeElement,
-  MindmapNodeElement,
-} from "@features/canvas/types/mindmap";
+import type { MindmapEdgeElement, MindmapNodeElement } from "@features/canvas/types/mindmap";
 
 export interface ConnectorSnapshot {
   originalFrom: ConnectorEndpoint;
@@ -20,9 +17,17 @@ export interface ConnectorSnapshot {
   groupPosition?: { x: number; y: number };
 }
 
+export interface DrawingSnapshot {
+  node?: Konva.Line | null;
+  x: number;
+  y: number;
+  points: number[];
+}
+
 export interface TransformSnapshot {
   basePositions: Map<string, { x: number; y: number }>;
   connectors: Map<string, ConnectorSnapshot>;
+  drawings: Map<string, DrawingSnapshot>;
   mindmapEdges: Map<string, MindmapEdgeElement>;
   movedMindmapNodes: Set<string>;
   transformerBox?: { x: number; y: number };

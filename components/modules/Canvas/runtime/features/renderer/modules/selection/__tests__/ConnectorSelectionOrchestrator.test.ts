@@ -33,6 +33,7 @@ describe("ConnectorSelectionOrchestrator", () => {
         highlighter: {} as unknown as ModuleRendererCtx["layers"]["highlighter"],
         preview: {} as unknown as ModuleRendererCtx["layers"]["preview"],
         overlay: {} as unknown as ModuleRendererCtx["layers"]["overlay"],
+        drag: {} as unknown as ModuleRendererCtx["layers"]["drag"],
       },
   store: (storeFn as unknown) as ModuleRendererCtx["store"],
     };

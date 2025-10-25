@@ -43,6 +43,7 @@ export interface ModuleRendererCtx {
     highlighter: Konva.Group;
     preview: Konva.Layer;
     overlay: Konva.Layer;
+    drag: Konva.Group;
   };
   store: typeof useUnifiedCanvasStore;
 }

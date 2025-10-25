@@ -126,7 +126,7 @@ export class TransformerController {
       this.layer.batchDraw();
     });
 
-    this.layer.draw();
+  this.layer.batchDraw();
   }
 
   /**

@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import "vitest-canvas-mock";
 import type Konva from "konva";
 import { describe, it, expect } from "vitest";
 import {
