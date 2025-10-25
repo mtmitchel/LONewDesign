@@ -26,6 +26,7 @@ import { SelectionStateManager } from "./selection/managers/SelectionStateManage
 import { debug } from "../../../../utils/debug";
 import type { UnifiedCanvasStore } from "../../stores/unifiedCanvasStore";
 import type { TransformSnapshot as ControllerTransformSnapshot } from "./selection/types";
+import type { ConnectorElement, ConnectorEndpoint } from "../../types/connector";
 
 const FEATURE_FLAG_SELECTION_MANAGERS_V2 = "CANVAS_SELECTION_MANAGERS_V2";
 
@@ -104,6 +105,15 @@ export class SelectionModule implements RendererModule {
   private mindmapSelectionOrchestrator?: MindmapSelectionOrchestrator;
   private useSelectionManagersV2 = true;
   private spatialIndex?: UnifiedCanvasStore["spatialIndex"];
+  private connectorBaselines = new Map<
+    string,
+    {
+      position: { x: number; y: number };
+      from?: ConnectorEndpoint;
+      to?: ConnectorEndpoint;
+    }
+  >();
+  private activeConnectorIds = new Set<string>();
 
   mount(ctx: ModuleRendererCtx): () => void {
     this.storeCtx = ctx;
@@ -175,6 +185,7 @@ export class SelectionModule implements RendererModule {
     this.mindmapSelectionOrchestrator = new MindmapSelectionOrchestrator({
       getStoreContext: () => this.storeCtx,
       debug: (message, data) => this.debugLog(message, data),
+      registerConnectorBaselines: (ids) => this.registerConnectorBaselinesForElements(ids, false),
     });
 
     this.transformController = new TransformController({
@@ -216,6 +227,7 @@ export class SelectionModule implements RendererModule {
     this.connectorTransformFinalizer = new ConnectorTransformFinalizer(
       ctx,
       this.transformController,
+      () => this.connectorBaselines,
     );
 
     // Initialize MarqueeSelectionController
@@ -518,6 +530,8 @@ export class SelectionModule implements RendererModule {
       this.transformController?.start(controllerSnapshot);
     }
 
+    this.captureConnectorBaselines();
+
     this.mindmapSelectionOrchestrator?.handleTransformBegin(nodes, source);
   }
 
@@ -539,6 +553,13 @@ export class SelectionModule implements RendererModule {
     // Live visual updates for connectors and mindmap edges using existing controller
     const delta = this.transformController?.computeDelta(nodes);
     if (delta) {
+      const elementIds = nodes
+        .map((node) => node.getAttr("elementId") || node.id())
+        .filter((id): id is string => Boolean(id));
+      if (elementIds.length > 0) {
+        this.registerConnectorBaselinesForElements(elementIds, false);
+      }
+
       // Update visuals directly through transform controller
       const snapshot = this.transformController?.getSnapshot();
       if (snapshot) {
@@ -551,6 +572,7 @@ export class SelectionModule implements RendererModule {
           },
         );
       }
+      this.applyConnectorDelta(delta);
       this.mindmapSelectionOrchestrator?.handleTransformProgress(
         nodes,
         source,
@@ -558,7 +580,7 @@ export class SelectionModule implements RendererModule {
       );
     }
 
-    this.syncElementsDuringTransform(nodes, source);
+    this.syncElementsDuringTransform(nodes, source, delta ?? undefined);
   }
 
   private endSelectionTransform(
@@ -570,6 +592,8 @@ export class SelectionModule implements RendererModule {
 
     // Delegate connector-specific transform finalization to dedicated class
     this.connectorTransformFinalizer?.finalizeConnectorTransform(nodes);
+    this.connectorBaselines.clear();
+    this.activeConnectorIds.clear();
 
     // Filter out connector nodes to prevent double-processing with pushHistory: true
     // ConnectorTransformFinalizer already handled connectors with pushHistory: false
@@ -648,6 +672,7 @@ export class SelectionModule implements RendererModule {
   private syncElementsDuringTransform(
     nodes: Konva.Node[],
     source: "drag" | "transform",
+    delta?: { dx: number; dy: number },
   ): void {
     if (!nodes || nodes.length === 0) {
       return;
@@ -658,10 +683,137 @@ export class SelectionModule implements RendererModule {
         pushHistory: false,
         batchUpdates: true,
         skipConnectorScheduling: true,
+        transformDelta: delta,
       });
     } catch (error) {
       this.debugLog("syncElementsDuringTransform: update failed", { error });
     }
+  }
+
+  private captureConnectorBaselines(): void {
+    this.connectorBaselines.clear();
+    this.activeConnectorIds.clear();
+
+    const ctx = this.storeCtx;
+    if (!ctx) {
+      return;
+    }
+
+    const state = ctx.store.getState();
+    const elements = state.elements;
+    const selected = state.selectedElementIds;
+
+    if (!elements || !selected) {
+      return;
+    }
+
+    const selectedIds = Array.isArray(selected)
+      ? selected
+      : selected instanceof Set
+        ? Array.from(selected)
+        : [];
+
+    this.registerConnectorBaselinesForElements(selectedIds, true);
+  }
+
+  private applyConnectorDelta(delta: { dx: number; dy: number }): void {
+    if (this.activeConnectorIds.size === 0) {
+      return;
+    }
+
+    connectorSelectionManager.moveSelectedConnectors(
+      new Set(this.activeConnectorIds),
+      delta,
+      this.connectorBaselines,
+    );
+  }
+
+  private registerConnectorBaselinesForElements(
+    elementIds: Iterable<string>,
+    includeConnectorSelf: boolean,
+  ): void {
+    const ctx = this.storeCtx;
+    if (!ctx) {
+      return;
+    }
+
+    const ids = Array.from(elementIds);
+    if (ids.length === 0) {
+      return;
+    }
+
+    const state = ctx.store.getState();
+    const elements = state.elements;
+    if (!elements) {
+      return;
+    }
+
+    const idSet = new Set(ids);
+
+    const addBaseline = (connectorId: string, connector: ConnectorElement) => {
+      if (this.connectorBaselines.has(connectorId)) {
+        return;
+      }
+
+      const position = {
+        x: typeof connector.x === "number" ? connector.x : 0,
+        y: typeof connector.y === "number" ? connector.y : 0,
+      };
+
+      this.connectorBaselines.set(connectorId, {
+        position,
+        from: this.cloneConnectorEndpoint(connector.from),
+        to: this.cloneConnectorEndpoint(connector.to),
+      });
+      this.activeConnectorIds.add(connectorId);
+    };
+
+    elements.forEach((element, elementId) => {
+      if (!element || element.type !== "connector") {
+        return;
+      }
+
+      const connector = element as ConnectorElement;
+
+      if (includeConnectorSelf && idSet.has(elementId)) {
+        addBaseline(elementId, connector);
+      }
+
+      const fromElementId =
+        connector.from?.kind === "element" ? connector.from.elementId : undefined;
+      const toElementId =
+        connector.to?.kind === "element" ? connector.to.elementId : undefined;
+
+      if (
+        (fromElementId && idSet.has(fromElementId)) ||
+        (toElementId && idSet.has(toElementId))
+      ) {
+        addBaseline(elementId, connector);
+      }
+    });
+  }
+
+  private cloneConnectorEndpoint(
+    endpoint: ConnectorEndpoint | undefined,
+  ): ConnectorEndpoint | undefined {
+    if (!endpoint) {
+      return undefined;
+    }
+
+    if (endpoint.kind === "point") {
+      return {
+        kind: "point",
+        x: endpoint.x,
+        y: endpoint.y,
+      };
+    }
+
+    return {
+      kind: "element",
+      elementId: endpoint.elementId,
+      anchor: endpoint.anchor,
+      offset: endpoint.offset ? { ...endpoint.offset } : undefined,
+    };
   }
 
   // FIXED: Enhanced auto-select element with better timing and error recovery

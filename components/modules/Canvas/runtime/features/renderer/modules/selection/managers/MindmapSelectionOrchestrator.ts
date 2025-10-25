@@ -12,6 +12,7 @@ export interface MindmapSelectionOrchestratorConfig {
   getStoreContext: () => ModuleRendererCtx | undefined;
   mindmapManager?: MindmapSelectionManager;
   elementSynchronizer?: ElementSynchronizer;
+  registerConnectorBaselines?: (ids: Set<string>) => void;
   debug?: (message: string, data?: unknown) => void;
 }
 
@@ -23,6 +24,7 @@ export class MindmapSelectionOrchestrator {
   private readonly getStoreContext: () => ModuleRendererCtx | undefined;
   private readonly mindmapManager: MindmapSelectionManager;
   private readonly elementSynchronizer: ElementSynchronizer;
+  private readonly registerConnectorBaselines?: (ids: Set<string>) => void;
   private readonly debug?: (message: string, data?: unknown) => void;
   private readonly mindmapDescendantInitialPositions = new Map<string, { x: number; y: number }>();
 
@@ -30,6 +32,7 @@ export class MindmapSelectionOrchestrator {
     this.getStoreContext = config.getStoreContext;
     this.mindmapManager = config.mindmapManager ?? mindmapSelectionManager;
     this.elementSynchronizer = config.elementSynchronizer ?? defaultElementSynchronizer;
+    this.registerConnectorBaselines = config.registerConnectorBaselines;
     this.debug = config.debug;
   }
 
@@ -56,6 +59,8 @@ export class MindmapSelectionOrchestrator {
       return;
     }
 
+    const connectorBaselineCandidates = new Set<string>();
+
     nodes.forEach((node) => {
       const id = node.id();
       const element = elements.get(id);
@@ -63,6 +68,8 @@ export class MindmapSelectionOrchestrator {
       if (element?.type !== "mindmap-node") {
         return;
       }
+
+      connectorBaselineCandidates.add(id);
 
       const descendants = renderer.getAllDescendants?.(id);
       if (!descendants) {
@@ -79,8 +86,13 @@ export class MindmapSelectionOrchestrator {
           x: descendantGroup.x(),
           y: descendantGroup.y(),
         });
+        connectorBaselineCandidates.add(descendantId);
       });
     });
+
+    if (connectorBaselineCandidates.size > 0) {
+      this.registerConnectorBaselines?.(connectorBaselineCandidates);
+    }
   }
 
   handleTransformProgress(
@@ -117,11 +129,56 @@ export class MindmapSelectionOrchestrator {
       return;
     }
 
+    const connectorBaselineCandidates = new Set<string>(mindmapNodeIds);
+
+    const renderer = this.mindmapManager.getRenderer();
+
     this.mindmapManager.moveMindmapDescendants(
       mindmapNodeIds,
       delta,
       this.mindmapDescendantInitialPositions,
     );
+
+    if (!renderer) {
+      if (connectorBaselineCandidates.size > 0) {
+        this.registerConnectorBaselines?.(connectorBaselineCandidates);
+      }
+      return;
+    }
+
+    const nodesToSync = new Set<Konva.Node>();
+
+    mindmapNodeIds.forEach((nodeId) => {
+      const descendants = renderer.getAllDescendants?.(nodeId);
+      if (!descendants || descendants.size === 0) {
+        return;
+      }
+
+      descendants.forEach((descendantId: string) => {
+        const descendantGroup = renderer.getNodeGroup?.(descendantId);
+        if (descendantGroup) {
+          nodesToSync.add(descendantGroup);
+        }
+        connectorBaselineCandidates.add(descendantId);
+      });
+    });
+
+    if (nodesToSync.size > 0) {
+      this.elementSynchronizer.updateElementsFromNodes(
+        Array.from(nodesToSync),
+        source,
+        {
+          pushHistory: false,
+          batchUpdates: true,
+          skipConnectorScheduling: true,
+          transformDelta: delta,
+        },
+      );
+    }
+
+    if (connectorBaselineCandidates.size > 0) {
+      this.registerConnectorBaselines?.(connectorBaselineCandidates);
+    }
   }
 
   handleTransformEnd(params: {

@@ -23,6 +23,7 @@ export interface ElementSynchronizationOptions {
   skipConnectorScheduling?: boolean;
   pushHistory?: boolean;
   batchUpdates?: boolean;
+  transformDelta?: { dx: number; dy: number };
 }
 
 export interface ElementSynchronizer {
@@ -103,6 +104,8 @@ const hasCoordinates = (
 ): endpoint is ConnectorEndpointPoint => endpoint?.kind === "point";
 
 export class ElementSynchronizerImpl implements ElementSynchronizer {
+  private readonly drawingBaselines = new Map<string, number[]>();
+
   constructor() {
     this.updateElementsFromNodes = this.updateElementsFromNodes.bind(this);
   }
@@ -114,6 +117,7 @@ export class ElementSynchronizerImpl implements ElementSynchronizer {
     options: ElementSynchronizationOptions = {}
   ): void {
     const category = "selection/element-sync";
+    const transformDelta = options.transformDelta;
     const store = useUnifiedCanvasStore.getState();
     const elements = store.elements;
     
@@ -264,6 +268,21 @@ export class ElementSynchronizerImpl implements ElementSynchronizer {
             break;
           }
 
+          case "drawing": {
+            if (transformDelta) {
+              const baselinePoints = this.getDrawingBaseline(elementId, element.points);
+              if (baselinePoints) {
+                patch.points = this.translateDrawingPoints(
+                  baselinePoints,
+                  transformDelta,
+                );
+              }
+            } else if (options.pushHistory) {
+              this.drawingBaselines.delete(elementId);
+            }
+            break;
+          }
+
           case "text": {
             // Handle text-specific properties
             const fontSize = getNodeNumberAttr(node, "fontSize");
@@ -362,6 +381,37 @@ export class ElementSynchronizerImpl implements ElementSynchronizer {
         mindmapReroutes: mindmapNodeIds.size,
       },
     });
+  }
+
+  private getDrawingBaseline(
+    elementId: string,
+    points: CanvasElement["points"],
+  ): number[] | undefined {
+    if (this.drawingBaselines.has(elementId)) {
+      return this.drawingBaselines.get(elementId);
+    }
+
+    if (!Array.isArray(points) || points.length === 0) {
+      return undefined;
+    }
+
+    const baseline = points.slice();
+    this.drawingBaselines.set(elementId, baseline);
+    return baseline;
+  }
+
+  private translateDrawingPoints(
+    baseline: number[],
+    delta: { dx: number; dy: number },
+  ): number[] {
+    const translated = new Array<number>(baseline.length);
+    for (let i = 0; i < baseline.length; i += 2) {
+      const x = baseline[i];
+      const y = baseline[i + 1];
+      translated[i] = typeof x === "number" ? x + delta.dx : x;
+      translated[i + 1] = typeof y === "number" ? y + delta.dy : y;
+    }
+    return translated;
   }
 
   private syncConnectorFromNode(

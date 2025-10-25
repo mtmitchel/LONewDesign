@@ -5,16 +5,26 @@
 import type Konva from "konva";
 import type { ModuleRendererCtx } from "../../../types";
 import type { TransformController } from "./TransformController";
-import type { ConnectorElement } from "../../../../types/connector";
+import type { ConnectorElement, ConnectorEndpoint } from "../../../../types/connector";
 import { connectorSelectionManager } from "../managers";
 import { debug } from "../../../../../../utils/debug";
 
 const LOG_CATEGORY = "selection/connector-transform";
 
+type ConnectorBaselineMap = Map<
+  string,
+  {
+    position: { x: number; y: number };
+    from?: ConnectorEndpoint;
+    to?: ConnectorEndpoint;
+  }
+>;
+
 export class ConnectorTransformFinalizer {
   constructor(
     private readonly storeCtx: ModuleRendererCtx,
     private readonly transformController: TransformController,
+    private readonly getConnectorBaselines?: () => ConnectorBaselineMap | undefined,
   ) {}
 
   /**
@@ -168,7 +178,12 @@ export class ConnectorTransformFinalizer {
     connectorIds: Set<string>,
     delta: { dx: number; dy: number },
   ): void {
-    connectorSelectionManager.moveSelectedConnectors(connectorIds, delta);
+    const baselines = this.getConnectorBaselines?.();
+    connectorSelectionManager.moveSelectedConnectors(
+      connectorIds,
+      delta,
+      baselines,
+    );
   }
 
   /**

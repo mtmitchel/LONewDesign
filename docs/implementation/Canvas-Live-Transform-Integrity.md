@@ -34,8 +34,10 @@ Stabilise live transforms on the unified canvas so transformer geometry, drawing
   - Extend `updateElementsFromNodes` signature with optional `transformDelta`.
   - When `element.type === 'drawing'`, map over `points` and apply `dx`/`dy`.
   - Pass the delta through `SelectionModule.syncElementsDuringTransform` and ensure connector scheduling stays opt-in.
+  - Capture connector baselines for every selected element **and** any connector whose endpoints target those elements, then stream the same delta through `ConnectorSelectionManager.moveSelectedConnectors`. This keeps Konva groups and store geometry aligned mid-drag, matching the official guidance that group drags never mutate child coordinates ([Konva: Drag a Group](https://konvajs.org/docs/drag_and_drop/Drag_a_Group.html)). Baselines clone endpoint objects so Zustand listeners see fresh references as recommended for `Map`/`Set` updates ([Zustand maps & sets guide](https://github.com/pmndrs/zustand/blob/main/docs/guides/maps-and-sets-usage.md)).
 - **Acceptance criteria:**
   - Drawing strokes remain inside the active transformer throughout the drag.
+  - Connectors anchored to moved elements stay inside the transformer bounds from drag start through commit.
   - No regression in connector synchronization or history batching.
 - **Validation:**
   - `npm run type-check`
@@ -48,6 +50,7 @@ Stabilise live transforms on the unified canvas so transformer geometry, drawing
 - **Implementation notes:**
   - Gather descendant node groups via renderer APIs and feed them to `updateElementsFromNodes` with the same delta payload.
   - Avoid pushing history or scheduling connectors while mid-drag (batch updates only).
+  - Register mindmap descendants with the connector baseline set so branch edges receive the same deltas as their parent nodes; without this the connectors snap back when the drag ends.
 - **Acceptance criteria:** Dragging a mindmap branch keeps descendants aligned; transformer bounds stay accurate.
 - **Validation:** Repeat manual mindmap drag scenarios; confirm no state churn in collaborator sessions.
 
