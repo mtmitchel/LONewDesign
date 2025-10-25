@@ -5,6 +5,11 @@
 ## Overview
 This plan sequences the five workstreams required to stabilise and scale the canvas module. Each track includes goals, deliverables, checkpoints, and risks. Execution order matters: Track 1 (Canonical Geometry Alignment) unblocks the remaining efforts. All work will be developed on `refactor/sync-service-modularization` unless noted otherwise.
 
+### Current focus (2025-10-25)
+- **Canvas Live Transform Integrity** — active task list tracked in `../implementation/Canvas-Live-Transform-Integrity.md`. This initiative delivers Track 3′s live transform guardrails while keeping roadmap/changelog entries in sync.
+
+> **Implementation note:** The canvas runtime is built on **pure Konva** (direct `Konva.Stage`/`Konva.Node` usage). We intentionally do not depend on `react-konva`; renderer adapters manipulate Konva primitives imperatively for performance and tighter control over transformer synchronisation.
+
 ---
 
 ## Track 1 · Canonical Geometry Alignment
@@ -140,17 +145,14 @@ Scale rendering performance for large canvases via spatial data structures.
 3. Provide APIs for viewport queries and future hit-testing.
 4. Refactor renderers to cull offscreen nodes using the index plus a buffer zone.
 5. Stress-test under pan/zoom/drag.
- 6. Publish `docs/technical/canvas/SpatialIndexing.md` outlining structure choice, tuning knobs (max depth, node capacity), and fallback behaviours.
+6. Publish `docs/technical/canvas/SpatialIndexing.md` outlining structure choice, tuning knobs (max depth, node capacity), and fallback behaviours.
 
 ### Deliverables
-- Spatial index module.
-- Benchmark report.
-- Tuning knobs (max depth, node capacity).
 
 ### Risks
-- High mutation cost during live transforms; defer reinserts until interaction end, fall back to memoised bounds for live feedback.
 
 ---
+| **4. Spatial indexing & offscreen culling** | Prototype quadtree/STR-tree, integrate with canonical bounds, defer reinserts until transform end, expose `queryVisible` API | 🔄 In progress | Spatial index service spike landed (QuadTree wrapper + deferred rebuilds) and documented in `docs/technical/canvas/SpatialIndexing.md`; renderer wiring still pending once modular selection cleanup finishes. |
 
 ## Track 5 · Command-Based Snapshotting & History
 
@@ -163,7 +165,7 @@ Ensure undo/redo reliability by encapsulating state changes in command objects b
 3. Capture deep snapshots of canonical state before execution.
 4. Wire selection and transform managers to emit commands for every user action.
 5. Expand history test coverage to complex sequences.
- 6. Document architecture in `docs/technical/canvas/HistoryCommands.md`, including snapshot format, coalescing rules, and integration touchpoints.
+6. Document architecture in `docs/technical/canvas/HistoryCommands.md`, including snapshot format, coalescing rules, and integration touchpoints.
 
 ### Deliverables
 - Command framework & history manager.
