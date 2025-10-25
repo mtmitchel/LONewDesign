@@ -24,6 +24,8 @@ import { MarqueeSelectionController } from "./selection/controllers/MarqueeSelec
 import { KeyboardHandler } from "./selection/utils/KeyboardHandler";
 import { SelectionStateManager } from "./selection/managers/SelectionStateManager";
 import { debug } from "../../../../utils/debug";
+import type { UnifiedCanvasStore } from "../../stores/unifiedCanvasStore";
+import type { TransformSnapshot as ControllerTransformSnapshot } from "./selection/types";
 
 const FEATURE_FLAG_SELECTION_MANAGERS_V2 = "CANVAS_SELECTION_MANAGERS_V2";
 
@@ -101,10 +103,12 @@ export class SelectionModule implements RendererModule {
   private connectorSelectionOrchestrator?: ConnectorSelectionOrchestrator;
   private mindmapSelectionOrchestrator?: MindmapSelectionOrchestrator;
   private useSelectionManagersV2 = true;
+  private spatialIndex?: UnifiedCanvasStore["spatialIndex"];
 
   mount(ctx: ModuleRendererCtx): () => void {
     this.storeCtx = ctx;
     this.useSelectionManagersV2 = isSelectionManagersV2Enabled();
+    this.spatialIndex = ctx.store.getState().spatialIndex;
 
     // Initialize SelectionStateManager
     this.selectionStateManager = new SelectionStateManager(ctx);
@@ -236,6 +240,14 @@ export class SelectionModule implements RendererModule {
         const state = this.storeCtx?.store.getState();
         return state?.geometry?.getElementBounds(id) ?? null;
       },
+      querySpatialIndex: (queryBounds) => {
+        const state = this.storeCtx?.store.getState();
+        const query = state?.spatialIndex?.queryBounds;
+        if (typeof query !== "function") {
+          return [];
+        }
+        return query(queryBounds) ?? [];
+      },
       debug: (message, data) => this.debugLog(message, data),
     });
 
@@ -332,6 +344,7 @@ export class SelectionModule implements RendererModule {
     if (typeof window !== "undefined") {
       delete window.marqueeSelectionController;
     }
+    this.spatialIndex = undefined;
   }
 
   private handleSelectionVersionChange(_version: number): void {
@@ -482,6 +495,10 @@ export class SelectionModule implements RendererModule {
     nodes: Konva.Node[],
     source: "drag" | "transform",
   ) {
+    if (source === "transform") {
+      this.spatialIndex?.beginInteraction("selection-transform");
+    }
+
     debug("SelectionModule: beginSelectionTransform", {
       category: LOG_CATEGORY,
       data: {
@@ -494,8 +511,12 @@ export class SelectionModule implements RendererModule {
     // Delegate to TransformStateManager
     transformStateManager.beginTransform(nodes, source);
 
-    // TransformStateManager handles snapshots internally
+    // Reset and capture controller snapshot for delta computations
     this.transformController?.clearSnapshot();
+    const controllerSnapshot = this.buildTransformControllerSnapshot(nodes);
+    if (controllerSnapshot) {
+      this.transformController?.start(controllerSnapshot);
+    }
 
     this.mindmapSelectionOrchestrator?.handleTransformBegin(nodes, source);
   }
@@ -517,25 +538,27 @@ export class SelectionModule implements RendererModule {
 
     // Live visual updates for connectors and mindmap edges using existing controller
     const delta = this.transformController?.computeDelta(nodes);
-    if (!delta) return;
-
-    // Update visuals directly through transform controller
-    const snapshot = this.transformController?.getSnapshot();
-    if (snapshot) {
-      this.transformController?.updateConnectorShapes(
+    if (delta) {
+      // Update visuals directly through transform controller
+      const snapshot = this.transformController?.getSnapshot();
+      if (snapshot) {
+        this.transformController?.updateConnectorShapes(
+          delta,
+          (connectorId, shape) => {
+            if (shape) {
+              connectorSelectionManager.updateShapeGeometry(connectorId, shape);
+            }
+          },
+        );
+      }
+      this.mindmapSelectionOrchestrator?.handleTransformProgress(
+        nodes,
+        source,
         delta,
-        (connectorId, shape) => {
-          if (shape) {
-            connectorSelectionManager.updateShapeGeometry(connectorId, shape);
-          }
-        },
       );
     }
-    this.mindmapSelectionOrchestrator?.handleTransformProgress(
-      nodes,
-      source,
-      delta,
-    );
+
+    this.syncElementsDuringTransform(nodes, source);
   }
 
   private endSelectionTransform(
@@ -575,6 +598,70 @@ export class SelectionModule implements RendererModule {
     // Direct call to TransformStateManager (Phase 3: shim removal)
     transformStateManager.finalizeTransform();
     this.transformController?.release();
+
+    if (source === "transform") {
+      this.spatialIndex?.endInteraction();
+    }
+  }
+
+  private buildTransformControllerSnapshot(
+    nodes: Konva.Node[],
+  ): ControllerTransformSnapshot | null {
+    if (!nodes || nodes.length === 0) {
+      return null;
+    }
+
+    const basePositions = new Map<string, { x: number; y: number }>();
+
+    nodes.forEach((node) => {
+      try {
+        const elementId = (node.getAttr("elementId") as string | undefined) ?? node.id();
+        if (!elementId) {
+          return;
+        }
+        const position = node.position();
+        basePositions.set(elementId, { x: position.x, y: position.y });
+      } catch (error) {
+        this.debugLog("buildTransformControllerSnapshot: position read failed", {
+          error,
+        });
+      }
+    });
+
+    if (basePositions.size === 0) {
+      return null;
+    }
+
+    const transformerRect = this.transformLifecycle?.getTransformerRect();
+
+    return {
+      basePositions,
+      connectors: new Map(),
+      mindmapEdges: new Map(),
+      movedMindmapNodes: new Set(),
+      transformerBox: transformerRect
+        ? { x: transformerRect.x, y: transformerRect.y }
+        : undefined,
+    };
+  }
+
+  private syncElementsDuringTransform(
+    nodes: Konva.Node[],
+    source: "drag" | "transform",
+  ): void {
+    if (!nodes || nodes.length === 0) {
+      return;
+    }
+
+    try {
+      elementSynchronizer.updateElementsFromNodes(nodes, source, {
+        pushHistory: false,
+        batchUpdates: true,
+        skipConnectorScheduling: true,
+      });
+    } catch (error) {
+      this.debugLog("syncElementsDuringTransform: update failed", { error });
+    }
   }
 
   // FIXED: Enhanced auto-select element with better timing and error recovery

@@ -10,6 +10,7 @@ export interface MarqueeSelectionControllerDeps {
   onSelectionComplete?: (selectedIds: string[]) => void;
   debug?: (message: string, data?: unknown) => void;
   getElementBounds?: (id: string) => { x: number; y: number; width: number; height: number } | null;
+  querySpatialIndex?: (bounds: { x: number; y: number; width: number; height: number; padding?: number }) => string[];
 }
 
 /**
@@ -33,39 +34,76 @@ export class MarqueeSelectionController {
   ): string[] {
     this.deps.debug?.("MarqueeSelectionController: selectElementsInBounds", bounds);
 
+    const elements = this.deps.elements();
+    const candidateIdSet = new Set<string>();
+
+    if (this.deps.querySpatialIndex) {
+      try {
+        const hits = this.deps.querySpatialIndex({ ...bounds });
+        for (const id of hits) {
+          if (typeof id === "string" && elements.has(id)) {
+            candidateIdSet.add(id);
+          }
+        }
+      } catch (error) {
+        this.deps.debug?.("MarqueeSelectionController: spatial index query failed", error);
+      }
+    }
+
     const selectedIds = new Set<string>();
+    const visitedIds = new Set<string>();
+
     const candidateNodes = stage.find<Konva.Node>((node: Konva.Node) => {
       if (typeof node.getAttr !== "function") return false;
-      return Boolean(node.getAttr("elementId"));
+      const elementId = node.getAttr("elementId") || node.id();
+      if (!elementId) return false;
+      return candidateIdSet.size === 0 || candidateIdSet.has(elementId);
     });
 
     this.deps.debug?.("MarqueeSelectionController: candidateNodes found", candidateNodes.length);
 
     for (const node of candidateNodes) {
       const elementId = node.getAttr("elementId") || node.id();
-      const elements = this.deps.elements();
-      if (!elementId || !elements.has(elementId)) continue;
+      if (!elementId || !elements.has(elementId)) {
+        continue;
+      }
 
-      const rect = this.deps.getElementBounds?.(elementId) ?? node.getClientRect({
-        skipStroke: false,
-        skipShadow: true,
-      });
+      visitedIds.add(elementId);
 
-      const intersects = !(
-        rect.x > bounds.x + bounds.width ||
-        rect.x + rect.width < bounds.x ||
-        rect.y > bounds.y + bounds.height ||
-        rect.y + rect.height < bounds.y
-      );
+      const rect =
+        this.deps.getElementBounds?.(elementId) ??
+        node.getClientRect({
+          skipStroke: false,
+          skipShadow: true,
+        });
 
-      if (intersects) {
-        // Include connectors in selection for visual feedback, but handle them specially during drag
+      if (rectsIntersect(bounds, rect)) {
         selectedIds.add(elementId);
         this.deps.debug?.("MarqueeSelectionController: selected element", {
           elementId,
           nodeType: node.getAttr("nodeType"),
-          elementType: node.getAttr("elementType")
+          elementType: node.getAttr("elementType"),
         });
+      }
+    }
+
+    if (candidateIdSet.size > 0) {
+      for (const id of candidateIdSet) {
+        if (visitedIds.has(id) || !elements.has(id)) {
+          continue;
+        }
+
+        const rect = this.deps.getElementBounds?.(id);
+        if (!rect) {
+          continue;
+        }
+
+        if (rectsIntersect(bounds, rect)) {
+          selectedIds.add(id);
+          this.deps.debug?.("MarqueeSelectionController: selected element (spatial only)", {
+            elementId: id,
+          });
+        }
       }
     }
 
@@ -217,4 +255,16 @@ export class MarqueeSelectionController {
 
     return { nodes, basePositions };
   }
+}
+
+function rectsIntersect(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  const aRight = a.x + a.width;
+  const aBottom = a.y + a.height;
+  const bRight = b.x + b.width;
+  const bBottom = b.y + b.height;
+
+  return aRight >= b.x && bRight >= a.x && aBottom >= b.y && bBottom >= a.y;
 }

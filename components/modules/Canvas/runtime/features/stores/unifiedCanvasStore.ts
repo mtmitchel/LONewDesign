@@ -26,6 +26,11 @@ import {
   resetGeometryMetrics,
 } from "./selectors/geometrySelectors";
 import { installGeometryMetricsDebugger } from "./debug/geometryMetricsLogger";
+import {
+  SpatialIndexService,
+  type SpatialIndexStats,
+  type BoundsSource,
+} from "./spatialIndex/SpatialIndexService";
 
 // Persistence types
 interface PersistedState {
@@ -169,11 +174,23 @@ export interface GeometrySlice {
   };
 }
 
+export interface SpatialIndexSlice {
+  spatialIndex: {
+    queryBounds: (bounds: { x: number; y: number; width: number; height: number; padding?: number }) => ElementId[];
+    queryPoint: (x: number, y: number, radius?: number) => ElementId[];
+    beginInteraction: (reason?: string) => void;
+    endInteraction: () => void;
+    forceRebuild: () => void;
+    getStats: () => SpatialIndexStats;
+  };
+}
+
 export type UnifiedCanvasStore = CoreModuleSlice &
   HistoryModuleSlice &
   InteractionModuleSlice &
   ConvenienceSlice &
-  GeometrySlice & {
+  GeometrySlice &
+  SpatialIndexSlice & {
     panBy: (dx: number, dy: number) => void;
     // Compatibility history object for modules expecting nested history structure
     history: {
@@ -394,6 +411,17 @@ const createSafeStorage = (): StateStorage => {
 // Enable Map/Set support for Immer-based store slices
 enableMapSet();
 
+const spatialIndexService = new SpatialIndexService();
+
+const createBoundsSource = (elements: Map<ElementId, CanvasElement>): BoundsSource => {
+  return function* boundsIterator() {
+    for (const [id] of elements) {
+      const bounds = getElementBoundsFromElements(elements, id);
+      yield [id, bounds ?? null];
+    }
+  };
+};
+
 export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
   persist(
     subscribeWithSelector(
@@ -425,6 +453,15 @@ export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
             },
             getMetrics: () => getGeometryMetrics(),
             resetMetrics: () => resetGeometryMetrics(),
+          },
+
+          spatialIndex: {
+            queryBounds: (bounds) => spatialIndexService.query(bounds),
+            queryPoint: (x: number, y: number, radius?: number) => spatialIndexService.queryPoint(x, y, radius),
+            beginInteraction: (reason?: string) => spatialIndexService.beginDeferred(reason),
+            endInteraction: () => spatialIndexService.endDeferred(),
+            forceRebuild: () => spatialIndexService.forceRebuild(),
+            getStats: () => spatialIndexService.getStats(),
           },
 
           panBy: (dx: number, dy: number) => {
@@ -527,6 +564,17 @@ export const useUnifiedCanvasStore = create<UnifiedCanvasStore>()(
       storage: createJSONStorage(() => createSafeStorage()),
     },
   ),
+);
+
+useUnifiedCanvasStore.subscribe(
+  (state) => state.elements,
+  (elements) => {
+    if (!elements) {
+      return;
+    }
+    spatialIndexService.markDirty(createBoundsSource(elements));
+  },
+  { fireImmediately: true },
 );
 
 // Install dev debugger for geometry metrics in browser console

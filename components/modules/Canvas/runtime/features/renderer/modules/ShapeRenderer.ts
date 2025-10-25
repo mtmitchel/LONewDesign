@@ -9,6 +9,7 @@ import {
   type BaseShape,
 } from "../../utils/text/computeShapeInnerBox";
 import { getTextConfig } from "../../constants/TextConstants";
+import type { Bounds } from "../../../../../types/index";
 
 // Extended shape data interface
 interface ShapeDataWithExtras {
@@ -23,6 +24,10 @@ type Id = string;
 // Safety limits to prevent extreme dimensions
 const MAX_DIMENSION = 5000;
 const MIN_DIMENSION = 1;
+
+const INDEX_QUERY_PADDING = 256;
+const GEOMETRY_PADDING = 128;
+const FALLBACK_FULL_SCAN_LIMIT = 200;
 
 interface ShapeTextAttachment {
   text: Konva.Text;
@@ -55,16 +60,39 @@ interface ShapeElement {
   rotation?: number;
 }
 
+type StoreState = ReturnType<ModuleRendererCtx["store"]["getState"]>;
+
 export class ShapeRenderer implements RendererModule {
   private readonly shapeNodes = new Map<Id, Konva.Shape>();
   private readonly textNodes = new Map<Id, ShapeTextAttachment>(); // Track text nodes for shapes
   private layer?: Konva.Layer;
   private unsubscribe?: () => void;
+  private viewportUnsubscribe?: () => void;
   private store?: typeof useUnifiedCanvasStore;
+  private shapesById = new Map<Id, ShapeElement>();
+  private visibleIds = new Set<Id>();
+  private visibilityScheduled = false;
+  private visibilityRaf?: number;
+  private visibilityTimeout?: ReturnType<typeof setTimeout>;
 
   mount(ctx: ModuleRendererCtx): () => void {
     this.layer = ctx.layers.main;
     this.store = ctx.store;
+
+    // Seed local cache before subscriptions start firing
+    const initialState = ctx.store.getState();
+    const initialShapes = new Map<Id, ShapeElement>();
+    for (const [id, element] of initialState.elements.entries()) {
+      if (
+        element.type === "rectangle" ||
+        element.type === "circle" ||
+        element.type === "triangle" ||
+        element.type === "ellipse"
+      ) {
+        initialShapes.set(id, element as ShapeElement);
+      }
+    }
+    this.shapesById = initialShapes;
 
     // Subscribe to store changes - watch shape elements AND selectedTool
     this.unsubscribe = ctx.store.subscribe(
@@ -85,32 +113,25 @@ export class ShapeRenderer implements RendererModule {
         return { shapes, selectedTool: state.ui?.selectedTool };
       },
       // Callback: reconcile changes (extract shapes from returned object)
-      ({ shapes }) => this.reconcile(shapes),
+      (payload) => this.handleStateUpdate(payload),
     );
 
-    // Initial render
-    const initialState = ctx.store.getState();
-    const initialShapes = new Map<Id, ShapeElement>();
-    for (const [id, element] of initialState.elements.entries()) {
-      if (
-        element.type === "rectangle" ||
-        element.type === "circle" ||
-        element.type === "triangle" ||
-        element.type === "ellipse"
-      ) {
-        initialShapes.set(id, element as ShapeElement);
-      }
-    }
-    this.reconcile(initialShapes);
+    this.viewportUnsubscribe = ctx.store.subscribe(
+      (state) => state.viewport,
+      () => this.requestVisibilityUpdate(),
+      { fireImmediately: true },
+    );
+
+    this.requestVisibilityUpdate();
 
     // Return cleanup function
     return () => this.unmount();
   }
 
   private unmount() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-    }
+    this.unsubscribe?.();
+    this.viewportUnsubscribe?.();
+    this.cancelScheduledVisibility();
     for (const node of this.shapeNodes.values()) {
       node.destroy();
     }
@@ -127,149 +148,290 @@ export class ShapeRenderer implements RendererModule {
     }
   }
 
-  private reconcile(shapes: Map<Id, ShapeElement>) {
-    if (!this.layer) return;
+  private handleStateUpdate({
+    shapes,
+  }: {
+    shapes: Map<Id, ShapeElement>;
+    selectedTool?: string;
+  }) {
+    this.shapesById = shapes;
+    this.pruneRemovedNodes(shapes);
+    this.requestVisibilityUpdate();
+  }
 
-    const seen = new Set<Id>();
-    const stage = this.layer.getStage();
-    const viewBounds = stage ? getWorldViewportBounds(stage) : null;
-
-    // Add/update shape elements
-    for (const [id, shape] of shapes) {
-      seen.add(id);
-      const existingNode = this.shapeNodes.get(id);
-      const existingText = this.textNodes.get(id);
-
-      if (viewBounds) {
-        const width = shape.width ?? (shape.data?.radius ?? 0) * 2;
-        const height = shape.height ?? (shape.data?.radius ?? 0) * 2;
-        const shapeRight = (shape.x ?? 0) + width;
-        const shapeBottom = (shape.y ?? 0) + height;
-        const isOffscreen =
-          shapeRight < viewBounds.minX ||
-          shapeBottom < viewBounds.minY ||
-          (shape.x ?? 0) > viewBounds.maxX ||
-          (shape.y ?? 0) > viewBounds.maxY;
-
-        if (isOffscreen) {
-          if (existingNode) existingNode.visible(false);
-          if (existingText) {
-            existingText.primaryNode.visible(false);
-          }
-          continue;
-        }
+  private pruneRemovedNodes(shapes: Map<Id, ShapeElement>) {
+    for (const [id, node] of Array.from(this.shapeNodes.entries())) {
+      if (shapes.has(id)) {
+        continue;
       }
-
-      let node = existingNode;
-
-      if (!node) {
-        // Create new shape node
-        node = this.createShapeNode(shape);
-        if (node) {
-          // Add click handler for selection
-          node.on("click", (e) => {
-            e.cancelBubble = true; // Prevent event bubbling
-
-            // Select this shape element via the SelectionModule (preferred) or store
-            StoreActions.selectSingle(shape.id);
-          });
-
-          // Add tap handler for mobile
-          node.on("tap", (e) => {
-            e.cancelBubble = true;
-
-            // Use the same selection logic as click
-            StoreActions.selectSingle(shape.id);
-          });
-
-          // Add double-click handler for text editing
-          node.on("dblclick", (e) => {
-            e.cancelBubble = true; // Prevent event bubbling
-
-            // Open text editor for this shape
-            const stage = this.layer?.getStage();
-
-            if (stage) {
-              import("../../utils/editors/openShapeTextEditor")
-                .then(({ openShapeTextEditor }) => {
-                  openShapeTextEditor(stage, shape.id);
-                })
-                .catch((_error) => {
-                  // Ignore error
-                });
-            } else {
-              // Ignore error
-            }
-          });
-
-          // Also add dbltap for mobile support
-          node.on("dbltap", (e) => {
-            e.cancelBubble = true;
-
-            const stage = this.layer?.getStage();
-            if (stage) {
-              import("../../utils/editors/openShapeTextEditor")
-                .then(({ openShapeTextEditor }) => {
-                  openShapeTextEditor(stage, shape.id);
-                })
-                .catch((_error) => {
-                  // Ignore error
-                });
-            }
-          });
-
-          // Add dragend handler for position commit
-          // Live update during drag so connectors follow immediately
-          this.attachLiveDragUpdate(node, shape.id);
-
-          node.on("dragend", (e) => {
-            const shapeNode = e.target as Konva.Shape;
-            const nx = shapeNode.x();
-            const ny = shapeNode.y();
-
-            try {
-              StoreActions.updateElement(shape.id, { x: nx, y: ny });
-            } catch (error) {
-              // Ignore error
-            }
-          });
-          this.shapeNodes.set(id, node);
-          this.layer.add(node);
-        }
-      } else {
-        // Update existing shape node
-        this.updateShapeNode(node, shape);
-        // Ensure live updates are attached for existing nodes as well
-        this.attachLiveDragUpdate(node, shape.id);
-        if (!node.visible()) {
-          node.visible(true);
-        }
-        if (existingText) {
-          existingText.primaryNode.visible(true);
-        }
-      }
-
-      // Handle text rendering for shapes with text
-      this.handleShapeText(shape, id);
-    }
-
-    // Remove deleted shape elements
-    for (const [id, node] of this.shapeNodes) {
-      if (!seen.has(id)) {
-        node.destroy();
-        this.shapeNodes.delete(id);
-      }
-    }
-
-    // Remove deleted text nodes
-    for (const [id, attachment] of this.textNodes) {
-      if (!seen.has(id)) {
+      node.destroy();
+      this.shapeNodes.delete(id);
+      const attachment = this.textNodes.get(id);
+      if (attachment) {
         attachment.primaryNode.destroy();
         this.textNodes.delete(id);
       }
+      this.visibleIds.delete(id);
     }
 
+    for (const [id, attachment] of Array.from(this.textNodes.entries())) {
+      if (shapes.has(id)) {
+        continue;
+      }
+      attachment.primaryNode.destroy();
+      this.textNodes.delete(id);
+      this.visibleIds.delete(id);
+    }
+  }
+
+  private requestVisibilityUpdate() {
+    if (this.visibilityScheduled) {
+      return;
+    }
+
+    this.visibilityScheduled = true;
+    const scheduleWithRaf =
+      typeof window !== "undefined" &&
+      typeof window.requestAnimationFrame === "function";
+
+    const run = () => {
+      this.visibilityScheduled = false;
+      this.visibilityRaf = undefined;
+      this.visibilityTimeout = undefined;
+      this.updateVisibleShapes();
+    };
+
+    if (scheduleWithRaf) {
+      this.visibilityRaf = window.requestAnimationFrame(run);
+    } else {
+      this.visibilityTimeout = setTimeout(run, 16);
+    }
+  }
+
+  private cancelScheduledVisibility() {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.cancelAnimationFrame === "function" &&
+      this.visibilityRaf !== undefined
+    ) {
+      window.cancelAnimationFrame(this.visibilityRaf);
+    }
+    if (this.visibilityTimeout !== undefined) {
+      clearTimeout(this.visibilityTimeout);
+    }
+    this.visibilityScheduled = false;
+    this.visibilityRaf = undefined;
+    this.visibilityTimeout = undefined;
+  }
+
+  private updateVisibleShapes() {
+    if (!this.layer) {
+      return;
+    }
+
+    const stage = this.layer.getStage();
+    const storeState = this.store?.getState?.() as StoreState | undefined;
+    if (!stage || !storeState) {
+      return;
+    }
+
+    const nextVisible = this.computeVisibleIds(stage, storeState);
+
+    for (const id of nextVisible) {
+      const shape = this.shapesById.get(id);
+      if (!shape) {
+        continue;
+      }
+      this.ensureShapeNode(shape);
+    }
+
+    for (const [id, node] of this.shapeNodes) {
+      const shouldBeVisible = nextVisible.has(id);
+      node.visible(shouldBeVisible);
+      node.listening(shouldBeVisible);
+      if (!shouldBeVisible) {
+        const attachment = this.textNodes.get(id);
+        if (attachment) {
+          attachment.primaryNode.visible(false);
+        }
+      }
+    }
+
+    this.visibleIds = nextVisible;
     this.layer.batchDraw();
+  }
+
+  private computeVisibleIds(stage: Konva.Stage, storeState: StoreState): Set<Id> {
+    const world = getWorldViewportBounds(stage);
+    const width = world.maxX - world.minX;
+    const height = world.maxY - world.minY;
+
+    const candidateIds = new Set<Id>();
+    try {
+      const ids = storeState.spatialIndex?.queryBounds?.({
+        x: world.minX,
+        y: world.minY,
+        width,
+        height,
+        padding: INDEX_QUERY_PADDING,
+      });
+      if (Array.isArray(ids)) {
+        for (const id of ids) {
+          if (this.shapesById.has(id as Id)) {
+            candidateIds.add(id as Id);
+          }
+        }
+      }
+    } catch {
+      // Fallback covered below
+    }
+
+    for (const id of this.visibleIds) {
+      if (this.shapesById.has(id)) {
+        candidateIds.add(id);
+      }
+    }
+
+    const selectedIds = storeState.selectedElementIds;
+    if (selectedIds) {
+      for (const id of selectedIds) {
+        if (this.shapesById.has(id as Id)) {
+          candidateIds.add(id as Id);
+        }
+      }
+    }
+
+    if (candidateIds.size === 0) {
+      const stats = storeState.spatialIndex?.getStats?.();
+      if (!stats || stats.itemCount === 0 || this.shapesById.size <= FALLBACK_FULL_SCAN_LIMIT) {
+        for (const id of this.shapesById.keys()) {
+          candidateIds.add(id);
+        }
+      }
+    }
+
+    const viewportRect: Bounds = {
+      x: world.minX,
+      y: world.minY,
+      width,
+      height,
+    };
+
+    const geometryApi = storeState.geometry;
+    const nextVisible = new Set<Id>();
+
+    for (const id of candidateIds) {
+      const shape = this.shapesById.get(id);
+      if (!shape) {
+        continue;
+      }
+
+      const bounds =
+        geometryApi?.getElementBounds?.(id) ?? this.deriveBoundsFromShape(shape);
+      if (!bounds) {
+        continue;
+      }
+
+      const expanded = inflateBounds(bounds, GEOMETRY_PADDING);
+      if (rectsIntersect(expanded, viewportRect)) {
+        nextVisible.add(id);
+      }
+    }
+
+    return nextVisible;
+  }
+
+  private ensureShapeNode(shape: ShapeElement) {
+    if (!this.layer) {
+      return;
+    }
+
+    let node = this.shapeNodes.get(shape.id);
+
+    if (!node) {
+      node = this.createShapeNode(shape);
+      if (!node) {
+        return;
+      }
+
+      node.on("click", (e) => {
+        e.cancelBubble = true;
+        StoreActions.selectSingle(shape.id);
+      });
+
+      node.on("tap", (e) => {
+        e.cancelBubble = true;
+        StoreActions.selectSingle(shape.id);
+      });
+
+      node.on("dblclick", (e) => {
+        e.cancelBubble = true;
+        const stageRef = this.layer?.getStage();
+        if (stageRef) {
+          void import("../../utils/editors/openShapeTextEditor")
+            .then(({ openShapeTextEditor }) => {
+              openShapeTextEditor(stageRef, shape.id);
+            })
+            .catch(() => {
+              // noop
+            });
+        }
+      });
+
+      node.on("dbltap", (e) => {
+        e.cancelBubble = true;
+        const stageRef = this.layer?.getStage();
+        if (stageRef) {
+          void import("../../utils/editors/openShapeTextEditor")
+            .then(({ openShapeTextEditor }) => {
+              openShapeTextEditor(stageRef, shape.id);
+            })
+            .catch(() => {
+              // noop
+            });
+        }
+      });
+
+      node.on("dragend", (e) => {
+        const shapeNode = e.target as Konva.Shape;
+        const nx = shapeNode.x();
+        const ny = shapeNode.y();
+
+        try {
+          StoreActions.updateElement(shape.id, { x: nx, y: ny });
+        } catch {
+          // noop
+        }
+      });
+
+      this.shapeNodes.set(shape.id, node);
+      this.layer.add(node);
+    } else {
+      this.updateShapeNode(node, shape);
+    }
+
+    this.attachLiveDragUpdate(node, shape.id);
+    node.visible(true);
+    node.listening(true);
+
+    this.handleShapeText(shape, shape.id);
+  }
+
+  private deriveBoundsFromShape(shape: ShapeElement): Bounds | null {
+    const radius = shape.data?.radius ?? 0;
+    const width = typeof shape.width === "number" ? shape.width : radius * 2;
+    const height = typeof shape.height === "number" ? shape.height : radius * 2;
+
+    if (!isFinite(width) || !isFinite(height)) {
+      return null;
+    }
+
+    return {
+      x: typeof shape.x === "number" ? shape.x : 0,
+      y: typeof shape.y === "number" ? shape.y : 0,
+      width: Math.max(0, width),
+      height: Math.max(0, height),
+    } satisfies Bounds;
   }
 
   private attachLiveDragUpdate(node: Konva.Shape, id: string) {
@@ -726,4 +888,26 @@ export class ShapeRenderer implements RendererModule {
       this.syncTextDuringTransform(elementId);
     }
   }
+}
+
+function inflateBounds(bounds: Bounds, padding: number): Bounds {
+  if (padding <= 0) {
+    return { ...bounds };
+  }
+
+  return {
+    x: bounds.x - padding,
+    y: bounds.y - padding,
+    width: bounds.width + padding * 2,
+    height: bounds.height + padding * 2,
+  } satisfies Bounds;
+}
+
+function rectsIntersect(a: Bounds, b: Bounds): boolean {
+  const aRight = a.x + a.width;
+  const aBottom = a.y + a.height;
+  const bRight = b.x + b.width;
+  const bBottom = b.y + b.height;
+
+  return aRight >= b.x && bRight >= a.x && aBottom >= b.y && bBottom >= a.y;
 }

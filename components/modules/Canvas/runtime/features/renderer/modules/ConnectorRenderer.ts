@@ -246,6 +246,7 @@ export class ConnectorRenderer {
       }
     }
 
+    g.show();
     shape.show();
     this.layers.main.batchDraw();
   }
@@ -270,5 +271,26 @@ export class ConnectorRenderer {
   cleanup(): void {
     this.groupById.clear();
     this.shapeById.clear();
+  }
+
+  setVisibility(connId: string, visible: boolean): void {
+    const group = this.groupById.get(connId);
+    const shape = this.shapeById.get(connId);
+    if (!group && !shape) {
+      return;
+    }
+
+    if (visible) {
+      group?.show();
+      shape?.show();
+      shape?.listening(true);
+    } else {
+      group?.hide();
+      shape?.hide();
+      shape?.listening(false);
+    }
+
+    const layer = group?.getLayer() ?? shape?.getLayer() ?? this.layers.main;
+    layer?.batchDraw();
   }
 }

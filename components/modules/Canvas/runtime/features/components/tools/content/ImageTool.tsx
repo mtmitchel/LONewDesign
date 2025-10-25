@@ -62,8 +62,8 @@ export const ImageTool: React.FC<ImageToolProps> = ({
     }
     
     // Clean up any existing orphaned inputs first
-    const existingInputs = document.querySelectorAll('input[type="file"]');
-    existingInputs.forEach(input => {
+    const existingInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"]');
+    existingInputs.forEach((input) => {
       if (input.parentElement && !input.files?.length) {
         input.parentElement.removeChild(input);
       }

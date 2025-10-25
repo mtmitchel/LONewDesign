@@ -1,17 +1,27 @@
-// Adapter for MindmapRenderer to implement RendererModule interface
+// Adapter for MindmapRenderer to implement RendererModule interface with spatial culling
 import type Konva from "konva";
 import type { ModuleRendererCtx, RendererModule } from "../index";
 import { MindmapRenderer } from "./MindmapRenderer";
-import type {
-  MindmapNodeElement,
-  MindmapEdgeElement,
-  MindmapNodeStyle,
-  BranchStyle,
-} from "../../types/mindmap";
-import type { CanvasElement } from "../../../../../types";
+import {
+  DEFAULT_BRANCH_STYLE,
+  DEFAULT_NODE_STYLE,
+  MINDMAP_CONFIG,
+  MINDMAP_THEME,
+  getNodeConnectionPoint,
+  measureMindmapLabel,
+  type BranchStyle,
+  type MindmapEdgeElement,
+  type MindmapNodeElement,
+  type MindmapNodeStyle,
+} from "@/features/canvas/types/mindmap";
+import { getWorldViewportBounds } from "../../utils/viewBounds";
+import type { Bounds, CanvasElement } from "../../../../../types";
 
-// Extended interface for mindmap elements with additional properties
-interface MindmapCanvasElement extends Omit<CanvasElement, 'style'> {
+type Id = string;
+
+type StoreState = ReturnType<ModuleRendererCtx["store"]["getState"]>;
+
+interface MindmapCanvasElement extends Omit<CanvasElement, "style"> {
   level?: number;
   color?: string;
   style?: MindmapNodeStyle | BranchStyle;
@@ -35,23 +45,450 @@ interface MindmapCanvasElement extends Omit<CanvasElement, 'style'> {
   fromId?: string;
   toId?: string;
 }
-import {
-  DEFAULT_BRANCH_STYLE,
-  DEFAULT_NODE_STYLE,
-  MINDMAP_CONFIG,
-  MINDMAP_THEME,
-  getNodeConnectionPoint,
-  measureMindmapLabel,
-} from "@/features/canvas/types/mindmap";
 
-const ROOT_FONT_SIZE = 18;
-const CHILD_FONT_SIZE = 15;
+const INDEX_QUERY_PADDING = 256;
+const GEOMETRY_PADDING = 144;
+const EDGE_CURVE_PADDING = 96;
+const FALLBACK_FULL_SCAN_LIMIT = 160;
 
-type Id = string;
+export class MindmapRendererAdapter implements RendererModule {
+  private renderer?: MindmapRenderer;
+  private store?: ModuleRendererCtx["store"];
+  private layers?: ModuleRendererCtx["layers"];
+  private unsubscribe?: () => void;
+  private viewportUnsubscribe?: () => void;
+  private readonly previousNodeHeights = new Map<string, number>();
+  private nodesById = new Map<Id, MindmapNodeElement>();
+  private edgesById = new Map<Id, MindmapEdgeElement>();
+  private visibleNodeIds = new Set<Id>();
+  private visibleEdgeIds = new Set<Id>();
+  private visibilityScheduled = false;
+  private visibilityRaf?: number;
+  private visibilityTimeout?: ReturnType<typeof setTimeout>;
 
-interface MindmapElements {
-  nodes: Map<Id, MindmapNodeElement>;
-  edges: Map<Id, MindmapEdgeElement>;
+  mount(ctx: ModuleRendererCtx): () => void {
+    this.store = ctx.store;
+    this.layers = ctx.layers;
+
+    this.renderer = new MindmapRenderer(ctx.layers, ctx.store);
+    if (typeof window !== "undefined") {
+      (window as Window & { mindmapRenderer?: MindmapRenderer }).mindmapRenderer =
+        this.renderer;
+    }
+
+    this.unsubscribe = ctx.store.subscribe(
+      (state) => {
+        const nodes = new Map<Id, MindmapNodeElement>();
+        const edges = new Map<Id, MindmapEdgeElement>();
+
+        for (const [id, element] of state.elements.entries()) {
+          const node = toMindmapNode(element as CanvasElement);
+          if (node) {
+            nodes.set(id, node);
+            continue;
+          }
+
+          const edge = toMindmapEdge(element as CanvasElement);
+          if (edge) {
+            edges.set(id, edge);
+          }
+        }
+
+        return { nodes, edges, selectedTool: state.ui?.selectedTool };
+      },
+      ({ nodes, edges }) => {
+        this.handleStateUpdate(nodes, edges);
+      },
+      { fireImmediately: true },
+    );
+
+    this.viewportUnsubscribe = ctx.store.subscribe(
+      (state) => state.viewport,
+      () => this.requestVisibilityUpdate(),
+      { fireImmediately: true },
+    );
+
+    // Return cleanup function
+    return () => this.unmount();
+  }
+
+  private unmount() {
+    this.unsubscribe?.();
+    this.viewportUnsubscribe?.();
+    this.cancelScheduledVisibility();
+    if (typeof window !== "undefined") {
+      delete (window as Window & { mindmapRenderer?: MindmapRenderer }).mindmapRenderer;
+    }
+
+    this.renderer?.clear();
+    this.renderer = undefined;
+
+    this.previousNodeHeights.clear();
+    this.nodesById.clear();
+    this.edgesById.clear();
+    this.visibleNodeIds.clear();
+    this.visibleEdgeIds.clear();
+  }
+
+  private handleStateUpdate(
+    nodes: Map<Id, MindmapNodeElement>,
+    edges: Map<Id, MindmapEdgeElement>,
+  ) {
+    const prevNodes = new Map(this.nodesById);
+    const prevEdges = new Map(this.edgesById);
+
+    this.nodesById = new Map(nodes);
+    this.edgesById = new Map(edges);
+
+    this.repositionSiblingsIfNeeded();
+    this.pruneRemovedElements(prevNodes, prevEdges);
+    this.requestVisibilityUpdate();
+  }
+
+  private pruneRemovedElements(
+    prevNodes: Map<Id, MindmapNodeElement>,
+    prevEdges: Map<Id, MindmapEdgeElement>,
+  ) {
+    if (!this.renderer) return;
+
+    for (const id of prevNodes.keys()) {
+      if (this.nodesById.has(id)) continue;
+      this.previousNodeHeights.delete(id);
+      this.visibleNodeIds.delete(id);
+      this.renderer.remove(id);
+    }
+
+    for (const id of prevEdges.keys()) {
+      if (this.edgesById.has(id)) continue;
+      this.visibleEdgeIds.delete(id);
+      this.renderer.remove(id);
+    }
+  }
+
+  private requestVisibilityUpdate() {
+    if (this.visibilityScheduled) {
+      return;
+    }
+
+    this.visibilityScheduled = true;
+    const shouldUseRaf =
+      typeof window !== "undefined" &&
+      typeof window.requestAnimationFrame === "function";
+
+    const run = () => {
+      this.visibilityScheduled = false;
+      this.visibilityRaf = undefined;
+      this.visibilityTimeout = undefined;
+      this.updateVisibleElements();
+    };
+
+    if (shouldUseRaf) {
+      this.visibilityRaf = window.requestAnimationFrame(run);
+    } else {
+      this.visibilityTimeout = setTimeout(run, 16);
+    }
+  }
+
+  private cancelScheduledVisibility() {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.cancelAnimationFrame === "function" &&
+      this.visibilityRaf !== undefined
+    ) {
+      window.cancelAnimationFrame(this.visibilityRaf);
+    }
+    if (this.visibilityTimeout !== undefined) {
+      clearTimeout(this.visibilityTimeout);
+    }
+    this.visibilityScheduled = false;
+    this.visibilityRaf = undefined;
+    this.visibilityTimeout = undefined;
+  }
+
+  private updateVisibleElements() {
+    if (!this.renderer || !this.layers || !this.store) {
+      return;
+    }
+
+    const stage = this.layers.main.getStage();
+    const storeState = this.store.getState?.() as StoreState | undefined;
+    if (!stage || !storeState) {
+      return;
+    }
+
+    const { nodes: nextNodes, edges: nextEdges } = this.computeVisibleElements(
+      stage,
+      storeState,
+    );
+
+    for (const id of nextNodes) {
+      const node = this.nodesById.get(id);
+      if (!node) continue;
+      this.ensureNodeRendered(node);
+    }
+
+    for (const id of this.visibleNodeIds) {
+      if (nextNodes.has(id)) continue;
+      this.ensureNodeHidden(id);
+    }
+
+    for (const id of nextEdges) {
+      const edge = this.edgesById.get(id);
+      if (!edge) continue;
+      this.ensureEdgeRendered(edge);
+    }
+
+    for (const id of this.visibleEdgeIds) {
+      if (nextEdges.has(id)) continue;
+      this.ensureEdgeHidden(id);
+    }
+
+    this.visibleNodeIds = nextNodes;
+    this.visibleEdgeIds = nextEdges;
+  }
+
+  private computeVisibleElements(stage: Konva.Stage, storeState: StoreState) {
+    const world = getWorldViewportBounds(stage);
+    const width = world.maxX - world.minX;
+    const height = world.maxY - world.minY;
+
+    const candidateIds = new Set<Id>();
+    try {
+      const ids = storeState.spatialIndex?.queryBounds?.({
+        x: world.minX,
+        y: world.minY,
+        width,
+        height,
+        padding: INDEX_QUERY_PADDING,
+      });
+      if (Array.isArray(ids)) {
+        for (const id of ids) {
+          candidateIds.add(id as Id);
+        }
+      }
+    } catch {
+      // Spatial index unavailable; rely on fallbacks below
+    }
+
+    for (const id of this.visibleNodeIds) {
+      candidateIds.add(id);
+    }
+    for (const id of this.visibleEdgeIds) {
+      candidateIds.add(id);
+    }
+
+    const selectedIds = storeState.selectedElementIds;
+    if (selectedIds) {
+      for (const id of selectedIds) {
+        candidateIds.add(id as Id);
+      }
+    }
+
+    if (candidateIds.size === 0) {
+      const stats = storeState.spatialIndex?.getStats?.();
+      const totalElements = this.nodesById.size + this.edgesById.size;
+      if (!stats || stats.itemCount === 0 || totalElements <= FALLBACK_FULL_SCAN_LIMIT) {
+        for (const id of this.nodesById.keys()) {
+          candidateIds.add(id);
+        }
+        for (const id of this.edgesById.keys()) {
+          candidateIds.add(id);
+        }
+      }
+    }
+
+    const viewportRect: Bounds = {
+      x: world.minX,
+      y: world.minY,
+      width,
+      height,
+    };
+    const geometryApi = storeState.geometry;
+    const nextNodes = new Set<Id>();
+    const nextEdges = new Set<Id>();
+
+    for (const id of candidateIds) {
+      if (this.nodesById.has(id)) {
+        const node = this.nodesById.get(id)!;
+        const bounds =
+          geometryApi?.getElementBounds?.(id) ?? this.deriveBoundsFromNode(node);
+        if (!bounds) continue;
+        const expanded = inflateBounds(bounds, GEOMETRY_PADDING);
+        if (rectsIntersect(expanded, viewportRect)) {
+          nextNodes.add(id);
+        }
+      } else if (this.edgesById.has(id)) {
+        const edge = this.edgesById.get(id)!;
+        const bounds =
+          geometryApi?.getElementBounds?.(id) ??
+          this.deriveBoundsFromEdge(edge);
+        if (!bounds) continue;
+        const expanded = inflateBounds(bounds, GEOMETRY_PADDING + EDGE_CURVE_PADDING);
+        if (rectsIntersect(expanded, viewportRect)) {
+          nextEdges.add(id);
+        }
+      }
+    }
+
+    // Keep edges visible whenever their endpoints are visible
+    for (const edge of this.edgesById.values()) {
+      if (nextEdges.has(edge.id)) continue;
+      if (nextNodes.has(edge.fromId) || nextNodes.has(edge.toId)) {
+        nextEdges.add(edge.id);
+      }
+    }
+
+    return { nodes: nextNodes, edges: nextEdges };
+  }
+
+  private ensureNodeRendered(node: MindmapNodeElement) {
+    this.renderer?.renderNode(node);
+    const group = this.renderer?.getNodeGroup(node.id);
+    group?.show();
+    group?.listening(true);
+    this.previousNodeHeights.set(node.id, node.height);
+  }
+
+  private ensureNodeHidden(id: Id) {
+    const group = this.renderer?.getNodeGroup(id);
+    if (!group) {
+      return;
+    }
+    group.hide();
+    group.listening(false);
+  }
+
+  private ensureEdgeRendered(edge: MindmapEdgeElement) {
+    if (!this.renderer) return;
+    this.renderer.renderEdge(edge, (nodeId, side) => this.getNodePoint(nodeId, side));
+    const shape = this.getEdgeShape(edge.id);
+    shape?.show();
+  }
+
+  private ensureEdgeHidden(id: Id) {
+    const shape = this.getEdgeShape(id);
+    if (!shape) {
+      return;
+    }
+    shape.hide();
+  }
+
+  private getNodePoint(id: string, side: "left" | "right") {
+    const node = this.nodesById.get(id);
+    if (!node) return null;
+    return getNodeConnectionPoint(node, side);
+  }
+
+  private getEdgeShape(id: Id): Konva.Shape | undefined {
+    const renderer = this.renderer as unknown as {
+      edgeShapes?: Map<Id, Konva.Shape>;
+    };
+    return renderer?.edgeShapes?.get(id);
+  }
+
+  private deriveBoundsFromNode(node: MindmapNodeElement): Bounds {
+    return {
+      x: node.x,
+      y: node.y,
+      width: Math.max(1, node.width ?? MINDMAP_CONFIG.minNodeWidth),
+      height: Math.max(1, node.height ?? MINDMAP_CONFIG.minNodeHeight),
+    } satisfies Bounds;
+  }
+
+  private deriveBoundsFromEdge(edge: MindmapEdgeElement): Bounds | null {
+    const fromNode = this.nodesById.get(edge.fromId);
+    const toNode = this.nodesById.get(edge.toId);
+    if (!fromNode || !toNode) {
+      return null;
+    }
+
+    const start = getNodeConnectionPoint(fromNode, "right");
+    const end = getNodeConnectionPoint(toNode, "left");
+    if (!start || !end) {
+      return null;
+    }
+
+    const minX = Math.min(start.x, end.x);
+    const maxX = Math.max(start.x, end.x);
+    const minY = Math.min(start.y, end.y);
+    const maxY = Math.max(start.y, end.y);
+
+    return {
+      x: minX,
+      y: minY,
+      width: Math.max(1, maxX - minX),
+      height: Math.max(1, maxY - minY),
+    } satisfies Bounds;
+  }
+
+  private repositionSiblingsIfNeeded() {
+    if (!this.store) return;
+
+    const nodesByParent = new Map<string | null | undefined, MindmapNodeElement[]>();
+    for (const node of this.nodesById.values()) {
+      const parentId = node.parentId ?? null;
+      if (!nodesByParent.has(parentId)) {
+        nodesByParent.set(parentId, []);
+      }
+      nodesByParent.get(parentId)!.push(node);
+    }
+
+    for (const siblings of nodesByParent.values()) {
+      if (siblings.length <= 1) continue;
+
+      let hasHeightChange = false;
+      for (const sibling of siblings) {
+        const previous = this.previousNodeHeights.get(sibling.id);
+        if (previous !== undefined && previous !== sibling.height) {
+          hasHeightChange = true;
+          break;
+        }
+      }
+      if (!hasHeightChange) continue;
+
+      siblings.sort((a, b) => a.y - b.y);
+
+      const SIBLING_SPACING = 20;
+      let currentY = siblings[0].y;
+      const updates: Array<{ id: string; y: number }> = [];
+
+      for (let index = 1; index < siblings.length; index += 1) {
+        const previous = siblings[index - 1];
+        const sibling = siblings[index];
+        const minY = currentY + previous.height + SIBLING_SPACING;
+        if (sibling.y < minY) {
+          updates.push({ id: sibling.id, y: minY });
+          currentY = minY;
+        } else {
+          currentY = sibling.y;
+        }
+      }
+
+      if (!updates.length) {
+        continue;
+      }
+
+      const state = this.store.getState() as {
+        updateElement?: (id: string, data: { y: number }, options?: { pushHistory: boolean }) => void;
+        element?: {
+          update?: (id: string, data: { y: number }, options?: { pushHistory: boolean }) => void;
+        };
+      };
+
+      const update = state.updateElement ?? state.element?.update;
+      if (typeof update !== "function") {
+        continue;
+      }
+
+      for (const { id, y } of updates) {
+        update(id, { y }, { pushHistory: false });
+        const node = this.nodesById.get(id);
+        if (node) {
+          node.y = y;
+        }
+      }
+    }
+  }
 }
 
 function mergeNodeStyle(style?: MindmapNodeStyle): MindmapNodeStyle {
@@ -77,8 +514,9 @@ function toMindmapNode(element: CanvasElement): MindmapNodeElement | null {
 
   const nodeStyle = mindmapElement.style ?? mindmapElement.data?.style;
   const style = mergeNodeStyle(
-    (nodeStyle && 'fill' in nodeStyle) ? nodeStyle as MindmapNodeStyle : undefined,
+    isMindmapNodeStyleCandidate(nodeStyle) ? nodeStyle : undefined,
   );
+
   const paletteIndex = level % MINDMAP_THEME.nodeColors.length;
   const borderPalette = MINDMAP_THEME.nodeBorderColors ?? [];
   const themeBorder = borderPalette[paletteIndex] ?? DEFAULT_NODE_STYLE.stroke;
@@ -87,7 +525,7 @@ function toMindmapNode(element: CanvasElement): MindmapNodeElement | null {
     fill: style.fill ?? color,
     textColor: style.textColor ?? MINDMAP_THEME.textColor,
     fontStyle: style.fontStyle ?? (level === 0 ? "bold" : "normal"),
-  fontSize: style.fontSize ?? (level === 0 ? ROOT_FONT_SIZE : CHILD_FONT_SIZE),
+    fontSize: style.fontSize ?? (level === 0 ? 18 : 15),
     cornerRadius: style.cornerRadius ?? MINDMAP_THEME.nodeRadius,
     stroke: style.stroke ?? themeBorder,
     strokeWidth: style.strokeWidth ?? (level === 0 ? 2 : 1.5),
@@ -97,7 +535,6 @@ function toMindmapNode(element: CanvasElement): MindmapNodeElement | null {
     shadowOffsetY: style.shadowOffsetY ?? MINDMAP_THEME.shadow.offsetY,
   };
 
-  // CRITICAL: Check if we already have stored textWidth/textHeight from editor
   const existingTextWidth =
     mindmapElement.textWidth ?? mindmapElement.data?.textWidth;
   const existingTextHeight =
@@ -111,39 +548,23 @@ function toMindmapNode(element: CanvasElement): MindmapNodeElement | null {
   let height: number;
 
   if (existingTextWidth && existingTextHeight) {
-    // Use the stored wrapped dimensions from the editor
     textWidth = existingTextWidth;
     textHeight = existingTextHeight;
     width =
       existingWidth ??
-      Math.max(
-        textWidth + hydratedStyle.paddingX * 2,
-        MINDMAP_CONFIG.minNodeWidth,
-      );
+      Math.max(textWidth + hydratedStyle.paddingX * 2, MINDMAP_CONFIG.minNodeWidth);
     height =
       existingHeight ??
-      Math.max(
-        textHeight + hydratedStyle.paddingY * 2,
-        MINDMAP_CONFIG.minNodeHeight,
-      );
+      Math.max(textHeight + hydratedStyle.paddingY * 2, MINDMAP_CONFIG.minNodeHeight);
   } else {
-    // Fallback: measure text (but this won't handle wrapping properly)
     const metrics = measureMindmapLabel(
-      mindmapElement.text ??
-        mindmapElement.data?.text ??
-        MINDMAP_CONFIG.defaultText,
+      mindmapElement.text ?? mindmapElement.data?.text ?? MINDMAP_CONFIG.defaultText,
       hydratedStyle,
     );
     textWidth = metrics.width;
     textHeight = metrics.height;
-    width = Math.max(
-      textWidth + hydratedStyle.paddingX * 2,
-      MINDMAP_CONFIG.minNodeWidth,
-    );
-    height = Math.max(
-      textHeight + hydratedStyle.paddingY * 2,
-      MINDMAP_CONFIG.minNodeHeight,
-    );
+    width = Math.max(textWidth + hydratedStyle.paddingX * 2, MINDMAP_CONFIG.minNodeWidth);
+    height = Math.max(textHeight + hydratedStyle.paddingY * 2, MINDMAP_CONFIG.minNodeHeight);
   }
 
   return {
@@ -158,8 +579,7 @@ function toMindmapNode(element: CanvasElement): MindmapNodeElement | null {
       mindmapElement.data?.text ??
       MINDMAP_CONFIG.defaultText,
     style: hydratedStyle,
-    parentId:
-      mindmapElement.parentId ?? mindmapElement.data?.parentId ?? null,
+    parentId: mindmapElement.parentId ?? mindmapElement.data?.parentId ?? null,
     textWidth,
     textHeight,
     level,
@@ -173,13 +593,14 @@ function toMindmapEdge(element: CanvasElement): MindmapEdgeElement | null {
   const mindmapElement = element as MindmapCanvasElement;
   const branchStyle = mindmapElement.style ?? mindmapElement.data?.style;
   const rawStyle = mergeBranchStyle(
-    (branchStyle && 'color' in branchStyle) ? branchStyle as BranchStyle : undefined,
+    isBranchStyleCandidate(branchStyle) ? branchStyle : undefined,
   );
   const hydratedStyle: BranchStyle = {
     ...rawStyle,
     color: rawStyle.color ?? MINDMAP_THEME.branchColors[0],
   };
-  return {
+
+  const result: MindmapEdgeElement = {
     id: element.id,
     type: "mindmap-edge",
     x: 0,
@@ -188,268 +609,40 @@ function toMindmapEdge(element: CanvasElement): MindmapEdgeElement | null {
     toId: mindmapElement.toId ?? mindmapElement.data?.toId ?? "",
     style: hydratedStyle,
   };
+
+  return result;
 }
 
-export class MindmapRendererAdapter implements RendererModule {
-  private renderer?: MindmapRenderer;
-  private unsubscribe?: () => void;
-  private readonly previousNodeHeights = new Map<string, number>();
+function isMindmapNodeStyleCandidate(
+  style: MindmapNodeStyle | BranchStyle | undefined,
+): style is MindmapNodeStyle {
+  return !!style && typeof (style as MindmapNodeStyle).fill !== "undefined";
+}
 
-  mount(ctx: ModuleRendererCtx): () => void {
-    // Create MindmapRenderer instance
-    this.renderer = new MindmapRenderer(ctx.layers, ctx.store);
-    if (typeof window !== "undefined") {
-      (window as Window & { mindmapRenderer?: MindmapRenderer }).mindmapRenderer =
-        this.renderer;
-    }
+function isBranchStyleCandidate(
+  style: MindmapNodeStyle | BranchStyle | undefined,
+): style is BranchStyle {
+  return !!style && typeof (style as BranchStyle).color !== "undefined";
+}
 
-    // Subscribe to store changes - watch mindmap elements AND selectedTool
-    this.unsubscribe = ctx.store.subscribe(
-      // Selector: extract mindmap nodes, edges, AND selectedTool (for draggable state)
-      (state) => {
-        const nodes = new Map<Id, MindmapNodeElement>();
-        const edges = new Map<Id, MindmapEdgeElement>();
-
-        for (const [id, element] of state.elements.entries()) {
-          const canvasElement = element as CanvasElement;
-          const node = toMindmapNode(canvasElement);
-          if (node) {
-            nodes.set(id, node);
-            continue;
-          }
-
-          const edge = toMindmapEdge(canvasElement);
-          if (edge) {
-            edges.set(id, edge);
-          }
-        }
-
-        // CRITICAL FIX: Include selectedTool so draggable state updates when tool changes
-        return { nodes, edges, selectedTool: state.ui?.selectedTool };
-      },
-      // Callback: reconcile changes (ignore selectedTool in callback, it's just for triggering updates)
-      ({ nodes, edges }: { nodes: Map<Id, MindmapNodeElement>; edges: Map<Id, MindmapEdgeElement>; selectedTool?: string }) => {
-        this.reconcile({ nodes, edges });
-      },
-      // Options: prevent unnecessary reconciliation with equality check
-      {
-        fireImmediately: true,
-        equalityFn: (a, b) => {
-          // CRITICAL: Compare selectedTool, nodes, and edges
-          if (a.selectedTool !== b.selectedTool) return false;
-          if (a.nodes.size !== b.nodes.size || a.edges.size !== b.edges.size) return false;
-          
-          // Check if any node changed (position, text, style, dimensions)
-          for (const [id, aNode] of a.nodes) {
-            const bNode = b.nodes.get(id);
-            if (!bNode) return false;
-            if (aNode.x !== bNode.x || aNode.y !== bNode.y ||
-                aNode.text !== bNode.text ||
-                aNode.width !== bNode.width || aNode.height !== bNode.height ||
-                aNode.textWidth !== bNode.textWidth || aNode.textHeight !== bNode.textHeight ||
-                JSON.stringify(aNode.style) !== JSON.stringify(bNode.style)) {
-              return false;
-            }
-          }
-
-          // Check if any edge changed
-          for (const [id, aEdge] of a.edges) {
-            const bEdge = b.edges.get(id);
-            if (!bEdge) return false;
-            if (aEdge.fromId !== bEdge.fromId || aEdge.toId !== bEdge.toId ||
-                JSON.stringify(aEdge.style) !== JSON.stringify(bEdge.style)) {
-              return false;
-            }
-          }
-
-          return true;
-        },
-      },
-    );
-
-    // Initial render
-    const initialState = ctx.store.getState();
-    const initialElements: MindmapElements = {
-      nodes: new Map(),
-      edges: new Map(),
-    };
-
-    for (const [id, element] of initialState.elements.entries()) {
-      const canvasElement = element as CanvasElement;
-      const node = toMindmapNode(canvasElement);
-      if (node) {
-        initialElements.nodes.set(id, node);
-        continue;
-      }
-
-      const edge = toMindmapEdge(canvasElement);
-      if (edge) {
-        initialElements.edges.set(id, edge);
-      }
-    }
-
-    this.reconcile(initialElements);
-
-    // Return cleanup function
-    return () => this.unmount();
+function inflateBounds(bounds: Bounds, padding: number): Bounds {
+  if (padding <= 0) {
+    return { ...bounds };
   }
 
-  private unmount() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-    }
-    if (typeof window !== "undefined") {
-      delete (window as Window & { mindmapRenderer?: MindmapRenderer })
-        .mindmapRenderer;
-    }
-    // Cleanup mindmap elements manually
-    const layer = (this.renderer as unknown as { layers: { main: Konva.Layer } }).layers.main;
-    if (layer) {
-      layer
-        .find(".mindmap-node, .mindmap-edge")
-        .forEach((node: Konva.Node) => node.destroy());
-      layer.batchDraw();
-    }
-  }
+  return {
+    x: bounds.x - padding,
+    y: bounds.y - padding,
+    width: bounds.width + padding * 2,
+    height: bounds.height + padding * 2,
+  } satisfies Bounds;
+}
 
-  private reconcile(elements: MindmapElements) {
-    if (!this.renderer) return;
+function rectsIntersect(a: Bounds, b: Bounds): boolean {
+  const aRight = a.x + a.width;
+  const aBottom = a.y + a.height;
+  const bRight = b.x + b.width;
+  const bBottom = b.y + b.height;
 
-    const seenNodes = new Set<Id>();
-    const seenEdges = new Set<Id>();
-
-    // Check for height changes and reposition siblings if needed
-    this.repositionSiblingsIfNeeded(elements);
-
-    // Helper function to get node center for edge rendering
-    const getNodePoint = (
-      nodeId: string,
-      side: "left" | "right",
-    ): { x: number; y: number } | null => {
-      const node = elements.nodes.get(nodeId);
-      if (!node) return null;
-      return getNodeConnectionPoint(node, side);
-    };
-
-    // Render edges first (so they appear behind nodes)
-    for (const [id, edge] of elements.edges) {
-      seenEdges.add(id);
-      if (edge.fromId && edge.toId) {
-        this.renderer.renderEdge(edge, getNodePoint);
-      }
-    }
-
-    // Then render nodes on top
-    for (const [id, node] of elements.nodes) {
-      seenNodes.add(id);
-      this.renderer.renderNode(node);
-      // Track current height for future comparisons
-      this.previousNodeHeights.set(id, node.height);
-    }
-
-    // Remove deleted elements manually
-    const layer = (this.renderer as unknown as { layers: { main: Konva.Layer } }).layers.main;
-    if (layer) {
-      layer.find(".mindmap-node").forEach((node: Konva.Node) => {
-        const nodeId = node.id();
-        if (nodeId && !seenNodes.has(nodeId)) {
-          node.destroy();
-          this.previousNodeHeights.delete(nodeId);
-        }
-      });
-      layer.find(".mindmap-edge").forEach((node: Konva.Node) => {
-        const nodeId = node.id();
-        if (nodeId && !seenEdges.has(nodeId)) {
-          node.destroy();
-        }
-      });
-      layer.batchDraw();
-    }
-  }
-
-  /**
-   * Repositions sibling nodes when any node's height changes to prevent overlap
-   */
-  private repositionSiblingsIfNeeded(elements: MindmapElements) {
-    const store = (this.renderer as unknown as { store: { getState: () => unknown } }).store;
-    if (!store) return;
-
-    // Group nodes by parent
-    const nodesByParent = new Map<
-      string | null | undefined,
-      MindmapNodeElement[]
-    >();
-    for (const [, node] of elements.nodes) {
-      const parentId = node.parentId;
-      if (!nodesByParent.has(parentId)) {
-        nodesByParent.set(parentId, []);
-      }
-      nodesByParent.get(parentId)?.push(node);
-    }
-
-    // Process each parent's children
-    for (const [, siblings] of nodesByParent) {
-      if (siblings.length <= 1) continue; // No siblings to reposition
-
-      // Check if any sibling has changed height
-      let hasHeightChange = false;
-      for (const sibling of siblings) {
-        const prevHeight = this.previousNodeHeights.get(sibling.id);
-        if (prevHeight !== undefined && prevHeight !== sibling.height) {
-          hasHeightChange = true;
-          break;
-        }
-      }
-
-      if (!hasHeightChange) continue;
-
-      // Sort siblings by current Y position
-      siblings.sort((a, b) => a.y - b.y);
-
-      // Calculate new positions with proper spacing
-      const SIBLING_SPACING = 20; // Vertical spacing between siblings
-      let currentY = siblings[0].y; // Start from the topmost sibling's current position
-
-      const updates: Array<{ id: string; y: number }> = [];
-      let needsUpdate = false;
-
-      for (let i = 0; i < siblings.length; i++) {
-        const sibling = siblings[i];
-
-        if (i > 0) {
-          // Calculate minimum Y position based on previous sibling
-          const prevSibling = siblings[i - 1];
-          const minY = currentY + prevSibling.height + SIBLING_SPACING;
-
-          if (sibling.y < minY) {
-            // This sibling needs to be moved down
-            updates.push({ id: sibling.id, y: minY });
-            currentY = minY;
-            needsUpdate = true;
-          } else {
-            // Keep current position
-            currentY = sibling.y;
-          }
-        }
-      }
-
-      // Apply updates if needed
-      if (needsUpdate) {
-        const state = store.getState() as { updateElement?: (id: string, data: { y: number }, options?: { pushHistory: boolean }) => void; element?: { update?: (id: string, data: { y: number }, options?: { pushHistory: boolean }) => void } };
-        const update = state.updateElement ?? state.element?.update;
-
-        if (typeof update === "function") {
-          // Update positions without history (this is an automatic adjustment)
-          for (const { id, y } of updates) {
-            update(id, { y }, { pushHistory: false });
-            // Also update the element in our local map
-            const node = elements.nodes.get(id);
-            if (node) {
-              node.y = y;
-            }
-          }
-        }
-      }
-    }
-  }
+  return aRight >= b.x && bRight >= a.x && aBottom >= b.y && bBottom >= a.y;
 }
